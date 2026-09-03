@@ -49,6 +49,8 @@ export interface ProjectFile {
 export interface Project {
   id: string;
   name: string;       // e.g. "2323"
+  description?: string;
+  author?: string;
   createdAt: string;
   files: ProjectFile[];
   activeFileId: string;

@@ -10,7 +10,7 @@ export const App: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
 
   // Create a new project with .board and .sch documents
-  const handleCreateProject = (name: string) => {
+  const handleCreateProject = (name: string, description?: string, author?: string) => {
     const boardId = `file_board_${Date.now()}`;
     const schId = `file_sch_${Date.now()}`;
 
@@ -27,12 +27,14 @@ export const App: React.FC = () => {
     const newSch: SchematicData = {
       id: schId,
       name: `${name}.sch`,
-      notes: "Принципиальная схема проекта " + name,
+      notes: description || ("Принципиальная схема проекта " + name),
     };
 
     const newProj: Project = {
       id: `proj_${Date.now()}`,
       name,
+      description,
+      author,
       createdAt: new Date().toISOString(),
       files: [
         { id: boardId, name: `${name}.board`, type: "board", data: newBoard },
@@ -211,6 +213,9 @@ export const App: React.FC = () => {
       {/* Professional CAD Status Bar */}
       <footer className="cad-status-bar">
         <div className="status-item">Проект: <strong>{project.name}</strong></div>
+        {project.author && (
+          <div className="status-item">Автор: <strong>{project.author}</strong></div>
+        )}
         <div className="status-item">Документ: <strong>{activeFile?.name}</strong></div>
         {isBoardActive && boardData && (
           <>

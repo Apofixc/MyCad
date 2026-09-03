@@ -1,7 +1,16 @@
 import React, { useState } from "react";
+import {
+  Cpu,
+  Plus,
+  FolderOpen,
+  FileCode,
+  Clock,
+  X,
+  ChevronRight,
+} from "lucide-react";
 
 interface StartScreenProps {
-  onCreateProject: (name: string) => void;
+  onCreateProject: (name: string, description?: string, author?: string) => void;
   onOpenExistingProject?: () => void;
 }
 
@@ -11,108 +20,191 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [projectName, setProjectName] = useState("Project_1");
+  const [author, setAuthor] = useState("");
+  const [description, setDescription] = useState("");
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!projectName.trim()) return;
-    onCreateProject(projectName.trim());
+    onCreateProject(
+      projectName.trim(),
+      description.trim() || undefined,
+      author.trim() || undefined
+    );
   };
 
   return (
     <div className="cad-start-screen">
+      {/* Dynamic Background Matrix / Circuit Grid */}
+      <div className="cad-start-bg-grid" />
+      <div className="cad-start-glow" />
+
       <div className="cad-start-container">
-        {/* Header */}
+        {/* Header with Logo & System Status */}
         <div className="cad-start-header">
           <div className="cad-brand">
-            <svg className="cad-logo-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="2" y="2" width="20" height="20" rx="3" />
-              <path d="M7 2v4M17 2v4M2 7h4M2 17h4M22 7h-4M22 17h-4M7 22v-4M17 22v-4" />
-              <circle cx="12" cy="12" r="3" fill="currentColor" fillOpacity="0.2" />
-            </svg>
-            <div>
-              <h1>MyCad</h1>
-              <span className="cad-version">PCB Reverse Engineering & Boardview v0.1.0</span>
+            <div className="cad-logo-wrapper">
+              <Cpu className="cad-logo-icon" size={26} />
+              <span className="cad-logo-pulse" />
+            </div>
+            <div className="cad-brand-text">
+              <div className="cad-title-row">
+                <h1>MyCad</h1>
+                <span className="cad-badge">CAD System</span>
+              </div>
+              <p className="cad-version">PCB Reverse Engineering & Boardview v0.1.0</p>
             </div>
           </div>
         </div>
 
-        {/* Main Content: Actions & Recent */}
+        {/* Main Body */}
         <div className="cad-start-body">
-          {/* Left: Quick Actions */}
+          {/* Left: Actions */}
           <div className="cad-start-actions">
-            <h2>Начало работы</h2>
+            <div className="cad-section-label">Начало работы</div>
+
             <button
-              className="cad-btn-primary"
+              className="cad-btn-primary cad-start-btn"
               onClick={() => setShowModal(true)}
             >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M12 5v14M5 12h14" />
-              </svg>
-              <span>Создать новый проект</span>
+              <div className="btn-icon-box">
+                <Plus size={18} />
+              </div>
+              <div className="btn-text-content">
+                <span className="btn-title">Создать новый проект</span>
+                <span className="btn-sub">Монтажная плата и схема</span>
+              </div>
             </button>
 
             <button
-              className="cad-btn-outline"
+              className="cad-btn-outline cad-start-btn"
               onClick={onOpenExistingProject || (() => setShowModal(true))}
             >
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M3 7v13a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V7M3 7l3-4h12l3 4M3 7h18" />
-              </svg>
-              <span>Открыть проект...</span>
+              <div className="btn-icon-box">
+                <FolderOpen size={18} />
+              </div>
+              <div className="btn-text-content">
+                <span className="btn-title">Открыть проект...</span>
+                <span className="btn-sub">Файлы .mycad или .board</span>
+              </div>
             </button>
           </div>
 
           {/* Right: Recent Projects */}
           <div className="cad-start-recent">
-            <h2>Недавние проекты</h2>
+            <div className="cad-section-label">Недавние проекты</div>
+
             <div className="cad-recent-list">
-              <div className="cad-recent-item" onClick={() => onCreateProject("2323")}>
-                <svg className="recent-file-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
+              <div
+                className="cad-recent-item"
+                onClick={() => onCreateProject("2323")}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="recent-file-icon-box">
+                  <FileCode size={20} />
+                </div>
                 <div className="recent-meta">
                   <div className="recent-name">2323.mycad</div>
                   <div className="recent-path">C:/Users/mihai/OneDrive/Рабочий стол/MyCad/2323.mycad</div>
                 </div>
-                <div className="recent-date">Сегодня</div>
+                <div className="recent-meta-right">
+                  <span className="recent-date">
+                    <Clock size={12} /> Сегодня
+                  </span>
+                  <ChevronRight size={14} className="recent-arrow" />
+                </div>
               </div>
 
-              <div className="cad-recent-item" onClick={() => onCreateProject("Пиррс_1000_Люкс")}>
-                <svg className="recent-file-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8">
-                  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-                </svg>
+              <div
+                className="cad-recent-item"
+                onClick={() => onCreateProject("Пиррс_1000_Люкс")}
+                role="button"
+                tabIndex={0}
+              >
+                <div className="recent-file-icon-box">
+                  <FileCode size={20} />
+                </div>
                 <div className="recent-meta">
                   <div className="recent-name">Пиррс_1000_Люкс.mycad</div>
                   <div className="recent-path">C:/Users/mihai/OneDrive/Рабочий стол/Пиррс 1000-Люкс</div>
                 </div>
-                <div className="recent-date">Вчера</div>
+                <div className="recent-meta-right">
+                  <span className="recent-date">
+                    <Clock size={12} /> Вчера
+                  </span>
+                  <ChevronRight size={14} className="recent-arrow" />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Modal Dialog */}
+      {/* Modal Dialog for New Project */}
       {showModal && (
         <div className="cad-modal-backdrop" onClick={() => setShowModal(false)}>
           <div className="cad-dialog" onClick={(e) => e.stopPropagation()}>
             <div className="cad-dialog-header">
-              <h3>Создание нового проекта</h3>
-              <button className="cad-dialog-close" onClick={() => setShowModal(false)}>✕</button>
+              <div className="dialog-title-wrap">
+                <Plus size={16} className="dialog-title-icon" />
+                <h3>Создание нового проекта</h3>
+              </div>
+              <button
+                className="cad-dialog-close"
+                onClick={() => setShowModal(false)}
+                title="Закрыть"
+              >
+                <X size={16} />
+              </button>
             </div>
+
             <form onSubmit={handleSubmit}>
               <div className="cad-dialog-body">
-                <label className="cad-label">Имя проекта:</label>
-                <input
-                  type="text"
-                  className="cad-input"
-                  autoFocus
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
-                  placeholder="Например: 2323"
-                />
-                <p className="cad-hint">В проекте будут автоматически созданы файлы платы (.board) и схемы (.sch).</p>
+                <div className="cad-form-group">
+                  <label className="cad-label" htmlFor="cad-project-name-input">
+                    Имя проекта <span className="cad-required">*</span>
+                  </label>
+                  <input
+                    id="cad-project-name-input"
+                    type="text"
+                    className="cad-input"
+                    autoFocus
+                    value={projectName}
+                    onChange={(e) => setProjectName(e.target.value)}
+                    placeholder="Например: 2323"
+                  />
+                </div>
+
+                <div className="cad-form-group">
+                  <label className="cad-label" htmlFor="cad-project-author-input">
+                    Автор / Инженер:
+                  </label>
+                  <input
+                    id="cad-project-author-input"
+                    type="text"
+                    className="cad-input"
+                    value={author}
+                    onChange={(e) => setAuthor(e.target.value)}
+                    placeholder="Например: Иванов А. В."
+                  />
+                </div>
+
+                <div className="cad-form-group">
+                  <label className="cad-label" htmlFor="cad-project-desc-input">
+                    Описание проекта:
+                  </label>
+                  <textarea
+                    id="cad-project-desc-input"
+                    className="cad-input cad-textarea"
+                    rows={3}
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Назначение платы, ревизия, ключевые характеристики..."
+                  />
+                </div>
               </div>
+
               <div className="cad-dialog-footer">
                 <button
                   type="button"
@@ -121,7 +213,7 @@ export const StartScreen: React.FC<StartScreenProps> = ({
                 >
                   Отмена
                 </button>
-                <button type="submit" className="cad-btn-primary">
+                <button type="submit" className="cad-btn-primary" disabled={!projectName.trim()}>
                   Создать
                 </button>
               </div>
