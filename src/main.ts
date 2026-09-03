@@ -133,18 +133,18 @@ async function init(): Promise<void> {
   document.getElementById("btnUndo")!.addEventListener("click", () => editor.undo());
   document.getElementById("btnRedo")!.addEventListener("click", () => editor.redo());
 
-  document.getElementById("btnSave")!.addEventListener("click", async () => {
+  document.getElementById("btnSave")?.addEventListener("click", async () => {
     try {
-      const saved = await saveProject(project);
-      if (saved) status.textContent = `Сохранено: ${saved}`;
+      const saved = await saveProject(project as any);
+      if (saved) status.textContent = `Сохранено: ${saved.path}`;
     } catch (e) {
       status.textContent = `Ошибка сохранения: ${e}`;
     }
   });
-  document.getElementById("btnOpen")!.addEventListener("click", async () => {
+  document.getElementById("btnOpen")?.addEventListener("click", async () => {
     try {
-      const p = await openProject();
-      if (p) applyProject(p);
+      const res = await openProject();
+      if (res) applyProject(res.project as any);
     } catch (e) {
       status.textContent = `Ошибка открытия: ${e}`;
     }

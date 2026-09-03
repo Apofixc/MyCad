@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Cpu,
   Plus,
@@ -7,21 +7,42 @@ import {
   Clock,
   X,
   ChevronRight,
+  Layers,
 } from "lucide-react";
+import {
+  RecentProjectItem,
+  getRecentProjects,
+  removeRecentProject,
+  formatRelativeDate,
+} from "../../utils/recentProjects";
 
 interface StartScreenProps {
   onCreateProject: (name: string, description?: string, author?: string) => void;
-  onOpenExistingProject?: () => void;
+  onOpenProject: () => void;
+  onOpenRecent: (path: string) => void;
 }
 
 export const StartScreen: React.FC<StartScreenProps> = ({
   onCreateProject,
-  onOpenExistingProject,
+  onOpenProject,
+  onOpenRecent,
 }) => {
   const [showModal, setShowModal] = useState(false);
   const [projectName, setProjectName] = useState("Project_1");
   const [author, setAuthor] = useState("");
   const [description, setDescription] = useState("");
+  const [recentProjects, setRecentProjects] = useState<RecentProjectItem[]>([]);
+
+  // Загружаем актуальный список недавних проектов
+  useEffect(() => {
+    setRecentProjects(getRecentProjects());
+  }, []);
+
+  const handleRemoveRecent = (e: React.MouseEvent, path: string) => {
+    e.stopPropagation();
+    removeRecentProject(path);
+    setRecentProjects(getRecentProjects());
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,64 +99,79 @@ export const StartScreen: React.FC<StartScreenProps> = ({
 
             <button
               className="cad-btn-outline cad-start-btn"
-              onClick={onOpenExistingProject || (() => setShowModal(true))}
+              onClick={onOpenProject}
             >
               <div className="btn-icon-box">
                 <FolderOpen size={18} />
               </div>
               <div className="btn-text-content">
                 <span className="btn-title">Открыть проект...</span>
-                <span className="btn-sub">Файлы .mycad или .board</span>
+                <span className="btn-sub">Контейнер .mycad или .json</span>
               </div>
             </button>
           </div>
 
           {/* Right: Recent Projects */}
           <div className="cad-start-recent">
-            <div className="cad-section-label">Недавние проекты</div>
+            <div className="cad-section-label-row">
+              <div className="cad-section-label">Недавние проекты</div>
+              {recentProjects.length > 0 && (
+                <span className="cad-recent-count">{recentProjects.length}</span>
+              )}
+            </div>
 
             <div className="cad-recent-list">
-              <div
-                className="cad-recent-item"
-                onClick={() => onCreateProject("2323")}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="recent-file-icon-box">
-                  <FileCode size={20} />
+              {recentProjects.length > 0 ? (
+                recentProjects.map((item) => (
+                  <div
+                    key={item.path}
+                    className="cad-recent-item"
+                    onClick={() => onOpenRecent(item.path)}
+                    role="button"
+                    tabIndex={0}
+                  >
+                    <div className="recent-file-icon-box">
+                      <FileCode size={20} />
+                    </div>
+                    <div className="recent-meta">
+                      <div className="recent-name-row">
+                        <span className="recent-name">{item.name}.mycad</span>
+                        {item.componentCount !== undefined && item.componentCount > 0 && (
+                          <span className="recent-badge">
+                            {item.componentCount} комп.
+                          </span>
+                        )}
+                      </div>
+                      <div className="recent-path" title={item.path}>
+                        {item.path}
+                      </div>
+                    </div>
+                    <div className="recent-meta-right">
+                      <span className="recent-date" title={new Date(item.lastOpened).toLocaleString()}>
+                        <Clock size={12} /> {formatRelativeDate(item.lastOpened)}
+                      </span>
+                      <button
+                        className="recent-delete-btn"
+                        onClick={(e) => handleRemoveRecent(e, item.path)}
+                        title="Удалить из списка недавних"
+                      >
+                        <X size={14} />
+                      </button>
+                      <ChevronRight size={14} className="recent-arrow" />
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="cad-recent-empty">
+                  <div className="empty-icon-wrap">
+                    <Layers size={32} />
+                  </div>
+                  <p className="empty-title">Список недавних проектов пуст</p>
+                  <p className="empty-sub">
+                    Создайте новый проект или откройте существующий файл с диска
+                  </p>
                 </div>
-                <div className="recent-meta">
-                  <div className="recent-name">2323.mycad</div>
-                  <div className="recent-path">C:/Users/mihai/OneDrive/Рабочий стол/MyCad/2323.mycad</div>
-                </div>
-                <div className="recent-meta-right">
-                  <span className="recent-date">
-                    <Clock size={12} /> Сегодня
-                  </span>
-                  <ChevronRight size={14} className="recent-arrow" />
-                </div>
-              </div>
-
-              <div
-                className="cad-recent-item"
-                onClick={() => onCreateProject("Пиррс_1000_Люкс")}
-                role="button"
-                tabIndex={0}
-              >
-                <div className="recent-file-icon-box">
-                  <FileCode size={20} />
-                </div>
-                <div className="recent-meta">
-                  <div className="recent-name">Пиррс_1000_Люкс.mycad</div>
-                  <div className="recent-path">C:/Users/mihai/OneDrive/Рабочий стол/Пиррс 1000-Люкс</div>
-                </div>
-                <div className="recent-meta-right">
-                  <span className="recent-date">
-                    <Clock size={12} /> Вчера
-                  </span>
-                  <ChevronRight size={14} className="recent-arrow" />
-                </div>
-              </div>
+              )}
             </div>
           </div>
         </div>

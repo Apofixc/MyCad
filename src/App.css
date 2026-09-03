@@ -1443,4 +1443,275 @@ body, html, #root {
   background-size: 20px 20px;
 }
 
+/* ==========================================================================
+   CAD Top Bar Actions & Indicators
+   ========================================================================== */
+.cad-proj-info-wrap {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.cad-dirty-indicator {
+  color: #f59e0b;
+  font-weight: 900;
+  font-size: 16px;
+  margin-left: 2px;
+  line-height: 1;
+}
+
+.cad-file-path-hint {
+  font-size: 11px;
+  color: #64748b;
+  max-width: 260px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cad-file-unsaved-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  font-style: italic;
+}
+
+.cad-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: 24px;
+}
+
+.cad-action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: rgba(30, 41, 59, 0.6);
+  border: 1px solid var(--cad-border);
+  color: var(--cad-text-primary);
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cad-action-btn:hover:not(:disabled) {
+  background-color: rgba(51, 65, 85, 0.8);
+  border-color: rgba(56, 189, 248, 0.4);
+  color: #ffffff;
+}
+
+.cad-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cad-action-btn-highlight {
+  background: rgba(2, 132, 199, 0.25);
+  border-color: var(--cad-accent-blue);
+  color: #7dd3fc;
+}
+
+.cad-action-btn-highlight:hover:not(:disabled) {
+  background: rgba(2, 132, 199, 0.4);
+}
+
+.cad-close-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.status-dirty-badge {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  margin-left: 6px;
+}
+
+/* ==========================================================================
+   StartScreen Recent Projects
+   ========================================================================== */
+.cad-section-label-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+
+.cad-recent-count {
+  font-size: 11px;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.12);
+  color: var(--cad-accent-blue);
+  padding: 1px 6px;
+  border-radius: 10px;
+}
+
+.recent-name-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.recent-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(16, 185, 129, 0.15);
+  color: #6ee7b7;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.recent-delete-btn {
+  background: transparent;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  opacity: 0;
+}
+
+.cad-recent-item:hover .recent-delete-btn {
+  opacity: 1;
+}
+
+.recent-delete-btn:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #ef4444;
+}
+
+.cad-recent-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 36px 20px;
+  background: rgba(13, 17, 26, 0.4);
+  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  text-align: center;
+}
+
+.empty-icon-wrap {
+  color: #475569;
+  margin-bottom: 12px;
+}
+
+.empty-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #94a3b8;
+  margin-bottom: 4px;
+}
+
+.empty-sub {
+  font-size: 11px;
+  color: #64748b;
+  max-width: 240px;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+   Confirm Dialog & Danger Button
+   ========================================================================== */
+.cad-confirm-dialog {
+  width: 440px;
+}
+
+.dialog-warning-icon {
+  color: #f59e0b;
+}
+
+.confirm-text {
+  font-size: 13px;
+  color: #e2e8f0;
+  margin-bottom: 8px;
+}
+
+.confirm-subtext {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.cad-btn-danger {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #fca5a5;
+  padding: 6px 14px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cad-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.3);
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+/* ==========================================================================
+   Floating Toast Notification
+   ========================================================================== */
+.cad-toast {
+  position: fixed;
+  bottom: 32px;
+  right: 24px;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-weight: 500;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(12px);
+  animation: cadToastIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes cadToastIn {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cad-toast-success {
+  background: rgba(6, 78, 59, 0.9);
+  border: 1px solid rgba(52, 211, 153, 0.4);
+  color: #a7f3d0;
+}
+
+.cad-toast-error {
+  background: rgba(127, 29, 29, 0.9);
+  border: 1px solid rgba(248, 113, 113, 0.4);
+  color: #fecaca;
+}
+
+.cad-toast-info {
+  background: rgba(12, 74, 110, 0.9);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  color: #bae6fd;
+}
+
+
 

@@ -1,15 +1,46 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Project, BoardData, SchematicData, ProjectFile } from "./types/project";
 import { StartScreen } from "./components/StartPage/StartScreen";
 import { ProjectTree } from "./components/Sidebar/ProjectTree";
 import { BoardCanvas } from "./components/Viewport/BoardCanvas";
 import { InspectorSidebar } from "./components/Sidebar/InspectorSidebar";
 import { NewFileDialog, ProjectFileType } from "./components/Modals/NewFileDialog";
+import { saveProject, openProject } from "./storage";
+import {
+  FolderOpen,
+  Save,
+  Download,
+  X,
+  AlertTriangle,
+  CheckCircle2,
+  AlertCircle,
+  FileCode,
+} from "lucide-react";
 import "./App.css";
+
+interface ToastInfo {
+  message: string;
+  type: "success" | "error" | "info";
+}
 
 export const App: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
+  const [isDirty, setIsDirty] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [toast, setToast] = useState<ToastInfo | null>(null);
   const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false);
+  const [showCloseModal, setShowCloseModal] = useState(false);
+
+  // Вспомогательное всплывающее уведомление
+  const showToast = useCallback((message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ message, type });
+  }, []);
+
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3500);
+    return () => clearTimeout(timer);
+  }, [toast]);
 
   // Create a new empty project (files are added manually by the user)
   const handleCreateProject = (name: string, description?: string, author?: string) => {
@@ -19,12 +50,87 @@ export const App: React.FC = () => {
       description,
       author,
       createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      formatVersion: 1,
       files: [],
       activeFileId: "",
     };
 
     setProject(newProj);
+    setIsDirty(false);
+    showToast(`Проект «${name}» создан`, "info");
   };
+
+  // Сохранение проекта
+  const handleSaveProject = useCallback(async (saveAs = false) => {
+    if (!project || isSaving) return;
+    setIsSaving(true);
+    try {
+      const res = await saveProject(project, saveAs);
+      if (res) {
+        setProject(res.project);
+        setIsDirty(false);
+        const fileName = res.path.split(/[\\/]/).pop() || `${res.project.name}.mycad`;
+        showToast(`Проект сохранён: ${fileName}`, "success");
+      }
+    } catch (err) {
+      console.error("Ошибка сохранения проекта:", err);
+      showToast(`Ошибка сохранения: ${String(err)}`, "error");
+    } finally {
+      setIsSaving(false);
+    }
+  }, [project, isSaving, showToast]);
+
+  // Открытие проекта
+  const handleOpenProject = useCallback(async (targetPath?: string) => {
+    if (isDirty && project) {
+      const confirmOpen = window.confirm(
+        "В текущем проекте есть несохранённые изменения. Открыть другой проект без сохранения?"
+      );
+      if (!confirmOpen) return;
+    }
+
+    try {
+      const res = await openProject(targetPath);
+      if (res) {
+        setProject(res.project);
+        setIsDirty(false);
+        showToast(`Проект «${res.project.name}» успешно открыт`, "success");
+      }
+    } catch (err) {
+      console.error("Ошибка открытия проекта:", err);
+      showToast(`Не удалось открыть проект: ${String(err)}`, "error");
+    }
+  }, [isDirty, project, showToast]);
+
+  // Закрытие проекта
+  const handleRequestClose = () => {
+    if (isDirty) {
+      setShowCloseModal(true);
+    } else {
+      setProject(null);
+    }
+  };
+
+  // Горячие клавиши (Ctrl+S, Ctrl+Shift+S, Ctrl+O)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Игнорируем в текстовых полях ввода
+      const target = e.target as HTMLElement;
+      if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+        e.preventDefault();
+        handleSaveProject(e.shiftKey);
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
+        e.preventDefault();
+        handleOpenProject();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [handleSaveProject, handleOpenProject]);
 
   // Create a new file manually (.board or .sch) with custom name
   const handleCreateFile = (type: ProjectFileType, fileName: string) => {
@@ -57,6 +163,7 @@ export const App: React.FC = () => {
       files: [...project.files, newFile],
       activeFileId: fileId,
     });
+    setIsDirty(true);
   };
 
   // Delete/close file from project
@@ -72,6 +179,7 @@ export const App: React.FC = () => {
       files: remainingFiles,
       activeFileId: nextActiveId,
     });
+    setIsDirty(true);
   };
 
   // Switch active document file
@@ -87,6 +195,7 @@ export const App: React.FC = () => {
       f.id === project.activeFileId ? { ...f, data: updated } : f
     );
     setProject({ ...project, files: updatedFiles });
+    setIsDirty(true);
   };
 
   // Selection handlers
@@ -117,7 +226,23 @@ export const App: React.FC = () => {
   };
 
   if (!project) {
-    return <StartScreen onCreateProject={handleCreateProject} />;
+    return (
+      <>
+        <StartScreen
+          onCreateProject={handleCreateProject}
+          onOpenProject={() => handleOpenProject()}
+          onOpenRecent={(path) => handleOpenProject(path)}
+        />
+        {toast && (
+          <div className={`cad-toast cad-toast-${toast.type}`}>
+            {toast.type === "success" && <CheckCircle2 size={16} />}
+            {toast.type === "error" && <AlertCircle size={16} />}
+            {toast.type === "info" && <FileCode size={16} />}
+            <span>{toast.message}</span>
+          </div>
+        )}
+      </>
+    );
   }
 
   const activeFile = project.files.find((f) => f.id === project.activeFileId);
@@ -138,12 +263,61 @@ export const App: React.FC = () => {
         <div className="cad-top-left">
           <div className="cad-app-title">MyCad</div>
           <span className="cad-sep">/</span>
-          <span className="cad-proj-name">{project.name}.mycad</span>
+          <div className="cad-proj-info-wrap">
+            <span className="cad-proj-name">
+              {project.name}.mycad
+              {isDirty && <span className="cad-dirty-indicator" title="Есть несохранённые изменения">*</span>}
+            </span>
+            {project.filePath ? (
+              <span className="cad-file-path-hint" title={project.filePath}>
+                {project.filePath}
+              </span>
+            ) : (
+              <span className="cad-file-unsaved-hint">(Не сохранён на диск)</span>
+            )}
+          </div>
+        </div>
+
+        {/* Action Toolbar */}
+        <div className="cad-top-actions">
+          <button
+            className="cad-action-btn"
+            onClick={() => handleOpenProject()}
+            title="Открыть проект... (Ctrl+O)"
+          >
+            <FolderOpen size={14} />
+            <span>Открыть</span>
+          </button>
+
+          <button
+            className={`cad-action-btn ${isDirty ? "cad-action-btn-highlight" : ""}`}
+            onClick={() => handleSaveProject(false)}
+            disabled={isSaving}
+            title={project.filePath ? "Сохранить проект (Ctrl+S)" : "Сохранить в файл... (Ctrl+S)"}
+          >
+            <Save size={14} />
+            <span>{isSaving ? "Сохранение..." : "Сохранить"}</span>
+          </button>
+
+          <button
+            className="cad-action-btn"
+            onClick={() => handleSaveProject(true)}
+            disabled={isSaving}
+            title="Сохранить проект как... (Ctrl+Shift+S)"
+          >
+            <Download size={14} />
+            <span>Сохранить как...</span>
+          </button>
         </div>
 
         <div className="cad-top-right">
-          <button className="cad-btn-ghost" onClick={() => setProject(null)}>
-            Закрыть проект
+          <button
+            className="cad-btn-ghost cad-close-btn"
+            onClick={handleRequestClose}
+            title="Закрыть проект и выйти на начальный экран"
+          >
+            <X size={14} />
+            <span>Закрыть проект</span>
           </button>
         </div>
       </header>
@@ -197,7 +371,10 @@ export const App: React.FC = () => {
 
       {/* Professional CAD Status Bar */}
       <footer className="cad-status-bar">
-        <div className="status-item">Проект: <strong>{project.name}</strong></div>
+        <div className="status-item">
+          Проект: <strong>{project.name}</strong>
+          {isDirty && <span className="status-dirty-badge">Не сохранено</span>}
+        </div>
         {project.author && (
           <div className="status-item">Автор: <strong>{project.author}</strong></div>
         )}
@@ -223,6 +400,77 @@ export const App: React.FC = () => {
         onCreate={handleCreateFile}
         existingFileNames={project.files.map((f) => f.name)}
       />
+
+      {/* Unsaved Changes Confirmation Modal */}
+      {showCloseModal && (
+        <div className="cad-modal-backdrop" onClick={() => setShowCloseModal(false)}>
+          <div className="cad-dialog cad-confirm-dialog" onClick={(e) => e.stopPropagation()}>
+            <div className="cad-dialog-header">
+              <div className="dialog-title-wrap">
+                <AlertTriangle size={18} className="dialog-warning-icon" />
+                <h3>Несохранённые изменения</h3>
+              </div>
+              <button
+                className="cad-dialog-close"
+                onClick={() => setShowCloseModal(false)}
+                title="Закрыть"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="cad-dialog-body">
+              <p className="confirm-text">
+                В проекте <strong>«{project.name}»</strong> есть несохранённые изменения.
+              </p>
+              <p className="confirm-subtext">
+                Если вы закроете проект без сохранения, все внесённые правки будут потеряны.
+              </p>
+            </div>
+
+            <div className="cad-dialog-footer">
+              <button
+                type="button"
+                className="cad-btn-flat"
+                onClick={() => setShowCloseModal(false)}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="cad-btn-danger"
+                onClick={() => {
+                  setShowCloseModal(false);
+                  setProject(null);
+                }}
+              >
+                Не сохранять
+              </button>
+              <button
+                type="button"
+                className="cad-btn-primary"
+                onClick={async () => {
+                  setShowCloseModal(false);
+                  await handleSaveProject(false);
+                  setProject(null);
+                }}
+              >
+                Сохранить и закрыть
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Toast Notification */}
+      {toast && (
+        <div className={`cad-toast cad-toast-${toast.type}`}>
+          {toast.type === "success" && <CheckCircle2 size={16} />}
+          {toast.type === "error" && <AlertCircle size={16} />}
+          {toast.type === "info" && <FileCode size={16} />}
+          <span>{toast.message}</span>
+        </div>
+      )}
     </div>
   );
 };

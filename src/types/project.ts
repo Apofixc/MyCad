@@ -52,6 +52,10 @@ export interface Project {
   description?: string;
   author?: string;
   createdAt: string;
+  updatedAt?: string;
+  formatVersion?: number;
+  filePath?: string;  // Absolute path on filesystem if saved/opened
   files: ProjectFile[];
   activeFileId: string;
 }
+
