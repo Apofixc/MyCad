@@ -1,5 +1,12 @@
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { BoardData, ComponentItem, ComponentType, Pin } from "../../types/project";
+import {
+  BoardData,
+  BoardSelectionTarget,
+  ComponentItem,
+  ComponentType,
+  Pin,
+  normalizeBoardData,
+} from "../../types/project";
 import { SvgComponent } from "../SvgRenderer/SvgComponents";
 
 interface BoardCanvasProps {
@@ -8,17 +15,19 @@ interface BoardCanvasProps {
   activeNetId?: string;
   onSelectComponent: (id: string | undefined) => void;
   onSelectPin: (componentId: string, pinId: string) => void;
+  onSelectTarget?: (target: BoardSelectionTarget) => void;
 }
 
 export const BoardCanvas: React.FC<BoardCanvasProps> = ({
-  boardData,
+  boardData: rawBoardData,
   onChangeBoardData,
   activeNetId,
   onSelectComponent,
   onSelectPin,
+  onSelectTarget,
 }) => {
+  const boardData = normalizeBoardData(rawBoardData);
   const containerRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 250, y: 200 });
@@ -55,6 +64,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         (e.target as HTMLElement).id === "cad-bg-plane"
       ) {
         onSelectComponent(undefined);
+        onSelectTarget?.(null);
       }
     }
   };
@@ -115,19 +125,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     };
   }, [handleMouseMove, handleMouseUp]);
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      onChangeBoardData({
-        ...boardData,
-        bgImage: reader.result as string,
-      });
-    };
-    reader.readAsDataURL(file);
-  };
 
   const handleAddComponent = (type: ComponentType) => {
     const count = boardData.components.filter((c) => c.type === type).length + 1;
@@ -175,6 +172,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       pins = [{ id: "p1", number: 1, x: 0, y: 0, netId: "GND" }];
     }
 
+    const currentSide = boardData.activeSideView === "bottom" ? "bottom" : "top";
+
     const newComp: ComponentItem = {
       id: `comp_${Date.now()}`,
       refDes,
@@ -183,6 +182,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       x: Math.round((-pan.x + 250) / zoom / 10) * 10,
       y: Math.round((-pan.y + 150) / zoom / 10) * 10,
       rotation: 0,
+      layer: currentSide,
       pins,
     };
 
@@ -190,8 +190,10 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       ...boardData,
       components: [...boardData.components, newComp],
       selectedComponentId: newComp.id,
+      selectedTarget: { type: "component", id: newComp.id },
     });
     onSelectComponent(newComp.id);
+    onSelectTarget?.({ type: "component", id: newComp.id });
   };
 
   const renderActiveNetLines = () => {
@@ -199,6 +201,11 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
     const points: { x: number; y: number }[] = [];
     boardData.components.forEach((comp) => {
+      // Only draw lines if component is currently visible
+      const side = comp.layer || "top";
+      if (side === "top" && !boardData.showCompsTop) return;
+      if (side === "bottom" && !boardData.showCompsBottom) return;
+
       comp.pins.forEach((pin) => {
         if (pin.netId === activeNetId) {
           const rad = (comp.rotation * Math.PI) / 180;
@@ -232,6 +239,16 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     );
   };
 
+  const hasAnyBackground = boardData.bgTop.image || boardData.bgBottom.image;
+
+  // Filter visible components
+  const visibleComponents = boardData.components.filter((c) => {
+    const side = c.layer || "top";
+    if (side === "top" && !boardData.showCompsTop) return false;
+    if (side === "bottom" && !boardData.showCompsBottom) return false;
+    return true;
+  });
+
   return (
     <div
       ref={containerRef}
@@ -242,48 +259,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     >
       {/* Sleek Integrated Toolbar */}
       <div className="cad-canvas-toolbar" onMouseDown={(e) => e.stopPropagation()}>
-        <div className="toolbar-section">
-          <button
-            className="cad-tool-btn"
-            onClick={() => fileInputRef.current?.click()}
-            title="Загрузить монтажную схему или фото платы"
-          >
-            <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2">
-              <rect x="3" y="3" width="18" height="18" rx="2" />
-              <circle cx="8.5" cy="8.5" r="1.5" />
-              <polyline points="21 15 16 10 5 21" />
-            </svg>
-            <span>Монтажная схема</span>
-          </button>
-          <input
-            type="file"
-            ref={fileInputRef}
-            style={{ display: "none" }}
-            accept="image/*"
-            onChange={handleFileUpload}
-          />
-
-          {boardData.bgImage && (
-            <div className="toolbar-slider-group">
-              <span className="slider-label">Фон:</span>
-              <input
-                type="range"
-                min="0.05"
-                max="1"
-                step="0.05"
-                value={boardData.bgOpacity}
-                onChange={(e) =>
-                  onChangeBoardData({
-                    ...boardData,
-                    bgOpacity: parseFloat(e.target.value),
-                  })
-                }
-              />
-            </div>
-          )}
-        </div>
-
-        <div className="toolbar-divider" />
 
         {/* Add Component Tools */}
         <div className="toolbar-section comp-tools">
@@ -348,16 +323,44 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
             fill="url(#cad-grid-pattern)"
           />
 
-          {/* Background Scheme / Board Photo */}
-          {boardData.bgImage ? (
-            <image
-              href={boardData.bgImage}
-              x={boardData.bgOffsetX}
-              y={boardData.bgOffsetY}
-              opacity={boardData.bgOpacity}
-              style={{ pointerEvents: "none" }}
-            />
-          ) : (
+          {/* Layer 1: Background Bottom (solder side) */}
+          {boardData.bgBottom.visible && boardData.bgBottom.image && (
+            <g
+              id="cad-bg-bottom-group"
+              transform={`translate(${boardData.bgBottom.offsetX}, ${boardData.bgBottom.offsetY}) scale(${
+                boardData.bgBottom.mirrored ? -boardData.bgBottom.scale : boardData.bgBottom.scale
+              }, ${boardData.bgBottom.scale})`}
+              style={{
+                filter: `brightness(${boardData.bgBottom.brightness}%) contrast(${boardData.bgBottom.contrast}%) ${
+                  boardData.bgBottom.invert ? "invert(1)" : ""
+                }`,
+                opacity: boardData.bgBottom.opacity,
+                pointerEvents: "none",
+              }}
+            >
+              <image href={boardData.bgBottom.image} x={0} y={0} />
+            </g>
+          )}
+
+          {/* Layer 2: Background Top (component side) */}
+          {boardData.bgTop.visible && boardData.bgTop.image && (
+            <g
+              id="cad-bg-top-group"
+              transform={`translate(${boardData.bgTop.offsetX}, ${boardData.bgTop.offsetY}) scale(${boardData.bgTop.scale})`}
+              style={{
+                filter: `brightness(${boardData.bgTop.brightness}%) contrast(${boardData.bgTop.contrast}%) ${
+                  boardData.bgTop.invert ? "invert(1)" : ""
+                }`,
+                opacity: boardData.bgTop.opacity,
+                pointerEvents: "none",
+              }}
+            >
+              <image href={boardData.bgTop.image} x={0} y={0} />
+            </g>
+          )}
+
+          {/* If no background is loaded at all */}
+          {!hasAnyBackground && (
             <g transform="translate(0, 0)">
               <rect
                 x="0"
@@ -371,10 +374,10 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                 rx="4"
               />
               <text x="250" y="150" textAnchor="middle" fill="#64748b" fontSize="13" fontFamily="sans-serif">
-                Монтажная схема не загружена
+                Подложки платы не загружены
               </text>
               <text x="250" y="175" textAnchor="middle" fill="#475569" fontSize="11" fontFamily="sans-serif">
-                Нажмите «Монтажная схема» на панели выше для выбора изображения
+                Кликните «Фон Top» или «Фон Bottom» в дереве слоев слева для загрузки изображения
               </text>
             </g>
           )}
@@ -382,15 +385,22 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           {/* Active Net Connection Lines */}
           {renderActiveNetLines()}
 
-          {/* SVG Footprints Layer */}
-          {boardData.components.map((comp) => (
+          {/* SVG Components Layer */}
+          {visibleComponents.map((comp) => (
             <SvgComponent
               key={comp.id}
               component={comp}
               isSelected={boardData.selectedComponentId === comp.id}
               selectedPinId={boardData.selectedPinId}
               activeNetId={activeNetId}
-              onSelectComponent={onSelectComponent}
+              onSelectComponent={(id) => {
+                onSelectComponent(id);
+                if (id) {
+                  onSelectTarget?.({ type: "component", id });
+                } else {
+                  onSelectTarget?.(null);
+                }
+              }}
               onSelectPin={onSelectPin}
               onStartDrag={handleStartCompDrag}
             />

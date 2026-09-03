@@ -949,6 +949,338 @@ body, html, #root {
   color: #f87171;
 }
 
+/* ==========================================================================
+   KiCad Layer Sub-tree (.board files)
+   ========================================================================== */
+.kicad-file-branch {
+  display: flex;
+  flex-direction: column;
+}
+
+.kicad-expand-arrow-btn {
+  background: transparent;
+  border: none;
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  margin-right: 2px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+}
+
+.kicad-expand-arrow-btn:hover {
+  background: var(--cad-bg-surface);
+  color: var(--cad-text-primary);
+}
+
+.kicad-expand-placeholder {
+  width: 17px;
+  display: inline-block;
+}
+
+.kicad-layers-subgroup {
+  padding-left: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin: 2px 0 4px 0;
+  border-left: 1px dashed rgba(255, 255, 255, 0.1);
+  margin-left: 14px;
+}
+
+.kicad-layer-tree-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--cad-text-secondary);
+  cursor: pointer;
+  transition: all 0.1s;
+}
+
+.kicad-layer-tree-item:hover {
+  background-color: var(--cad-bg-surface);
+  color: var(--cad-text-primary);
+}
+
+.kicad-layer-tree-item.selected {
+  background-color: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.layer-vis-btn {
+  background: transparent;
+  border: none;
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+}
+
+.layer-vis-btn:hover {
+  color: var(--cad-text-primary);
+}
+
+.layer-vis-btn .eye-on {
+  color: #38bdf8;
+}
+
+.layer-vis-btn .eye-off {
+  color: #64748b;
+  opacity: 0.6;
+}
+
+.layer-color-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.dot-bg-top {
+  background-color: #38bdf8;
+}
+
+.dot-bg-bottom {
+  background-color: #a855f7;
+}
+
+.dot-comps-top {
+  background-color: #22c55e;
+}
+
+.dot-comps-bottom {
+  background-color: #f97316;
+}
+
+.layer-type-icon {
+  color: var(--cad-text-muted);
+  flex-shrink: 0;
+}
+
+.layer-title {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.layer-count-badge {
+  font-size: 9px;
+  font-family: monospace;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 1px 4px;
+  border-radius: 8px;
+  color: var(--cad-text-muted);
+}
+
+.layer-badge-img {
+  font-size: 8px;
+  font-weight: 700;
+  background: rgba(56, 189, 248, 0.2);
+  color: #38bdf8;
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+.layer-badge-flip {
+  font-size: 8px;
+  font-weight: 700;
+  background: rgba(168, 85, 247, 0.2);
+  color: #c084fc;
+  padding: 1px 3px;
+  border-radius: 3px;
+}
+
+/* Layer inspector styles */
+
+.cad-tool-btn.active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.cad-image-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.cad-image-actions .full-width {
+  width: 100%;
+  justify-content: center;
+}
+
+.cad-bg-preview-box {
+  margin-top: 6px;
+  border: 1px solid var(--cad-border);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.4);
+  max-height: 100px;
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cad-bg-preview-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cad-slider-group {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-bottom: 8px;
+}
+
+.cad-slider-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: var(--cad-text-secondary);
+}
+
+.cad-slider-group input[type="range"] {
+  width: 100%;
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
+.checkbox-row {
+  margin-bottom: 8px;
+}
+
+.cad-checkbox-label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  color: var(--cad-text-primary);
+  cursor: pointer;
+}
+
+.cad-checkbox-label input[type="checkbox"] {
+  accent-color: #38bdf8;
+  cursor: pointer;
+}
+
+.flip-highlight {
+  background: rgba(168, 85, 247, 0.1);
+  padding: 6px 8px;
+  border-radius: 4px;
+  border: 1px dashed rgba(168, 85, 247, 0.35);
+}
+
+.cad-field-row-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 6px;
+}
+
+.cad-field-row-2 label {
+  font-size: 11px;
+  color: var(--cad-text-secondary);
+  display: block;
+  margin-bottom: 2px;
+}
+
+.cad-field-row-2 input {
+  width: 100%;
+}
+
+.cad-side-toggle-group {
+  display: flex;
+  gap: 3px;
+}
+
+.cad-side-btn {
+  background: var(--cad-bg-input);
+  border: 1px solid var(--cad-border);
+  color: var(--cad-text-secondary);
+  padding: 3px 8px;
+  font-size: 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.cad-side-btn.active {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.cad-layer-comp-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  max-height: 240px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.cad-layer-comp-list .comp-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.03);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.cad-layer-comp-list .comp-row:hover {
+  background: rgba(56, 189, 248, 0.15);
+  color: #ffffff;
+}
+
+.cad-layer-comp-list .comp-ref {
+  font-weight: 700;
+  color: #38bdf8;
+  min-width: 32px;
+}
+
+.cad-layer-comp-list .comp-val {
+  color: #e2e8f0;
+  flex: 1;
+}
+
+.cad-layer-comp-list .comp-type {
+  font-size: 10px;
+  color: var(--cad-text-muted);
+  font-family: monospace;
+}
+
+.cad-layer-comp-list .empty-hint {
+  font-size: 11px;
+  color: var(--cad-text-muted);
+  font-style: italic;
+  padding: 8px 4px;
+}
+
+.empty-icon-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 8px;
+  color: #475569;
+}
+
 .kicad-tree-footer {
   padding: 8px;
   border-top: 1px solid var(--cad-border);

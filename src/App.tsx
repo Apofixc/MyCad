@@ -1,5 +1,12 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { Project, BoardData, SchematicData, ProjectFile } from "./types/project";
+import {
+  Project,
+  BoardData,
+  SchematicData,
+  ProjectFile,
+  BoardSelectionTarget,
+  normalizeBoardData,
+} from "./types/project";
 import { StartScreen } from "./components/StartPage/StartScreen";
 import { ProjectTree } from "./components/Sidebar/ProjectTree";
 import { BoardCanvas } from "./components/Viewport/BoardCanvas";
@@ -90,7 +97,16 @@ export const App: React.FC = () => {
     try {
       const res = await openProject(targetPath);
       if (res) {
-        setProject(res.project);
+        const normalizedFiles = res.project.files.map((f) => {
+          if (f.type === "board") {
+            return {
+              ...f,
+              data: normalizeBoardData(f.data as Partial<BoardData>),
+            };
+          }
+          return f;
+        });
+        setProject({ ...res.project, files: normalizedFiles });
         setIsDirty(false);
         showToast(`Проект «${res.project.name}» успешно открыт`, "success");
       }
@@ -136,15 +152,11 @@ export const App: React.FC = () => {
     let newFile: ProjectFile;
 
     if (type === "board") {
-      const newBoard: BoardData = {
+      const newBoard: BoardData = normalizeBoardData({
         id: fileId,
         name: fileName,
-        bgOpacity: 0.8,
-        bgScale: 1,
-        bgOffsetX: 0,
-        bgOffsetY: 0,
         components: [],
-      };
+      });
       newFile = { id: fileId, name: fileName, type: "board", data: newBoard };
     } else {
       const newSch: SchematicData = {
@@ -188,22 +200,70 @@ export const App: React.FC = () => {
   // Update board data of active file
   const handleUpdateActiveBoardData = (updated: BoardData) => {
     if (!project) return;
+    const normalized = normalizeBoardData(updated);
     const updatedFiles = project.files.map((f) =>
-      f.id === project.activeFileId ? { ...f, data: updated } : f
+      f.id === project.activeFileId ? { ...f, data: normalized } : f
     );
     setProject({ ...project, files: updatedFiles });
     setIsDirty(true);
   };
 
-  // Selection handlers
+  // Target & Selection handlers
+  const handleSelectTarget = (target: BoardSelectionTarget) => {
+    if (!project) return;
+    const activeFile = project.files.find((f) => f.id === project.activeFileId);
+    if (!activeFile || activeFile.type !== "board") return;
+
+    const board = normalizeBoardData(activeFile.data as BoardData);
+    const compId = target?.type === "component" ? target.id : undefined;
+    const pinId = target?.type === "component" ? target.pinId : undefined;
+
+    handleUpdateActiveBoardData({
+      ...board,
+      selectedTarget: target,
+      selectedComponentId: compId,
+      selectedPinId: pinId,
+    });
+  };
+
+  const handleToggleLayerVisibility = (
+    fileId: string,
+    layerKey: "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
+  ) => {
+    if (!project) return;
+    const targetFile = project.files.find((f) => f.id === fileId);
+    if (!targetFile || targetFile.type !== "board") return;
+
+    const board = normalizeBoardData(targetFile.data as BoardData);
+    let updatedBoard = { ...board };
+
+    if (layerKey === "bgTop") {
+      updatedBoard.bgTop = { ...board.bgTop, visible: !board.bgTop.visible };
+    } else if (layerKey === "bgBottom") {
+      updatedBoard.bgBottom = { ...board.bgBottom, visible: !board.bgBottom.visible };
+    } else if (layerKey === "compsTop") {
+      updatedBoard.showCompsTop = !board.showCompsTop;
+    } else if (layerKey === "compsBottom") {
+      updatedBoard.showCompsBottom = !board.showCompsBottom;
+    }
+
+    const updatedFiles = project.files.map((f) =>
+      f.id === fileId ? { ...f, data: updatedBoard } : f
+    );
+    setProject({ ...project, files: updatedFiles });
+    setIsDirty(true);
+  };
+
   const handleSelectComponent = (compId: string | undefined) => {
     if (!project) return;
     const activeFile = project.files.find((f) => f.id === project.activeFileId);
     if (!activeFile || activeFile.type !== "board") return;
 
-    const board = activeFile.data as BoardData;
+    const board = normalizeBoardData(activeFile.data as BoardData);
+    const target: BoardSelectionTarget = compId ? { type: "component", id: compId } : null;
     handleUpdateActiveBoardData({
       ...board,
+      selectedTarget: target,
       selectedComponentId: compId,
       selectedPinId: compId ? board.selectedPinId : undefined,
     });
@@ -214,9 +274,11 @@ export const App: React.FC = () => {
     const activeFile = project.files.find((f) => f.id === project.activeFileId);
     if (!activeFile || activeFile.type !== "board") return;
 
-    const board = activeFile.data as BoardData;
+    const board = normalizeBoardData(activeFile.data as BoardData);
+    const target: BoardSelectionTarget = { type: "component", id: compId, pinId };
     handleUpdateActiveBoardData({
       ...board,
+      selectedTarget: target,
       selectedComponentId: compId,
       selectedPinId: pinId,
     });
@@ -244,7 +306,9 @@ export const App: React.FC = () => {
 
   const activeFile = project.files.find((f) => f.id === project.activeFileId);
   const isBoardActive = activeFile?.type === "board";
-  const boardData = isBoardActive ? (activeFile.data as BoardData) : null;
+  const boardData = isBoardActive
+    ? normalizeBoardData(activeFile.data as Partial<BoardData>)
+    : null;
 
   let activeNetId: string | undefined = undefined;
   if (boardData && boardData.selectedComponentId && boardData.selectedPinId) {
@@ -282,7 +346,7 @@ export const App: React.FC = () => {
 
       {/* Main Workspace Layout */}
       <div className="cad-workspace-body">
-        {/* Left: KiCad Project Tree */}
+        {/* Left: KiCad Project Tree with layers dropdown */}
         <ProjectTree
           project={project}
           isDirty={isDirty}
@@ -292,6 +356,9 @@ export const App: React.FC = () => {
           onSaveProject={() => handleSaveProject(false)}
           onSaveProjectAs={() => handleSaveProject(true)}
           onCloseProject={handleRequestClose}
+          activeSelectionTarget={boardData?.selectedTarget}
+          onSelectTarget={handleSelectTarget}
+          onToggleLayerVisibility={handleToggleLayerVisibility}
         />
 
         {/* Center: Canvas Viewport */}
@@ -303,6 +370,7 @@ export const App: React.FC = () => {
               activeNetId={activeNetId}
               onSelectComponent={handleSelectComponent}
               onSelectPin={handleSelectPin}
+              onSelectTarget={handleSelectTarget}
             />
           ) : activeFile?.type === "sch" ? (
             <div className="cad-schematic-placeholder">
@@ -327,6 +395,7 @@ export const App: React.FC = () => {
             onChangeBoardData={handleUpdateActiveBoardData}
             onSelectComponent={handleSelectComponent}
             onSelectPin={handleSelectPin}
+            onSelectTarget={handleSelectTarget}
           />
         )}
       </div>

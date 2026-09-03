@@ -1,6 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
 import { open, save } from "@tauri-apps/plugin-dialog";
-import type { Project, BoardData, ProjectFile, ComponentItem, ComponentType } from "./types/project";
+import {
+  Project,
+  BoardData,
+  ProjectFile,
+  ComponentItem,
+  ComponentType,
+  normalizeBoardData,
+} from "./types/project";
 import { addRecentProject } from "./utils/recentProjects";
 
 function isTauri(): boolean {
@@ -202,11 +209,15 @@ function normalizeLoadedProject(raw: Record<string, unknown>, filePath: string):
 
   const files: ProjectFile[] = Array.isArray(raw.files)
     ? (raw.files as ProjectFile[]).map((f, i) => {
+        const fileType = f.type === "sch" ? "sch" : "board";
         return {
           id: f.id || `file_${i}_${Date.now()}`,
           name: f.name || `Документ_${i + 1}`,
-          type: f.type === "sch" ? "sch" : "board",
-          data: f.data || (f.type === "sch" ? { id: f.id, name: f.name } : { id: f.id, name: f.name, components: [], bgOpacity: 0.8, bgScale: 1, bgOffsetX: 0, bgOffsetY: 0 }),
+          type: fileType,
+          data:
+            fileType === "sch"
+              ? f.data || { id: f.id, name: f.name }
+              : normalizeBoardData((f.data as Partial<BoardData>) || { id: f.id, name: f.name }),
         };
       })
     : [];
@@ -266,7 +277,7 @@ function convertLegacyProject(raw: Record<string, unknown>, filePath: string): P
   });
 
   const boardId = `file_board_${Date.now()}`;
-  const boardData: BoardData = {
+  const boardData: BoardData = normalizeBoardData({
     id: boardId,
     name: `${raw.name || "Плата"}.board`,
     bgImage: "backup_20260830_124935/pcb_board.png",
@@ -275,7 +286,7 @@ function convertLegacyProject(raw: Record<string, unknown>, filePath: string): P
     bgOffsetX: 0,
     bgOffsetY: 0,
     components: convertedComponents,
-  };
+  });
 
   const boardFile: ProjectFile = {
     id: boardId,
