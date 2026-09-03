@@ -44,19 +44,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
         {/* Tree children */}
         <div className="kicad-children-group">
-          {project.files.length === 0 ? (
-            <div className="kicad-tree-empty-state">
-              <span className="empty-text">Нет файлов</span>
-              <button
-                type="button"
-                className="kicad-tree-create-btn"
-                onClick={onOpenNewFileDialog}
-              >
-                + Добавить
-              </button>
-            </div>
-          ) : (
-            project.files.map((file: ProjectFile) => {
+          {project.files.map((file: ProjectFile) => {
               const isActive = project.activeFileId === file.id;
               const isBoard = file.type === "board";
 
@@ -98,8 +86,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                   {isActive && <div className="kicad-active-marker" />}
                 </div>
               );
-            })
-          )}
+            })}
         </div>
       </div>
 

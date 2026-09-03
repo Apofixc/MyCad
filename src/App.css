@@ -831,37 +831,6 @@ body, html, #root {
   color: #f87171;
 }
 
-.kicad-tree-empty-state {
-  padding: 8px 4px 10px 4px;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 6px;
-}
-
-.kicad-tree-empty-state .empty-text {
-  font-size: 11px;
-  color: var(--cad-text-muted);
-  font-style: italic;
-}
-
-.kicad-tree-create-btn {
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  color: var(--cad-accent-blue);
-  font-size: 11px;
-  font-weight: 500;
-  padding: 2px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.12s;
-}
-
-.kicad-tree-create-btn:hover {
-  background: rgba(56, 189, 248, 0.18);
-  border-color: var(--cad-accent-blue);
-}
-
 .kicad-tree-footer {
   padding: 8px;
   border-top: 1px solid var(--cad-border);
@@ -1464,60 +1433,14 @@ body, html, #root {
 }
 
 /* ==========================================================================
-   Canvas Empty Workspace State
+   Canvas Blank State
    ========================================================================== */
-.cad-empty-workspace {
+.cad-canvas-blank {
   width: 100%;
   height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   background-color: var(--cad-bg-canvas);
-  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
-  background-size: 24px 24px;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+  background-size: 20px 20px;
 }
 
-.empty-workspace-card {
-  max-width: 440px;
-  background: var(--cad-bg-panel);
-  border: 1px solid var(--cad-border);
-  border-radius: 12px;
-  padding: 36px 32px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
-}
-
-.empty-workspace-icon {
-  width: 68px;
-  height: 68px;
-  border-radius: 16px;
-  background: rgba(56, 189, 248, 0.1);
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-bottom: 18px;
-}
-
-.empty-workspace-card h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #f1f5f9;
-  margin-bottom: 8px;
-}
-
-.empty-workspace-card p {
-  font-size: 13px;
-  color: var(--cad-text-secondary);
-  line-height: 1.5;
-  margin-bottom: 22px;
-}
-
-.empty-add-btn {
-  padding: 9px 22px;
-  font-size: 12.5px;
-}
 
