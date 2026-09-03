@@ -585,7 +585,7 @@ body, html, #root {
 .cad-doc-tabs {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
   height: 100%;
 }
 
@@ -595,18 +595,19 @@ body, html, #root {
   border-bottom: 2px solid transparent;
   color: var(--cad-text-muted);
   font-size: 12px;
-  padding: 0 14px;
+  padding: 0 10px 0 12px;
   height: 38px;
   display: flex;
   align-items: center;
   gap: 6px;
   cursor: pointer;
   transition: all 0.12s;
+  user-select: none;
 }
 
 .cad-doc-tab:hover {
   color: var(--cad-text-primary);
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.03);
 }
 
 .cad-doc-tab.active {
@@ -616,10 +617,69 @@ body, html, #root {
   font-weight: 600;
 }
 
+.cad-tab-title {
+  max-width: 150px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cad-tab-close {
+  background: transparent;
+  border: none;
+  color: var(--cad-text-muted);
+  font-size: 13px;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.12s ease;
+  margin-left: 2px;
+}
+
+.cad-doc-tab:hover .cad-tab-close {
+  opacity: 0.7;
+}
+
+.cad-tab-close:hover {
+  opacity: 1 !important;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.cad-tab-add-btn {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px dashed var(--cad-border);
+  color: var(--cad-text-muted);
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  margin-left: 4px;
+  transition: all 0.12s;
+}
+
+.cad-tab-add-btn:hover {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: var(--cad-accent-blue);
+  color: var(--cad-accent-blue);
+}
+
 .tab-indicator {
   width: 8px;
   height: 8px;
   border-radius: 50%;
+  flex-shrink: 0;
 }
 
 .board-dot {
@@ -740,7 +800,66 @@ body, html, #root {
   height: 5px;
   border-radius: 50%;
   background-color: var(--cad-accent-blue);
+  margin-left: 4px;
+}
+
+.kicad-item-delete-btn {
+  background: transparent;
+  border: none;
+  color: var(--cad-text-muted);
+  font-size: 13px;
+  line-height: 1;
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: all 0.12s;
   margin-left: auto;
+}
+
+.kicad-tree-item:hover .kicad-item-delete-btn {
+  opacity: 0.7;
+}
+
+.kicad-item-delete-btn:hover {
+  opacity: 1 !important;
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
+}
+
+.kicad-tree-empty-state {
+  padding: 8px 4px 10px 4px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.kicad-tree-empty-state .empty-text {
+  font-size: 11px;
+  color: var(--cad-text-muted);
+  font-style: italic;
+}
+
+.kicad-tree-create-btn {
+  background: rgba(56, 189, 248, 0.08);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: var(--cad-accent-blue);
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+
+.kicad-tree-create-btn:hover {
+  background: rgba(56, 189, 248, 0.18);
+  border-color: var(--cad-accent-blue);
 }
 
 .kicad-tree-footer {
@@ -1179,3 +1298,226 @@ body, html, #root {
   font-weight: 700;
   color: var(--cad-accent-cyan);
 }
+
+/* ==========================================================================
+   New File Dialog Styles
+   ========================================================================== */
+.new-file-dialog {
+  width: 520px;
+}
+
+.file-type-selector {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.file-type-card {
+  position: relative;
+  background: rgba(13, 17, 26, 0.7);
+  border: 1px solid var(--cad-border);
+  border-radius: 8px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  user-select: none;
+}
+
+.file-type-card:hover {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(56, 189, 248, 0.4);
+  transform: translateY(-1px);
+}
+
+.file-type-card.selected {
+  background: rgba(2, 132, 199, 0.12);
+  border-color: var(--cad-accent-blue);
+  box-shadow: 0 0 14px rgba(56, 189, 248, 0.16);
+}
+
+.file-type-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.file-type-icon-box {
+  width: 36px;
+  height: 36px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.board-type-icon {
+  background: rgba(21, 128, 61, 0.2);
+  color: #4ade80;
+  border: 1px solid rgba(74, 222, 128, 0.3);
+}
+
+.sch-type-icon {
+  background: rgba(217, 119, 6, 0.2);
+  color: #fbbf24;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.file-type-checked {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--cad-accent-blue);
+  color: #ffffff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.file-type-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.file-type-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 13px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.file-type-ext-badge {
+  font-size: 10px;
+  font-weight: 700;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.board-badge {
+  background: rgba(34, 197, 94, 0.15);
+  color: #86efac;
+}
+
+.sch-badge {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fde68a;
+}
+
+.file-type-desc {
+  font-size: 11px;
+  color: var(--cad-text-muted);
+  line-height: 1.35;
+}
+
+/* Suffix input */
+.cad-input-with-suffix {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cad-input-with-suffix .cad-input {
+  padding-right: 66px;
+}
+
+.cad-input.has-error {
+  border-color: #ef4444;
+  box-shadow: 0 0 0 2px rgba(239, 68, 68, 0.2);
+}
+
+.cad-input-suffix {
+  position: absolute;
+  right: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--cad-accent-blue);
+  background: rgba(56, 189, 248, 0.12);
+  padding: 3px 6px;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.cad-field-error {
+  font-size: 11px;
+  color: #f87171;
+  margin-top: 6px;
+}
+
+.cad-field-hint {
+  font-size: 11px;
+  color: var(--cad-text-muted);
+  margin-top: 6px;
+}
+
+.cad-field-hint code {
+  color: var(--cad-accent-blue);
+  background: rgba(56, 189, 248, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 10.5px;
+}
+
+/* ==========================================================================
+   Canvas Empty Workspace State
+   ========================================================================== */
+.cad-empty-workspace {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--cad-bg-canvas);
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+.empty-workspace-card {
+  max-width: 440px;
+  background: var(--cad-bg-panel);
+  border: 1px solid var(--cad-border);
+  border-radius: 12px;
+  padding: 36px 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.4);
+}
+
+.empty-workspace-icon {
+  width: 68px;
+  height: 68px;
+  border-radius: 16px;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 18px;
+}
+
+.empty-workspace-card h3 {
+  font-size: 16px;
+  font-weight: 600;
+  color: #f1f5f9;
+  margin-bottom: 8px;
+}
+
+.empty-workspace-card p {
+  font-size: 13px;
+  color: var(--cad-text-secondary);
+  line-height: 1.5;
+  margin-bottom: 22px;
+}
+
+.empty-add-btn {
+  padding: 9px 22px;
+  font-size: 12.5px;
+}
+

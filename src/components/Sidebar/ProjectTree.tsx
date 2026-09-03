@@ -4,14 +4,16 @@ import { Project, ProjectFile } from "../../types/project";
 interface ProjectTreeProps {
   project: Project;
   onSelectFile: (fileId: string) => void;
-  onAddBoard: () => void;
+  onOpenNewFileDialog: () => void;
+  onDeleteFile: (fileId: string) => void;
   onCloseProject: () => void;
 }
 
 export const ProjectTree: React.FC<ProjectTreeProps> = ({
   project,
   onSelectFile,
-  onAddBoard,
+  onOpenNewFileDialog,
+  onDeleteFile,
   onCloseProject,
 }) => {
   return (
@@ -21,8 +23,8 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
         <div className="kicad-header-actions">
           <button
             className="kicad-icon-btn"
-            onClick={onAddBoard}
-            title="Добавить плату (.board)"
+            onClick={onOpenNewFileDialog}
+            title="Добавить файл в проект (+)"
           >
             <svg viewBox="0 0 16 16" width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M8 2v12M2 8h12" />
@@ -42,37 +44,62 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
         {/* Tree children */}
         <div className="kicad-children-group">
-          {project.files.map((file: ProjectFile) => {
-            const isActive = project.activeFileId === file.id;
-            const isBoard = file.type === "board";
-
-            return (
-              <div
-                key={file.id}
-                className={`kicad-tree-item file-item ${isActive ? "active" : ""}`}
-                onClick={() => onSelectFile(file.id)}
+          {project.files.length === 0 ? (
+            <div className="kicad-tree-empty-state">
+              <span className="empty-text">Нет файлов</span>
+              <button
+                type="button"
+                className="kicad-tree-create-btn"
+                onClick={onOpenNewFileDialog}
               >
-                {/* Genuine KiCad-style vector icons */}
-                {isBoard ? (
-                  <svg className="doc-icon board-icon" viewBox="0 0 16 16" width="15" height="15">
-                    <rect width="16" height="16" rx="2" fill="#15803d" />
-                    <circle cx="4" cy="4" r="1.5" fill="#facc15" />
-                    <circle cx="12" cy="4" r="1.5" fill="#facc15" />
-                    <circle cx="8" cy="12" r="1.5" fill="#facc15" />
-                    <path d="M4 4h4v8M12 4h-4" fill="none" stroke="#86efac" strokeWidth="1.2" />
-                  </svg>
-                ) : (
-                  <svg className="doc-icon sch-icon" viewBox="0 0 16 16" width="15" height="15">
-                    <rect width="16" height="16" rx="2" fill="#b45309" />
-                    <path d="M2 8h3l2-4 2 8 2-4h3" fill="none" stroke="#fef08a" strokeWidth="1.4" />
-                  </svg>
-                )}
+                + Добавить
+              </button>
+            </div>
+          ) : (
+            project.files.map((file: ProjectFile) => {
+              const isActive = project.activeFileId === file.id;
+              const isBoard = file.type === "board";
 
-                <span className="item-label">{file.name}</span>
-                {isActive && <div className="kicad-active-marker" />}
-              </div>
-            );
-          })}
+              return (
+                <div
+                  key={file.id}
+                  className={`kicad-tree-item file-item ${isActive ? "active" : ""}`}
+                  onClick={() => onSelectFile(file.id)}
+                >
+                  {/* Genuine KiCad-style vector icons */}
+                  {isBoard ? (
+                    <svg className="doc-icon board-icon" viewBox="0 0 16 16" width="15" height="15">
+                      <rect width="16" height="16" rx="2" fill="#15803d" />
+                      <circle cx="4" cy="4" r="1.5" fill="#facc15" />
+                      <circle cx="12" cy="4" r="1.5" fill="#facc15" />
+                      <circle cx="8" cy="12" r="1.5" fill="#facc15" />
+                      <path d="M4 4h4v8M12 4h-4" fill="none" stroke="#86efac" strokeWidth="1.2" />
+                    </svg>
+                  ) : (
+                    <svg className="doc-icon sch-icon" viewBox="0 0 16 16" width="15" height="15">
+                      <rect width="16" height="16" rx="2" fill="#b45309" />
+                      <path d="M2 8h3l2-4 2 8 2-4h3" fill="none" stroke="#fef08a" strokeWidth="1.4" />
+                    </svg>
+                  )}
+
+                  <span className="item-label" title={file.name}>{file.name}</span>
+
+                  <button
+                    className="kicad-item-delete-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onDeleteFile(file.id);
+                    }}
+                    title={`Удалить ${file.name}`}
+                  >
+                    ×
+                  </button>
+
+                  {isActive && <div className="kicad-active-marker" />}
+                </div>
+              );
+            })
+          )}
         </div>
       </div>
 

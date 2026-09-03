@@ -1,75 +1,76 @@
 import React, { useState } from "react";
-import { Project, BoardData, SchematicData } from "./types/project";
+import { Project, BoardData, SchematicData, ProjectFile } from "./types/project";
 import { StartScreen } from "./components/StartPage/StartScreen";
 import { ProjectTree } from "./components/Sidebar/ProjectTree";
 import { BoardCanvas } from "./components/Viewport/BoardCanvas";
 import { InspectorSidebar } from "./components/Sidebar/InspectorSidebar";
+import { NewFileDialog, ProjectFileType } from "./components/Modals/NewFileDialog";
 import "./App.css";
 
 export const App: React.FC = () => {
   const [project, setProject] = useState<Project | null>(null);
+  const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false);
 
-  // Create a new project with .board and .sch documents
+  // Create a new empty project (files are added manually by the user)
   const handleCreateProject = (name: string, description?: string, author?: string) => {
-    const boardId = `file_board_${Date.now()}`;
-    const schId = `file_sch_${Date.now()}`;
-
-    const newBoard: BoardData = {
-      id: boardId,
-      name: `${name}.board`,
-      bgOpacity: 0.8,
-      bgScale: 1,
-      bgOffsetX: 0,
-      bgOffsetY: 0,
-      components: [],
-    };
-
-    const newSch: SchematicData = {
-      id: schId,
-      name: `${name}.sch`,
-      notes: description || ("Принципиальная схема проекта " + name),
-    };
-
     const newProj: Project = {
       id: `proj_${Date.now()}`,
       name,
       description,
       author,
       createdAt: new Date().toISOString(),
-      files: [
-        { id: boardId, name: `${name}.board`, type: "board", data: newBoard },
-        { id: schId, name: `${name}.sch`, type: "sch", data: newSch },
-      ],
-      activeFileId: boardId,
+      files: [],
+      activeFileId: "",
     };
 
     setProject(newProj);
   };
 
-  // Add extra board file to project
-  const handleAddBoard = () => {
+  // Create a new file manually (.board or .sch) with custom name
+  const handleCreateFile = (type: ProjectFileType, fileName: string) => {
     if (!project) return;
-    const count = project.files.filter((f) => f.type === "board").length + 1;
-    const newBoardId = `file_board_${Date.now()}`;
-    const newBoardName = `${project.name}_Board${count}.board`;
+    const fileId = `file_${type}_${Date.now()}`;
+    let newFile: ProjectFile;
 
-    const newBoard: BoardData = {
-      id: newBoardId,
-      name: newBoardName,
-      bgOpacity: 0.8,
-      bgScale: 1,
-      bgOffsetX: 0,
-      bgOffsetY: 0,
-      components: [],
-    };
+    if (type === "board") {
+      const newBoard: BoardData = {
+        id: fileId,
+        name: fileName,
+        bgOpacity: 0.8,
+        bgScale: 1,
+        bgOffsetX: 0,
+        bgOffsetY: 0,
+        components: [],
+      };
+      newFile = { id: fileId, name: fileName, type: "board", data: newBoard };
+    } else {
+      const newSch: SchematicData = {
+        id: fileId,
+        name: fileName,
+        notes: `Принципиальная схема документа ${fileName}`,
+      };
+      newFile = { id: fileId, name: fileName, type: "sch", data: newSch };
+    }
 
     setProject({
       ...project,
-      files: [
-        ...project.files,
-        { id: newBoardId, name: newBoardName, type: "board", data: newBoard },
-      ],
-      activeFileId: newBoardId,
+      files: [...project.files, newFile],
+      activeFileId: fileId,
+    });
+  };
+
+  // Delete/close file from project
+  const handleDeleteFile = (fileId: string) => {
+    if (!project) return;
+    const remainingFiles = project.files.filter((f) => f.id !== fileId);
+    let nextActiveId = project.activeFileId;
+    if (project.activeFileId === fileId) {
+      nextActiveId = remainingFiles.length > 0 ? remainingFiles[0].id : "";
+    }
+    setProject({
+      ...project,
+      files: remainingFiles,
+      activeFileId: nextActiveId,
     });
   };
 
@@ -143,7 +144,7 @@ export const App: React.FC = () => {
         {/* Clean document tabs */}
         <div className="cad-doc-tabs">
           {project.files.map((file) => (
-            <button
+            <div
               key={file.id}
               className={`cad-doc-tab ${file.id === project.activeFileId ? "active" : ""}`}
               onClick={() => handleSelectFile(file.id)}
@@ -153,9 +154,26 @@ export const App: React.FC = () => {
               ) : (
                 <span className="tab-indicator sch-dot" />
               )}
-              <span>{file.name}</span>
-            </button>
+              <span className="cad-tab-title">{file.name}</span>
+              <button
+                className="cad-tab-close"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleDeleteFile(file.id);
+                }}
+                title={`Удалить ${file.name}`}
+              >
+                ×
+              </button>
+            </div>
           ))}
+          <button
+            className="cad-tab-add-btn"
+            onClick={() => setIsNewFileModalOpen(true)}
+            title="Добавить новый файл (+)"
+          >
+            +
+          </button>
         </div>
 
         <div className="cad-top-right">
@@ -171,13 +189,37 @@ export const App: React.FC = () => {
         <ProjectTree
           project={project}
           onSelectFile={handleSelectFile}
-          onAddBoard={handleAddBoard}
+          onOpenNewFileDialog={() => setIsNewFileModalOpen(true)}
+          onDeleteFile={handleDeleteFile}
           onCloseProject={() => setProject(null)}
         />
 
         {/* Center: Canvas Viewport */}
         <main className="cad-canvas-area">
-          {isBoardActive && boardData ? (
+          {project.files.length === 0 ? (
+            <div className="cad-empty-workspace">
+              <div className="empty-workspace-card">
+                <div className="empty-workspace-icon">
+                  <svg viewBox="0 0 24 24" width="42" height="42" fill="none" stroke="#38bdf8" strokeWidth="1.5">
+                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                    <polyline points="14 2 14 8 20 8" />
+                    <line x1="12" y1="18" x2="12" y2="12" />
+                    <line x1="9" y1="15" x2="15" y2="15" />
+                  </svg>
+                </div>
+                <h3>В проекте пока нет файлов</h3>
+                <p>
+                  Добавьте печатную плату (.board) или схему (.sch), выбрав тип и имя.
+                </p>
+                <button
+                  className="cad-btn-primary empty-add-btn"
+                  onClick={() => setIsNewFileModalOpen(true)}
+                >
+                  + Создать файл
+                </button>
+              </div>
+            </div>
+          ) : isBoardActive && boardData ? (
             <BoardCanvas
               boardData={boardData}
               onChangeBoardData={handleUpdateActiveBoardData}
@@ -216,7 +258,9 @@ export const App: React.FC = () => {
         {project.author && (
           <div className="status-item">Автор: <strong>{project.author}</strong></div>
         )}
-        <div className="status-item">Документ: <strong>{activeFile?.name}</strong></div>
+        <div className="status-item">
+          Документ: <strong>{activeFile ? activeFile.name : "Нет открытых файлов"}</strong>
+        </div>
         {isBoardActive && boardData && (
           <>
             <div className="status-item">Компонентов: <strong>{boardData.components.length}</strong></div>
@@ -228,6 +272,14 @@ export const App: React.FC = () => {
           </>
         )}
       </footer>
+
+      {/* New File Modal */}
+      <NewFileDialog
+        isOpen={isNewFileModalOpen}
+        onClose={() => setIsNewFileModalOpen(false)}
+        onCreate={handleCreateFile}
+        existingFileNames={project.files.map((f) => f.name)}
+      />
     </div>
   );
 };
