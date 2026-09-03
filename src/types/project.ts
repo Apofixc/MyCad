@@ -13,23 +13,47 @@ export type BoardSide = "top" | "bottom";
 
 export type BoardSelectionTarget =
   | { type: "component"; id: string; pinId?: string }
-  | { type: "layer_bg_top" }
-  | { type: "layer_bg_bottom" }
+  | { type: "layer_bg_top"; imageId?: string }
+  | { type: "layer_bg_bottom"; imageId?: string }
   | { type: "layer_comps_top" }
   | { type: "layer_comps_bottom" }
   | null;
 
+export interface LayerImageItem {
+  id: string;
+  name: string;        // e.g. "Скан_платы_1.png"
+  src: string;         // data URL / base64 or file path
+  x: number;           // canvas offset X
+  y: number;           // canvas offset Y
+  width?: number;      // natural width
+  height?: number;     // natural height
+  scale: number;       // scale factor (default 1)
+  rotation: number;    // rotation angle in degrees (e.g. 0.0, 0.5, 90.0)
+  opacity: number;     // 0.0 - 1.0 (default 0.85)
+  brightness: number;  // 30 - 200% (default 100)
+  contrast: number;    // 50 - 250% (default 100)
+  invert: boolean;     // inverted colors (dark mode scan)
+  mirrored?: boolean;  // horizontal flip (Flip X)
+  flipV?: boolean;     // vertical flip (Flip Y)
+  locked?: boolean;    // lock against accidental movement
+  visible: boolean;    // visibility of this specific image
+  order: number;       // z-index order within layer
+}
+
 export interface BackgroundLayer {
-  image?: string;       // data URL or file path for mounting scheme / board photo
-  visible: boolean;     // layer visibility
-  opacity: number;      // 0.0 - 1.0 (default 0.85)
-  brightness: number;   // 50 - 200% (default 100)
-  contrast: number;     // 50 - 250% (default 100)
-  invert: boolean;      // dark mode invert for scanned schematics
-  mirrored?: boolean;   // horizontal flip for Bottom side
-  scale: number;        // scale factor (default 1)
-  offsetX: number;      // X offset for alignment
-  offsetY: number;      // Y offset for alignment
+  images: LayerImageItem[]; // Multi-image support per layer
+  activeImageId?: string;   // currently selected image within this layer
+  visible: boolean;         // layer visibility
+  opacity: number;          // layer master opacity 0.0 - 1.0 (default 0.85)
+  brightness: number;       // layer master brightness 50 - 200% (default 100)
+  contrast: number;         // layer master contrast 50 - 250% (default 100)
+  invert: boolean;          // dark mode invert
+  mirrored?: boolean;       // horizontal flip for Bottom side
+  scale: number;            // layer master scale factor (default 1)
+  offsetX: number;          // layer master X offset
+  offsetY: number;          // layer master Y offset
+  // Legacy single image compatibility
+  image?: string;
 }
 
 export interface ComponentItem {
@@ -50,6 +74,7 @@ export interface BoardData {
   bgTop: BackgroundLayer;
   bgBottom: BackgroundLayer;
   activeSideView: "top" | "bottom" | "both";
+  activeToolMode?: "images" | "components"; // Contextual tool mode
   showCompsTop: boolean;
   showCompsBottom: boolean;
   components: ComponentItem[];
@@ -65,6 +90,8 @@ export interface BoardData {
 }
 
 export const createDefaultBackgroundLayer = (mirrored = false): BackgroundLayer => ({
+  images: [],
+  activeImageId: undefined,
   image: undefined,
   visible: true,
   opacity: 0.85,
@@ -77,6 +104,61 @@ export const createDefaultBackgroundLayer = (mirrored = false): BackgroundLayer 
   offsetY: 0,
 });
 
+const migrateLegacyImage = (
+  layerKey: "top" | "bottom",
+  layer?: Partial<BackgroundLayer>,
+  legacyImg?: string
+): LayerImageItem[] => {
+  if (layer?.images && Array.isArray(layer.images) && layer.images.length > 0) {
+    return layer.images.map((img, idx) => ({
+      id: img.id || `img_${layerKey}_${idx}_${Date.now()}`,
+      name: img.name || `Изображение ${idx + 1}`,
+      src: img.src || (img as any).image || "",
+      x: typeof img.x === "number" ? img.x : (layer.offsetX || 0),
+      y: typeof img.y === "number" ? img.y : (layer.offsetY || 0),
+      width: img.width,
+      height: img.height,
+      scale: typeof img.scale === "number" ? img.scale : (layer.scale || 1),
+      rotation: typeof img.rotation === "number" ? img.rotation : 0,
+      opacity: typeof img.opacity === "number" ? img.opacity : (layer.opacity ?? 0.85),
+      brightness: typeof img.brightness === "number" ? img.brightness : (layer.brightness ?? 100),
+      contrast: typeof img.contrast === "number" ? img.contrast : (layer.contrast ?? 100),
+      invert: typeof img.invert === "boolean" ? img.invert : (layer.invert ?? false),
+      mirrored: typeof img.mirrored === "boolean" ? img.mirrored : (layer.mirrored ?? (layerKey === "bottom")),
+      flipV: typeof img.flipV === "boolean" ? img.flipV : false,
+      locked: typeof img.locked === "boolean" ? img.locked : false,
+      visible: typeof img.visible === "boolean" ? img.visible : true,
+      order: typeof img.order === "number" ? img.order : idx,
+    }));
+  }
+
+  const singleImg = layer?.image || legacyImg;
+  if (singleImg) {
+    return [
+      {
+        id: `img_${layerKey}_1`,
+        name: layerKey === "top" ? "Скан Top (Лицевая)" : "Скан Bottom (Обратная)",
+        src: singleImg,
+        x: layer?.offsetX ?? 0,
+        y: layer?.offsetY ?? 0,
+        scale: layer?.scale ?? 1,
+        rotation: 0,
+        opacity: layer?.opacity ?? 0.85,
+        brightness: layer?.brightness ?? 100,
+        contrast: layer?.contrast ?? 100,
+        invert: layer?.invert ?? false,
+        mirrored: layer?.mirrored ?? (layerKey === "bottom"),
+        flipV: false,
+        locked: false,
+        visible: true,
+        order: 0,
+      },
+    ];
+  }
+
+  return [];
+};
+
 export const normalizeBoardData = (raw: Partial<BoardData>): BoardData => {
   const legacyImage = raw.bgImage;
   const legacyOpacity = typeof raw.bgOpacity === "number" ? raw.bgOpacity : 0.85;
@@ -84,20 +166,27 @@ export const normalizeBoardData = (raw: Partial<BoardData>): BoardData => {
   const legacyOffsetX = typeof raw.bgOffsetX === "number" ? raw.bgOffsetX : 0;
   const legacyOffsetY = typeof raw.bgOffsetY === "number" ? raw.bgOffsetY : 0;
 
-  const bgTop: BackgroundLayer = raw.bgTop
-    ? { ...createDefaultBackgroundLayer(false), ...raw.bgTop }
-    : {
-        ...createDefaultBackgroundLayer(false),
-        image: legacyImage,
-        opacity: legacyOpacity,
-        scale: legacyScale,
-        offsetX: legacyOffsetX,
-        offsetY: legacyOffsetY,
-      };
+  const topImages = migrateLegacyImage("top", raw.bgTop, legacyImage);
+  const bgTop: BackgroundLayer = {
+    ...createDefaultBackgroundLayer(false),
+    ...(raw.bgTop || {}),
+    images: topImages,
+    activeImageId: raw.bgTop?.activeImageId || topImages[0]?.id,
+    image: topImages[0]?.src || legacyImage,
+    opacity: raw.bgTop?.opacity ?? legacyOpacity,
+    scale: raw.bgTop?.scale ?? legacyScale,
+    offsetX: raw.bgTop?.offsetX ?? legacyOffsetX,
+    offsetY: raw.bgTop?.offsetY ?? legacyOffsetY,
+  };
 
-  const bgBottom: BackgroundLayer = raw.bgBottom
-    ? { ...createDefaultBackgroundLayer(true), ...raw.bgBottom }
-    : createDefaultBackgroundLayer(true);
+  const bottomImages = migrateLegacyImage("bottom", raw.bgBottom, undefined);
+  const bgBottom: BackgroundLayer = {
+    ...createDefaultBackgroundLayer(true),
+    ...(raw.bgBottom || {}),
+    images: bottomImages,
+    activeImageId: raw.bgBottom?.activeImageId || bottomImages[0]?.id,
+    image: bottomImages[0]?.src,
+  };
 
   const components: ComponentItem[] = (raw.components || []).map((c) => ({
     ...c,
@@ -113,12 +202,27 @@ export const normalizeBoardData = (raw: Partial<BoardData>): BoardData => {
     };
   }
 
+  // Determine active tool mode: if user has an image layer selected or board has images, or default to "images" if no components
+  let activeToolMode = raw.activeToolMode;
+  if (!activeToolMode) {
+    if (selectedTarget?.type === "layer_bg_top" || selectedTarget?.type === "layer_bg_bottom") {
+      activeToolMode = "images";
+    } else if (selectedTarget?.type === "component" || selectedTarget?.type === "layer_comps_top" || selectedTarget?.type === "layer_comps_bottom") {
+      activeToolMode = "components";
+    } else if (components.length > 0) {
+      activeToolMode = "components";
+    } else {
+      activeToolMode = "images";
+    }
+  }
+
   return {
     id: raw.id || `file_board_${Date.now()}`,
     name: raw.name || "board.board",
     bgTop,
     bgBottom,
     activeSideView: raw.activeSideView || "top",
+    activeToolMode,
     showCompsTop: raw.showCompsTop !== false,
     showCompsBottom: raw.showCompsBottom !== false,
     components,

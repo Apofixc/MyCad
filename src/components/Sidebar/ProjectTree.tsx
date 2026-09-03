@@ -217,69 +217,93 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                 {isBoard && isExpanded && boardData && (
                   <div className="kicad-layers-subgroup">
                     {/* Layer 1: Фон Top */}
-                    <div
-                      className={`kicad-layer-tree-item ${
-                        isActive && activeSelectionTarget?.type === "layer_bg_top" ? "selected" : ""
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectFile(file.id);
-                        onSelectTarget?.({ type: "layer_bg_top" });
-                      }}
-                      title="Клик: настроить параметры фона Top в Инспекторе"
-                    >
-                      <button
-                        className="layer-vis-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleLayerVisibility?.(file.id, "bgTop");
-                        }}
-                        title={boardData.bgTop.visible ? "Скрыть фон Top" : "Показать фон Top"}
-                      >
-                        {boardData.bgTop.visible ? (
-                          <Eye size={13} className="eye-on" />
-                        ) : (
-                          <EyeOff size={13} className="eye-off" />
-                        )}
-                      </button>
-                      <span className="layer-color-dot dot-bg-top" />
-                      <ImageIcon size={12} className="layer-type-icon" />
-                      <span className="layer-title">Фон Top (Лицевая)</span>
-                      {boardData.bgTop.image && <span className="layer-badge-img">IMG</span>}
-                    </div>
+                    {(() => {
+                      const topImagesCount = boardData.bgTop.images?.length || (boardData.bgTop.image ? 1 : 0);
+                      return (
+                        <div
+                          className={`kicad-layer-tree-item ${
+                            isActive && activeSelectionTarget?.type === "layer_bg_top" ? "selected" : ""
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectFile(file.id);
+                            onSelectTarget?.({
+                              type: "layer_bg_top",
+                              imageId: boardData.bgTop.activeImageId || boardData.bgTop.images?.[0]?.id,
+                            });
+                          }}
+                          title="Клик: инструменты и менеджер изображений слоя Top"
+                        >
+                          <button
+                            className="layer-vis-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleLayerVisibility?.(file.id, "bgTop");
+                            }}
+                            title={boardData.bgTop.visible ? "Скрыть фон Top" : "Показать фон Top"}
+                          >
+                            {boardData.bgTop.visible ? (
+                              <Eye size={13} className="eye-on" />
+                            ) : (
+                              <EyeOff size={13} className="eye-off" />
+                            )}
+                          </button>
+                          <span className="layer-color-dot dot-bg-top" />
+                          <ImageIcon size={12} className="layer-type-icon" />
+                          <span className="layer-title">Фон Top (Лицевая)</span>
+                          {topImagesCount > 0 && (
+                            <span className="layer-badge-img" title={`Загружено снимков: ${topImagesCount}`}>
+                              {topImagesCount > 1 ? `${topImagesCount} IMG` : "IMG"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Layer 2: Фон Bottom */}
-                    <div
-                      className={`kicad-layer-tree-item ${
-                        isActive && activeSelectionTarget?.type === "layer_bg_bottom" ? "selected" : ""
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectFile(file.id);
-                        onSelectTarget?.({ type: "layer_bg_bottom" });
-                      }}
-                      title="Клик: настроить параметры фона Bottom в Инспекторе"
-                    >
-                      <button
-                        className="layer-vis-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleLayerVisibility?.(file.id, "bgBottom");
-                        }}
-                        title={boardData.bgBottom.visible ? "Скрыть фон Bottom" : "Показать фон Bottom"}
-                      >
-                        {boardData.bgBottom.visible ? (
-                          <Eye size={13} className="eye-on" />
-                        ) : (
-                          <EyeOff size={13} className="eye-off" />
-                        )}
-                      </button>
-                      <span className="layer-color-dot dot-bg-bottom" />
-                      <ImageIcon size={12} className="layer-type-icon" />
-                      <span className="layer-title">Фон Bottom (Обратная)</span>
-                      {boardData.bgBottom.mirrored && <span className="layer-badge-flip">FLIP</span>}
-                      {boardData.bgBottom.image && <span className="layer-badge-img">IMG</span>}
-                    </div>
+                    {(() => {
+                      const bottomImagesCount = boardData.bgBottom.images?.length || (boardData.bgBottom.image ? 1 : 0);
+                      return (
+                        <div
+                          className={`kicad-layer-tree-item ${
+                            isActive && activeSelectionTarget?.type === "layer_bg_bottom" ? "selected" : ""
+                          }`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onSelectFile(file.id);
+                            onSelectTarget?.({
+                              type: "layer_bg_bottom",
+                              imageId: boardData.bgBottom.activeImageId || boardData.bgBottom.images?.[0]?.id,
+                            });
+                          }}
+                          title="Клик: инструменты и менеджер изображений слоя Bottom"
+                        >
+                          <button
+                            className="layer-vis-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onToggleLayerVisibility?.(file.id, "bgBottom");
+                            }}
+                            title={boardData.bgBottom.visible ? "Скрыть фон Bottom" : "Показать фон Bottom"}
+                          >
+                            {boardData.bgBottom.visible ? (
+                              <Eye size={13} className="eye-on" />
+                            ) : (
+                              <EyeOff size={13} className="eye-off" />
+                            )}
+                          </button>
+                          <span className="layer-color-dot dot-bg-bottom" />
+                          <ImageIcon size={12} className="layer-type-icon" />
+                          <span className="layer-title">Фон Bottom (Обратная)</span>
+                          {boardData.bgBottom.mirrored && <span className="layer-badge-flip">FLIP</span>}
+                          {bottomImagesCount > 0 && (
+                            <span className="layer-badge-img" title={`Загружено снимков: ${bottomImagesCount}`}>
+                              {bottomImagesCount > 1 ? `${bottomImagesCount} IMG` : "IMG"}
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })()}
 
                     {/* Layer 3: Компоненты Top */}
                     <div
