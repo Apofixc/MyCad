@@ -1,0 +1,1362 @@
+{
+  "RES-AXIAL": {
+    "id": "RES-AXIAL",
+    "name": "МЛТ-0.125 (0.125W)",
+    "category": "Резисторы",
+    "subcategory": "Выводные (THT)",
+    "mountType": "tht",
+    "shape": "res-axial",
+    "width": 320,
+    "height": 120,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1",
+        "shape": "circle",
+        "xRatio": 0.1,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Вывод 2",
+        "shape": "circle",
+        "xRatio": 0.9,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "RES-AXIAL-025": {
+    "id": "RES-AXIAL-025",
+    "name": "МЛТ-0.25 (0.25W)",
+    "category": "Резисторы",
+    "subcategory": "Выводные (THT)",
+    "mountType": "tht",
+    "shape": "res-axial",
+    "width": 440,
+    "height": 160,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1",
+        "shape": "circle",
+        "xRatio": 0.08,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Вывод 2",
+        "shape": "circle",
+        "xRatio": 0.92,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "RES-AXIAL-05": {
+    "id": "RES-AXIAL-05",
+    "name": "МЛТ-0.5 (0.5W)",
+    "category": "Резисторы",
+    "subcategory": "Выводные (THT)",
+    "mountType": "tht",
+    "shape": "res-axial",
+    "width": 560,
+    "height": 200,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1",
+        "shape": "circle",
+        "xRatio": 0.08,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Вывод 2",
+        "shape": "circle",
+        "xRatio": 0.92,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "RES-AXIAL-V": {
+    "id": "RES-AXIAL-V",
+    "name": "Вертикальный резистор",
+    "category": "Резисторы",
+    "subcategory": "Выводные (THT)",
+    "mountType": "tht",
+    "shape": "res-axial-v",
+    "width": 160,
+    "height": 260,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1",
+        "shape": "circle",
+        "xRatio": 0.5,
+        "yRatio": 0.2
+      },
+      {
+        "num": 2,
+        "name": "Вывод 2",
+        "shape": "circle",
+        "xRatio": 0.5,
+        "yRatio": 0.8
+      }
+    ]
+  },
+  "RES-TRIM-ROUND": {
+    "id": "RES-TRIM-ROUND",
+    "name": "Подстроечный круглый (СП3-19 / Bourns 3386)",
+    "category": "Резисторы",
+    "subcategory": "Подстроечные",
+    "mountType": "tht",
+    "shape": "res-trim-round",
+    "width": 500,
+    "height": 500,
+    "pinCount": 3,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1 (CCW)",
+        "shape": "circle",
+        "xRatio": 0.22,
+        "yRatio": 0.78
+      },
+      {
+        "num": 2,
+        "name": "Движок 2 (Wiper)",
+        "shape": "square",
+        "xRatio": 0.5,
+        "yRatio": 0.22
+      },
+      {
+        "num": 3,
+        "name": "Вывод 3 (CW)",
+        "shape": "circle",
+        "xRatio": 0.78,
+        "yRatio": 0.78
+      }
+    ]
+  },
+  "RES-TRIM-3296": {
+    "id": "RES-TRIM-3296",
+    "name": "Подстроечный 3296W (Многооборотный)",
+    "category": "Резисторы",
+    "subcategory": "Подстроечные",
+    "mountType": "tht",
+    "shape": "res-trim",
+    "width": 480,
+    "height": 320,
+    "pinCount": 3,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1",
+        "shape": "circle",
+        "xRatio": 0.2,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Движок 2",
+        "shape": "square",
+        "xRatio": 0.5,
+        "yRatio": 0.5
+      },
+      {
+        "num": 3,
+        "name": "Вывод 3",
+        "shape": "circle",
+        "xRatio": 0.8,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "RES-SMD-0805": {
+    "id": "RES-SMD-0805",
+    "name": "SMD 0805",
+    "category": "Резисторы",
+    "subcategory": "SMD",
+    "mountType": "smd",
+    "shape": "smd-chip",
+    "width": 140,
+    "height": 80,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Контакт 1",
+        "shape": "rect",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Контакт 2",
+        "shape": "rect",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "RES-SMD-1206": {
+    "id": "RES-SMD-1206",
+    "name": "SMD 1206",
+    "category": "Резисторы",
+    "subcategory": "SMD",
+    "mountType": "smd",
+    "shape": "smd-chip",
+    "width": 200,
+    "height": 100,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Контакт 1",
+        "shape": "rect",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Контакт 2",
+        "shape": "rect",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "RES-SMD-2512": {
+    "id": "RES-SMD-2512",
+    "name": "SMD 2512 (1W)",
+    "category": "Резисторы",
+    "subcategory": "SMD",
+    "mountType": "smd",
+    "shape": "smd-chip",
+    "width": 360,
+    "height": 180,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Контакт 1",
+        "shape": "rect",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Контакт 2",
+        "shape": "rect",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "CAP-CERAMIC": {
+    "id": "CAP-CERAMIC",
+    "name": "Дисковый К10-7В",
+    "category": "Конденсаторы",
+    "subcategory": "Керамические",
+    "mountType": "tht",
+    "shape": "cap-ceramic",
+    "width": 320,
+    "height": 200,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1",
+        "shape": "circle",
+        "xRatio": 0.1,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Вывод 2",
+        "shape": "circle",
+        "xRatio": 0.9,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "CAP-CERAMIC-MONO": {
+    "id": "CAP-CERAMIC-MONO",
+    "name": "Монолитный К10-17Б",
+    "category": "Конденсаторы",
+    "subcategory": "Керамические",
+    "mountType": "tht",
+    "shape": "cap-mono",
+    "width": 300,
+    "height": 180,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1",
+        "shape": "circle",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Вывод 2",
+        "shape": "circle",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "CAP-SMD-0805": {
+    "id": "CAP-SMD-0805",
+    "name": "SMD 0805",
+    "category": "Конденсаторы",
+    "subcategory": "Керамические",
+    "mountType": "smd",
+    "shape": "cap-smd-mlcc",
+    "width": 140,
+    "height": 80,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Контакт 1",
+        "shape": "rect",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Контакт 2",
+        "shape": "rect",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "CAP-SMD-1206": {
+    "id": "CAP-SMD-1206",
+    "name": "SMD 1206",
+    "category": "Конденсаторы",
+    "subcategory": "Керамические",
+    "mountType": "smd",
+    "shape": "cap-smd-mlcc",
+    "width": 200,
+    "height": 100,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Контакт 1",
+        "shape": "rect",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Контакт 2",
+        "shape": "rect",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "CAP-RADIAL": {
+    "id": "CAP-RADIAL",
+    "name": "К50-35 (ø6..8мм)",
+    "category": "Конденсаторы",
+    "subcategory": "Электролитические",
+    "mountType": "tht",
+    "shape": "cap-radial",
+    "width": 500,
+    "height": 500,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "+ (Анод)",
+        "shape": "square",
+        "xRatio": 0.28,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "- (Катод)",
+        "shape": "circle",
+        "xRatio": 0.72,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "CAP-RADIAL-BIG": {
+    "id": "CAP-RADIAL-BIG",
+    "name": "К50-35 большой (ø10..16мм)",
+    "category": "Конденсаторы",
+    "subcategory": "Электролитические",
+    "mountType": "tht",
+    "shape": "cap-radial",
+    "width": 750,
+    "height": 750,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "+ (Анод)",
+        "shape": "square",
+        "xRatio": 0.28,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "- (Катод)",
+        "shape": "circle",
+        "xRatio": 0.72,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "CAP-TANT-SMD": {
+    "id": "CAP-TANT-SMD",
+    "name": "SMD Тантал (EIA 3528)",
+    "category": "Конденсаторы",
+    "subcategory": "Танталовые и пленочные",
+    "mountType": "smd",
+    "shape": "cap-tant-smd",
+    "width": 240,
+    "height": 180,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "+ (Анод)",
+        "shape": "rect",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "- (Катод)",
+        "shape": "rect",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "CAP-FILM-BOX": {
+    "id": "CAP-FILM-BOX",
+    "name": "К73-17 (Пленочный Box)",
+    "category": "Конденсаторы",
+    "subcategory": "Танталовые и пленочные",
+    "mountType": "tht",
+    "shape": "cap-film",
+    "width": 550,
+    "height": 280,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1",
+        "shape": "circle",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Вывод 2",
+        "shape": "circle",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "DIP-8": {
+    "id": "DIP-8",
+    "name": "DIP-8",
+    "category": "Микросхемы",
+    "subcategory": "DIP (THT)",
+    "mountType": "tht",
+    "shape": "dip",
+    "width": 500,
+    "height": 400,
+    "pinCount": 8
+  },
+  "DIP-14": {
+    "id": "DIP-14",
+    "name": "DIP-14",
+    "category": "Микросхемы",
+    "subcategory": "DIP (THT)",
+    "mountType": "tht",
+    "shape": "dip",
+    "width": 620,
+    "height": 400,
+    "pinCount": 14
+  },
+  "DIP-16": {
+    "id": "DIP-16",
+    "name": "DIP-16",
+    "category": "Микросхемы",
+    "subcategory": "DIP (THT)",
+    "mountType": "tht",
+    "shape": "dip",
+    "width": 1200,
+    "height": 440,
+    "pinCount": 16
+  },
+  "DIP-18": {
+    "id": "DIP-18",
+    "name": "DIP-18",
+    "category": "Микросхемы",
+    "subcategory": "DIP (THT)",
+    "mountType": "tht",
+    "shape": "dip",
+    "width": 1400,
+    "height": 460,
+    "pinCount": 18
+  },
+  "DIP-20": {
+    "id": "DIP-20",
+    "name": "DIP-20",
+    "category": "Микросхемы",
+    "subcategory": "DIP (THT)",
+    "mountType": "tht",
+    "shape": "dip",
+    "width": 1650,
+    "height": 520,
+    "pinCount": 20
+  },
+  "DIP-28": {
+    "id": "DIP-28",
+    "name": "DIP-28",
+    "category": "Микросхемы",
+    "subcategory": "DIP (THT)",
+    "mountType": "tht",
+    "shape": "dip",
+    "width": 2200,
+    "height": 600,
+    "pinCount": 28
+  },
+  "DIP-40": {
+    "id": "DIP-40",
+    "name": "DIP-40",
+    "category": "Микросхемы",
+    "subcategory": "DIP (THT)",
+    "mountType": "tht",
+    "shape": "dip",
+    "width": 3466,
+    "height": 1048,
+    "pinCount": 40
+  },
+  "SOIC-8": {
+    "id": "SOIC-8",
+    "name": "SOIC-8",
+    "category": "Микросхемы",
+    "subcategory": "SOIC",
+    "mountType": "smd",
+    "shape": "soic",
+    "width": 340,
+    "height": 380,
+    "pinCount": 8
+  },
+  "SOIC-14": {
+    "id": "SOIC-14",
+    "name": "SOIC-14",
+    "category": "Микросхемы",
+    "subcategory": "SOIC",
+    "mountType": "smd",
+    "shape": "soic",
+    "width": 560,
+    "height": 380,
+    "pinCount": 14
+  },
+  "SOIC-16": {
+    "id": "SOIC-16",
+    "name": "SOIC-16",
+    "category": "Микросхемы",
+    "subcategory": "SOIC",
+    "mountType": "smd",
+    "shape": "soic",
+    "width": 680,
+    "height": 380,
+    "pinCount": 16
+  },
+  "TSSOP-20": {
+    "id": "TSSOP-20",
+    "name": "TSSOP-20",
+    "category": "Микросхемы",
+    "subcategory": "SOIC",
+    "mountType": "smd",
+    "shape": "soic",
+    "width": 440,
+    "height": 360,
+    "pinCount": 20
+  },
+  "TQFP-32": {
+    "id": "TQFP-32",
+    "name": "TQFP-32 (7×7мм)",
+    "category": "Микросхемы",
+    "subcategory": "QFP",
+    "mountType": "smd",
+    "shape": "qfp",
+    "width": 600,
+    "height": 600,
+    "pinCount": 32
+  },
+  "TQFP-44": {
+    "id": "TQFP-44",
+    "name": "TQFP-44 (10×10мм)",
+    "category": "Микросхемы",
+    "subcategory": "QFP",
+    "mountType": "smd",
+    "shape": "qfp",
+    "width": 750,
+    "height": 750,
+    "pinCount": 44
+  },
+  "TO-92": {
+    "id": "TO-92",
+    "name": "TO-92 (КТ-26)",
+    "category": "Транзисторы",
+    "subcategory": "TO-92",
+    "mountType": "tht",
+    "shape": "to92",
+    "width": 460,
+    "height": 460,
+    "pinCount": 3,
+    "pins": [
+      {
+        "num": 1,
+        "name": "E (Эмиттер)",
+        "shape": "square",
+        "xRatio": 0.26,
+        "yRatio": 0.56
+      },
+      {
+        "num": 2,
+        "name": "B (База)",
+        "shape": "circle",
+        "xRatio": 0.5,
+        "yRatio": 0.56
+      },
+      {
+        "num": 3,
+        "name": "C (Коллектор)",
+        "shape": "circle",
+        "xRatio": 0.74,
+        "yRatio": 0.56
+      }
+    ]
+  },
+  "TO-126": {
+    "id": "TO-126",
+    "name": "TO-126 (КТ-27)",
+    "category": "Транзисторы",
+    "subcategory": "TO-126",
+    "mountType": "tht",
+    "shape": "to126",
+    "width": 420,
+    "height": 520,
+    "pinCount": 3,
+    "pins": [
+      {
+        "num": 1,
+        "name": "E (Эмиттер)",
+        "shape": "square",
+        "xRatio": 0.2,
+        "yRatio": 0.92
+      },
+      {
+        "num": 2,
+        "name": "C (Коллектор)",
+        "shape": "square",
+        "xRatio": 0.5,
+        "yRatio": 0.92
+      },
+      {
+        "num": 3,
+        "name": "B (База)",
+        "shape": "square",
+        "xRatio": 0.8,
+        "yRatio": 0.92
+      }
+    ]
+  },
+  "TO-220": {
+    "id": "TO-220",
+    "name": "TO-220 (КТ-28)",
+    "category": "Транзисторы",
+    "subcategory": "TO-220",
+    "mountType": "tht",
+    "shape": "to220",
+    "width": 580,
+    "height": 800,
+    "pinCount": 3,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1 (IN / Gate)",
+        "shape": "square",
+        "xRatio": 0.2,
+        "yRatio": 0.92
+      },
+      {
+        "num": 2,
+        "name": "Вывод 2 (GND / Drain)",
+        "shape": "square",
+        "xRatio": 0.5,
+        "yRatio": 0.92
+      },
+      {
+        "num": 3,
+        "name": "Вывод 3 (OUT / Source)",
+        "shape": "square",
+        "xRatio": 0.8,
+        "yRatio": 0.92
+      }
+    ]
+  },
+  "SOT-23": {
+    "id": "SOT-23",
+    "name": "SOT-23",
+    "category": "Транзисторы",
+    "subcategory": "SMD",
+    "mountType": "smd",
+    "shape": "sot23",
+    "width": 200,
+    "height": 180,
+    "pinCount": 3,
+    "pins": [
+      {
+        "num": 1,
+        "name": "1 (B / Gate)",
+        "shape": "rect",
+        "xRatio": 0.25,
+        "yRatio": 0.85
+      },
+      {
+        "num": 2,
+        "name": "2 (E / Source)",
+        "shape": "rect",
+        "xRatio": 0.75,
+        "yRatio": 0.85
+      },
+      {
+        "num": 3,
+        "name": "3 (C / Drain)",
+        "shape": "rect",
+        "xRatio": 0.5,
+        "yRatio": 0.15
+      }
+    ]
+  },
+  "SOT-223": {
+    "id": "SOT-223",
+    "name": "SOT-223 (Стабилизатор SMD AMS1117-3.3/5.0)",
+    "category": "Транзисторы",
+    "subcategory": "SMD",
+    "mountType": "smd",
+    "shape": "sot223",
+    "width": 440,
+    "height": 440,
+    "pinCount": 4,
+    "pins": [
+      {
+        "num": 1,
+        "name": "1 (ADJ / GND)",
+        "shape": "rect",
+        "xRatio": 0.18,
+        "yRatio": 0.88
+      },
+      {
+        "num": 2,
+        "name": "2 (VOUT / Center)",
+        "shape": "rect",
+        "xRatio": 0.5,
+        "yRatio": 0.88
+      },
+      {
+        "num": 3,
+        "name": "3 (VIN / Input)",
+        "shape": "rect",
+        "xRatio": 0.82,
+        "yRatio": 0.88
+      },
+      {
+        "num": 4,
+        "name": "TAB (VOUT / Теплоотвод)",
+        "shape": "rect",
+        "xRatio": 0.5,
+        "yRatio": 0.15
+      }
+    ]
+  },
+  "DIODE-AXIAL": {
+    "id": "DIODE-AXIAL",
+    "name": "Диод / Стабилитрон (DO-35 / КД522 / 1N4148 / КС...)",
+    "category": "Диоды",
+    "subcategory": "Выводные (THT)",
+    "mountType": "tht",
+    "shape": "diode",
+    "width": 340,
+    "height": 140,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "K (Катод / Полоса)",
+        "shape": "circle",
+        "xRatio": 0.1,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "A (Анод)",
+        "shape": "circle",
+        "xRatio": 0.9,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "DIODE-DO41": {
+    "id": "DIODE-DO41",
+    "name": "Выпрямительный диод 1A (DO-41 / 1N4007 / 1N5819)",
+    "category": "Диоды",
+    "subcategory": "Выводные (THT)",
+    "mountType": "tht",
+    "shape": "diode",
+    "width": 440,
+    "height": 180,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "K (Катод / Полоса)",
+        "shape": "circle",
+        "xRatio": 0.1,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "A (Анод)",
+        "shape": "circle",
+        "xRatio": 0.9,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "DIODE-SOD123": {
+    "id": "DIODE-SOD123",
+    "name": "SMD Диод SOD-123 (1N4148W / BZX84)",
+    "category": "Диоды",
+    "subcategory": "SMD",
+    "mountType": "smd",
+    "shape": "diode-smd",
+    "width": 220,
+    "height": 120,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "K (Катод / Полоса)",
+        "shape": "rect",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "A (Анод)",
+        "shape": "rect",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "DIODE-SMA": {
+    "id": "DIODE-SMA",
+    "name": "SMD Силовой диод SMA (DO-214AC / M7 / SS14 / SS34)",
+    "category": "Диоды",
+    "subcategory": "SMD",
+    "mountType": "smd",
+    "shape": "diode-smd",
+    "width": 320,
+    "height": 180,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "K (Катод / Полоса)",
+        "shape": "rect",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "A (Анод)",
+        "shape": "rect",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "BRIDGE-DIP4": {
+    "id": "BRIDGE-DIP4",
+    "name": "Диодный мост выпрямительный (DB107S / MB6S 4-pin)",
+    "category": "Диоды",
+    "subcategory": "Мосты",
+    "mountType": "tht",
+    "shape": "bridge-rect",
+    "width": 520,
+    "height": 420,
+    "pinCount": 4,
+    "pins": [
+      {
+        "num": 1,
+        "name": "+ (Положительный выход)",
+        "shape": "square",
+        "xRatio": 0.2,
+        "yRatio": 0.2
+      },
+      {
+        "num": 2,
+        "name": "- (Отрицательный выход)",
+        "shape": "circle",
+        "xRatio": 0.8,
+        "yRatio": 0.2
+      },
+      {
+        "num": 3,
+        "name": "~ (Вход AC 1)",
+        "shape": "circle",
+        "xRatio": 0.8,
+        "yRatio": 0.8
+      },
+      {
+        "num": 4,
+        "name": "~ (Вход AC 2)",
+        "shape": "circle",
+        "xRatio": 0.2,
+        "yRatio": 0.8
+      }
+    ]
+  },
+  "LED-THT-5MM": {
+    "id": "LED-THT-5MM",
+    "name": "Светодиод ø5мм индикаторный (THT)",
+    "category": "Оптоэлектроника",
+    "subcategory": "Светодиоды",
+    "mountType": "tht",
+    "shape": "led-tht",
+    "width": 320,
+    "height": 320,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "A (Анод / Длинная ножка)",
+        "shape": "square",
+        "xRatio": 0.35,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "K (Катод / Срез корпуса)",
+        "shape": "circle",
+        "xRatio": 0.65,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "LED-SMD-0805": {
+    "id": "LED-SMD-0805",
+    "name": "SMD Светодиод 0805",
+    "category": "Оптоэлектроника",
+    "subcategory": "Светодиоды",
+    "mountType": "smd",
+    "shape": "led-smd",
+    "width": 140,
+    "height": 90,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "A (Анод)",
+        "shape": "rect",
+        "xRatio": 0.15,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "K (Катод / Метка)",
+        "shape": "rect",
+        "xRatio": 0.85,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "OPTO-DIP4": {
+    "id": "OPTO-DIP4",
+    "name": "Оптопара DIP-4 (PC817 / EL817)",
+    "category": "Оптоэлектроника",
+    "subcategory": "Оптопары",
+    "mountType": "tht",
+    "shape": "dip",
+    "width": 400,
+    "height": 360,
+    "pinCount": 4,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Анод светодиода (A)",
+        "shape": "square",
+        "xRatio": 0.25,
+        "yRatio": 0.15
+      },
+      {
+        "num": 2,
+        "name": "Катод светодиода (K)",
+        "shape": "circle",
+        "xRatio": 0.25,
+        "yRatio": 0.85
+      },
+      {
+        "num": 3,
+        "name": "Эмиттер транзистора (E)",
+        "shape": "circle",
+        "xRatio": 0.75,
+        "yRatio": 0.85
+      },
+      {
+        "num": 4,
+        "name": "Коллектор транзистора (C)",
+        "shape": "circle",
+        "xRatio": 0.75,
+        "yRatio": 0.15
+      }
+    ]
+  },
+  "DISP-7SEG-2": {
+    "id": "DISP-7SEG-2",
+    "name": "Двухразрядный 7-сегментный LED индикатор («88»)",
+    "category": "Индикаторы",
+    "subcategory": "7-сегментные",
+    "mountType": "tht",
+    "shape": "disp-7seg",
+    "width": 1800,
+    "height": 975,
+    "pinCount": 18
+  },
+  "QUARTZ-HC49": {
+    "id": "QUARTZ-HC49",
+    "name": "Кварцевый резонатор HC-49S/U Вертикальный (THT)",
+    "category": "Кварцы",
+    "subcategory": "Кварцевые резонаторы",
+    "mountType": "tht",
+    "shape": "quartz",
+    "width": 260,
+    "height": 750,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "XTAL 1",
+        "shape": "circle",
+        "xRatio": 0.5,
+        "yRatio": 0.12
+      },
+      {
+        "num": 2,
+        "name": "XTAL 2",
+        "shape": "circle",
+        "xRatio": 0.5,
+        "yRatio": 0.88
+      }
+    ]
+  },
+  "QUARTZ-HC49-H": {
+    "id": "QUARTZ-HC49-H",
+    "name": "Кварцевый резонатор HC-49S/U Горизонтальный (THT)",
+    "category": "Кварцы",
+    "subcategory": "Кварцевые резонаторы",
+    "mountType": "tht",
+    "shape": "quartz",
+    "width": 750,
+    "height": 260,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "XTAL 1",
+        "shape": "circle",
+        "xRatio": 0.12,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "XTAL 2",
+        "shape": "circle",
+        "xRatio": 0.88,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "QUARTZ-OSC-DIL8": {
+    "id": "QUARTZ-OSC-DIL8",
+    "name": "Кварцевый генератор активный DIL-8 / Half-size (4-pin THT)",
+    "category": "Кварцы",
+    "subcategory": "Кварцевые генераторы",
+    "mountType": "tht",
+    "shape": "quartz-osc",
+    "width": 520,
+    "height": 520,
+    "pinCount": 4,
+    "pins": [
+      {
+        "num": 1,
+        "name": "NC / E/D (Включение генератора / Tri-state)",
+        "shape": "square",
+        "xRatio": 0.15,
+        "yRatio": 0.15
+      },
+      {
+        "num": 2,
+        "name": "GND (Общий / Корпус)",
+        "shape": "circle",
+        "xRatio": 0.85,
+        "yRatio": 0.15
+      },
+      {
+        "num": 3,
+        "name": "OUT (Выход тактовой частоты Freq Out)",
+        "shape": "circle",
+        "xRatio": 0.85,
+        "yRatio": 0.85
+      },
+      {
+        "num": 4,
+        "name": "VCC (Питание +5V)",
+        "shape": "circle",
+        "xRatio": 0.15,
+        "yRatio": 0.85
+      }
+    ]
+  },
+  "QUARTZ-OSC-DIL14": {
+    "id": "QUARTZ-OSC-DIL14",
+    "name": "Кварцевый генератор активный DIL-14 / Full-size (4-pin THT)",
+    "category": "Кварцы",
+    "subcategory": "Кварцевые генераторы",
+    "mountType": "tht",
+    "shape": "quartz-osc",
+    "width": 820,
+    "height": 520,
+    "pinCount": 4,
+    "pins": [
+      {
+        "num": 1,
+        "name": "NC / E/D (Включение генератора)",
+        "shape": "square",
+        "xRatio": 0.12,
+        "yRatio": 0.15
+      },
+      {
+        "num": 7,
+        "name": "GND (Общий / Корпус)",
+        "shape": "circle",
+        "xRatio": 0.88,
+        "yRatio": 0.15
+      },
+      {
+        "num": 8,
+        "name": "OUT (Выход тактовой частоты Freq Out)",
+        "shape": "circle",
+        "xRatio": 0.88,
+        "yRatio": 0.85
+      },
+      {
+        "num": 14,
+        "name": "VCC (Питание +5V)",
+        "shape": "circle",
+        "xRatio": 0.12,
+        "yRatio": 0.85
+      }
+    ]
+  },
+  "INDUCTOR": {
+    "id": "INDUCTOR",
+    "name": "Дроссель индуктивности (ДМ / Аксиальный / Радиальный)",
+    "category": "Индуктивности",
+    "subcategory": "Дроссели",
+    "mountType": "tht",
+    "shape": "inductor",
+    "width": 420,
+    "height": 420,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Вывод 1",
+        "shape": "circle",
+        "xRatio": 0.22,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Вывод 2",
+        "shape": "circle",
+        "xRatio": 0.78,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "CONN-HEADER": {
+    "id": "CONN-HEADER",
+    "name": "Штыревой разъем (PLS/PBS шаг 2.54мм)",
+    "category": "Разъемы",
+    "subcategory": "Штыревые",
+    "mountType": "tht",
+    "shape": "conn",
+    "width": 1200,
+    "height": 250,
+    "pinCount": 8
+  },
+  "CONN-SCREW-2P": {
+    "id": "CONN-SCREW-2P",
+    "name": "Винтовой клеммник 2-pin (KF301 шаг 5.0мм)",
+    "category": "Разъемы",
+    "subcategory": "Винтовые клеммы",
+    "mountType": "tht",
+    "shape": "conn-screw",
+    "width": 600,
+    "height": 450,
+    "pinCount": 2,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Клемма 1",
+        "shape": "square",
+        "xRatio": 0.28,
+        "yRatio": 0.5
+      },
+      {
+        "num": 2,
+        "name": "Клемма 2",
+        "shape": "square",
+        "xRatio": 0.72,
+        "yRatio": 0.5
+      }
+    ]
+  },
+  "SW-TACT-6X6": {
+    "id": "SW-TACT-6X6",
+    "name": "Тактовая кнопка 6×6мм (4-pin THT)",
+    "category": "Коммутация",
+    "subcategory": "Кнопки",
+    "mountType": "tht",
+    "shape": "sw-tact",
+    "width": 420,
+    "height": 420,
+    "pinCount": 4,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Контакт 1 (A1)",
+        "shape": "circle",
+        "xRatio": 0.2,
+        "yRatio": 0.25
+      },
+      {
+        "num": 2,
+        "name": "Контакт 2 (A2)",
+        "shape": "circle",
+        "xRatio": 0.8,
+        "yRatio": 0.25
+      },
+      {
+        "num": 3,
+        "name": "Контакт 3 (B1)",
+        "shape": "circle",
+        "xRatio": 0.2,
+        "yRatio": 0.75
+      },
+      {
+        "num": 4,
+        "name": "Контакт 4 (B2)",
+        "shape": "circle",
+        "xRatio": 0.8,
+        "yRatio": 0.75
+      }
+    ]
+  },
+  "RELAY-MINI": {
+    "id": "RELAY-MINI",
+    "name": "Электромагнитное реле (Songle SRD / 5-pin)",
+    "category": "Коммутация",
+    "subcategory": "Реле",
+    "mountType": "tht",
+    "shape": "relay",
+    "width": 950,
+    "height": 750,
+    "pinCount": 5,
+    "pins": [
+      {
+        "num": 1,
+        "name": "Coil 1 (Обмотка катушки)",
+        "shape": "circle",
+        "xRatio": 0.12,
+        "yRatio": 0.25
+      },
+      {
+        "num": 2,
+        "name": "Coil 2 (Обмотка катушки)",
+        "shape": "circle",
+        "xRatio": 0.12,
+        "yRatio": 0.75
+      },
+      {
+        "num": 3,
+        "name": "COM (Общий перекидной контакт)",
+        "shape": "square",
+        "xRatio": 0.88,
+        "yRatio": 0.5
+      },
+      {
+        "num": 4,
+        "name": "NO (Нормально разомкнутый)",
+        "shape": "circle",
+        "xRatio": 0.55,
+        "yRatio": 0.25
+      },
+      {
+        "num": 5,
+        "name": "NC (Нормально замкнутый)",
+        "shape": "circle",
+        "xRatio": 0.55,
+        "yRatio": 0.75
+      }
+    ]
+  },
+  "HOLE-3.6": {
+    "id": "HOLE-3.6",
+    "name": "Крепежное отверстие ø3.6мм",
+    "category": "Механика",
+    "subcategory": "Крепеж",
+    "mountType": "tht",
+    "shape": "hole",
+    "width": 220,
+    "height": 220,
+    "pinCount": 1
+  },
+  "TESTPOINT": {
+    "id": "TESTPOINT",
+    "name": "Контрольная точка (Test Point TP)",
+    "category": "Механика",
+    "subcategory": "Тестпоинты",
+    "mountType": "smd",
+    "shape": "testpoint",
+    "width": 120,
+    "height": 120,
+    "pinCount": 1
+  }
+}

@@ -1,0 +1,1547 @@
+{
+  "NET_GND": {
+    "id": "NET_GND",
+    "name": "GND",
+    "label": "Общий провод (0V)",
+    "type": "ground",
+    "color": "#10b981",
+    "voltage": 0,
+    "description": "Основной общий провод цифровой, силовой и аналоговой земли платы",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 20,
+        "desc": "GND (AT89C51 выв. 20)"
+      },
+      {
+        "compId": "D4",
+        "pin": 4,
+        "desc": "GND (AT24C08 EEPROM выв. 4)"
+      },
+      {
+        "compId": "D4",
+        "pin": 1,
+        "desc": "A0 -> GND"
+      },
+      {
+        "compId": "D4",
+        "pin": 2,
+        "desc": "A1 -> GND"
+      },
+      {
+        "compId": "D4",
+        "pin": 3,
+        "desc": "A2 -> GND"
+      },
+      {
+        "compId": "D4",
+        "pin": 7,
+        "desc": "WP -> GND (разрешение записи)"
+      },
+      {
+        "compId": "D5",
+        "pin": 4,
+        "desc": "GND (ADM1232 супервизор выв. 4)"
+      },
+      {
+        "compId": "D1",
+        "pin": 7,
+        "desc": "GND (74HC14N логика выв. 7)"
+      },
+      {
+        "compId": "D11",
+        "pin": 7,
+        "desc": "GND (74HC164 сдвиговый регистр выв. 7)"
+      },
+      {
+        "compId": "D7",
+        "pin": 4,
+        "desc": "V- (GND TL072CN ОУ выв. 4)"
+      },
+      {
+        "compId": "D8",
+        "pin": 4,
+        "desc": "V- (GND TL072CN ОУ выв. 4)"
+      },
+      {
+        "compId": "D6",
+        "pin": 4,
+        "desc": "GND (LM293N компаратор выв. 4)"
+      },
+      {
+        "compId": "D12",
+        "pin": 7,
+        "desc": "GND (MC34119 УНЧ выв. 7)"
+      },
+      {
+        "compId": "D13",
+        "pin": 4,
+        "desc": "GND (MC34063 DC-DC выв. 4)"
+      },
+      {
+        "compId": "D3",
+        "pin": 2,
+        "desc": "GND (1180ЕН5А / 7805 стабилизатор выв. 2)"
+      },
+      {
+        "compId": "C1",
+        "pin": 2,
+        "desc": "Минус входного сглаживающего электролита 470uF"
+      },
+      {
+        "compId": "C2",
+        "pin": 2,
+        "desc": "Минус блокировочной керамики 0.1uF"
+      },
+      {
+        "compId": "C3",
+        "pin": 2,
+        "desc": "Минус электролита выхода +5V 220uF"
+      },
+      {
+        "compId": "C4",
+        "pin": 2,
+        "desc": "Минус электролита фильтра питания 100uF"
+      },
+      {
+        "compId": "C8",
+        "pin": 2,
+        "desc": "Конденсатор кварца 22pF на GND"
+      },
+      {
+        "compId": "C9",
+        "pin": 2,
+        "desc": "Конденсатор кварца 22pF на GND"
+      },
+      {
+        "compId": "C10",
+        "pin": 2,
+        "desc": "Фильтр цепи сброса 0.1uF на GND"
+      },
+      {
+        "compId": "C12",
+        "pin": 2,
+        "desc": "Минус электролита фильтра ОУ 47uF"
+      },
+      {
+        "compId": "C17",
+        "pin": 2,
+        "desc": "Фильтр 10uF на GND"
+      },
+      {
+        "compId": "C18",
+        "pin": 2,
+        "desc": "Фильтр 10uF на GND"
+      },
+      {
+        "compId": "C19",
+        "pin": 2,
+        "desc": "Фильтр 10uF на GND"
+      },
+      {
+        "compId": "C34",
+        "pin": 2,
+        "desc": "Фильтр 10uF на GND"
+      },
+      {
+        "compId": "C5",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C6",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C7",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C13",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C14",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C15",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C16",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C20",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C24",
+        "pin": 2,
+        "desc": "Времязадающий конденсатор MC34063 на GND"
+      },
+      {
+        "compId": "C25",
+        "pin": 2,
+        "desc": "Фильтр 0.1uF на GND"
+      },
+      {
+        "compId": "C26",
+        "pin": 2,
+        "desc": "Фильтр 0.1uF на GND"
+      },
+      {
+        "compId": "C31",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C32",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "C33",
+        "pin": 2,
+        "desc": "Блокировочный 0.1uF"
+      },
+      {
+        "compId": "VT1",
+        "pin": 3,
+        "desc": "Исток (Source) ключа КП501А на GND"
+      },
+      {
+        "compId": "VT10",
+        "pin": 3,
+        "desc": "Исток (Source) ключа КП501А на GND"
+      },
+      {
+        "compId": "VT3",
+        "pin": 1,
+        "desc": "Эмиттер транзистора КТ3102 на GND"
+      },
+      {
+        "compId": "VT5",
+        "pin": 1,
+        "desc": "Эмиттер транзистора КТ3102 на GND"
+      },
+      {
+        "compId": "VT6",
+        "pin": 1,
+        "desc": "Эмиттер транзистора КТ3102 на GND"
+      },
+      {
+        "compId": "VT7",
+        "pin": 1,
+        "desc": "Эмиттер транзистора КТ3102 на GND"
+      },
+      {
+        "compId": "VT21",
+        "pin": 1,
+        "desc": "Эмиттер транзистора КТ3102 на GND"
+      },
+      {
+        "compId": "VD4",
+        "pin": 2,
+        "desc": "Анод стабилитрона 4.7V на GND"
+      },
+      {
+        "compId": "VD8",
+        "pin": 2,
+        "desc": "Анод стабилитрона 4.7V на GND"
+      },
+      {
+        "compId": "VD9",
+        "pin": 2,
+        "desc": "Анод стабилитрона 4.7V на GND"
+      },
+      {
+        "compId": "VD2",
+        "pin": 2,
+        "desc": "Анод стабилитрона 4.7V на GND"
+      },
+      {
+        "compId": "X1",
+        "pin": 7,
+        "desc": "GND шлейфа клавиатуры (выв. 7)"
+      },
+      {
+        "compId": "X2",
+        "pin": 1,
+        "desc": "GND межплатного шлейфа (выв. 1)"
+      },
+      {
+        "compId": "X3",
+        "pin": 1,
+        "desc": "GND клеммы питания (выв. 1)"
+      },
+      {
+        "compId": "X4",
+        "pin": 2,
+        "desc": "GND экрана микрофона (выв. 2)"
+      },
+      {
+        "compId": "H1",
+        "pin": 1,
+        "desc": "Левый крепеж заземления ø3.6"
+      },
+      {
+        "compId": "H2",
+        "pin": 1,
+        "desc": "Правый крепеж заземления ø3.6"
+      }
+    ]
+  },
+  "NET_VCC_5V": {
+    "id": "NET_VCC_5V",
+    "name": "+5.0V",
+    "label": "Основное цифровое питание (+5V)",
+    "type": "power",
+    "color": "#ef4444",
+    "voltage": 5,
+    "description": "Стабилизированное цифровое питание логики и микроконтроллера от D3 (1180ЕН5А)",
+    "nodes": [
+      {
+        "compId": "D3",
+        "pin": 3,
+        "desc": "Выход +5V стабилизатора 1180ЕН5А"
+      },
+      {
+        "compId": "C3",
+        "pin": 1,
+        "desc": "Плюс электролита выхода +5V 220uF"
+      },
+      {
+        "compId": "C2",
+        "pin": 1,
+        "desc": "Блокировочная керамика 0.1uF"
+      },
+      {
+        "compId": "D2",
+        "pin": 40,
+        "desc": "VCC (AT89C51 выв. 40)"
+      },
+      {
+        "compId": "D2",
+        "pin": 31,
+        "desc": "EA/VPP (AT89C51 выв. 31 -> +5V)"
+      },
+      {
+        "compId": "D4",
+        "pin": 8,
+        "desc": "VCC (AT24C08 EEPROM выв. 8)"
+      },
+      {
+        "compId": "D5",
+        "pin": 8,
+        "desc": "VCC (ADM1232 супервизор выв. 8)"
+      },
+      {
+        "compId": "D1",
+        "pin": 14,
+        "desc": "VCC (74HC14N выв. 14)"
+      },
+      {
+        "compId": "D11",
+        "pin": 14,
+        "desc": "VCC (74HC164 регистр выв. 14)"
+      },
+      {
+        "compId": "D11",
+        "pin": 9,
+        "desc": "CLR_INV (74HC164 выв. 9 -> +5V)"
+      },
+      {
+        "compId": "C7",
+        "pin": 1,
+        "desc": "Фильтр питания МК 0.1uF"
+      },
+      {
+        "compId": "C14",
+        "pin": 1,
+        "desc": "Фильтр 0.1uF"
+      },
+      {
+        "compId": "C15",
+        "pin": 1,
+        "desc": "Фильтр 0.1uF"
+      },
+      {
+        "compId": "R1",
+        "pin": 1,
+        "desc": "Подтяжка данных регистра P1.0 к +5V"
+      },
+      {
+        "compId": "R2",
+        "pin": 1,
+        "desc": "Подтяжка тактов регистра P1.1 к +5V"
+      },
+      {
+        "compId": "R3",
+        "pin": 1,
+        "desc": "Подтяжка строки клавиатуры ROW1 к +5V"
+      },
+      {
+        "compId": "R4",
+        "pin": 1,
+        "desc": "Подтяжка строки клавиатуры ROW2 к +5V"
+      },
+      {
+        "compId": "R5",
+        "pin": 1,
+        "desc": "Подтяжка строки клавиатуры ROW3 к +5V"
+      },
+      {
+        "compId": "R31",
+        "pin": 1,
+        "desc": "Подтяжка сброса RST к +5V"
+      },
+      {
+        "compId": "R32",
+        "pin": 1,
+        "desc": "Подтяжка I2C SDA к +5V"
+      },
+      {
+        "compId": "R33",
+        "pin": 1,
+        "desc": "Подтяжка I2C SCL к +5V"
+      },
+      {
+        "compId": "VT13",
+        "pin": 3,
+        "desc": "Эмиттер PNP ключа разряда 1 к +5V"
+      },
+      {
+        "compId": "VT14",
+        "pin": 3,
+        "desc": "Эмиттер PNP ключа разряда 2 к +5V"
+      },
+      {
+        "compId": "VT15",
+        "pin": 3,
+        "desc": "Эмиттер PNP ключа разряда 3 к +5V"
+      },
+      {
+        "compId": "VT16",
+        "pin": 3,
+        "desc": "Эмиттер PNP ключа разряда 4 к +5V"
+      }
+    ]
+  },
+  "NET_PWR_RAW_12V": {
+    "id": "NET_PWR_RAW_12V",
+    "name": "+12V_RAW",
+    "label": "Входное питание (+12V..+15V)",
+    "type": "power",
+    "color": "#f59e0b",
+    "voltage": 12,
+    "description": "Нестабилизированное питание после входного выпрямителя VD22",
+    "nodes": [
+      {
+        "compId": "X3",
+        "pin": 2,
+        "desc": "Клемма входа питания +12V"
+      },
+      {
+        "compId": "VD22",
+        "pin": 1,
+        "desc": "Анод выпрямительного диода 1N4007"
+      },
+      {
+        "compId": "VD22",
+        "pin": 2,
+        "desc": "Катод выпрямительного диода (шина питания)"
+      },
+      {
+        "compId": "C1",
+        "pin": 1,
+        "desc": "Плюс электролита фильтра 470uF"
+      },
+      {
+        "compId": "D3",
+        "pin": 1,
+        "desc": "VIN (Вход стабилизатора 1180ЕН5А)"
+      },
+      {
+        "compId": "D13",
+        "pin": 6,
+        "desc": "VCC (Вход питания импульсного MC34063)"
+      },
+      {
+        "compId": "D13",
+        "pin": 7,
+        "desc": "I_SENSE (Датчик пикового тока MC34063)"
+      },
+      {
+        "compId": "D13",
+        "pin": 8,
+        "desc": "DRIVE_C (Коллектор драйвера MC34063)"
+      },
+      {
+        "compId": "L1",
+        "pin": 1,
+        "desc": "Вход дросселя фильтра аудио L1"
+      },
+      {
+        "compId": "L2",
+        "pin": 1,
+        "desc": "Вход дросселя накопителя DC-DC L2"
+      },
+      {
+        "compId": "VT11",
+        "pin": 3,
+        "desc": "Эмиттер мощного силового ключа замка КТ973А"
+      }
+    ]
+  },
+  "NET_VCC_15V": {
+    "id": "NET_VCC_15V",
+    "name": "+15.0V (Boost)",
+    "label": "Повышенное питание компаратора (+15V)",
+    "type": "power",
+    "color": "#d946ef",
+    "voltage": 15,
+    "description": "Повышенное стабилизированное питание +15.0V от импульсного преобразователя D13 (MC34063) для компаратора линии D6 (LM293N)",
+    "nodes": [
+      {
+        "compId": "D13",
+        "pin": 1,
+        "desc": "SWITCH_C (Выход силового ключа MC34063)"
+      },
+      {
+        "compId": "D13",
+        "pin": 2,
+        "desc": "SWITCH_E (Эмиттер силового ключа MC34063)"
+      },
+      {
+        "compId": "L2",
+        "pin": 2,
+        "desc": "Выход дросселя накачки L2"
+      },
+      {
+        "compId": "VD23",
+        "pin": 1,
+        "desc": "Анод выпрямительного диода Шоттки 1N5819"
+      },
+      {
+        "compId": "VD23",
+        "pin": 2,
+        "desc": "Катод диода Шоттки (шина +15V)"
+      },
+      {
+        "compId": "C4",
+        "pin": 1,
+        "desc": "Плюс сглаживающего электролита 100uF x 25V"
+      },
+      {
+        "compId": "D6",
+        "pin": 8,
+        "desc": "VCC (Питание компаратора LM293N выв. 8 -> +15V)"
+      },
+      {
+        "compId": "R14",
+        "pin": 1,
+        "desc": "Делитель обратной связи / питания компаратора"
+      }
+    ]
+  },
+  "NET_VCC_AUDIO": {
+    "id": "NET_VCC_AUDIO",
+    "name": "VCC_AUDIO",
+    "label": "Питание аналогового тракта (+10.5V)",
+    "type": "power",
+    "color": "#d97706",
+    "voltage": 10.5,
+    "description": "Отфильтрованное питание операционных усилителей TL072 (D7, D8)",
+    "nodes": [
+      {
+        "compId": "L1",
+        "pin": 2,
+        "desc": "Выход дросселя фильтра L1"
+      },
+      {
+        "compId": "C12",
+        "pin": 1,
+        "desc": "Плюс фильтрующего электролита 47uF"
+      },
+      {
+        "compId": "C13",
+        "pin": 1,
+        "desc": "Блокировочная керамика 0.1uF"
+      },
+      {
+        "compId": "D7",
+        "pin": 8,
+        "desc": "V+ (TL072CN ОУ выв. 8)"
+      },
+      {
+        "compId": "D8",
+        "pin": 8,
+        "desc": "V+ (TL072CN ОУ выв. 8)"
+      },
+      {
+        "compId": "R53",
+        "pin": 1,
+        "desc": "Резистор подачи смещения микрофона MIC_BIAS"
+      }
+    ]
+  },
+  "NET_MCU_RESET": {
+    "id": "NET_MCU_RESET",
+    "name": "MCU_RESET",
+    "label": "Сброс процессора (RST)",
+    "type": "signal",
+    "color": "#06b6d4",
+    "description": "Аппаратный сброс процессора AT89C51 от супервизора D5 (ADM1232)",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 9,
+        "desc": "RST (AT89C51 выв. 9 - активный HIGH)"
+      },
+      {
+        "compId": "D5",
+        "pin": 5,
+        "desc": "RESET (Выход супервизора ADM1232)"
+      },
+      {
+        "compId": "R31",
+        "pin": 2,
+        "desc": "Резистор подтяжки 100k"
+      },
+      {
+        "compId": "C10",
+        "pin": 1,
+        "desc": "Конденсатор задержки 0.1uF"
+      }
+    ]
+  },
+  "NET_XTAL1": {
+    "id": "NET_XTAL1",
+    "name": "XTAL1",
+    "label": "Кварц Вход (11.0592MHz)",
+    "type": "signal",
+    "color": "#8b5cf6",
+    "description": "Вход генератора тактовой частоты AT89C51",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 19,
+        "desc": "XTAL1 (AT89C51 выв. 19)"
+      },
+      {
+        "compId": "B1",
+        "pin": 1,
+        "desc": "Кварцевый резонатор 11.0592MHz"
+      },
+      {
+        "compId": "C8",
+        "pin": 1,
+        "desc": "Конденсатор 22pF"
+      }
+    ]
+  },
+  "NET_XTAL2": {
+    "id": "NET_XTAL2",
+    "name": "XTAL2",
+    "label": "Кварц Выход (11.0592MHz)",
+    "type": "signal",
+    "color": "#8b5cf6",
+    "description": "Выход инвертора генератора тактовой частоты AT89C51",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 18,
+        "desc": "XTAL2 (AT89C51 выв. 18)"
+      },
+      {
+        "compId": "B1",
+        "pin": 2,
+        "desc": "Кварцевый резонатор 11.0592MHz"
+      },
+      {
+        "compId": "C9",
+        "pin": 1,
+        "desc": "Конденсатор 22pF"
+      }
+    ]
+  },
+  "NET_I2C_SDA": {
+    "id": "NET_I2C_SDA",
+    "name": "I2C_SDA",
+    "label": "I2C Данные (SDA)",
+    "type": "signal",
+    "color": "#38bdf8",
+    "description": "Шина данных энергонезависимой памяти ключей D4 (AT24C08)",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 4,
+        "desc": "P1.3 (MCU SDA)"
+      },
+      {
+        "compId": "D4",
+        "pin": 5,
+        "desc": "SDA (AT24C08 выв. 5)"
+      },
+      {
+        "compId": "R32",
+        "pin": 2,
+        "desc": "Подтяжка 2k к +5V"
+      }
+    ]
+  },
+  "NET_I2C_SCL": {
+    "id": "NET_I2C_SCL",
+    "name": "I2C_SCL",
+    "label": "I2C Такты (SCL)",
+    "type": "signal",
+    "color": "#38bdf8",
+    "description": "Шина синхронизации энергонезависимой памяти ключей D4 (AT24C08)",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 5,
+        "desc": "P1.4 (MCU SCL)"
+      },
+      {
+        "compId": "D4",
+        "pin": 6,
+        "desc": "SCL (AT24C08 выв. 6)"
+      },
+      {
+        "compId": "R33",
+        "pin": 2,
+        "desc": "Подтяжка 75k к +5V"
+      }
+    ]
+  },
+  "NET_SR_DATA": {
+    "id": "NET_SR_DATA",
+    "name": "SR_DATA",
+    "label": "Данные сдвигового регистра (74HC164)",
+    "type": "signal",
+    "color": "#ec4899",
+    "description": "Последовательные данные маски сегментов индикации от процессора к D11",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 1,
+        "desc": "P1.0 (MCU Data Out)"
+      },
+      {
+        "compId": "D11",
+        "pin": 1,
+        "desc": "A (Вход данных HC164 выв. 1)"
+      },
+      {
+        "compId": "D11",
+        "pin": 2,
+        "desc": "B (Вход данных HC164 выв. 2)"
+      },
+      {
+        "compId": "R1",
+        "pin": 2,
+        "desc": "Подтяжка P1.0 к +5V"
+      }
+    ]
+  },
+  "NET_SR_CLK": {
+    "id": "NET_SR_CLK",
+    "name": "SR_CLK",
+    "label": "Такты сдвигового регистра (74HC164)",
+    "type": "signal",
+    "color": "#ec4899",
+    "description": "Тактовый строб сдвига данных сегментов в регистр D11",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 2,
+        "desc": "P1.1 (MCU Clock Out)"
+      },
+      {
+        "compId": "D11",
+        "pin": 8,
+        "desc": "CLK (Тактовый вход HC164 выв. 8)"
+      },
+      {
+        "compId": "R2",
+        "pin": 2,
+        "desc": "Подтяжка P1.1 к +5V"
+      }
+    ]
+  },
+  "NET_SEG_A": {
+    "id": "NET_SEG_A",
+    "name": "SEG_A",
+    "label": "Сегмент A индикаторов",
+    "type": "bus",
+    "color": "#a855f7",
+    "description": "Катод сегмента A индикаторов D9, D10 от D11.3 (QA) через R53 (470R)",
+    "nodes": [
+      {
+        "compId": "D11",
+        "pin": 3,
+        "desc": "QA (Выход регистра выв. 3)"
+      },
+      {
+        "compId": "R53",
+        "pin": 1,
+        "desc": "Резистор сегмента A 470R"
+      },
+      {
+        "compId": "R53",
+        "pin": 2,
+        "desc": "Выход резистора на катоды сегментов A"
+      }
+    ]
+  },
+  "NET_SEG_B": {
+    "id": "NET_SEG_B",
+    "name": "SEG_B",
+    "label": "Сегмент B индикаторов",
+    "type": "bus",
+    "color": "#a855f7",
+    "description": "Катод сегмента B индикаторов D9, D10 от D11.4 (QB) через R54 (470R)",
+    "nodes": [
+      {
+        "compId": "D11",
+        "pin": 4,
+        "desc": "QB (Выход регистра выв. 4)"
+      },
+      {
+        "compId": "R54",
+        "pin": 1,
+        "desc": "Резистор сегмента B 470R"
+      },
+      {
+        "compId": "R54",
+        "pin": 2,
+        "desc": "Выход резистора на катоды сегментов B"
+      }
+    ]
+  },
+  "NET_SEG_C": {
+    "id": "NET_SEG_C",
+    "name": "SEG_C",
+    "label": "Сегмент C индикаторов",
+    "type": "bus",
+    "color": "#a855f7",
+    "description": "Катод сегмента C индикаторов D9, D10 от D11.5 (QC) через R55 (470R)",
+    "nodes": [
+      {
+        "compId": "D11",
+        "pin": 5,
+        "desc": "QC (Выход регистра выв. 5)"
+      },
+      {
+        "compId": "R55",
+        "pin": 1,
+        "desc": "Резистор сегмента C 470R"
+      },
+      {
+        "compId": "R55",
+        "pin": 2,
+        "desc": "Выход резистора на катоды сегментов C"
+      }
+    ]
+  },
+  "NET_SEG_D": {
+    "id": "NET_SEG_D",
+    "name": "SEG_D",
+    "label": "Сегмент D индикаторов",
+    "type": "bus",
+    "color": "#a855f7",
+    "description": "Катод сегмента D индикаторов D9, D10 от D11.6 (QD) через R56 (470R)",
+    "nodes": [
+      {
+        "compId": "D11",
+        "pin": 6,
+        "desc": "QD (Выход регистра выв. 6)"
+      },
+      {
+        "compId": "R56",
+        "pin": 1,
+        "desc": "Резистор сегмента D 470R"
+      },
+      {
+        "compId": "R56",
+        "pin": 2,
+        "desc": "Выход резистора на катоды сегментов D"
+      }
+    ]
+  },
+  "NET_SEG_E": {
+    "id": "NET_SEG_E",
+    "name": "SEG_E",
+    "label": "Сегмент E индикаторов",
+    "type": "bus",
+    "color": "#a855f7",
+    "description": "Катод сегмента E индикаторов D9, D10 от D11.10 (QE) через R57 (470R)",
+    "nodes": [
+      {
+        "compId": "D11",
+        "pin": 10,
+        "desc": "QE (Выход регистра выв. 10)"
+      },
+      {
+        "compId": "R57",
+        "pin": 1,
+        "desc": "Резистор сегмента E 470R"
+      },
+      {
+        "compId": "R57",
+        "pin": 2,
+        "desc": "Выход резистора на катоды сегментов E"
+      }
+    ]
+  },
+  "NET_SEG_F": {
+    "id": "NET_SEG_F",
+    "name": "SEG_F",
+    "label": "Сегмент F индикаторов",
+    "type": "bus",
+    "color": "#a855f7",
+    "description": "Катод сегмента F индикаторов D9, D10 от D11.11 (QF) через R58 (470R)",
+    "nodes": [
+      {
+        "compId": "D11",
+        "pin": 11,
+        "desc": "QF (Выход регистра выв. 11)"
+      },
+      {
+        "compId": "R58",
+        "pin": 1,
+        "desc": "Резистор сегмента F 470R"
+      },
+      {
+        "compId": "R58",
+        "pin": 2,
+        "desc": "Выход резистора на катоды сегментов F"
+      }
+    ]
+  },
+  "NET_SEG_G": {
+    "id": "NET_SEG_G",
+    "name": "SEG_G",
+    "label": "Сегмент G индикаторов",
+    "type": "bus",
+    "color": "#a855f7",
+    "description": "Катод сегмента G индикаторов D9, D10 от D11.12 (QG) через R59 (470R)",
+    "nodes": [
+      {
+        "compId": "D11",
+        "pin": 12,
+        "desc": "QG (Выход регистра выв. 12)"
+      },
+      {
+        "compId": "R59",
+        "pin": 1,
+        "desc": "Резистор сегмента G 470R"
+      },
+      {
+        "compId": "R59",
+        "pin": 2,
+        "desc": "Выход резистора на катоды сегментов G"
+      }
+    ]
+  },
+  "NET_SEG_DP": {
+    "id": "NET_SEG_DP",
+    "name": "SEG_DP",
+    "label": "Сегмент DP (Точка) индикаторов",
+    "type": "bus",
+    "color": "#a855f7",
+    "description": "Катод сегмента DP (десятичная точка) от D11.13 (QH) через R60 (1k)",
+    "nodes": [
+      {
+        "compId": "D11",
+        "pin": 13,
+        "desc": "QH (Выход регистра выв. 13)"
+      },
+      {
+        "compId": "R60",
+        "pin": 1,
+        "desc": "Резистор точки DP 1k"
+      },
+      {
+        "compId": "R60",
+        "pin": 2,
+        "desc": "Выход резистора на катоды точек DP"
+      }
+    ]
+  },
+  "NET_ANODE_CTL_1": {
+    "id": "NET_ANODE_CTL_1",
+    "name": "ANODE_CTRL_1",
+    "label": "Управление анодом разряда 1",
+    "type": "signal",
+    "color": "#f43f5e",
+    "description": "Управление базой PNP ключа VT13 от процессора D2 (P2.0)",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 21,
+        "desc": "P2.0 (MCU Anode 1 выв. 21)"
+      },
+      {
+        "compId": "R49",
+        "pin": 1,
+        "desc": "Базовый резистор 1k"
+      },
+      {
+        "compId": "R49",
+        "pin": 2,
+        "desc": "База VT13"
+      },
+      {
+        "compId": "VT13",
+        "pin": 2,
+        "desc": "База PNP транзистора КТ3107Г"
+      }
+    ]
+  },
+  "NET_ANODE_CTL_2": {
+    "id": "NET_ANODE_CTL_2",
+    "name": "ANODE_CTRL_2",
+    "label": "Управление анодом разряда 2",
+    "type": "signal",
+    "color": "#f43f5e",
+    "description": "Управление базой PNP ключа VT14 от процессора D2 (P2.1)",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 22,
+        "desc": "P2.1 (MCU Anode 2 выв. 22)"
+      },
+      {
+        "compId": "R50",
+        "pin": 1,
+        "desc": "Базовый резистор 1k"
+      },
+      {
+        "compId": "R50",
+        "pin": 2,
+        "desc": "База VT14"
+      },
+      {
+        "compId": "VT14",
+        "pin": 2,
+        "desc": "База PNP транзистора КТ3107Г"
+      }
+    ]
+  },
+  "NET_ANODE_CTL_3": {
+    "id": "NET_ANODE_CTL_3",
+    "name": "ANODE_CTRL_3",
+    "label": "Управление анодом разряда 3",
+    "type": "signal",
+    "color": "#f43f5e",
+    "description": "Управление базой PNP ключа VT15 от процессора D2 (P2.2)",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 23,
+        "desc": "P2.2 (MCU Anode 3 выв. 23)"
+      },
+      {
+        "compId": "R51",
+        "pin": 1,
+        "desc": "Базовый резистор 1k"
+      },
+      {
+        "compId": "R51",
+        "pin": 2,
+        "desc": "База VT15"
+      },
+      {
+        "compId": "VT15",
+        "pin": 2,
+        "desc": "База PNP транзистора КТ3107Г"
+      }
+    ]
+  },
+  "NET_ANODE_CTL_4": {
+    "id": "NET_ANODE_CTL_4",
+    "name": "ANODE_CTRL_4",
+    "label": "Управление анодом разряда 4",
+    "type": "signal",
+    "color": "#f43f5e",
+    "description": "Управление базой PNP ключа VT16 от процессора D2 (P2.3)",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 24,
+        "desc": "P2.3 (MCU Anode 4 выв. 24)"
+      },
+      {
+        "compId": "R52",
+        "pin": 1,
+        "desc": "Базовый резистор 1k"
+      },
+      {
+        "compId": "R52",
+        "pin": 2,
+        "desc": "База VT16"
+      },
+      {
+        "compId": "VT16",
+        "pin": 2,
+        "desc": "База PNP транзистора КТ3107Г"
+      }
+    ]
+  },
+  "NET_ANODE_PWR_1": {
+    "id": "NET_ANODE_PWR_1",
+    "name": "ANODE_PWR_DIG1",
+    "label": "Питание анода разряда 1",
+    "type": "power",
+    "color": "#fb7185",
+    "description": "Коммутируемый анод 1-го разряда индикатора D9 (HG1.1)",
+    "nodes": [
+      {
+        "compId": "VT13",
+        "pin": 1,
+        "desc": "Коллектор PNP ключа VT13"
+      },
+      {
+        "compId": "D9",
+        "pin": 1,
+        "desc": "Анод 1 (COM выв. 1) индикатора D9"
+      }
+    ]
+  },
+  "NET_ANODE_PWR_2": {
+    "id": "NET_ANODE_PWR_2",
+    "name": "ANODE_PWR_DIG2",
+    "label": "Питание анода разряда 2",
+    "type": "power",
+    "color": "#fb7185",
+    "description": "Коммутируемый анод 2-го разряда индикатора D9 (HG1.2)",
+    "nodes": [
+      {
+        "compId": "VT14",
+        "pin": 1,
+        "desc": "Коллектор PNP ключа VT14"
+      },
+      {
+        "compId": "D9",
+        "pin": 10,
+        "desc": "Анод 2 (COM выв. 10) индикатора D9"
+      }
+    ]
+  },
+  "NET_ANODE_PWR_3": {
+    "id": "NET_ANODE_PWR_3",
+    "name": "ANODE_PWR_DIG3",
+    "label": "Питание анода разряда 3",
+    "type": "power",
+    "color": "#fb7185",
+    "description": "Коммутируемый анод 3-го разряда индикатора D10 (HG2.1)",
+    "nodes": [
+      {
+        "compId": "VT15",
+        "pin": 1,
+        "desc": "Коллектор PNP ключа VT15"
+      },
+      {
+        "compId": "D10",
+        "pin": 1,
+        "desc": "Анод 1 (COM выв. 1) индикатора D10"
+      }
+    ]
+  },
+  "NET_ANODE_PWR_4": {
+    "id": "NET_ANODE_PWR_4",
+    "name": "ANODE_PWR_DIG4",
+    "label": "Питание анода разряда 4",
+    "type": "power",
+    "color": "#fb7185",
+    "description": "Коммутируемый анод 4-го разряда индикатора D10 (HG2.2)",
+    "nodes": [
+      {
+        "compId": "VT16",
+        "pin": 1,
+        "desc": "Коллектор PNP ключа VT16"
+      },
+      {
+        "compId": "D10",
+        "pin": 10,
+        "desc": "Анод 2 (COM выв. 10) индикатора D10"
+      }
+    ]
+  },
+  "NET_KEY_ROW1": {
+    "id": "NET_KEY_ROW1",
+    "name": "KEY_ROW1",
+    "label": "Клавиатура: Строка 1 (X1.1)",
+    "type": "signal",
+    "color": "#a855f7",
+    "description": "Строка 1 матрицы кнопок вызова и цифр",
+    "nodes": [
+      {
+        "compId": "X1",
+        "pin": 1,
+        "desc": "Шлейф клавиатуры X1 выв. 1"
+      },
+      {
+        "compId": "R3",
+        "pin": 2,
+        "desc": "Подтяжка 47k к +5V"
+      },
+      {
+        "compId": "D2",
+        "pin": 39,
+        "desc": "P0.0 (MCU выв. 39)"
+      }
+    ]
+  },
+  "NET_KEY_ROW2": {
+    "id": "NET_KEY_ROW2",
+    "name": "KEY_ROW2",
+    "label": "Клавиатура: Строка 2 (X1.2)",
+    "type": "signal",
+    "color": "#a855f7",
+    "description": "Строка 2 матрицы кнопок",
+    "nodes": [
+      {
+        "compId": "X1",
+        "pin": 2,
+        "desc": "Шлейф клавиатуры X1 выв. 2"
+      },
+      {
+        "compId": "R4",
+        "pin": 2,
+        "desc": "Подтяжка 47k к +5V"
+      },
+      {
+        "compId": "D2",
+        "pin": 38,
+        "desc": "P0.1 (MCU выв. 38)"
+      }
+    ]
+  },
+  "NET_KEY_ROW3": {
+    "id": "NET_KEY_ROW3",
+    "name": "KEY_ROW3",
+    "label": "Клавиатура: Строка 3 (X1.3)",
+    "type": "signal",
+    "color": "#a855f7",
+    "description": "Строка 3 матрицы кнопок",
+    "nodes": [
+      {
+        "compId": "X1",
+        "pin": 3,
+        "desc": "Шлейф клавиатуры X1 выв. 3"
+      },
+      {
+        "compId": "R5",
+        "pin": 2,
+        "desc": "Подтяжка 47k к +5V"
+      },
+      {
+        "compId": "D2",
+        "pin": 37,
+        "desc": "P0.2 (MCU выв. 37)"
+      }
+    ]
+  },
+  "NET_KEY_COL1": {
+    "id": "NET_KEY_COL1",
+    "name": "KEY_COL1",
+    "label": "Клавиатура: Колонка 1 (X1.4)",
+    "type": "signal",
+    "color": "#a855f7",
+    "description": "Колонка 1 матрицы кнопок",
+    "nodes": [
+      {
+        "compId": "X1",
+        "pin": 4,
+        "desc": "Шлейф клавиатуры X1 выв. 4"
+      },
+      {
+        "compId": "D2",
+        "pin": 36,
+        "desc": "P0.3 (MCU выв. 36)"
+      }
+    ]
+  },
+  "NET_KEY_COL2": {
+    "id": "NET_KEY_COL2",
+    "name": "KEY_COL2",
+    "label": "Клавиатура: Колонка 2 (X1.5)",
+    "type": "signal",
+    "color": "#a855f7",
+    "description": "Колонка 2 матрицы кнопок",
+    "nodes": [
+      {
+        "compId": "X1",
+        "pin": 5,
+        "desc": "Шлейф клавиатуры X1 выв. 5"
+      },
+      {
+        "compId": "D2",
+        "pin": 35,
+        "desc": "P0.4 (MCU выв. 35)"
+      }
+    ]
+  },
+  "NET_KEY_COL3": {
+    "id": "NET_KEY_COL3",
+    "name": "KEY_COL3",
+    "label": "Клавиатура: Колонка 3 (X1.6)",
+    "type": "signal",
+    "color": "#a855f7",
+    "description": "Колонка 3 матрицы кнопок",
+    "nodes": [
+      {
+        "compId": "X1",
+        "pin": 6,
+        "desc": "Шлейф клавиатуры X1 выв. 6"
+      },
+      {
+        "compId": "D2",
+        "pin": 34,
+        "desc": "P0.5 (MCU выв. 34)"
+      }
+    ]
+  },
+  "NET_SPK_OUT_P": {
+    "id": "NET_SPK_OUT_P",
+    "name": "SPK+",
+    "label": "Динамик: Прямой выход (VO1)",
+    "type": "analog",
+    "color": "#eab308",
+    "description": "Дифференциальный мостовой выход УНЧ D12 (MC34119 выв. 5)",
+    "nodes": [
+      {
+        "compId": "D12",
+        "pin": 5,
+        "desc": "VO1 (MC34119 выв. 5)"
+      },
+      {
+        "compId": "X2",
+        "pin": 12,
+        "desc": "Динамик + на межплатном разъеме X2.12"
+      },
+      {
+        "compId": "C30",
+        "pin": 1,
+        "desc": "Конденсатор фильтра ВЧ"
+      }
+    ]
+  },
+  "NET_SPK_OUT_N": {
+    "id": "NET_SPK_OUT_N",
+    "name": "SPK−",
+    "label": "Динамик: Инверсный выход (VO2)",
+    "type": "analog",
+    "color": "#eab308",
+    "description": "Дифференциальный мостовой выход УНЧ D12 (MC34119 выв. 8)",
+    "nodes": [
+      {
+        "compId": "D12",
+        "pin": 8,
+        "desc": "VO2 (MC34119 выв. 8)"
+      },
+      {
+        "compId": "X2",
+        "pin": 13,
+        "desc": "Динамик − на межплатном разъеме X2.13"
+      },
+      {
+        "compId": "C30",
+        "pin": 2,
+        "desc": "Конденсатор фильтра ВЧ"
+      }
+    ]
+  },
+  "NET_MIC_SIGNAL": {
+    "id": "NET_MIC_SIGNAL",
+    "name": "MIC_IN",
+    "label": "Микрофонный вход (MIC+)",
+    "type": "analog",
+    "color": "#22c55e",
+    "description": "Входной сигнал от микрофона X4.1 через разделительный C22",
+    "nodes": [
+      {
+        "compId": "X4",
+        "pin": 1,
+        "desc": "Сигнальный контакт микрофона X4.1"
+      },
+      {
+        "compId": "R53",
+        "pin": 2,
+        "desc": "Фантомное питание микрофона через R53"
+      },
+      {
+        "compId": "C22",
+        "pin": 1,
+        "desc": "Разделительный конденсатор 0.1uF"
+      }
+    ]
+  },
+  "NET_MIC_PREAMP_IN": {
+    "id": "NET_MIC_PREAMP_IN",
+    "name": "MIC_PRE_IN",
+    "label": "Вход ОУ микрофона D8.1",
+    "type": "analog",
+    "color": "#22c55e",
+    "description": "Инвертирующий вход 1-го каскада микрофонного усилителя D8.2 (TL072)",
+    "nodes": [
+      {
+        "compId": "C22",
+        "pin": 2,
+        "desc": "Выход разделительного конденсатора C22"
+      },
+      {
+        "compId": "D8",
+        "pin": 2,
+        "desc": "IN1- (TL072 выв. 2)"
+      },
+      {
+        "compId": "R54",
+        "pin": 1,
+        "desc": "Резистор ООС каскада"
+      }
+    ]
+  },
+  "NET_MIC_PREAMP_OUT": {
+    "id": "NET_MIC_PREAMP_OUT",
+    "name": "MIC_PRE_OUT",
+    "label": "Выход предусилителя ОУ D8.1",
+    "type": "analog",
+    "color": "#22c55e",
+    "description": "Усиленный звук с выхода 1-го каскада ОУ D8.1 (TL072)",
+    "nodes": [
+      {
+        "compId": "D8",
+        "pin": 1,
+        "desc": "OUT1 (TL072 выв. 1)"
+      },
+      {
+        "compId": "R54",
+        "pin": 2,
+        "desc": "Резистор ООС каскада"
+      },
+      {
+        "compId": "C23",
+        "pin": 1,
+        "desc": "Межкаскадный конденсатор C23"
+      }
+    ]
+  },
+  "NET_LINE_BUS": {
+    "id": "NET_LINE_BUS",
+    "name": "LINE_DATA",
+    "label": "Абонентская линия связи (LINE)",
+    "type": "io",
+    "color": "#f97316",
+    "description": "Двухпроводная абонентская линия связи с коммутатором и трубками (X3.3)",
+    "nodes": [
+      {
+        "compId": "X3",
+        "pin": 3,
+        "desc": "Клемма подключения линии X3.3"
+      },
+      {
+        "compId": "VD18",
+        "pin": 2,
+        "desc": "Защитный диод 1N4148"
+      },
+      {
+        "compId": "VD19",
+        "pin": 1,
+        "desc": "Защитный диод 1N4148"
+      },
+      {
+        "compId": "VD8",
+        "pin": 1,
+        "desc": "Катод стабилитрона защиты BZX55C4V7"
+      },
+      {
+        "compId": "VT7",
+        "pin": 2,
+        "desc": "Коллектор транзистора модуляции линии КТ3102"
+      },
+      {
+        "compId": "D6",
+        "pin": 2,
+        "desc": "IN1- (Вход компаратора детектора трубки LM293)"
+      }
+    ]
+  },
+  "NET_LOCK_CONTROL": {
+    "id": "NET_LOCK_CONTROL",
+    "name": "LOCK_OUT",
+    "label": "Силовой выход электрозамка (LOCK)",
+    "type": "power",
+    "color": "#dc2626",
+    "description": "Силовой коммутируемый выход замка от ключа VT11 (КТ973А)",
+    "nodes": [
+      {
+        "compId": "X3",
+        "pin": 4,
+        "desc": "Клемма выхода на замок X3.4"
+      },
+      {
+        "compId": "VT11",
+        "pin": 2,
+        "desc": "Коллектор мощного ключа КТ973А"
+      },
+      {
+        "compId": "VD17",
+        "pin": 2,
+        "desc": "Катод защитного диода от ЭДС самоиндукции замка"
+      }
+    ]
+  },
+  "NET_LOCK_GATE_DRIVE": {
+    "id": "NET_LOCK_GATE_DRIVE",
+    "name": "LOCK_DRV",
+    "label": "Управление ключом замка",
+    "type": "signal",
+    "color": "#dc2626",
+    "description": "Цепь управления базой силового ключа VT11 от ключа VT1 / МК D2.15",
+    "nodes": [
+      {
+        "compId": "D2",
+        "pin": 15,
+        "desc": "P3.5 (MCU Lock Trigger выв. 15)"
+      },
+      {
+        "compId": "VT1",
+        "pin": 1,
+        "desc": "Затвор (Gate) MOSFET ключа КП501А"
+      },
+      {
+        "compId": "VT1",
+        "pin": 2,
+        "desc": "Сток (Drain) КП501А"
+      },
+      {
+        "compId": "R70",
+        "pin": 1,
+        "desc": "Базовый резистор 1.5k"
+      },
+      {
+        "compId": "R70",
+        "pin": 2,
+        "desc": "База транзистора VT11"
+      },
+      {
+        "compId": "VT11",
+        "pin": 1,
+        "desc": "База силового ключа КТ973А"
+      }
+    ]
+  }
+}

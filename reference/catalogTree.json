@@ -1,0 +1,235 @@
+[
+  {
+    "id": "resistors",
+    "name": "Резисторы",
+    "icon": "⚡",
+    "subcategories": [
+      {
+        "name": "Выводные (THT)",
+        "footprints": [
+          "RES-AXIAL",
+          "RES-AXIAL-025",
+          "RES-AXIAL-05",
+          "RES-AXIAL-V"
+        ]
+      },
+      {
+        "name": "SMD Чип-резисторы",
+        "footprints": [
+          "RES-SMD-0805",
+          "RES-SMD-1206",
+          "RES-SMD-2512"
+        ]
+      },
+      {
+        "name": "Подстроечные и переменные",
+        "footprints": [
+          "RES-TRIM-ROUND",
+          "RES-TRIM-3296"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "capacitors",
+    "name": "Конденсаторы",
+    "icon": "🔋",
+    "subcategories": [
+      {
+        "name": "Керамические (THT и SMD)",
+        "footprints": [
+          "CAP-CERAMIC",
+          "CAP-CERAMIC-MONO",
+          "CAP-SMD-0805",
+          "CAP-SMD-1206"
+        ]
+      },
+      {
+        "name": "Электролитические радиальные",
+        "footprints": [
+          "CAP-RADIAL",
+          "CAP-RADIAL-BIG"
+        ]
+      },
+      {
+        "name": "Танталовые и пленочные",
+        "footprints": [
+          "CAP-TANT-SMD",
+          "CAP-FILM-BOX"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "microchips",
+    "name": "Микросхемы (IC)",
+    "icon": "🔲",
+    "subcategories": [
+      {
+        "name": "Корпуса DIP (Выводные)",
+        "footprints": [
+          "DIP-8",
+          "DIP-14",
+          "DIP-16",
+          "DIP-18",
+          "DIP-20",
+          "DIP-28",
+          "DIP-40"
+        ]
+      },
+      {
+        "name": "Корпуса SOIC / SOP / TSSOP (SMD)",
+        "footprints": [
+          "SOIC-8",
+          "SOIC-14",
+          "SOIC-16",
+          "TSSOP-20"
+        ]
+      },
+      {
+        "name": "Корпуса QFP / TQFP",
+        "footprints": [
+          "TQFP-32",
+          "TQFP-44"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "transistors",
+    "name": "Транзисторы и стабилизаторы",
+    "icon": "🔺",
+    "subcategories": [
+      {
+        "name": "Выводные (THT: TO-92, TO-126, TO-220)",
+        "footprints": [
+          "TO-92",
+          "TO-126",
+          "TO-220"
+        ]
+      },
+      {
+        "name": "SMD (SOT-23, SOT-223)",
+        "footprints": [
+          "SOT-23",
+          "SOT-223"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "diodes",
+    "name": "Диоды и мосты",
+    "icon": "🔻",
+    "subcategories": [
+      {
+        "name": "Выводные диоды (DO-35, DO-41)",
+        "footprints": [
+          "DIODE-AXIAL",
+          "DIODE-DO41",
+          "BRIDGE-DIP4"
+        ]
+      },
+      {
+        "name": "SMD Диоды (SOD-123, SMA)",
+        "footprints": [
+          "DIODE-SOD123",
+          "DIODE-SMA"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "opto",
+    "name": "Оптоэлектроника",
+    "icon": "💡",
+    "subcategories": [
+      {
+        "name": "Светодиоды (THT и SMD)",
+        "footprints": [
+          "LED-THT-5MM",
+          "LED-SMD-0805"
+        ]
+      },
+      {
+        "name": "Оптопары (Optocouplers)",
+        "footprints": [
+          "OPTO-DIP4"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "crystals_inductors",
+    "name": "Кварцы и индуктивности",
+    "icon": "💎",
+    "subcategories": [
+      {
+        "name": "Кварцевые резонаторы HC-49",
+        "footprints": [
+          "QUARTZ-HC49",
+          "QUARTZ-HC49-H"
+        ]
+      },
+      {
+        "name": "Кварцевые генераторы (DIL-8 / DIL-14)",
+        "footprints": [
+          "QUARTZ-OSC-DIL8",
+          "QUARTZ-OSC-DIL14"
+        ]
+      },
+      {
+        "name": "Дроссели и катушки",
+        "footprints": [
+          "INDUCTOR"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "connectors_switches",
+    "name": "Разъемы и коммутация",
+    "icon": "🔌",
+    "subcategories": [
+      {
+        "name": "Штыревые разъемы и клеммники",
+        "footprints": [
+          "CONN-HEADER",
+          "CONN-SCREW-2P"
+        ]
+      },
+      {
+        "name": "Кнопки и электромагнитные реле",
+        "footprints": [
+          "SW-TACT-6X6",
+          "RELAY-MINI"
+        ]
+      },
+      {
+        "name": "Индикаторы дисплея",
+        "footprints": [
+          "DISP-7SEG-2"
+        ]
+      }
+    ]
+  },
+  {
+    "id": "hardware",
+    "name": "Механика и контрольные точки",
+    "icon": "⚙️",
+    "subcategories": [
+      {
+        "name": "Крепежные отверстия",
+        "footprints": [
+          "HOLE-3.6"
+        ]
+      },
+      {
+        "name": "Контрольные площадки",
+        "footprints": [
+          "TESTPOINT"
+        ]
+      }
+    ]
+  }
+]
