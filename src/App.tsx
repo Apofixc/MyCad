@@ -7,9 +7,6 @@ import { InspectorSidebar } from "./components/Sidebar/InspectorSidebar";
 import { NewFileDialog, ProjectFileType } from "./components/Modals/NewFileDialog";
 import { saveProject, openProject } from "./storage";
 import {
-  FolderOpen,
-  Save,
-  Download,
   X,
   AlertTriangle,
   CheckCircle2,
@@ -278,47 +275,8 @@ export const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Action Toolbar */}
-        <div className="cad-top-actions">
-          <button
-            className="cad-action-btn"
-            onClick={() => handleOpenProject()}
-            title="Открыть проект... (Ctrl+O)"
-          >
-            <FolderOpen size={14} />
-            <span>Открыть</span>
-          </button>
-
-          <button
-            className={`cad-action-btn ${isDirty ? "cad-action-btn-highlight" : ""}`}
-            onClick={() => handleSaveProject(false)}
-            disabled={isSaving}
-            title={project.filePath ? "Сохранить проект (Ctrl+S)" : "Сохранить в файл... (Ctrl+S)"}
-          >
-            <Save size={14} />
-            <span>{isSaving ? "Сохранение..." : "Сохранить"}</span>
-          </button>
-
-          <button
-            className="cad-action-btn"
-            onClick={() => handleSaveProject(true)}
-            disabled={isSaving}
-            title="Сохранить проект как... (Ctrl+Shift+S)"
-          >
-            <Download size={14} />
-            <span>Сохранить как...</span>
-          </button>
-        </div>
-
         <div className="cad-top-right">
-          <button
-            className="cad-btn-ghost cad-close-btn"
-            onClick={handleRequestClose}
-            title="Закрыть проект и выйти на начальный экран"
-          >
-            <X size={14} />
-            <span>Закрыть проект</span>
-          </button>
+          {/* Top right is clean */}
         </div>
       </header>
 
@@ -327,9 +285,13 @@ export const App: React.FC = () => {
         {/* Left: KiCad Project Tree */}
         <ProjectTree
           project={project}
+          isDirty={isDirty}
           onSelectFile={handleSelectFile}
           onOpenNewFileDialog={() => setIsNewFileModalOpen(true)}
           onDeleteFile={handleDeleteFile}
+          onSaveProject={() => handleSaveProject(false)}
+          onSaveProjectAs={() => handleSaveProject(true)}
+          onCloseProject={handleRequestClose}
         />
 
         {/* Center: Canvas Viewport */}

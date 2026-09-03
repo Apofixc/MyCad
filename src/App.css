@@ -738,18 +738,138 @@ body, html, #root {
   align-items: center;
 }
 
+.kicad-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
 .kicad-icon-btn {
+  position: relative;
   background: transparent;
   border: none;
   color: var(--cad-text-muted);
   cursor: pointer;
-  padding: 2px 4px;
-  border-radius: 3px;
+  padding: 3px 5px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
 }
 
 .kicad-icon-btn:hover {
   background: var(--cad-bg-surface);
   color: var(--cad-text-primary);
+}
+
+.kicad-btn-save-dirty {
+  color: #f59e0b;
+}
+
+.kicad-btn-save-dirty:hover {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+}
+
+.kicad-icon-btn-active {
+  background: var(--cad-bg-surface);
+  color: var(--cad-accent-blue);
+}
+
+.kicad-save-badge {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #f59e0b;
+}
+
+.kicad-root-dirty-marker {
+  color: #f59e0b;
+  font-weight: 900;
+  font-size: 14px;
+  line-height: 1;
+  margin-left: 2px;
+}
+
+/* Dropdown menu for more project actions */
+.kicad-menu-anchor {
+  position: relative;
+  display: inline-flex;
+}
+
+.kicad-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 1000;
+  min-width: 210px;
+  background: #11151e;
+  border: 1px solid var(--cad-border);
+  border-radius: 6px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+  padding: 4px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  animation: kicadDropIn 0.12s ease-out;
+}
+
+@keyframes kicadDropIn {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.kicad-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  color: #cbd5e1;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.kicad-dropdown-item:hover {
+  background: rgba(56, 189, 248, 0.12);
+  color: #ffffff;
+}
+
+.dropdown-shortcut {
+  margin-left: auto;
+  font-size: 10px;
+  color: #64748b;
+  font-family: monospace;
+}
+
+.kicad-dropdown-separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.08);
+  margin: 3px 0;
+}
+
+.kicad-dropdown-item.item-danger {
+  color: #fca5a5;
+}
+
+.kicad-dropdown-item.item-danger:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #ef4444;
 }
 
 .kicad-tree-content {
