@@ -795,81 +795,79 @@ body, html, #root {
   margin-left: 2px;
 }
 
-/* Dropdown menu for more project actions */
-.kicad-menu-anchor {
-  position: relative;
-  display: inline-flex;
-}
-
-.kicad-dropdown-menu {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 1000;
-  min-width: 210px;
-  background: #11151e;
-  border: 1px solid var(--cad-border);
-  border-radius: 6px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.6), 0 8px 10px -6px rgba(0, 0, 0, 0.4);
+/* ==========================================================================
+   Desktop CAD Context Menu
+   ========================================================================== */
+.cad-context-menu {
+  position: fixed;
+  z-index: 99999;
+  min-width: 220px;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 7px;
+  box-shadow: 0 12px 30px -4px rgba(0, 0, 0, 0.7), 0 6px 12px -2px rgba(0, 0, 0, 0.5);
   padding: 4px;
   display: flex;
   flex-direction: column;
   gap: 2px;
-  animation: kicadDropIn 0.12s ease-out;
+  user-select: none;
+  animation: cadContextFade 0.1s ease-out;
 }
 
-@keyframes kicadDropIn {
+@keyframes cadContextFade {
   from {
     opacity: 0;
-    transform: translateY(-4px);
+    transform: scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: scale(1);
   }
 }
 
-.kicad-dropdown-item {
+.cad-context-item {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 9px;
   width: 100%;
-  padding: 6px 10px;
+  padding: 6px 12px;
   background: transparent;
   border: none;
-  border-radius: 4px;
+  border-radius: 5px;
   font-size: 12px;
-  color: #cbd5e1;
+  color: #e2e8f0;
   cursor: pointer;
   text-align: left;
-  transition: all 0.12s ease;
+  white-space: nowrap;
+  transition: background 0.1s ease, color 0.1s ease;
 }
 
-.kicad-dropdown-item:hover {
-  background: rgba(56, 189, 248, 0.12);
+.cad-context-item:hover {
+  background: rgba(56, 189, 248, 0.15);
   color: #ffffff;
 }
 
-.dropdown-shortcut {
+.context-shortcut {
   margin-left: auto;
-  font-size: 10px;
+  font-size: 11px;
   color: #64748b;
-  font-family: monospace;
+  font-family: inherit;
+  padding-left: 16px;
 }
 
-.kicad-dropdown-separator {
+.cad-context-separator {
   height: 1px;
   background: rgba(255, 255, 255, 0.08);
-  margin: 3px 0;
+  margin: 3px 2px;
 }
 
-.kicad-dropdown-item.item-danger {
+.cad-context-item.item-danger {
   color: #fca5a5;
 }
 
-.kicad-dropdown-item.item-danger:hover {
-  background: rgba(239, 68, 68, 0.18);
-  color: #ef4444;
+.cad-context-item.item-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  color: #f87171;
 }
 
 .kicad-tree-content {

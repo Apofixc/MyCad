@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import { Project, ProjectFile } from "../../types/project";
-import { Save, Download, Plus, LogOut, MoreVertical } from "lucide-react";
+import { Save, Download, Plus, LogOut } from "lucide-react";
 
 interface ProjectTreeProps {
   project: Project;
@@ -23,22 +23,22 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
   onSaveProjectAs,
   onCloseProject,
 }) => {
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
-  // Закрытие выпадающего меню при клике вне его области или Escape
+  // Закрытие контекстного меню при клике в любое место или Escape
   useEffect(() => {
-    if (!isMenuOpen) return;
+    if (!contextMenu) return;
 
     const handleClickOutside = (e: MouseEvent) => {
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
-        setIsMenuOpen(false);
+        setContextMenu(null);
       }
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
-        setIsMenuOpen(false);
+        setContextMenu(null);
       }
     };
 
@@ -48,14 +48,20 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
       document.removeEventListener("mousedown", handleClickOutside);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [isMenuOpen]);
+  }, [contextMenu]);
+
+  const handleRootContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
 
   return (
     <aside className="kicad-tree-panel">
+      {/* Чистый заголовок панели: только основные инструменты */}
       <div className="kicad-tree-header">
         <span className="kicad-tree-title">Проект</span>
-        <div className="kicad-header-actions" ref={menuRef}>
-          {/* 1. Добавление файла (первое основное действие) */}
+        <div className="kicad-header-actions">
+          {/* 1. Создать файл */}
           <button
             className="kicad-icon-btn"
             onClick={onOpenNewFileDialog}
@@ -71,60 +77,20 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
               onClick={onSaveProject}
               title={isDirty ? "Сохранить проект (Ctrl+S) *" : "Проект сохранён (Ctrl+S)"}
             >
-              <Save size={13} />
+              <Save size={14} />
               {isDirty && <span className="kicad-save-badge" />}
             </button>
           )}
-
-          {/* 3. Меню дополнительных и деструктивных действий (защита от случайного нажатия) */}
-          <div className="kicad-menu-anchor">
-            <button
-              className={`kicad-icon-btn ${isMenuOpen ? "kicad-icon-btn-active" : ""}`}
-              onClick={() => setIsMenuOpen((prev) => !prev)}
-              title="Меню действий проекта"
-            >
-              <MoreVertical size={13} />
-            </button>
-
-            {isMenuOpen && (
-              <div className="kicad-dropdown-menu">
-                {onSaveProjectAs && (
-                  <button
-                    className="kicad-dropdown-item"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onSaveProjectAs();
-                    }}
-                  >
-                    <Download size={13} />
-                    <span>Сохранить как...</span>
-                    <span className="dropdown-shortcut">Ctrl+Shift+S</span>
-                  </button>
-                )}
-
-                <div className="kicad-dropdown-separator" />
-
-                {onCloseProject && (
-                  <button
-                    className="kicad-dropdown-item item-danger"
-                    onClick={() => {
-                      setIsMenuOpen(false);
-                      onCloseProject();
-                    }}
-                  >
-                    <LogOut size={13} />
-                    <span>Закрыть проект</span>
-                  </button>
-                )}
-              </div>
-            )}
-          </div>
         </div>
       </div>
 
       <div className="kicad-tree-content">
-        {/* Project root node */}
-        <div className="kicad-tree-item root-item">
+        {/* Project root node: правый клик открывает контекстное меню */}
+        <div
+          className="kicad-tree-item root-item"
+          onContextMenu={handleRootContextMenu}
+          title="Правый клик: действия с проектом (Сохранить, Закрыть)"
+        >
           <svg className="kicad-folder-icon" viewBox="0 0 16 16" width="15" height="15" fill="#38bdf8">
             <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h3.293a1 1 0 0 1 .707.293L7.707 3.5H13.5A1.5 1.5 0 0 1 15 5v7.5a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 1 12.5v-9z" />
           </svg>
@@ -185,6 +151,69 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
           })}
         </div>
       </div>
+
+      {/* Нативное контекстное меню CAD по правому клику */}
+      {contextMenu && (
+        <div
+          className="cad-context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
+          ref={menuRef}
+        >
+          <button
+            className="cad-context-item"
+            onClick={() => {
+              setContextMenu(null);
+              onOpenNewFileDialog();
+            }}
+          >
+            <Plus size={14} />
+            <span>Добавить файл...</span>
+          </button>
+
+          {onSaveProject && (
+            <button
+              className="cad-context-item"
+              onClick={() => {
+                setContextMenu(null);
+                onSaveProject();
+              }}
+            >
+              <Save size={14} />
+              <span>Сохранить</span>
+              <span className="context-shortcut">Ctrl+S</span>
+            </button>
+          )}
+
+          {onSaveProjectAs && (
+            <button
+              className="cad-context-item"
+              onClick={() => {
+                setContextMenu(null);
+                onSaveProjectAs();
+              }}
+            >
+              <Download size={14} />
+              <span>Сохранить как...</span>
+              <span className="context-shortcut">Ctrl+Shift+S</span>
+            </button>
+          )}
+
+          <div className="cad-context-separator" />
+
+          {onCloseProject && (
+            <button
+              className="cad-context-item item-danger"
+              onClick={() => {
+                setContextMenu(null);
+                onCloseProject();
+              }}
+            >
+              <LogOut size={14} />
+              <span>Закрыть проект</span>
+            </button>
+          )}
+        </div>
+      )}
     </aside>
   );
 };
