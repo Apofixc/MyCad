@@ -6,7 +6,6 @@ interface ProjectTreeProps {
   onSelectFile: (fileId: string) => void;
   onOpenNewFileDialog: () => void;
   onDeleteFile: (fileId: string) => void;
-  onCloseProject: () => void;
 }
 
 export const ProjectTree: React.FC<ProjectTreeProps> = ({
@@ -14,7 +13,6 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
   onSelectFile,
   onOpenNewFileDialog,
   onDeleteFile,
-  onCloseProject,
 }) => {
   return (
     <aside className="kicad-tree-panel">
@@ -88,12 +86,6 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
               );
             })}
         </div>
-      </div>
-
-      <div className="kicad-tree-footer">
-        <button className="kicad-btn-subtle" onClick={onCloseProject}>
-          Закрыть проект
-        </button>
       </div>
     </aside>
   );

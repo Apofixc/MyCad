@@ -141,34 +141,6 @@ export const App: React.FC = () => {
           <span className="cad-proj-name">{project.name}.mycad</span>
         </div>
 
-        {/* Clean document tabs */}
-        <div className="cad-doc-tabs">
-          {project.files.map((file) => (
-            <div
-              key={file.id}
-              className={`cad-doc-tab ${file.id === project.activeFileId ? "active" : ""}`}
-              onClick={() => handleSelectFile(file.id)}
-            >
-              {file.type === "board" ? (
-                <span className="tab-indicator board-dot" />
-              ) : (
-                <span className="tab-indicator sch-dot" />
-              )}
-              <span className="cad-tab-title">{file.name}</span>
-              <button
-                className="cad-tab-close"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handleDeleteFile(file.id);
-                }}
-                title={`Удалить ${file.name}`}
-              >
-                ×
-              </button>
-            </div>
-          ))}
-        </div>
-
         <div className="cad-top-right">
           <button className="cad-btn-ghost" onClick={() => setProject(null)}>
             Закрыть проект
@@ -184,7 +156,6 @@ export const App: React.FC = () => {
           onSelectFile={handleSelectFile}
           onOpenNewFileDialog={() => setIsNewFileModalOpen(true)}
           onDeleteFile={handleDeleteFile}
-          onCloseProject={() => setProject(null)}
         />
 
         {/* Center: Canvas Viewport */}
