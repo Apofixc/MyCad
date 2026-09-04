@@ -16,7 +16,6 @@ import {
   Lock,
   Unlock,
   X,
-  Crop,
 } from "lucide-react";
 
 interface InspectorSidebarProps {
@@ -156,19 +155,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
           </div>
           <div className="cad-header-actions">
             <button
-              className="cad-card-btn"
-              onClick={() => {
-                window.dispatchEvent(
-                  new CustomEvent("mycad-preprocess-image", {
-                    detail: { layerKey, imageId: activeImage.id },
-                  })
-                );
-              }}
-              title="Кадрировать или исправить перспективу (4 угла)"
-            >
-              <Crop size={13} />
-            </button>
-            <button
               className={`cad-card-btn ${activeImage.locked ? "active-lock" : ""}`}
               onClick={() => handleUpdateActiveImage({ locked: !activeImage.locked })}
               title={activeImage.locked ? "Разблокировать" : "Заблокировать от перемещения"}
@@ -186,24 +172,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
         </div>
 
         <div className="cad-inspector-body">
-          {/* Quick Preprocessing & Perspective Correction Tool */}
-          <div className="cad-prop-group">
-            <button
-              className="cad-btn-outline with-icon"
-              style={{ width: "100%", justifyContent: "center", padding: "7px 10px" }}
-              onClick={() => {
-                window.dispatchEvent(
-                  new CustomEvent("mycad-preprocess-image", {
-                    detail: { layerKey, imageId: activeImage.id },
-                  })
-                );
-              }}
-              title="Открыть мастер кадрирования и устранения наклона (перспективы)"
-            >
-              <Crop size={14} />
-              <span>Обрезать / Перспектива...</span>
-            </button>
-          </div>
 
           {/* Scale */}
           <div className="cad-prop-group">

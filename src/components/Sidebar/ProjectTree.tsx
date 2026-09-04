@@ -26,6 +26,7 @@ import {
   Trash2,
   PanelLeftClose,
   Crosshair,
+  Crop,
 } from "lucide-react";
 
 interface ProjectTreeProps {
@@ -217,6 +218,8 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
   // Состояние всплывающего быстрого предпросмотра при наведении
   const [hoveredPreview, setHoveredPreview] = useState<{
+    fileId: string;
+    layerKey: "bgTop" | "bgBottom";
     img: LayerImageItem;
     rect: DOMRect;
     layerTitle: string;
@@ -226,6 +229,8 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
   const handleMouseEnterThumb = (
     e: React.MouseEvent<HTMLElement>,
+    fileId: string,
+    layerKey: "bgTop" | "bgBottom",
     img: LayerImageItem,
     layerTitle: string,
     layerColor: string
@@ -233,7 +238,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
     const elRect = e.currentTarget.getBoundingClientRect();
     if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
     hoverTimerRef.current = window.setTimeout(() => {
-      setHoveredPreview({ img, rect: elRect, layerTitle, layerColor });
+      setHoveredPreview({ fileId, layerKey, img, rect: elRect, layerTitle, layerColor });
     }, 180);
   };
 
@@ -331,7 +336,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
           <div
             className="tree-img-thumb-mini"
-            onMouseEnter={(e) => handleMouseEnterThumb(e, img, layerTitle, layerColor)}
+            onMouseEnter={(e) => handleMouseEnterThumb(e, file.id, layerKey, img, layerTitle, layerColor)}
             onMouseLeave={handleMouseLeaveThumb}
             onClick={(e) => {
               e.stopPropagation();
@@ -351,13 +356,32 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
           <span
             className="tree-img-name"
-            onMouseEnter={(e) => handleMouseEnterThumb(e, img, layerTitle, layerColor)}
+            onMouseEnter={(e) => handleMouseEnterThumb(e, file.id, layerKey, img, layerTitle, layerColor)}
             onMouseLeave={handleMouseLeaveThumb}
           >
             {img.name}
           </span>
 
           <div className="tree-img-actions">
+            <button
+              className="tree-img-action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                onSelectFile(file.id);
+                onSelectTarget?.({
+                  type: layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom",
+                  imageId: img.id,
+                });
+                window.dispatchEvent(
+                  new CustomEvent("mycad-preprocess-image", {
+                    detail: { layerKey, imageId: img.id },
+                  })
+                );
+              }}
+              title="Обрезать / Исправить перспективу / Вырезать форму"
+            >
+              <Crop size={11} />
+            </button>
             <button
               className="tree-img-action-btn"
               onClick={(e) => {
@@ -1007,8 +1031,33 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
           </div>
 
           <div className="hover-card-footer">
-            <Crosshair size={11} />
-            <span>Двойной клик — показать на холсте</span>
+            <button
+              className="hover-card-crop-btn"
+              onClick={() => {
+                onSelectFile(hoveredPreview.fileId);
+                onSelectTarget?.({
+                  type: hoveredPreview.layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom",
+                  imageId: hoveredPreview.img.id,
+                });
+                window.dispatchEvent(
+                  new CustomEvent("mycad-preprocess-image", {
+                    detail: {
+                      layerKey: hoveredPreview.layerKey,
+                      imageId: hoveredPreview.img.id,
+                    },
+                  })
+                );
+                setHoveredPreview(null);
+              }}
+              title="Обрезать, исправить перспективу или вырезать форму"
+            >
+              <Crop size={12} />
+              <span>Обрезать / Перспектива</span>
+            </button>
+            <div className="hover-card-hint">
+              <Crosshair size={10} />
+              <span>Двойной клик в дереве — показать на холсте</span>
+            </div>
           </div>
         </div>,
         document.body
