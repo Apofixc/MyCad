@@ -135,6 +135,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     topPts: Point2D[];
     bottomPts: Point2D[];
   }>({ step: 1, activeSide: "top", topPts: [], bottomPts: [] });
+  const [regCursorPos, setRegCursorPos] = useState<Point2D | null>(null);
   const [isShiftPressed, setIsShiftPressed] = useState(false);
 
   // 2-Point Calibration Tool State (legacy compatibility)
@@ -503,6 +504,9 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         if (calibration.active) {
           setCalibration((prev) => ({ ...prev, cursorPos: { x: svgX, y: svgY } }));
         }
+        if (activeImageTool === "register") {
+          setRegCursorPos({ x: svgX, y: svgY });
+        }
       }
 
       if (isPanning) {
@@ -551,6 +555,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       boardData,
       onChangeBoardData,
       calibration.active,
+      activeImageTool,
     ]
   );
 
@@ -1077,20 +1082,21 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     } else if (registrationState.step === 2) {
       const updated = [...registrationState.bottomPts, pt];
       if (updated.length >= 2) {
-        const reg = calculate2PointRegistration(
-          registrationState.topPts[0],
-          registrationState.topPts[1],
-          updated[0],
-          updated[1]
-        );
         const bottomImg = boardData.bgBottom.images[0];
         if (bottomImg) {
+          const reg = calculate2PointRegistration(
+            registrationState.topPts[0],
+            registrationState.topPts[1],
+            updated[0],
+            updated[1],
+            { x: bottomImg.x, y: bottomImg.y }
+          );
           const updatedBottomImages = boardData.bgBottom.images.map((img, idx) =>
             idx === 0
               ? {
                   ...img,
-                  x: Math.round(img.x + reg.dx),
-                  y: Math.round(img.y + reg.dy),
+                  x: reg.newOriginX,
+                  y: reg.newOriginY,
                   rotation: Math.round(((img.rotation + reg.rotationDelta) % 360) * 10) / 10,
                   scale: Math.round(img.scale * reg.scaleRatio * 1000) / 1000,
                 }
@@ -1106,6 +1112,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         }
         setActiveImageTool("transform");
         setRegistrationState({ step: 1, activeSide: "top", topPts: [], bottomPts: [] });
+        setRegCursorPos(null);
       } else {
         setRegistrationState({ ...registrationState, bottomPts: updated });
       }
@@ -1379,11 +1386,61 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           <div className="banner-content">
             <Target size={16} className="banner-icon" />
             <div className="banner-text">
-              <strong>
-                Совмещение слоев Top и Bottom (
-                {registrationState.step === 1 ? "Шаг 1: Лицевая сторона Top" : "Шаг 2: Обратная сторона Bottom"}
-                )
-              </strong>
+              <div style={{ display: "flex", alignItems: "center", gap: "8px", flexWrap: "wrap" }}>
+                <strong>
+                  Совмещение слоев Top и Bottom (
+                  {registrationState.step === 1 ? "Шаг 1: Лицевая сторона Top" : "Шаг 2: Обратная сторона Bottom"}
+                  )
+                </strong>
+
+                {/* Visual Pair Status Chips */}
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "1px 6px",
+                    borderRadius: "3px",
+                    fontSize: "10px",
+                    fontWeight: "bold",
+                    background: "rgba(8, 47, 73, 0.5)",
+                    color: "#38bdf8",
+                    border: "1px solid #0284c7",
+                  }}
+                  title="Пара ①: Top-1 ↔ Bot-1"
+                >
+                  Пара ①: {registrationState.topPts.length > 0 ? "✓ Top" : "Top"} ↔{" "}
+                  {registrationState.bottomPts.length > 0
+                    ? "✓ Bot"
+                    : registrationState.step === 2 && registrationState.bottomPts.length === 0
+                    ? "укажите на Bottom"
+                    : "ожидание"}
+                </span>
+
+                <span
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "4px",
+                    padding: "1px 6px",
+                    borderRadius: "3px",
+                    fontSize: "10px",
+                    fontWeight: "bold",
+                    background: "rgba(69, 26, 3, 0.5)",
+                    color: "#f59e0b",
+                    border: "1px solid #d97706",
+                  }}
+                  title="Пара ②: Top-2 ↔ Bot-2"
+                >
+                  Пара ②: {registrationState.topPts.length > 1 ? "✓ Top" : "Top"} ↔{" "}
+                  {registrationState.bottomPts.length > 1
+                    ? "✓ Bot"
+                    : registrationState.step === 2 && registrationState.bottomPts.length === 1
+                    ? "укажите на Bottom"
+                    : "ожидание"}
+                </span>
+              </div>
+
               <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                 <span
                   style={{
@@ -1399,10 +1456,19 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                 >
                   {isShiftPressed ? "✓ Shift зажат — кликните отверстие" : "Удерживайте Shift + Клик"}
                 </span>
-                <span>
-                  {registrationState.step === 1
-                    ? `Точки на Top: ${registrationState.topPts.length} из 2`
-                    : `Точки на Bottom: ${registrationState.bottomPts.length} из 2`}
+                <span style={{ color: "#e2e8f0", fontSize: "11px" }}>
+                  {registrationState.step === 1 && registrationState.topPts.length === 0 && (
+                    <>Укажите 1-е базовое отверстие на <strong>Top</strong> (Пара ①)</>
+                  )}
+                  {registrationState.step === 1 && registrationState.topPts.length === 1 && (
+                    <>Укажите 2-е базовое отверстие на <strong>Top</strong> (Пара ②)</>
+                  )}
+                  {registrationState.step === 2 && registrationState.bottomPts.length === 0 && (
+                    <>Укажите ТО ЖЕ отверстие на <strong>Bottom</strong> для Пары ① (<span style={{ color: "#38bdf8", fontWeight: "bold" }}>голубой луч</span>)</>
+                  )}
+                  {registrationState.step === 2 && registrationState.bottomPts.length === 1 && (
+                    <>Укажите ТО ЖЕ отверстие на <strong>Bottom</strong> для Пары ② (<span style={{ color: "#f59e0b", fontWeight: "bold" }}>оранжевый луч</span>)</>
+                  )}
                 </span>
               </span>
             </div>
@@ -1762,27 +1828,349 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
               );
             })()}
 
-            {/* Registration Targets in SVG */}
+            {/* Registration Targets in SVG with clear pair linkage */}
             {activeImageTool === "register" && (
               <g className="cad-registration-targets" pointerEvents="none">
-                {registrationState.topPts.map((pt, idx) => (
-                  <g key={`reg_top_${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
-                    <circle cx={0} cy={0} r={6 / zoom} fill="none" stroke="#38bdf8" strokeWidth={2 / zoom} />
-                    <circle cx={0} cy={0} r={2 / zoom} fill="#38bdf8" />
-                    <text x={8 / zoom} y={-8 / zoom} fill="#38bdf8" fontSize={11 / zoom} fontWeight="bold">
-                      Top-{idx + 1}
-                    </text>
-                  </g>
-                ))}
-                {registrationState.bottomPts.map((pt, idx) => (
-                  <g key={`reg_bot_${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
-                    <circle cx={0} cy={0} r={6 / zoom} fill="none" stroke="#60a5fa" strokeWidth={2 / zoom} />
-                    <circle cx={0} cy={0} r={2 / zoom} fill="#60a5fa" />
-                    <text x={8 / zoom} y={-8 / zoom} fill="#60a5fa" fontSize={11 / zoom} fontWeight="bold">
-                      Bot-{idx + 1}
-                    </text>
-                  </g>
-                ))}
+                {/* 1. Top Baseline (between Top-1 and Top-2) */}
+                {registrationState.topPts.length === 2 && (() => {
+                  const p1 = registrationState.topPts[0];
+                  const p2 = registrationState.topPts[1];
+                  const distPx = Math.hypot(p2.x - p1.x, p2.y - p1.y);
+                  const distMm = (distPx / 10).toFixed(1);
+                  const midX = (p1.x + p2.x) / 2;
+                  const midY = (p1.y + p2.y) / 2;
+                  return (
+                    <g key="top_baseline" opacity={0.65}>
+                      <line
+                        x1={p1.x}
+                        y1={p1.y}
+                        x2={p2.x}
+                        y2={p2.y}
+                        stroke="#94a3b8"
+                        strokeWidth={1.5 / zoom}
+                        strokeDasharray="4 4"
+                      />
+                      <rect
+                        x={midX - 34 / zoom}
+                        y={midY - 9 / zoom}
+                        width={68 / zoom}
+                        height={18 / zoom}
+                        rx={4 / zoom}
+                        fill="rgba(15, 23, 42, 0.85)"
+                        stroke="#475569"
+                        strokeWidth={1 / zoom}
+                      />
+                      <text
+                        x={midX}
+                        y={midY + 4 / zoom}
+                        textAnchor="middle"
+                        fill="#cbd5e1"
+                        fontSize={9.5 / zoom}
+                        fontFamily="monospace"
+                      >
+                        База: {distMm}мм
+                      </text>
+                    </g>
+                  );
+                })()}
+
+                {/* 2. Step 1 Elastic Line from Top-1 to cursor */}
+                {registrationState.step === 1 && registrationState.topPts.length === 1 && regCursorPos && (() => {
+                  const p1 = registrationState.topPts[0];
+                  const cur = regCursorPos;
+                  const distMm = (Math.hypot(cur.x - p1.x, cur.y - p1.y) / 10).toFixed(1);
+                  return (
+                    <g key="step1_rubber_band">
+                      <line
+                        x1={p1.x}
+                        y1={p1.y}
+                        x2={cur.x}
+                        y2={cur.y}
+                        stroke="#f59e0b"
+                        strokeWidth={1.5 / zoom}
+                        strokeDasharray="4 4"
+                        opacity={0.8}
+                      />
+                      <rect
+                        x={cur.x + 10 / zoom}
+                        y={cur.y - 20 / zoom}
+                        width={90 / zoom}
+                        height={18 / zoom}
+                        rx={3 / zoom}
+                        fill="rgba(15, 23, 42, 0.9)"
+                        stroke="#f59e0b"
+                        strokeWidth={1 / zoom}
+                      />
+                      <text
+                        x={cur.x + 15 / zoom}
+                        y={cur.y - 7 / zoom}
+                        fill="#f59e0b"
+                        fontSize={9.5 / zoom}
+                        fontWeight="bold"
+                      >
+                        Репер ②: {distMm} мм
+                      </text>
+                    </g>
+                  );
+                })()}
+
+                {/* 3. Pair 1 Link: Connecting Top-1 and Bot-1 */}
+                {registrationState.topPts[0] && registrationState.bottomPts[0] && (() => {
+                  const t1 = registrationState.topPts[0];
+                  const b1 = registrationState.bottomPts[0];
+                  const distMm = (Math.hypot(b1.x - t1.x, b1.y - t1.y) / 10).toFixed(2);
+                  const midX = (t1.x + b1.x) / 2;
+                  const midY = (t1.y + b1.y) / 2;
+                  return (
+                    <g key="pair1_linked">
+                      <line
+                        x1={t1.x}
+                        y1={t1.y}
+                        x2={b1.x}
+                        y2={b1.y}
+                        stroke="#38bdf8"
+                        strokeWidth={2.5 / zoom}
+                        strokeDasharray="5 3"
+                      />
+                      <rect
+                        x={midX - 48 / zoom}
+                        y={midY - 10 / zoom}
+                        width={96 / zoom}
+                        height={20 / zoom}
+                        rx={4 / zoom}
+                        fill="rgba(8, 47, 73, 0.9)"
+                        stroke="#38bdf8"
+                        strokeWidth={1 / zoom}
+                      />
+                      <text
+                        x={midX}
+                        y={midY + 4 / zoom}
+                        textAnchor="middle"
+                        fill="#38bdf8"
+                        fontSize={10 / zoom}
+                        fontWeight="bold"
+                      >
+                        Пара ①: {distMm} мм
+                      </text>
+                    </g>
+                  );
+                })()}
+
+                {/* 4. Pair 1 Elastic Guide: from Top-1 to cursor while waiting for Bot-1 */}
+                {registrationState.step === 2 && registrationState.bottomPts.length === 0 && registrationState.topPts[0] && regCursorPos && (() => {
+                  const t1 = registrationState.topPts[0];
+                  const cur = regCursorPos;
+                  const distMm = (Math.hypot(cur.x - t1.x, cur.y - t1.y) / 10).toFixed(1);
+                  return (
+                    <g key="pair1_guide">
+                      <line
+                        x1={t1.x}
+                        y1={t1.y}
+                        x2={cur.x}
+                        y2={cur.y}
+                        stroke="#38bdf8"
+                        strokeWidth={2 / zoom}
+                        strokeDasharray="6 4"
+                      />
+                      <rect
+                        x={cur.x + 12 / zoom}
+                        y={cur.y - 20 / zoom}
+                        width={130 / zoom}
+                        height={22 / zoom}
+                        rx={4 / zoom}
+                        fill="rgba(8, 47, 73, 0.92)"
+                        stroke="#38bdf8"
+                        strokeWidth={1 / zoom}
+                      />
+                      <text
+                        x={cur.x + 18 / zoom}
+                        y={cur.y - 5 / zoom}
+                        fill="#38bdf8"
+                        fontSize={10 / zoom}
+                        fontWeight="bold"
+                      >
+                        Ответная точка Пары ① ({distMm} мм)
+                      </text>
+                    </g>
+                  );
+                })()}
+
+                {/* 5. Pair 2 Link: Connecting Top-2 and Bot-2 */}
+                {registrationState.topPts[1] && registrationState.bottomPts[1] && (() => {
+                  const t2 = registrationState.topPts[1];
+                  const b2 = registrationState.bottomPts[1];
+                  const distMm = (Math.hypot(b2.x - t2.x, b2.y - t2.y) / 10).toFixed(2);
+                  const midX = (t2.x + b2.x) / 2;
+                  const midY = (t2.y + b2.y) / 2;
+                  return (
+                    <g key="pair2_linked">
+                      <line
+                        x1={t2.x}
+                        y1={t2.y}
+                        x2={b2.x}
+                        y2={b2.y}
+                        stroke="#f59e0b"
+                        strokeWidth={2.5 / zoom}
+                        strokeDasharray="5 3"
+                      />
+                      <rect
+                        x={midX - 48 / zoom}
+                        y={midY - 10 / zoom}
+                        width={96 / zoom}
+                        height={20 / zoom}
+                        rx={4 / zoom}
+                        fill="rgba(69, 26, 3, 0.9)"
+                        stroke="#f59e0b"
+                        strokeWidth={1 / zoom}
+                      />
+                      <text
+                        x={midX}
+                        y={midY + 4 / zoom}
+                        textAnchor="middle"
+                        fill="#f59e0b"
+                        fontSize={10 / zoom}
+                        fontWeight="bold"
+                      >
+                        Пара ②: {distMm} мм
+                      </text>
+                    </g>
+                  );
+                })()}
+
+                {/* 6. Pair 2 Elastic Guide: from Top-2 to cursor while waiting for Bot-2 */}
+                {registrationState.step === 2 && registrationState.bottomPts.length === 1 && registrationState.topPts[1] && regCursorPos && (() => {
+                  const t2 = registrationState.topPts[1];
+                  const cur = regCursorPos;
+                  const distMm = (Math.hypot(cur.x - t2.x, cur.y - t2.y) / 10).toFixed(1);
+                  return (
+                    <g key="pair2_guide">
+                      <line
+                        x1={t2.x}
+                        y1={t2.y}
+                        x2={cur.x}
+                        y2={cur.y}
+                        stroke="#f59e0b"
+                        strokeWidth={2 / zoom}
+                        strokeDasharray="6 4"
+                      />
+                      <rect
+                        x={cur.x + 12 / zoom}
+                        y={cur.y - 20 / zoom}
+                        width={130 / zoom}
+                        height={22 / zoom}
+                        rx={4 / zoom}
+                        fill="rgba(69, 26, 3, 0.92)"
+                        stroke="#f59e0b"
+                        strokeWidth={1 / zoom}
+                      />
+                      <text
+                        x={cur.x + 18 / zoom}
+                        y={cur.y - 5 / zoom}
+                        fill="#f59e0b"
+                        fontSize={10 / zoom}
+                        fontWeight="bold"
+                      >
+                        Ответная точка Пары ② ({distMm} мм)
+                      </text>
+                    </g>
+                  );
+                })()}
+
+                {/* 7. Render Top Fiducials with Pair Identifiers */}
+                {registrationState.topPts.map((pt, idx) => {
+                  const isPair1 = idx === 0;
+                  const color = isPair1 ? "#38bdf8" : "#f59e0b";
+                  const bgFill = isPair1 ? "rgba(8, 47, 73, 0.9)" : "rgba(69, 26, 3, 0.9)";
+                  const isWaiting =
+                    registrationState.step === 2 &&
+                    ((isPair1 && registrationState.bottomPts.length === 0) ||
+                      (!isPair1 && registrationState.bottomPts.length === 1));
+
+                  return (
+                    <g key={`reg_top_${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
+                      {/* Pulsing radar ring when this point is actively awaiting counterpart */}
+                      {isWaiting && (
+                        <circle cx={0} cy={0} r={10 / zoom} fill="none" stroke={color} strokeWidth={1.5 / zoom}>
+                          <animate
+                            attributeName="r"
+                            values={`${8 / zoom};${24 / zoom}`}
+                            dur="1.3s"
+                            repeatCount="indefinite"
+                          />
+                          <animate
+                            attributeName="opacity"
+                            values="1;0"
+                            dur="1.3s"
+                            repeatCount="indefinite"
+                          />
+                        </circle>
+                      )}
+
+                      {/* Precision Crosshair */}
+                      <line x1={-12 / zoom} y1={0} x2={12 / zoom} y2={0} stroke={color} strokeWidth={1 / zoom} />
+                      <line x1={0} y1={-12 / zoom} x2={0} y2={12 / zoom} stroke={color} strokeWidth={1 / zoom} />
+                      <circle cx={0} cy={0} r={7 / zoom} fill="none" stroke={color} strokeWidth={1.8 / zoom} />
+                      <circle cx={0} cy={0} r={2.5 / zoom} fill={color} />
+
+                      {/* Badge Pill */}
+                      <rect
+                        x={10 / zoom}
+                        y={-18 / zoom}
+                        width={64 / zoom}
+                        height={18 / zoom}
+                        rx={3 / zoom}
+                        fill={bgFill}
+                        stroke={color}
+                        strokeWidth={1 / zoom}
+                      />
+                      <text
+                        x={15 / zoom}
+                        y={-5 / zoom}
+                        fill={color}
+                        fontSize={9.5 / zoom}
+                        fontWeight="bold"
+                      >
+                        {isPair1 ? "① Top" : "② Top"}
+                      </text>
+                    </g>
+                  );
+                })}
+
+                {/* 8. Render Bottom Fiducials with Pair Identifiers */}
+                {registrationState.bottomPts.map((pt, idx) => {
+                  const isPair1 = idx === 0;
+                  const color = isPair1 ? "#38bdf8" : "#f59e0b";
+                  const bgFill = isPair1 ? "rgba(8, 47, 73, 0.9)" : "rgba(69, 26, 3, 0.9)";
+
+                  return (
+                    <g key={`reg_bot_${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
+                      <line x1={-12 / zoom} y1={0} x2={12 / zoom} y2={0} stroke={color} strokeWidth={1 / zoom} />
+                      <line x1={0} y1={-12 / zoom} x2={0} y2={12 / zoom} stroke={color} strokeWidth={1 / zoom} />
+                      <circle cx={0} cy={0} r={7 / zoom} fill="none" stroke={color} strokeWidth={1.8 / zoom} />
+                      <circle cx={0} cy={0} r={2.5 / zoom} fill={color} />
+
+                      <rect
+                        x={10 / zoom}
+                        y={-18 / zoom}
+                        width={64 / zoom}
+                        height={18 / zoom}
+                        rx={3 / zoom}
+                        fill={bgFill}
+                        stroke={color}
+                        strokeWidth={1 / zoom}
+                      />
+                      <text
+                        x={15 / zoom}
+                        y={-5 / zoom}
+                        fill={color}
+                        fontSize={9.5 / zoom}
+                        fontWeight="bold"
+                      >
+                        {isPair1 ? "① Bot" : "② Bot"}
+                      </text>
+                    </g>
+                  );
+                })}
               </g>
             )}
 

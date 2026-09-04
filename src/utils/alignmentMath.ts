@@ -96,8 +96,11 @@ export function calculate2PointRegistration(
   source1: Point2D,
   source2: Point2D,
   target1: Point2D,
-  target2: Point2D
+  target2: Point2D,
+  targetOrigin?: Point2D
 ): {
+  newOriginX: number;
+  newOriginY: number;
   dx: number;
   dy: number;
   rotationDelta: number;
@@ -115,11 +118,33 @@ export function calculate2PointRegistration(
   while (rotationDelta > 180) rotationDelta -= 360;
   while (rotationDelta < -180) rotationDelta += 360;
 
-  // Смещение центра target1 к source1
+  // Simple delta for target1 -> source1
   const dx = source1.x - target1.x;
   const dy = source1.y - target1.y;
 
+  let newOriginX = targetOrigin ? targetOrigin.x + dx : target1.x + dx;
+  let newOriginY = targetOrigin ? targetOrigin.y + dy : target1.y + dy;
+
+  if (targetOrigin) {
+    const rad = (rotationDelta * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+
+    // Vector from target1 pivot to image origin
+    const vx = targetOrigin.x - target1.x;
+    const vy = targetOrigin.y - target1.y;
+
+    // Rotate and scale this pivot offset
+    const rotVx = (vx * cos - vy * sin) * scaleRatio;
+    const rotVy = (vx * sin + vy * cos) * scaleRatio;
+
+    newOriginX = Math.round((source1.x + rotVx) * 10) / 10;
+    newOriginY = Math.round((source1.y + rotVy) * 10) / 10;
+  }
+
   return {
+    newOriginX,
+    newOriginY,
     dx: Math.round(dx * 10) / 10,
     dy: Math.round(dy * 10) / 10,
     rotationDelta: Math.round(rotationDelta * 100) / 100,
