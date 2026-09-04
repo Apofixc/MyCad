@@ -131,9 +131,11 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   const [blinkSide, setBlinkSide] = useState<"top" | "bottom">("top");
   const [registrationState, setRegistrationState] = useState<{
     step: 1 | 2;
+    activeSide: "top" | "bottom";
     topPts: Point2D[];
     bottomPts: Point2D[];
-  }>({ step: 1, topPts: [], bottomPts: [] });
+  }>({ step: 1, activeSide: "top", topPts: [], bottomPts: [] });
+  const [isShiftPressed, setIsShiftPressed] = useState(false);
 
   // 2-Point Calibration Tool State (legacy compatibility)
   const [calibration, setCalibration] = useState<CalibrationState>({
@@ -633,7 +635,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       if (e.key === "Escape") {
         if (activeImageTool && activeImageTool !== "transform") {
           setActiveImageTool("transform");
-          setRegistrationState({ step: 1, topPts: [], bottomPts: [] });
+          setRegistrationState({ step: 1, activeSide: "top", topPts: [], bottomPts: [] });
           return;
         }
         if (calibration.active) {
@@ -952,6 +954,10 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         return;
       }
 
+      if (e.key === "Shift" && !e.repeat) {
+        setIsShiftPressed(true);
+      }
+
       if (toolMode === "images" && activeImage && !activeImage.locked) {
         const step = e.shiftKey ? 10 : 1;
         let dx = 0;
@@ -1003,6 +1009,9 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       if (e.code === "Space") {
         setIsSpacePressed(false);
       }
+      if (e.key === "Shift") {
+        setIsShiftPressed(false);
+      }
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -1038,9 +1047,15 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     setActiveImageTool("transform");
   };
 
-  // Apply 2-Point Registration (Tool 4)
+  // Apply 2-Point Registration (Tool 4) with Shift+Click and automatic layer switching
   const handleRegistrationCanvasClick = (e: React.MouseEvent) => {
     if (activeImageTool !== "register" || !containerRef.current) return;
+    // Require Shift key to place a fiducial point, preventing accidental clicks while navigating
+    if (!e.shiftKey) return;
+
+    e.preventDefault();
+    e.stopPropagation();
+
     const rect = containerRef.current.getBoundingClientRect();
     const clickX = Math.round((e.clientX - rect.left - pan.x) / zoom);
     const clickY = Math.round((e.clientY - rect.top - pan.y) / zoom);
@@ -1049,7 +1064,13 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     if (registrationState.step === 1) {
       const updated = [...registrationState.topPts, pt];
       if (updated.length >= 2) {
-        setRegistrationState({ step: 2, topPts: updated, bottomPts: [] });
+        // Automatically switch to Bottom layer view!
+        const botTargetId = boardData.bgBottom.images[0]?.id;
+        onChangeBoardData({
+          ...boardData,
+          selectedTarget: botTargetId ? { type: "layer_bg_bottom", imageId: botTargetId } : null,
+        });
+        setRegistrationState({ step: 2, activeSide: "bottom", topPts: updated, bottomPts: [] });
       } else {
         setRegistrationState({ ...registrationState, topPts: updated });
       }
@@ -1084,7 +1105,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           });
         }
         setActiveImageTool("transform");
-        setRegistrationState({ step: 1, topPts: [], bottomPts: [] });
+        setRegistrationState({ step: 1, activeSide: "top", topPts: [], bottomPts: [] });
       } else {
         setRegistrationState({ ...registrationState, bottomPts: updated });
       }
@@ -1270,10 +1291,18 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
             <button
               className={`cad-tool-btn ${activeImageTool === "register" ? "btn-active-highlight" : ""}`}
               onClick={() => {
-                setActiveImageTool(activeImageTool === "register" ? "transform" : "register");
-                setRegistrationState({ step: 1, topPts: [], bottomPts: [] });
+                const nextTool = activeImageTool === "register" ? "transform" : "register";
+                setActiveImageTool(nextTool);
+                setRegistrationState({ step: 1, activeSide: "top", topPts: [], bottomPts: [] });
+                if (nextTool === "register") {
+                  const topTargetId = boardData.bgTop.images[0]?.id;
+                  onChangeBoardData({
+                    ...boardData,
+                    selectedTarget: topTargetId ? { type: "layer_bg_top", imageId: topTargetId } : null,
+                  });
+                }
               }}
-              title="Совмещение слоев Top и Bottom по 2 переходным отверстиям (VIA)"
+              title="Совмещение слоев Top и Bottom по 2 переходным отверстиям (Shift + Клик)"
             >
               <Target size={13} />
               <span>Совмещение</span>
@@ -1350,23 +1379,96 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           <div className="banner-content">
             <Target size={16} className="banner-icon" />
             <div className="banner-text">
-              <strong>Совмещение слоев Top и Bottom по реперам</strong>
-              <span>
-                {registrationState.step === 1
-                  ? `Кликните 2 переходных отверстия на слое Top (${registrationState.topPts.length}/2)`
-                  : `Теперь кликните те же 2 отверстия на слое Bottom (${registrationState.bottomPts.length}/2)`}
+              <strong>
+                Совмещение слоев Top и Bottom (
+                {registrationState.step === 1 ? "Шаг 1: Лицевая сторона Top" : "Шаг 2: Обратная сторона Bottom"}
+                )
+              </strong>
+              <span style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <span
+                  style={{
+                    display: "inline-block",
+                    padding: "1px 6px",
+                    borderRadius: "3px",
+                    fontSize: "10px",
+                    fontWeight: "bold",
+                    background: isShiftPressed ? "rgba(34, 197, 94, 0.2)" : "rgba(234, 179, 8, 0.2)",
+                    color: isShiftPressed ? "#4ade80" : "#facc15",
+                    border: isShiftPressed ? "1px solid #22c55e" : "1px solid #eab308",
+                  }}
+                >
+                  {isShiftPressed ? "✓ Shift зажат — кликните отверстие" : "Удерживайте Shift + Клик"}
+                </span>
+                <span>
+                  {registrationState.step === 1
+                    ? `Точки на Top: ${registrationState.topPts.length} из 2`
+                    : `Точки на Bottom: ${registrationState.bottomPts.length} из 2`}
+                </span>
               </span>
             </div>
           </div>
-          <button
-            className="cad-btn-flat btn-xs"
-            onClick={() => {
-              setActiveImageTool("transform");
-              setRegistrationState({ step: 1, topPts: [], bottomPts: [] });
-            }}
-          >
-            Отмена (Esc)
-          </button>
+
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {/* Manual Layer Switch Toggle Button */}
+            <button
+              className="cad-btn-flat btn-xs"
+              onClick={() => {
+                const nextSide = registrationState.activeSide === "top" ? "bottom" : "top";
+                setRegistrationState({
+                  ...registrationState,
+                  activeSide: nextSide,
+                  step: nextSide === "top" ? 1 : 2,
+                });
+                const targetId =
+                  nextSide === "top"
+                    ? boardData.bgTop.images[0]?.id
+                    : boardData.bgBottom.images[0]?.id;
+                onChangeBoardData({
+                  ...boardData,
+                  selectedTarget: targetId
+                    ? { type: nextSide === "top" ? "layer_bg_top" : "layer_bg_bottom", imageId: targetId }
+                    : null,
+                });
+              }}
+              title="Переключить отображаемый слой вручную"
+            >
+              Слой: {registrationState.activeSide === "top" ? "Top" : "Bottom"} (переключить)
+            </button>
+
+            {/* Undo last point button */}
+            {((registrationState.step === 1 && registrationState.topPts.length > 0) ||
+              (registrationState.step === 2 && registrationState.bottomPts.length > 0)) && (
+              <button
+                className="cad-btn-flat btn-xs"
+                onClick={() => {
+                  if (registrationState.step === 2 && registrationState.bottomPts.length > 0) {
+                    setRegistrationState({
+                      ...registrationState,
+                      bottomPts: registrationState.bottomPts.slice(0, -1),
+                    });
+                  } else if (registrationState.step === 1 && registrationState.topPts.length > 0) {
+                    setRegistrationState({
+                      ...registrationState,
+                      topPts: registrationState.topPts.slice(0, -1),
+                    });
+                  }
+                }}
+                title="Отменить последнюю точку"
+              >
+                Отменить точку
+              </button>
+            )}
+
+            <button
+              className="cad-btn-flat btn-xs"
+              onClick={() => {
+                setActiveImageTool("transform");
+                setRegistrationState({ step: 1, activeSide: "top", topPts: [], bottomPts: [] });
+              }}
+            >
+              Отмена (Esc)
+            </button>
+          </div>
         </div>
       )}
 
@@ -1620,8 +1722,20 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                 <>
                   {/* Layer 1: Bottom Images (solder side) */}
                   {boardData.bgBottom.visible &&
-                    (activeImageTool !== "blink" || blinkSide === "bottom") &&
-                    boardData.bgBottom.images.map((img) => renderImageItem("bgBottom", img))}
+                    (activeImageTool !== "blink" || blinkSide === "bottom") && (
+                      <g
+                        style={{
+                          opacity:
+                            activeImageTool === "register"
+                              ? registrationState.activeSide === "bottom"
+                                ? 1
+                                : 0.25
+                              : undefined,
+                        }}
+                      >
+                        {boardData.bgBottom.images.map((img) => renderImageItem("bgBottom", img))}
+                      </g>
+                    )}
 
                   {/* Layer 2: Top Images (component side) */}
                   {boardData.bgTop.visible &&
@@ -1632,6 +1746,14 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                             ? "url(#cad-curtain-clip)"
                             : undefined
                         }
+                        style={{
+                          opacity:
+                            activeImageTool === "register"
+                              ? registrationState.activeSide === "top"
+                                ? 1
+                                : 0.25
+                              : undefined,
+                        }}
                       >
                         {boardData.bgTop.images.map((img) => renderImageItem("bgTop", img))}
                       </g>
