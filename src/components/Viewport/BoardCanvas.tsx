@@ -70,7 +70,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   const [draggingCompId, setDraggingCompId] = useState<string | null>(null);
   const [compDragOffset, setCompDragOffset] = useState({ x: 0, y: 0 });
 
-  // Image Dragging
+  // Image Dragging (High performance rAF-based local drag)
   const [draggingImage, setDraggingImage] = useState<{
     layerKey: "bgTop" | "bgBottom";
     id: string;
@@ -79,6 +79,17 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     startMouseX: number;
     startMouseY: number;
   } | null>(null);
+  const [imageDragDelta, setImageDragDelta] = useState<{ dx: number; dy: number } | null>(null);
+  const dragDeltaRef = useRef<{ dx: number; dy: number }>({ dx: 0, dy: 0 });
+  const draggingImageRef = useRef<{
+    layerKey: "bgTop" | "bgBottom";
+    id: string;
+    origX: number;
+    origY: number;
+    startMouseX: number;
+    startMouseY: number;
+  } | null>(null);
+  const rafIdRef = useRef<number | null>(null);
 
   // 2-Point Calibration Tool State
   const [calibration, setCalibration] = useState<CalibrationState>({
@@ -244,30 +255,42 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     image: LayerImageItem
   ) => {
     e.stopPropagation();
+    e.preventDefault();
     if (toolMode !== "images" || calibration.active) return;
 
     // Select the image and target layer
     const targetType = layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom";
-    onChangeBoardData({
-      ...boardData,
-      [layerKey]: {
-        ...boardData[layerKey],
-        activeImageId: image.id,
-      },
-      selectedTarget: { type: targetType, imageId: image.id },
-      selectedComponentId: undefined,
-    });
+    const isTargetSame =
+      boardData[layerKey].activeImageId === image.id &&
+      boardData.selectedTarget?.type === targetType &&
+      (boardData.selectedTarget as any).imageId === image.id;
+
+    if (!isTargetSame) {
+      onChangeBoardData({
+        ...boardData,
+        [layerKey]: {
+          ...boardData[layerKey],
+          activeImageId: image.id,
+        },
+        selectedTarget: { type: targetType, imageId: image.id },
+        selectedComponentId: undefined,
+      });
+    }
 
     if (image.locked) return; // Do not drag locked image
 
-    setDraggingImage({
+    const dragInfo = {
       layerKey,
       id: image.id,
       origX: image.x,
       origY: image.y,
       startMouseX: e.clientX,
       startMouseY: e.clientY,
-    });
+    };
+    draggingImageRef.current = dragInfo;
+    dragDeltaRef.current = { dx: 0, dy: 0 };
+    setDraggingImage(dragInfo);
+    setImageDragDelta({ dx: 0, dy: 0 });
   };
 
   // Global Mouse Move & Dragging
@@ -299,27 +322,21 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           c.id === draggingCompId ? { ...c, x: snappedX, y: snappedY } : c
         );
         onChangeBoardData({ ...boardData, components: updatedComps });
-      } else if (draggingImage) {
-        const deltaX = (e.clientX - draggingImage.startMouseX) / zoom;
-        const deltaY = (e.clientY - draggingImage.startMouseY) / zoom;
+      } else if (draggingImageRef.current) {
+        const dImg = draggingImageRef.current;
+        const deltaX = (e.clientX - dImg.startMouseX) / zoom;
+        const deltaY = (e.clientY - dImg.startMouseY) / zoom;
+        const dx = Math.round(deltaX);
+        const dy = Math.round(deltaY);
 
-        const rawX = draggingImage.origX + deltaX;
-        const rawY = draggingImage.origY + deltaY;
-        const snappedX = Math.round(rawX);
-        const snappedY = Math.round(rawY);
+        dragDeltaRef.current = { dx, dy };
 
-        const targetLayer = boardData[draggingImage.layerKey];
-        const updatedImages = targetLayer.images.map((img) =>
-          img.id === draggingImage.id ? { ...img, x: snappedX, y: snappedY } : img
-        );
-
-        onChangeBoardData({
-          ...boardData,
-          [draggingImage.layerKey]: {
-            ...targetLayer,
-            images: updatedImages,
-          },
-        });
+        if (rafIdRef.current === null) {
+          rafIdRef.current = requestAnimationFrame(() => {
+            setImageDragDelta(dragDeltaRef.current);
+            rafIdRef.current = null;
+          });
+        }
       }
     },
     [
@@ -327,7 +344,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       panStart,
       draggingCompId,
       compDragOffset,
-      draggingImage,
       pan,
       zoom,
       boardData,
@@ -337,10 +353,39 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   );
 
   const handleMouseUp = useCallback(() => {
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
     setIsPanning(false);
     setDraggingCompId(null);
-    setDraggingImage(null);
-  }, []);
+
+    const dImg = draggingImageRef.current;
+    if (dImg) {
+      const { dx, dy } = dragDeltaRef.current;
+      if (dx !== 0 || dy !== 0) {
+        const targetLayer = boardData[dImg.layerKey];
+        const snappedX = Math.round(dImg.origX + dx);
+        const snappedY = Math.round(dImg.origY + dy);
+        const updatedImages = targetLayer.images.map((img) =>
+          img.id === dImg.id ? { ...img, x: snappedX, y: snappedY } : img
+        );
+
+        onChangeBoardData({
+          ...boardData,
+          [dImg.layerKey]: {
+            ...targetLayer,
+            images: updatedImages,
+          },
+        });
+      }
+      draggingImageRef.current = null;
+      setDraggingImage(null);
+      setImageDragDelta(null);
+      dragDeltaRef.current = { dx: 0, dy: 0 };
+    }
+  }, [boardData, onChangeBoardData]);
 
   useEffect(() => {
     window.addEventListener("mousemove", handleMouseMove);
@@ -643,9 +688,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     );
   };
 
-  const hasAnyImages =
-    boardData.bgTop.images.length > 0 || boardData.bgBottom.images.length > 0;
-
   const visibleComponents = boardData.components.filter((c) => {
     const side = c.layer || "top";
     if (side === "top" && !boardData.showCompsTop) return false;
@@ -656,14 +698,26 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   return (
     <div
       ref={containerRef}
-      className={`cad-canvas-container ${calibration.active ? "cursor-calibrating" : ""}`}
+      className={`cad-canvas-container ${isPanning ? "panning" : ""} ${
+        toolMode === "components" ? "mode-components" : "mode-images"
+      } ${draggingImage ? "image-dragging" : ""}`}
+      style={{
+        cursor: isPanning
+          ? "grabbing"
+          : draggingImage
+          ? "grabbing"
+          : calibration.active
+          ? "crosshair"
+          : "default",
+        userSelect: "none",
+      }}
+      onContextMenu={(e) => e.preventDefault()}
       onWheel={handleWheel}
       onMouseDown={handleCanvasMouseDown}
-      onContextMenu={(e) => e.preventDefault()}
       onDragOver={(e) => {
         e.preventDefault();
         e.stopPropagation();
-        if (!isCanvasDragOver) setIsCanvasDragOver(true);
+        setIsCanvasDragOver(true);
       }}
       onDragLeave={(e) => {
         e.preventDefault();
@@ -1040,6 +1094,11 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                 activeLayerKey === layerKey &&
                 activeImage?.id === img.id;
 
+              const isBeingDragged =
+                draggingImage?.id === img.id && imageDragDelta !== null;
+              const posX = img.x + (isBeingDragged ? imageDragDelta.dx : 0);
+              const posY = img.y + (isBeingDragged ? imageDragDelta.dy : 0);
+
               const w = img.width || 800;
               const h = img.height || 600;
               const strokeColor = layerKey === "bgTop" ? "#38bdf8" : "#a855f7";
@@ -1048,7 +1107,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                 <g
                   key={img.id}
                   id={`cad-img-${img.id}`}
-                  transform={`translate(${img.x}, ${img.y}) rotate(${img.rotation}) scale(${
+                  transform={`translate(${posX}, ${posY}) rotate(${img.rotation}) scale(${
                     img.mirrored ? -img.scale : img.scale
                   }, ${img.flipV ? -img.scale : img.scale}) translate(${img.mirrored ? -w : 0}, ${
                     img.flipV ? -h : 0
@@ -1058,7 +1117,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                       img.invert ? "invert(1)" : ""
                     }`,
                     opacity: img.opacity,
-                    cursor: toolMode === "images" ? (img.locked ? "not-allowed" : "move") : "default",
+                    cursor: toolMode === "images" ? (img.locked ? "not-allowed" : isBeingDragged ? "grabbing" : "grab") : "default",
+                    userSelect: "none",
                   }}
                   onMouseDown={(e) => handleStartImageDrag(e, layerKey, img)}
                 >
@@ -1069,6 +1129,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     width={w}
                     height={h}
                     preserveAspectRatio="none"
+                    style={{ pointerEvents: "auto", userSelect: "none" }}
                   />
                   {isSelected && (
                     <g className="cad-img-selection-box" pointerEvents="none">
@@ -1108,41 +1169,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
               </>
             );
           })()}
-
-          {/* If no images loaded at all */}
-          {!hasAnyImages && (
-            <g
-              transform="translate(0, 0)"
-              style={{ cursor: "pointer" }}
-              onClick={async () => {
-                const files = await openImageFileDialog();
-                if (files.length > 0) {
-                  await handleAddImagesToLayer(files);
-                }
-              }}
-            >
-              <rect
-                x="0"
-                y="0"
-                width="520"
-                height="320"
-                fill="rgba(15, 23, 42, 0.45)"
-                stroke="#334155"
-                strokeWidth="1"
-                strokeDasharray="4 4"
-                rx="6"
-              />
-              <text x="260" y="135" textAnchor="middle" fill="#94a3b8" fontSize="14" fontFamily="sans-serif">
-                Подложки платы не загружены
-              </text>
-              <text x="260" y="165" textAnchor="middle" fill="#38bdf8" fontSize="13" fontFamily="sans-serif" fontWeight="bold">
-                Нажмите сюда или перетащите фото платы
-              </text>
-              <text x="260" y="190" textAnchor="middle" fill="#64748b" fontSize="11" fontFamily="sans-serif">
-                Поддерживаются форматы PNG, JPG, WEBP, BMP, SVG
-              </text>
-            </g>
-          )}
 
           {/* Interactive Calibration Guide Lines & Points */}
           {calibration.active && (
