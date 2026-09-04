@@ -25,6 +25,7 @@ import {
   Check,
   X,
   Image as ImageIcon,
+  Maximize2,
 } from "lucide-react";
 
 interface BoardCanvasProps {
@@ -65,6 +66,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   const [pan, setPan] = useState({ x: 250, y: 200 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+  const [isSpacePressed, setIsSpacePressed] = useState(false);
+  const [cursorCadPos, setCursorCadPos] = useState({ x: 0, y: 0 });
 
   // Component Dragging
   const [draggingCompId, setDraggingCompId] = useState<string | null>(null);
@@ -166,6 +169,62 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     return () => window.removeEventListener("mycad-start-calibration", handleCalibrationEvent);
   }, [boardData]);
 
+  // Fit all items (images + components) nicely inside viewport
+  const handleFitAll = useCallback(() => {
+    if (!containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const viewportW = rect.width || 800;
+    const viewportH = rect.height || 600;
+
+    let minX = Infinity;
+    let minY = Infinity;
+    let maxX = -Infinity;
+    let maxY = -Infinity;
+
+    // Scan all images in active layers
+    const allImages = [...boardData.bgTop.images, ...boardData.bgBottom.images];
+    allImages.forEach((img) => {
+      if (!img.visible) return;
+      const w = (img.width || 800) * (img.scale || 1);
+      const h = (img.height || 600) * (img.scale || 1);
+      minX = Math.min(minX, img.x);
+      minY = Math.min(minY, img.y);
+      maxX = Math.max(maxX, img.x + w);
+      maxY = Math.max(maxY, img.y + h);
+    });
+
+    // Scan all components
+    boardData.components.forEach((comp) => {
+      minX = Math.min(minX, comp.x - 30);
+      minY = Math.min(minY, comp.y - 30);
+      maxX = Math.max(maxX, comp.x + 30);
+      maxY = Math.max(maxY, comp.y + 30);
+    });
+
+    if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) {
+      setZoom(1);
+      setPan({ x: Math.round(viewportW / 2 - 200), y: Math.round(viewportH / 2 - 150) });
+      return;
+    }
+
+    const contentW = maxX - minX;
+    const contentH = maxY - minY;
+    const padding = 60; // px margin
+
+    const scaleX = (viewportW - padding * 2) / Math.max(contentW, 100);
+    const scaleY = (viewportH - padding * 2) / Math.max(contentH, 100);
+    const newZ = Math.min(Math.max(Math.min(scaleX, scaleY), 0.02), 5);
+
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const newPanX = Math.round(viewportW / 2 - centerX * newZ);
+    const newPanY = Math.round(viewportH / 2 - centerY * newZ);
+
+    setZoom(newZ);
+    setPan({ x: newPanX, y: newPanY });
+  }, [boardData]);
+
   // Zoom with Wheel
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
@@ -174,8 +233,21 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
+    // Shift + Wheel = Horizontal pan
+    if (e.shiftKey) {
+      setPan((p) => ({ ...p, x: p.x - e.deltaY }));
+      return;
+    }
+
+    // Alt + Wheel = Vertical pan
+    if (e.altKey) {
+      setPan((p) => ({ ...p, y: p.y - e.deltaY }));
+      return;
+    }
+
     const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
-    const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.15), 10);
+    // Allow zooming out down to 0.02 (2%) and in up to 30.0 (3000%)
+    const newZoom = Math.min(Math.max(zoom * zoomFactor, 0.02), 30);
 
     const newPanX = mouseX - (mouseX - pan.x) * (newZoom / zoom);
     const newPanY = mouseY - (mouseY - pan.y) * (newZoom / zoom);
@@ -186,32 +258,41 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
   // Canvas Mouse Down
   const handleCanvasMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 0 || e.button === 1 || e.button === 2) {
-      if (calibration.active) {
-        if (!containerRef.current) return;
-        const rect = containerRef.current.getBoundingClientRect();
-        const svgX = (e.clientX - rect.left - pan.x) / zoom;
-        const svgY = (e.clientY - rect.top - pan.y) / zoom;
+    if (calibration.active) {
+      if (!containerRef.current) return;
+      const rect = containerRef.current.getBoundingClientRect();
+      const svgX = (e.clientX - rect.left - pan.x) / zoom;
+      const svgY = (e.clientY - rect.top - pan.y) / zoom;
 
-        if (calibration.step === 1) {
-          setCalibration((prev) => ({
-            ...prev,
-            step: 2,
-            pt1: { x: svgX, y: svgY },
-          }));
-        } else if (calibration.step === 2 && calibration.pt1) {
-          const pt2 = { x: svgX, y: svgY };
-          const distPx = Math.hypot(pt2.x - calibration.pt1.x, pt2.y - calibration.pt1.y);
-          setCalibration((prev) => ({
-            ...prev,
-            pt2,
-            measuredPx: distPx,
-            showModal: true,
-          }));
-        }
-        return;
+      if (calibration.step === 1) {
+        setCalibration((prev) => ({
+          ...prev,
+          step: 2,
+          pt1: { x: svgX, y: svgY },
+        }));
+      } else if (calibration.step === 2 && calibration.pt1) {
+        const pt2 = { x: svgX, y: svgY };
+        const distPx = Math.hypot(pt2.x - calibration.pt1.x, pt2.y - calibration.pt1.y);
+        setCalibration((prev) => ({
+          ...prev,
+          pt2,
+          measuredPx: distPx,
+          showModal: true,
+        }));
       }
+      return;
+    }
 
+    // Middle click (wheel) or Right click or Space+click -> Always pan canvas
+    if (e.button === 1 || e.button === 2 || isSpacePressed) {
+      e.preventDefault();
+      setIsPanning(true);
+      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      return;
+    }
+
+    // Left click on background
+    if (e.button === 0) {
       setIsPanning(true);
       setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
 
@@ -231,6 +312,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
   // Component Drag Start
   const handleStartCompDrag = (e: React.MouseEvent, compId: string) => {
+    if (e.button !== 0 || isSpacePressed) return;
     e.stopPropagation();
     if (toolMode !== "components") return;
 
@@ -254,6 +336,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     layerKey: "bgTop" | "bgBottom",
     image: LayerImageItem
   ) => {
+    if (e.button !== 0 || isSpacePressed) return;
     e.stopPropagation();
     e.preventDefault();
     if (toolMode !== "images" || calibration.active) return;
@@ -296,11 +379,14 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   // Global Mouse Move & Dragging
   const handleMouseMove = useCallback(
     (e: MouseEvent) => {
-      if (calibration.active && containerRef.current) {
+      if (containerRef.current) {
         const rect = containerRef.current.getBoundingClientRect();
-        const svgX = (e.clientX - rect.left - pan.x) / zoom;
-        const svgY = (e.clientY - rect.top - pan.y) / zoom;
-        setCalibration((prev) => ({ ...prev, cursorPos: { x: svgX, y: svgY } }));
+        const svgX = Math.round((e.clientX - rect.left - pan.x) / zoom);
+        const svgY = Math.round((e.clientY - rect.top - pan.y) / zoom);
+        setCursorCadPos({ x: svgX, y: svgY });
+        if (calibration.active) {
+          setCalibration((prev) => ({ ...prev, cursorPos: { x: svgX, y: svgY } }));
+        }
       }
 
       if (isPanning) {
@@ -396,11 +482,39 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     };
   }, [handleMouseMove, handleMouseUp]);
 
-  // Keyboard Nudge for Active Image & Shortcuts
+  // Keyboard Shortcuts & Navigation
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
+
+      if (e.code === "Space" && !e.repeat) {
+        setIsSpacePressed(true);
+      }
+
+      if (e.key === "f" || e.key === "F" || e.key === "а" || e.key === "А" || e.key === "Home") {
+        e.preventDefault();
+        handleFitAll();
+        return;
+      }
+
+      if (e.key === "1" && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        e.preventDefault();
+        setZoom(1);
+        return;
+      }
+
+      if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        setZoom((z) => Math.min(z * 1.25, 30));
+        return;
+      }
+
+      if (e.key === "-" || e.key === "_") {
+        e.preventDefault();
+        setZoom((z) => Math.max(z / 1.25, 0.02));
+        return;
+      }
 
       if (e.key === "Escape") {
         if (calibration.active) {
@@ -625,9 +739,19 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       }
     };
 
+    const handleKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space") {
+        setIsSpacePressed(false);
+      }
+    };
+
     window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toolMode, activeImage, activeLayerKey, boardData]);
+    window.addEventListener("keyup", handleKeyUp);
+    return () => {
+      window.removeEventListener("keydown", handleKeyDown);
+      window.removeEventListener("keyup", handleKeyUp);
+    };
+  }, [toolMode, activeImage, activeLayerKey, boardData, handleFitAll]);
 
   // Apply 2-Point Calibration
   const handleApplyCalibration = () => {
@@ -699,11 +823,15 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     <div
       ref={containerRef}
       className={`cad-canvas-container ${isPanning ? "panning" : ""} ${
-        toolMode === "components" ? "mode-components" : "mode-images"
-      } ${draggingImage ? "image-dragging" : ""}`}
+        isSpacePressed ? "space-pressed" : ""
+      } ${toolMode === "components" ? "mode-components" : "mode-images"} ${
+        draggingImage ? "image-dragging" : ""
+      }`}
       style={{
         cursor: isPanning
           ? "grabbing"
+          : isSpacePressed
+          ? "grab"
           : draggingImage
           ? "grabbing"
           : calibration.active
@@ -947,26 +1075,38 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         <div className="toolbar-section zoom-tools">
           <button
             className="cad-tool-btn icon-only"
-            onClick={() => setZoom((z) => Math.min(z * 1.25, 10))}
-            title="Приблизить"
+            onClick={() => setZoom((z) => Math.min(z * 1.25, 30))}
+            title="Приблизить (+)"
           >
             +
           </button>
-          <span className="zoom-indicator">{Math.round(zoom * 100)}%</span>
+          <span
+            className="zoom-indicator"
+            title="Текущий масштаб (клик — сброс 100%)"
+            onClick={() => setZoom(1)}
+            style={{ cursor: "pointer", minWidth: "48px", textAlign: "center" }}
+          >
+            {Math.round(zoom * 100)}%
+          </span>
           <button
             className="cad-tool-btn icon-only"
-            onClick={() => setZoom((z) => Math.max(z / 1.25, 0.15))}
-            title="Отдалить"
+            onClick={() => setZoom((z) => Math.max(z / 1.25, 0.02))}
+            title="Отдалить (−)"
           >
             −
           </button>
           <button
             className="cad-tool-btn"
-            onClick={() => {
-              setZoom(1);
-              setPan({ x: 250, y: 200 });
-            }}
-            title="Сбросить масштаб"
+            onClick={handleFitAll}
+            title="Вписать всё в экран (Горячая клавиша: F / Home)"
+          >
+            <Maximize2 size={12} />
+            <span>Вписать</span>
+          </button>
+          <button
+            className="cad-tool-btn"
+            onClick={() => setZoom(1)}
+            title="Сбросить масштаб 1:1 (Горячая клавиша: 1)"
           >
             1:1
           </button>
@@ -1075,13 +1215,13 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         </defs>
 
         <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
-          {/* Background Grid */}
+          {/* Background Grid (Infinite Plane) */}
           <rect
             id="cad-bg-plane"
-            x="-10000"
-            y="-10000"
-            width="20000"
-            height="20000"
+            x="-500000"
+            y="-500000"
+            width="1000000"
+            height="1000000"
             fill="url(#cad-grid-pattern)"
           />
 
@@ -1244,6 +1384,31 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           ))}
         </g>
       </svg>
+
+      {/* Bottom CAD Viewport Status Bar */}
+      <div className="cad-canvas-status-bar" onMouseDown={(e) => e.stopPropagation()}>
+        <div className="status-item">
+          <span className="status-label">X:</span>
+          <span className="status-val">{(cursorCadPos.x / 10).toFixed(1)} мм</span>
+        </div>
+        <div className="status-item">
+          <span className="status-label">Y:</span>
+          <span className="status-val">{(cursorCadPos.y / 10).toFixed(1)} мм</span>
+        </div>
+        <div className="status-divider" />
+        <div className="status-item">
+          <span className="status-label">Масштаб:</span>
+          <span className="status-val">{Math.round(zoom * 100)}%</span>
+        </div>
+        <div className="status-divider" />
+        <div className="status-hints">
+          <span>Пробел + ЛКМ / Колёсико: Панорама</span>
+          <span>•</span>
+          <span>F: Вписать всё</span>
+          <span>•</span>
+          <span>Колёсико: Масштаб (2%–3000%)</span>
+        </div>
+      </div>
     </div>
   );
 };

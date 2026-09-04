@@ -1413,8 +1413,105 @@ body, html, #root {
   height: 100%;
   position: relative;
   overflow: hidden;
-  cursor: crosshair;
+  outline: none;
 }
+
+.cad-canvas-container.panning {
+  cursor: grabbing !important;
+}
+
+.cad-canvas-container.space-pressed {
+  cursor: grab !important;
+}
+
+.cad-canvas-container.image-dragging {
+  cursor: grabbing !important;
+}
+
+.cad-canvas-dragover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  border: 2px dashed var(--cad-accent-blue);
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.cad-canvas-dragover-overlay .dragover-icon {
+  color: var(--cad-accent-blue);
+}
+
+.cad-canvas-dragover-overlay h3 {
+  font-size: 16px;
+  color: #f8fafc;
+  margin: 0;
+}
+
+.cad-canvas-dragover-overlay p {
+  font-size: 12px;
+  color: var(--cad-text-muted);
+  margin: 0;
+}
+
+.cad-canvas-status-bar {
+  position: absolute;
+  bottom: 8px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(18, 22, 31, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid var(--cad-border);
+  border-radius: 4px;
+  padding: 3px 10px;
+  z-index: 10;
+  font-size: 11px;
+  color: var(--cad-text-secondary);
+  pointer-events: auto;
+  user-select: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+}
+
+.cad-canvas-status-bar .status-item {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cad-canvas-status-bar .status-label {
+  color: var(--cad-text-muted);
+  font-size: 10px;
+  text-transform: uppercase;
+  font-weight: 600;
+}
+
+.cad-canvas-status-bar .status-val {
+  font-family: monospace;
+  color: var(--cad-text-primary);
+  min-width: 44px;
+}
+
+.cad-canvas-status-bar .status-divider {
+  width: 1px;
+  height: 12px;
+  background: var(--cad-border);
+}
+
+.cad-canvas-status-bar .status-hints {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--cad-text-muted);
+  font-size: 10px;
+}
+
 
 .cad-canvas-toolbar {
   position: absolute;
