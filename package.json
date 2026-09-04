@@ -8,8 +8,7 @@
     "build": "tsc --noEmit && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "tauri": "tauri",
-    "extract-reference": "node tools/extract_reference.mjs backup_20260830_124935 reference"
+    "tauri": "tauri"
   },
   "dependencies": {
     "@tauri-apps/api": "^2.9.0",
