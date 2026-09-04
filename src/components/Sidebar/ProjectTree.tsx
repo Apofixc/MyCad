@@ -32,7 +32,7 @@ interface ProjectTreeProps {
   onSelectTarget?: (target: BoardSelectionTarget) => void;
   onToggleLayerVisibility?: (
     fileId: string,
-    layerKey: "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
+    layerKey: "bg" | "comps" | "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
   ) => void;
 }
 
@@ -51,7 +51,14 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [expandedBoards, setExpandedBoards] = useState<Record<string, boolean>>({});
+  const [expandedLayerGroups, setExpandedLayerGroups] = useState<Record<string, boolean>>({});
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const isGroupExpanded = (key: string) => expandedLayerGroups[key] !== false;
+  const toggleGroupExpand = (key: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedLayerGroups((prev) => ({ ...prev, [key]: !isGroupExpanded(key) }));
+  };
 
   // By default, expand active board
   useEffect(() => {
@@ -213,161 +220,287 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                   {isActive && <div className="kicad-active-marker" />}
                 </div>
 
-                {/* Dropdown Layer Tree under .board file */}
+                {/* 2 Основных слоя: Подложка и Компоненты (виртуально делятся на Top и Bottom) */}
                 {isBoard && isExpanded && boardData && (
                   <div className="kicad-layers-subgroup">
-                    {/* Layer 1: Фон Top */}
+                    {/* ===== ОСНОВНОЙ СЛОЙ 1: ПОДЛОЖКА ===== */}
                     {(() => {
+                      const bgKey = `${file.id}_bg`;
+                      const isBgExpanded = isGroupExpanded(bgKey);
+                      const isBgVisible = boardData.bgTop.visible || boardData.bgBottom.visible;
                       const topImagesCount = boardData.bgTop.images?.length || (boardData.bgTop.image ? 1 : 0);
-                      return (
-                        <div
-                          className={`kicad-layer-tree-item ${
-                            isActive && activeSelectionTarget?.type === "layer_bg_top" ? "selected" : ""
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectFile(file.id);
-                            onSelectTarget?.({
-                              type: "layer_bg_top",
-                              imageId: boardData.bgTop.activeImageId || boardData.bgTop.images?.[0]?.id,
-                            });
-                          }}
-                          title="Клик: инструменты и менеджер изображений слоя Top"
-                        >
-                          <button
-                            className="layer-vis-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              onToggleLayerVisibility?.(file.id, "bgTop");
-                            }}
-                            title={boardData.bgTop.visible ? "Скрыть фон Top" : "Показать фон Top"}
-                          >
-                            {boardData.bgTop.visible ? (
-                              <Eye size={13} className="eye-on" />
-                            ) : (
-                              <EyeOff size={13} className="eye-off" />
-                            )}
-                          </button>
-                          <span className="layer-color-dot dot-bg-top" />
-                          <ImageIcon size={12} className="layer-type-icon" />
-                          <span className="layer-title">Фон Top (Лицевая)</span>
-                          {topImagesCount > 0 && (
-                            <span className="layer-badge-img" title={`Загружено снимков: ${topImagesCount}`}>
-                              {topImagesCount > 1 ? `${topImagesCount} IMG` : "IMG"}
-                            </span>
-                          )}
-                        </div>
-                      );
-                    })()}
-
-                    {/* Layer 2: Фон Bottom */}
-                    {(() => {
                       const bottomImagesCount = boardData.bgBottom.images?.length || (boardData.bgBottom.image ? 1 : 0);
+                      const totalBgImages = topImagesCount + bottomImagesCount;
+                      const isBgActive =
+                        isActive &&
+                        (activeSelectionTarget?.type === "layer_bg_top" ||
+                         activeSelectionTarget?.type === "layer_bg_bottom");
+
                       return (
-                        <div
-                          className={`kicad-layer-tree-item ${
-                            isActive && activeSelectionTarget?.type === "layer_bg_bottom" ? "selected" : ""
-                          }`}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onSelectFile(file.id);
-                            onSelectTarget?.({
-                              type: "layer_bg_bottom",
-                              imageId: boardData.bgBottom.activeImageId || boardData.bgBottom.images?.[0]?.id,
-                            });
-                          }}
-                          title="Клик: инструменты и менеджер изображений слоя Bottom"
-                        >
-                          <button
-                            className="layer-vis-btn"
+                        <div className="kicad-layer-group">
+                          {/* Заголовок основного слоя: Подложка */}
+                          <div
+                            className={`kicad-layer-group-header ${isBgActive ? "group-active" : ""}`}
                             onClick={(e) => {
                               e.stopPropagation();
-                              onToggleLayerVisibility?.(file.id, "bgBottom");
+                              onSelectFile(file.id);
+                              const targetSide =
+                                activeSelectionTarget?.type === "layer_bg_bottom"
+                                  ? "layer_bg_bottom"
+                                  : "layer_bg_top";
+                              const activeImgId =
+                                targetSide === "layer_bg_bottom"
+                                  ? boardData.bgBottom.activeImageId || boardData.bgBottom.images?.[0]?.id
+                                  : boardData.bgTop.activeImageId || boardData.bgTop.images?.[0]?.id;
+                              onSelectTarget?.({ type: targetSide, imageId: activeImgId });
                             }}
-                            title={boardData.bgBottom.visible ? "Скрыть фон Bottom" : "Показать фон Bottom"}
+                            title="Слой: Подложка (нажмите для выбора, стрелка — раскрыть стороны)"
                           >
-                            {boardData.bgBottom.visible ? (
-                              <Eye size={13} className="eye-on" />
-                            ) : (
-                              <EyeOff size={13} className="eye-off" />
+                            <button
+                              className="kicad-group-expand-btn"
+                              onClick={(e) => toggleGroupExpand(bgKey, e)}
+                              title={isBgExpanded ? "Свернуть стороны" : "Развернуть стороны"}
+                            >
+                              {isBgExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                            </button>
+
+                            <button
+                              className="layer-vis-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleLayerVisibility?.(file.id, "bg");
+                              }}
+                              title={isBgVisible ? "Скрыть подложку (обе стороны)" : "Показать подложку"}
+                            >
+                              {isBgVisible ? (
+                                <Eye size={13} className="eye-on" />
+                              ) : (
+                                <EyeOff size={13} className="eye-off" />
+                              )}
+                            </button>
+
+                            <ImageIcon size={13} className="layer-group-icon icon-bg" />
+                            <span className="layer-group-title">Подложка</span>
+
+                            {totalBgImages > 0 && (
+                              <span className="layer-badge-img" title={`Всего снимков: ${totalBgImages}`}>
+                                {totalBgImages > 1 ? `${totalBgImages} IMG` : "IMG"}
+                              </span>
                             )}
-                          </button>
-                          <span className="layer-color-dot dot-bg-bottom" />
-                          <ImageIcon size={12} className="layer-type-icon" />
-                          <span className="layer-title">Фон Bottom (Обратная)</span>
-                          {boardData.bgBottom.mirrored && <span className="layer-badge-flip">FLIP</span>}
-                          {bottomImagesCount > 0 && (
-                            <span className="layer-badge-img" title={`Загружено снимков: ${bottomImagesCount}`}>
-                              {bottomImagesCount > 1 ? `${bottomImagesCount} IMG` : "IMG"}
-                            </span>
+                          </div>
+
+                          {/* Виртуальные подслои: Top (Лицевая) и Bottom (Обратная) */}
+                          {isBgExpanded && (
+                            <div className="kicad-sub-layers-list">
+                              {/* Виртуальный подслой: Top */}
+                              <div
+                                className={`kicad-layer-tree-item virtual-sub ${
+                                  isActive && activeSelectionTarget?.type === "layer_bg_top" ? "selected" : ""
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectFile(file.id);
+                                  onSelectTarget?.({
+                                    type: "layer_bg_top",
+                                    imageId: boardData.bgTop.activeImageId || boardData.bgTop.images?.[0]?.id,
+                                  });
+                                }}
+                                title="Подложка: Top (Лицевая сторона)"
+                              >
+                                <button
+                                  className="layer-vis-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleLayerVisibility?.(file.id, "bgTop");
+                                  }}
+                                  title={boardData.bgTop.visible ? "Скрыть Top" : "Показать Top"}
+                                >
+                                  {boardData.bgTop.visible ? (
+                                    <Eye size={12} className="eye-on" />
+                                  ) : (
+                                    <EyeOff size={12} className="eye-off" />
+                                  )}
+                                </button>
+                                <span className="layer-color-dot dot-bg-top" />
+                                <span className="layer-title">Top (Лицевая)</span>
+                                {topImagesCount > 0 && (
+                                  <span className="layer-badge-sub-img">
+                                    {topImagesCount > 1 ? `${topImagesCount}` : "1"}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Виртуальный подслой: Bottom */}
+                              <div
+                                className={`kicad-layer-tree-item virtual-sub ${
+                                  isActive && activeSelectionTarget?.type === "layer_bg_bottom" ? "selected" : ""
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectFile(file.id);
+                                  onSelectTarget?.({
+                                    type: "layer_bg_bottom",
+                                    imageId: boardData.bgBottom.activeImageId || boardData.bgBottom.images?.[0]?.id,
+                                  });
+                                }}
+                                title="Подложка: Bottom (Обратная сторона)"
+                              >
+                                <button
+                                  className="layer-vis-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleLayerVisibility?.(file.id, "bgBottom");
+                                  }}
+                                  title={boardData.bgBottom.visible ? "Скрыть Bottom" : "Показать Bottom"}
+                                >
+                                  {boardData.bgBottom.visible ? (
+                                    <Eye size={12} className="eye-on" />
+                                  ) : (
+                                    <EyeOff size={12} className="eye-off" />
+                                  )}
+                                </button>
+                                <span className="layer-color-dot dot-bg-bottom" />
+                                <span className="layer-title">Bottom (Обратная)</span>
+                                {boardData.bgBottom.mirrored && <span className="layer-badge-flip">FLIP</span>}
+                                {bottomImagesCount > 0 && (
+                                  <span className="layer-badge-sub-img">
+                                    {bottomImagesCount > 1 ? `${bottomImagesCount}` : "1"}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
                           )}
                         </div>
                       );
                     })()}
 
-                    {/* Layer 3: Компоненты Top */}
-                    <div
-                      className={`kicad-layer-tree-item ${
-                        isActive && activeSelectionTarget?.type === "layer_comps_top" ? "selected" : ""
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectFile(file.id);
-                        onSelectTarget?.({ type: "layer_comps_top" });
-                      }}
-                      title="Клик: просмотр компонентов Top в Инспекторе"
-                    >
-                      <button
-                        className="layer-vis-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleLayerVisibility?.(file.id, "compsTop");
-                        }}
-                        title={boardData.showCompsTop ? "Скрыть компоненты Top" : "Показать компоненты Top"}
-                      >
-                        {boardData.showCompsTop ? (
-                          <Eye size={13} className="eye-on" />
-                        ) : (
-                          <EyeOff size={13} className="eye-off" />
-                        )}
-                      </button>
-                      <span className="layer-color-dot dot-comps-top" />
-                      <Cpu size={12} className="layer-type-icon" />
-                      <span className="layer-title">Компоненты Top</span>
-                      <span className="layer-count-badge">{topCompsCount}</span>
-                    </div>
+                    {/* ===== ОСНОВНОЙ СЛОЙ 2: КОМПОНЕНТЫ ===== */}
+                    {(() => {
+                      const compsKey = `${file.id}_comps`;
+                      const isCompsExpanded = isGroupExpanded(compsKey);
+                      const isCompsVisible = boardData.showCompsTop || boardData.showCompsBottom;
+                      const isCompsActive =
+                        isActive &&
+                        (activeSelectionTarget?.type === "layer_comps_top" ||
+                         activeSelectionTarget?.type === "layer_comps_bottom" ||
+                         activeSelectionTarget?.type === "component");
 
-                    {/* Layer 4: Компоненты Bottom */}
-                    <div
-                      className={`kicad-layer-tree-item ${
-                        isActive && activeSelectionTarget?.type === "layer_comps_bottom" ? "selected" : ""
-                      }`}
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onSelectFile(file.id);
-                        onSelectTarget?.({ type: "layer_comps_bottom" });
-                      }}
-                      title="Клик: просмотр компонентов Bottom в Инспекторе"
-                    >
-                      <button
-                        className="layer-vis-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          onToggleLayerVisibility?.(file.id, "compsBottom");
-                        }}
-                        title={boardData.showCompsBottom ? "Скрыть компоненты Bottom" : "Показать компоненты Bottom"}
-                      >
-                        {boardData.showCompsBottom ? (
-                          <Eye size={13} className="eye-on" />
-                        ) : (
-                          <EyeOff size={13} className="eye-off" />
-                        )}
-                      </button>
-                      <span className="layer-color-dot dot-comps-bottom" />
-                      <Cpu size={12} className="layer-type-icon" />
-                      <span className="layer-title">Компоненты Bottom</span>
-                      <span className="layer-count-badge">{bottomCompsCount}</span>
-                    </div>
+                      return (
+                        <div className="kicad-layer-group">
+                          {/* Заголовок основного слоя: Компоненты */}
+                          <div
+                            className={`kicad-layer-group-header ${isCompsActive ? "group-active" : ""}`}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              onSelectFile(file.id);
+                              const targetSide =
+                                activeSelectionTarget?.type === "layer_comps_bottom"
+                                  ? "layer_comps_bottom"
+                                  : "layer_comps_top";
+                              onSelectTarget?.({ type: targetSide });
+                            }}
+                            title="Слой: Компоненты (нажмите для выбора, стрелка — раскрыть стороны)"
+                          >
+                            <button
+                              className="kicad-group-expand-btn"
+                              onClick={(e) => toggleGroupExpand(compsKey, e)}
+                              title={isCompsExpanded ? "Свернуть стороны" : "Развернуть стороны"}
+                            >
+                              {isCompsExpanded ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                            </button>
+
+                            <button
+                              className="layer-vis-btn"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleLayerVisibility?.(file.id, "comps");
+                              }}
+                              title={isCompsVisible ? "Скрыть компоненты (обе стороны)" : "Показать компоненты"}
+                            >
+                              {isCompsVisible ? (
+                                <Eye size={13} className="eye-on" />
+                              ) : (
+                                <EyeOff size={13} className="eye-off" />
+                              )}
+                            </button>
+
+                            <Cpu size={13} className="layer-group-icon icon-comps" />
+                            <span className="layer-group-title">Компоненты</span>
+
+                            <span className="layer-count-badge" title={`Всего деталей: ${boardData.components.length}`}>
+                              {boardData.components.length}
+                            </span>
+                          </div>
+
+                          {/* Виртуальные подслои: Top (Лицевая) и Bottom (Обратная) */}
+                          {isCompsExpanded && (
+                            <div className="kicad-sub-layers-list">
+                              {/* Виртуальный подслой: Top */}
+                              <div
+                                className={`kicad-layer-tree-item virtual-sub ${
+                                  isActive && activeSelectionTarget?.type === "layer_comps_top" ? "selected" : ""
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectFile(file.id);
+                                  onSelectTarget?.({ type: "layer_comps_top" });
+                                }}
+                                title="Компоненты: Top (Лицевая сторона)"
+                              >
+                                <button
+                                  className="layer-vis-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleLayerVisibility?.(file.id, "compsTop");
+                                  }}
+                                  title={boardData.showCompsTop ? "Скрыть Top" : "Показать Top"}
+                                >
+                                  {boardData.showCompsTop ? (
+                                    <Eye size={12} className="eye-on" />
+                                  ) : (
+                                    <EyeOff size={12} className="eye-off" />
+                                  )}
+                                </button>
+                                <span className="layer-color-dot dot-comps-top" />
+                                <span className="layer-title">Top (Лицевая)</span>
+                                <span className="layer-count-badge">{topCompsCount}</span>
+                              </div>
+
+                              {/* Виртуальный подслой: Bottom */}
+                              <div
+                                className={`kicad-layer-tree-item virtual-sub ${
+                                  isActive && activeSelectionTarget?.type === "layer_comps_bottom" ? "selected" : ""
+                                }`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  onSelectFile(file.id);
+                                  onSelectTarget?.({ type: "layer_comps_bottom" });
+                                }}
+                                title="Компоненты: Bottom (Обратная сторона)"
+                              >
+                                <button
+                                  className="layer-vis-btn"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onToggleLayerVisibility?.(file.id, "compsBottom");
+                                  }}
+                                  title={boardData.showCompsBottom ? "Скрыть Bottom" : "Показать Bottom"}
+                                >
+                                  {boardData.showCompsBottom ? (
+                                    <Eye size={12} className="eye-on" />
+                                  ) : (
+                                    <EyeOff size={12} className="eye-off" />
+                                  )}
+                                </button>
+                                <span className="layer-color-dot dot-comps-bottom" />
+                                <span className="layer-title">Bottom (Обратная)</span>
+                                <span className="layer-count-badge">{bottomCompsCount}</span>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                   </div>
                 )}
               </div>

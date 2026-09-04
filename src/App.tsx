@@ -228,7 +228,7 @@ export const App: React.FC = () => {
 
   const handleToggleLayerVisibility = (
     fileId: string,
-    layerKey: "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
+    layerKey: "bg" | "comps" | "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
   ) => {
     if (!project) return;
     const targetFile = project.files.find((f) => f.id === fileId);
@@ -237,7 +237,15 @@ export const App: React.FC = () => {
     const board = normalizeBoardData(targetFile.data as BoardData);
     let updatedBoard = { ...board };
 
-    if (layerKey === "bgTop") {
+    if (layerKey === "bg") {
+      const anyVisible = board.bgTop.visible || board.bgBottom.visible;
+      updatedBoard.bgTop = { ...board.bgTop, visible: !anyVisible };
+      updatedBoard.bgBottom = { ...board.bgBottom, visible: !anyVisible };
+    } else if (layerKey === "comps") {
+      const anyVisible = board.showCompsTop || board.showCompsBottom;
+      updatedBoard.showCompsTop = !anyVisible;
+      updatedBoard.showCompsBottom = !anyVisible;
+    } else if (layerKey === "bgTop") {
       updatedBoard.bgTop = { ...board.bgTop, visible: !board.bgTop.visible };
     } else if (layerKey === "bgBottom") {
       updatedBoard.bgBottom = { ...board.bgBottom, visible: !board.bgBottom.visible };

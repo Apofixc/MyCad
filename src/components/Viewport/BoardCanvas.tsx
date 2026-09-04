@@ -598,18 +598,23 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                 onSelectTarget?.({ type: "layer_bg_top", imageId: boardData.bgTop.images[0]?.id });
               }
             }}
-            title="Инструменты работы с подложками (фото, сканы, калибровка, совмещение)"
+            title="Слой: Подложка (сканы, фото, калибровка, совмещение)"
           >
             <ImageIcon size={13} />
-            <span>Подложка (Фото)</span>
+            <span>Подложка</span>
           </button>
           <button
             className={`cad-mode-tab ${toolMode === "components" ? "active" : ""}`}
-            onClick={() => setToolMode("components")}
-            title="Инструменты монтажной платы (добавление компонентов, расстановка, трассировка)"
+            onClick={() => {
+              setToolMode("components");
+              if (selectedTarget?.type !== "layer_comps_top" && selectedTarget?.type !== "layer_comps_bottom" && selectedTarget?.type !== "component") {
+                onSelectTarget?.({ type: "layer_comps_top" });
+              }
+            }}
+            title="Слой: Компоненты (монтаж деталей, расстановка, трассировка)"
           >
             <Cpu size={13} />
-            <span>Монтаж и детали</span>
+            <span>Компоненты</span>
           </button>
         </div>
 
@@ -757,6 +762,30 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         {/* CONTEXTUAL TOOLBAR 2: Mounting & Components Mode */}
         {toolMode === "components" && (
           <div className="toolbar-section comp-tools">
+            {/* Active Component Side Indicator & Switch */}
+            <div className="cad-layer-switch-pill" title="Сторона монтажа: Лицевая (Top) / Обратная (Bottom)">
+              <button
+                className={`pill-btn ${boardData.activeSideView !== "bottom" ? "active" : ""}`}
+                onClick={() => {
+                  onChangeBoardData({ ...boardData, activeSideView: "top" });
+                  onSelectTarget?.({ type: "layer_comps_top" });
+                }}
+              >
+                Top
+              </button>
+              <button
+                className={`pill-btn ${boardData.activeSideView === "bottom" ? "active" : ""}`}
+                onClick={() => {
+                  onChangeBoardData({ ...boardData, activeSideView: "bottom" });
+                  onSelectTarget?.({ type: "layer_comps_bottom" });
+                }}
+              >
+                Bottom
+              </button>
+            </div>
+
+            <div className="toolbar-divider" />
+
             <span className="section-label">Добавить:</span>
             <button className="cad-tool-btn" onClick={() => handleAddComponent("resistor")} title="Резистор">
               R

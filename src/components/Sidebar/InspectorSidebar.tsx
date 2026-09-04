@@ -126,7 +126,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
     const isTop = layerKey === "bgTop";
     const targetType = isTop ? "layer_bg_top" : "layer_bg_bottom";
     const bg = isTop ? boardData.bgTop : boardData.bgBottom;
-    const title = isTop ? "Слой: Фон Top (Лицевая)" : "Слой: Фон Bottom (Обратная)";
+    const title = isTop ? "Подложка: Top (Лицевая)" : "Подложка: Bottom (Обратная)";
     const fileInputRef = isTop ? fileInputTopRef : fileInputBottomRef;
 
     const updateBg = (updates: Partial<typeof bg>) => {
@@ -702,7 +702,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
     return (
       <aside className="cad-inspector-panel">
         <div className="cad-inspector-header">
-          <span className="cad-inspector-title">Слой: Компоненты Top</span>
+          <span className="cad-inspector-title">Компоненты: Top (Лицевая)</span>
         </div>
 
         <div className="cad-inspector-body">
@@ -758,7 +758,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
     return (
       <aside className="cad-inspector-panel">
         <div className="cad-inspector-header">
-          <span className="cad-inspector-title">Слой: Компоненты Bottom</span>
+          <span className="cad-inspector-title">Компоненты: Bottom (Обратная)</span>
         </div>
 
         <div className="cad-inspector-body">
@@ -973,7 +973,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
         </div>
         <p>Элемент не выбран</p>
         <small>
-          Выберите слой в дереве слева (<strong>Фон Top</strong>, <strong>Фон Bottom</strong>) или кликните по радиодетали на плате для просмотра и настройки параметров.
+          Выберите слой в дереве слева (<strong>Подложка</strong>, <strong>Компоненты</strong>) или кликните по радиодетали на плате для просмотра и настройки параметров.
         </small>
       </div>
     </aside>
