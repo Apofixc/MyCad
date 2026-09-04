@@ -32,7 +32,7 @@ export const ImageTransformBox: React.FC<ImageTransformBoxProps> = ({
   image,
   zoom,
   pan,
-  containerRef,
+  containerRef: _containerRef,
   isActive,
   onUpdateImage,
 }) => {
@@ -61,10 +61,11 @@ export const ImageTransformBox: React.FC<ImageTransformBoxProps> = ({
   const w = image.width || 800;
   const h = image.height || 600;
 
-  // Handle dimensions scaled for zoom
-  const handleSize = Math.max(7 / zoom, 3);
-  const strokeW = 1.5 / zoom;
-  const rotationStemLen = 26 / zoom;
+  // Handle dimensions scaled for zoom and image scale so they remain constant on screen
+  const effScale = Math.max(0.01, Math.abs(image.scale || 1));
+  const handleSize = Math.max(8 / (zoom * effScale), 2);
+  const strokeW = Math.max(1.5 / (zoom * effScale), 0.5);
+  const rotationStemLen = Math.max(28 / (zoom * effScale), 10);
 
   // Local handles positions in image coordinate space (0..w, 0..h)
   const handles: { type: TransformHandleType; x: number; y: number; cursor: string }[] = [
@@ -84,17 +85,12 @@ export const ImageTransformBox: React.FC<ImageTransformBoxProps> = ({
     e.preventDefault();
     if (image.locked) return;
 
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-
-    // Compute center of image in screen coordinates for smooth rotation
-    const rad = (image.rotation * Math.PI) / 180;
-    const centerXLocal = (w * image.scale) / 2;
-    const centerYLocal = (h * image.scale) / 2;
-    const centerScreenX =
-      rect.left + pan.x + (image.x + centerXLocal * Math.cos(rad) - centerYLocal * Math.sin(rad)) * zoom;
-    const centerScreenY =
-      rect.top + pan.y + (image.y + centerXLocal * Math.sin(rad) + centerYLocal * Math.cos(rad)) * zoom;
+    // Compute center of image on screen using actual rendered bounding box
+    const gizmoElem = (e.currentTarget.closest(".cad-image-transform-gizmo") ||
+      e.currentTarget) as SVGGraphicsElement;
+    const bbox = gizmoElem.getBoundingClientRect();
+    const centerScreenX = bbox.left + bbox.width / 2;
+    const centerScreenY = bbox.top + bbox.height / 2;
 
     setActiveDrag({
       type,
@@ -198,14 +194,7 @@ export const ImageTransformBox: React.FC<ImageTransformBoxProps> = ({
   }, [activeDrag, handleMouseMove, handleMouseUp]);
 
   return (
-    <g
-      className="cad-image-transform-gizmo"
-      transform={`translate(${image.x}, ${image.y}) rotate(${image.rotation}) scale(${
-        image.mirrored ? -image.scale : image.scale
-      }, ${image.flipV ? -image.scale : image.scale}) translate(${image.mirrored ? -w : 0}, ${
-        image.flipV ? -h : 0
-      })`}
-    >
+    <g className="cad-image-transform-gizmo">
       {/* 1. Main Bounding Outline */}
       <rect
         x={0}
@@ -215,7 +204,7 @@ export const ImageTransformBox: React.FC<ImageTransformBoxProps> = ({
         fill="none"
         stroke="#38bdf8"
         strokeWidth={strokeW}
-        strokeDasharray={`${5 / zoom}, ${4 / zoom}`}
+        strokeDasharray={`${6 / (zoom * effScale)}, ${4 / (zoom * effScale)}`}
         pointerEvents="none"
       />
 
@@ -274,23 +263,23 @@ export const ImageTransformBox: React.FC<ImageTransformBoxProps> = ({
 
       {/* 5. Live HUD Metric Badge during drag */}
       {liveInfo && (
-        <g transform={`translate(${w / 2}, ${h + 24 / zoom})`} pointerEvents="none">
+        <g transform={`translate(${w / 2}, ${h + 24 / (zoom * effScale)})`} pointerEvents="none">
           <rect
-            x={-90 / zoom}
+            x={-90 / (zoom * effScale)}
             y={0}
-            width={180 / zoom}
-            height={26 / zoom}
-            rx={4 / zoom}
+            width={180 / (zoom * effScale)}
+            height={26 / (zoom * effScale)}
+            rx={4 / (zoom * effScale)}
             fill="rgba(15, 23, 42, 0.92)"
             stroke="#38bdf8"
-            strokeWidth={1 / zoom}
+            strokeWidth={1 / (zoom * effScale)}
           />
           <text
             x={0}
-            y={17 / zoom}
+            y={17 / (zoom * effScale)}
             textAnchor="middle"
             fill="#f8fafc"
-            fontSize={11 / zoom}
+            fontSize={11 / (zoom * effScale)}
             fontFamily="monospace"
             fontWeight={600}
           >
