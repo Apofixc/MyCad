@@ -346,34 +346,8 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                   <span className="active-img-badge">{activeImage.name}</span>
                 </div>
 
-                {/* 2-Point Scale Calibration Tool */}
-                <div className="cad-tool-callout">
-                  <button
-                    className="cad-btn-primary full-width"
-                    onClick={() => {
-                      if (onStartCalibration) {
-                        onStartCalibration();
-                      } else {
-                        // Dispatch custom event for canvas calibration mode
-                        window.dispatchEvent(
-                          new CustomEvent("mycad-start-calibration", {
-                            detail: { layerKey, imageId: activeImage.id },
-                          })
-                        );
-                      }
-                    }}
-                    title="Кликните 2 точки на холсте (например, 2 вывода детали) и укажите точное расстояние в мм"
-                  >
-                    <Ruler size={15} />
-                    <span>Калибровать по 2 точкам (мм)...</span>
-                  </button>
-                  <small className="callout-hint">
-                    Автоматический расчет масштаба по известному расстоянию между контактами или линейке
-                  </small>
-                </div>
-
                 <div className="cad-field-row">
-                  <label>Множитель масштаба:</label>
+                  <label>Множитель:</label>
                   <div className="cad-input-with-actions">
                     <input
                       type="number"
@@ -389,21 +363,41 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                     <button
                       className="cad-btn-flat btn-xs"
                       onClick={() => handleUpdateActiveImage({ scale: 1 })}
-                      title="Сбросить масштаб на 100%"
+                      title="Сбросить масштаб на 100% (1.0x)"
                     >
-                      1:1
+                      1.0×
                     </button>
                   </div>
                 </div>
+
+                {/* 2-Point Scale Calibration Action */}
+                <button
+                  className="cad-btn-action full-width"
+                  style={{ marginTop: "6px" }}
+                  onClick={() => {
+                    if (onStartCalibration) {
+                      onStartCalibration();
+                    } else {
+                      window.dispatchEvent(
+                        new CustomEvent("mycad-start-calibration", {
+                          detail: { layerKey, imageId: activeImage.id },
+                        })
+                      );
+                    }
+                  }}
+                  title="Кликните 2 точки на холсте (например, 2 вывода детали) и укажите точное расстояние в мм"
+                >
+                  <Ruler size={13} />
+                  <span>Калибровать по 2 точкам...</span>
+                </button>
               </div>
 
               {/* Angle & Alignment Tools */}
               <div className="cad-prop-group">
-                <div className="group-header">Выравнивание перекоса и поворот</div>
+                <div className="group-header">Поворот и выравнивание</div>
 
-                {/* Fine Angle Adjuster Buttons */}
+                {/* Fine Angle Adjuster Stepper */}
                 <div className="cad-fine-angle-bar">
-                  <span className="fine-label">Угол:</span>
                   <button
                     className="cad-step-btn"
                     onClick={() =>
@@ -477,52 +471,42 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                     onClick={() => handleUpdateActiveImage({ rotation: 0 })}
                     title="Сбросить угол в 0°"
                   >
-                    <span>Сброс угла (0°)</span>
+                    <span>Сброс (0°)</span>
                   </button>
                 </div>
 
                 {/* Mirroring / Flips */}
                 <div className="cad-btn-grid-2" style={{ marginTop: "6px" }}>
                   <button
-                    className={`cad-btn-flat btn-sm ${activeImage.mirrored ? "btn-active-toggle" : ""}`}
+                    className={`cad-btn-flat btn-sm ${activeImage.mirrored ? "active" : ""}`}
                     onClick={() =>
                       handleUpdateActiveImage({ mirrored: !activeImage.mirrored })
                     }
                     title="Отзеркалить по горизонтали (Flip X)"
                   >
-                    <FlipHorizontal size={14} />
-                    <span>Зеркало Flip X</span>
+                    <FlipHorizontal size={13} />
+                    <span>Зеркало X</span>
                   </button>
                   <button
-                    className={`cad-btn-flat btn-sm ${activeImage.flipV ? "btn-active-toggle" : ""}`}
+                    className={`cad-btn-flat btn-sm ${activeImage.flipV ? "active" : ""}`}
                     onClick={() =>
                       handleUpdateActiveImage({ flipV: !activeImage.flipV })
                     }
                     title="Отзеркалить по вертикали (Flip Y)"
                   >
-                    <FlipVertical size={14} />
-                    <span>Зеркало Flip Y</span>
+                    <FlipVertical size={13} />
+                    <span>Зеркало Y</span>
                   </button>
                 </div>
               </div>
 
-              {/* Positioning & Lock */}
+              {/* Positioning */}
               <div className="cad-prop-group">
-                <div className="group-header flex-between">
-                  <span>Позиция и фиксация</span>
-                  <button
-                    className={`cad-lock-pill ${activeImage.locked ? "locked" : ""}`}
-                    onClick={() => handleUpdateActiveImage({ locked: !activeImage.locked })}
-                    title={activeImage.locked ? "Кликните, чтобы разблокировать" : "Кликните, чтобы заблокировать от сдвига"}
-                  >
-                    {activeImage.locked ? <Lock size={12} /> : <Unlock size={12} />}
-                    <span>{activeImage.locked ? "Зафиксировано" : "Не заблокировано"}</span>
-                  </button>
-                </div>
+                <div className="group-header">Позиция</div>
 
-                <div className="cad-field-row-2">
-                  <div>
-                    <label>Позиция X (px):</label>
+                <div className="cad-field-grid-2">
+                  <div className="cad-labeled-input">
+                    <label>Позиция X (px)</label>
                     <input
                       type="number"
                       className="cad-field-input"
@@ -532,8 +516,8 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                       }
                     />
                   </div>
-                  <div>
-                    <label>Позиция Y (px):</label>
+                  <div className="cad-labeled-input">
+                    <label>Позиция Y (px)</label>
                     <input
                       type="number"
                       className="cad-field-input"

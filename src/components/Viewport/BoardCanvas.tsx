@@ -18,10 +18,6 @@ import {
 import {
   Plus,
   Ruler,
-  RotateCw,
-  FlipHorizontal,
-  Lock,
-  Unlock,
   Check,
   X,
   Image as ImageIcon,
@@ -921,105 +917,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
               <Plus size={13} />
               <span>Добавить фото</span>
             </button>
-
-            {/* Specialized Image Tools for Active Image */}
-            {activeImage && (
-              <>
-                <div className="toolbar-divider" />
-
-                {/* 2-Point Scale Calibration Button */}
-                <button
-                  className={`cad-tool-btn ${calibration.active ? "btn-active-highlight" : ""}`}
-                  onClick={() =>
-                    setCalibration({
-                      active: !calibration.active,
-                      step: 1,
-                      realMm: "2.54",
-                      showModal: false,
-                    })
-                  }
-                  title="Калибровать масштаб: кликните 2 точки на холсте и укажите расстояние в мм"
-                >
-                  <Ruler size={13} />
-                  <span>Калибровка 2 точки</span>
-                </button>
-
-                {/* Fine Angle Adjustments */}
-                <div className="cad-tool-btn-group">
-                  <button
-                    className="cad-tool-btn"
-                    onClick={() =>
-                      handleUpdateActiveImage({
-                        rotation: Math.round((activeImage.rotation - 0.1) * 10) / 10,
-                      })
-                    }
-                    title="Повернуть на -0.1°"
-                  >
-                    -0.1°
-                  </button>
-                  <span className="angle-readout">{activeImage.rotation.toFixed(1)}°</span>
-                  <button
-                    className="cad-tool-btn"
-                    onClick={() =>
-                      handleUpdateActiveImage({
-                        rotation: Math.round((activeImage.rotation + 0.1) * 10) / 10,
-                      })
-                    }
-                    title="Повернуть на +0.1°"
-                  >
-                    +0.1°
-                  </button>
-                  <button
-                    className="cad-tool-btn icon-only"
-                    onClick={() =>
-                      handleUpdateActiveImage({
-                        rotation: (Math.round(activeImage.rotation) + 90) % 360,
-                      })
-                    }
-                    title="Повернуть на 90°"
-                  >
-                    <RotateCw size={12} />
-                  </button>
-                </div>
-
-                {/* Flip */}
-                <button
-                  className={`cad-tool-btn icon-only ${activeImage.mirrored ? "btn-active-highlight" : ""}`}
-                  onClick={() =>
-                    handleUpdateActiveImage({ mirrored: !activeImage.mirrored })
-                  }
-                  title="Отзеркалить по горизонтали (Flip X)"
-                >
-                  <FlipHorizontal size={13} />
-                </button>
-
-                {/* Lock Toggle */}
-                <button
-                  className={`cad-tool-btn icon-only ${activeImage.locked ? "btn-active-highlight" : ""}`}
-                  onClick={() =>
-                    handleUpdateActiveImage({ locked: !activeImage.locked })
-                  }
-                  title={activeImage.locked ? "Разблокировать" : "Заблокировать от сдвига"}
-                >
-                  {activeImage.locked ? <Lock size={12} /> : <Unlock size={12} />}
-                </button>
-
-                {/* Opacity Slider */}
-                <div className="toolbar-slider-group" title="Прозрачность активного фото">
-                  <span>{Math.round(activeImage.opacity * 100)}%</span>
-                  <input
-                    type="range"
-                    min="0.05"
-                    max="1"
-                    step="0.05"
-                    value={activeImage.opacity}
-                    onChange={(e) =>
-                      handleUpdateActiveImage({ opacity: parseFloat(e.target.value) })
-                    }
-                  />
-                </div>
-              </>
-            )}
           </div>
         )}
 
@@ -1068,49 +965,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
             </button>
           </div>
         )}
-
-        <div className="toolbar-divider" />
-
-        {/* Zoom & View Controls */}
-        <div className="toolbar-section zoom-tools">
-          <button
-            className="cad-tool-btn icon-only"
-            onClick={() => setZoom((z) => Math.min(z * 1.25, 30))}
-            title="Приблизить (+)"
-          >
-            +
-          </button>
-          <span
-            className="zoom-indicator"
-            title="Текущий масштаб (клик — сброс 100%)"
-            onClick={() => setZoom(1)}
-            style={{ cursor: "pointer", minWidth: "48px", textAlign: "center" }}
-          >
-            {Math.round(zoom * 100)}%
-          </span>
-          <button
-            className="cad-tool-btn icon-only"
-            onClick={() => setZoom((z) => Math.max(z / 1.25, 0.02))}
-            title="Отдалить (−)"
-          >
-            −
-          </button>
-          <button
-            className="cad-tool-btn"
-            onClick={handleFitAll}
-            title="Вписать всё в экран (Горячая клавиша: F / Home)"
-          >
-            <Maximize2 size={12} />
-            <span>Вписать</span>
-          </button>
-          <button
-            className="cad-tool-btn"
-            onClick={() => setZoom(1)}
-            title="Сбросить масштаб 1:1 (Горячая клавиша: 1)"
-          >
-            1:1
-          </button>
-        </div>
       </div>
 
       {/* Floating Interactive Calibration Banner */}
@@ -1241,7 +1095,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
               const w = img.width || 800;
               const h = img.height || 600;
-              const strokeColor = layerKey === "bgTop" ? "#38bdf8" : "#a855f7";
+              const strokeColor = layerKey === "bgTop" ? "#38bdf8" : "#60a5fa";
 
               return (
                 <g
@@ -1280,17 +1134,17 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                         height={h}
                         fill="none"
                         stroke={strokeColor}
-                        strokeWidth={1.8 / zoom}
-                        strokeDasharray="6 4"
+                        strokeWidth={1.5 / zoom}
+                        strokeDasharray="6 3"
                       />
-                      {/* Corner Handles */}
-                      <rect x={-4 / zoom} y={-4 / zoom} width={8 / zoom} height={8 / zoom} fill={strokeColor} />
-                      <rect x={w - 4 / zoom} y={-4 / zoom} width={8 / zoom} height={8 / zoom} fill={strokeColor} />
-                      <rect x={-4 / zoom} y={h - 4 / zoom} width={8 / zoom} height={8 / zoom} fill={strokeColor} />
-                      <rect x={w - 4 / zoom} y={h - 4 / zoom} width={8 / zoom} height={8 / zoom} fill={strokeColor} />
+                      {/* Corner Handles - Crisp CAD style */}
+                      <rect x={-4 / zoom} y={-4 / zoom} width={8 / zoom} height={8 / zoom} fill="#ffffff" stroke={strokeColor} strokeWidth={1.2 / zoom} />
+                      <rect x={w - 4 / zoom} y={-4 / zoom} width={8 / zoom} height={8 / zoom} fill="#ffffff" stroke={strokeColor} strokeWidth={1.2 / zoom} />
+                      <rect x={-4 / zoom} y={h - 4 / zoom} width={8 / zoom} height={8 / zoom} fill="#ffffff" stroke={strokeColor} strokeWidth={1.2 / zoom} />
+                      <rect x={w - 4 / zoom} y={h - 4 / zoom} width={8 / zoom} height={8 / zoom} fill="#ffffff" stroke={strokeColor} strokeWidth={1.2 / zoom} />
                       {/* Center Crosshair */}
-                      <line x1={w / 2 - 10 / zoom} y1={h / 2} x2={w / 2 + 10 / zoom} y2={h / 2} stroke={strokeColor} strokeWidth={1 / zoom} />
-                      <line x1={w / 2} y1={h / 2 - 10 / zoom} x2={w / 2} y2={h / 2 + 10 / zoom} stroke={strokeColor} strokeWidth={1 / zoom} />
+                      <line x1={w / 2 - 8 / zoom} y1={h / 2} x2={w / 2 + 8 / zoom} y2={h / 2} stroke={strokeColor} strokeWidth={1 / zoom} />
+                      <line x1={w / 2} y1={h / 2 - 8 / zoom} x2={w / 2} y2={h / 2 + 8 / zoom} stroke={strokeColor} strokeWidth={1 / zoom} />
                     </g>
                   )}
                 </g>
@@ -1396,9 +1250,37 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           <span className="status-val">{(cursorCadPos.y / 10).toFixed(1)} мм</span>
         </div>
         <div className="status-divider" />
-        <div className="status-item">
+        <div className="status-item cad-status-zoom-group">
           <span className="status-label">Масштаб:</span>
-          <span className="status-val">{Math.round(zoom * 100)}%</span>
+          <button
+            className="cad-status-zoom-btn"
+            onClick={() => setZoom((z) => Math.max(z / 1.25, 0.02))}
+            title="Отдалить (−)"
+          >
+            −
+          </button>
+          <span
+            className="status-val zoom-interactive"
+            onClick={() => setZoom(1)}
+            title="Сбросить масштаб 100% (Горячая клавиша: 1)"
+          >
+            {Math.round(zoom * 100)}%
+          </span>
+          <button
+            className="cad-status-zoom-btn"
+            onClick={() => setZoom((z) => Math.min(z * 1.25, 30))}
+            title="Приблизить (+)"
+          >
+            +
+          </button>
+          <button
+            className="cad-status-zoom-btn btn-action"
+            onClick={handleFitAll}
+            title="Вписать всё в экран (Горячая клавиша: F)"
+          >
+            <Maximize2 size={11} />
+            <span>Вписать</span>
+          </button>
         </div>
         <div className="status-divider" />
         <div className="status-hints">
