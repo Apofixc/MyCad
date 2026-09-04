@@ -1,27 +1,191 @@
-use mycad_core::{import_reference_project, Project};
 use serde_json::{json, Value};
+use std::fs;
 use std::io::{Cursor, Read, Seek, Write};
+use std::path::PathBuf;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
-const BOARD_META: &str = include_str!("../../reference/boardMeta.json");
-const FOOTPRINTS: &str = include_str!("../../reference/footprints.json");
-const PRESETS: &str = include_str!("../../reference/presets.json");
-const COMPONENTS: &str = include_str!("../../reference/components.json");
-const NETS: &str = include_str!("../../reference/nets.json");
+/// Возвращает канонический путь к каталогу компонентов пользователя: ~/.mycad/components
+fn get_components_base_dir() -> PathBuf {
+    let home = std::env::var("USERPROFILE")
+        .or_else(|_| std::env::var("HOME"))
+        .unwrap_or_else(|_| ".".to_string());
+    PathBuf::from(home).join(".mycad").join("components")
+}
 
-/// Загружает референс-проект «Пиррс 1000 Люкс» из встроенных данных прототипа (для обратной совместимости).
+fn sanitize_id(id: &str) -> String {
+    id.chars()
+        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .collect()
+}
+
 #[tauri::command]
-fn load_reference_project() -> Result<Project, String> {
-    import_reference_project(
-        BOARD_META,
-        FOOTPRINTS,
-        PRESETS,
-        COMPONENTS,
-        NETS,
-        "backup_20260830_124935/pcb_board.png",
-    )
-    .map_err(|e| e.to_string())
+fn get_components_dir() -> Result<String, String> {
+    let path = get_components_base_dir();
+    Ok(path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn init_component_storage() -> Result<String, String> {
+    let base = get_components_base_dir();
+    let packages_dir = base.join("packages");
+    let devices_dir = base.join("devices");
+
+    fs::create_dir_all(&packages_dir)
+        .map_err(|e| format!("Не удалось создать директорию packages: {e}"))?;
+    fs::create_dir_all(&devices_dir)
+        .map_err(|e| format!("Не удалось создать директорию devices: {e}"))?;
+
+    let categories_path = base.join("categories.json");
+    if !categories_path.exists() {
+        // Создаем пустой массив категорий, если еще нет
+        let default_cats = json!([]);
+        let _ = fs::write(&categories_path, default_cats.to_string());
+    }
+
+    Ok(base.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+fn load_component_library() -> Result<Value, String> {
+    let base = get_components_base_dir();
+    let packages_dir = base.join("packages");
+    let devices_dir = base.join("devices");
+    let categories_path = base.join("categories.json");
+
+    // Читаем дерево категорий
+    let categories: Value = if categories_path.exists() {
+        let content = fs::read_to_string(&categories_path).unwrap_or_else(|_| "[]".to_string());
+        serde_json::from_str(&content).unwrap_or(json!([]))
+    } else {
+        json!([])
+    };
+
+    // Читаем все корпуса (packages)
+    let mut packages_list = Vec::new();
+    if packages_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&packages_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Ok(text) = fs::read_to_string(&path) {
+                        if let Ok(val) = serde_json::from_str::<Value>(&text) {
+                            packages_list.push(val);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Читаем все девайсы (devices)
+    let mut devices_list = Vec::new();
+    if devices_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&devices_dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+                    if let Ok(text) = fs::read_to_string(&path) {
+                        if let Ok(val) = serde_json::from_str::<Value>(&text) {
+                            devices_list.push(val);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(json!({
+        "categories": categories,
+        "packages": packages_list,
+        "devices": devices_list
+    }))
+}
+
+#[tauri::command]
+fn save_device(device: Value) -> Result<(), String> {
+    let id = device
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Компонент не содержит поля 'id'".to_string())?;
+    
+    let safe_id = sanitize_id(id);
+    let base = get_components_base_dir();
+    let devices_dir = base.join("devices");
+    fs::create_dir_all(&devices_dir)
+        .map_err(|e| format!("Не удалось создать папку devices: {e}"))?;
+
+    let file_path = devices_dir.join(format!("{safe_id}.json"));
+    let text = serde_json::to_string_pretty(&device)
+        .map_err(|e| format!("Ошибка сериализации девайса: {e}"))?;
+    fs::write(&file_path, text)
+        .map_err(|e| format!("Не удалось сохранить {}: {e}", file_path.display()))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_device(id: String) -> Result<(), String> {
+    let safe_id = sanitize_id(&id);
+    let base = get_components_base_dir();
+    let file_path = base.join("devices").join(format!("{safe_id}.json"));
+    if file_path.exists() {
+        fs::remove_file(&file_path)
+            .map_err(|e| format!("Не удалось удалить девайс {}: {e}", file_path.display()))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn save_package(package: Value) -> Result<(), String> {
+    let id = package
+        .get("id")
+        .and_then(|v| v.as_str())
+        .ok_or_else(|| "Корпус не содержит поля 'id'".to_string())?;
+
+    let safe_id = sanitize_id(id);
+    let base = get_components_base_dir();
+    let packages_dir = base.join("packages");
+    fs::create_dir_all(&packages_dir)
+        .map_err(|e| format!("Не удалось создать папку packages: {e}"))?;
+
+    let file_path = packages_dir.join(format!("{safe_id}.json"));
+    let text = serde_json::to_string_pretty(&package)
+        .map_err(|e| format!("Ошибка сериализации корпуса: {e}"))?;
+    fs::write(&file_path, text)
+        .map_err(|e| format!("Не удалось сохранить {}: {e}", file_path.display()))?;
+
+    Ok(())
+}
+
+#[tauri::command]
+fn delete_package(id: String) -> Result<(), String> {
+    let safe_id = sanitize_id(&id);
+    let base = get_components_base_dir();
+    let file_path = base.join("packages").join(format!("{safe_id}.json"));
+    if file_path.exists() {
+        fs::remove_file(&file_path)
+            .map_err(|e| format!("Не удалось удалить корпус {}: {e}", file_path.display()))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+fn save_categories(categories: Value) -> Result<(), String> {
+    let base = get_components_base_dir();
+    fs::create_dir_all(&base)
+        .map_err(|e| format!("Не удалось создать папку компонентов: {e}"))?;
+    let file_path = base.join("categories.json");
+    let text = serde_json::to_string_pretty(&categories)
+        .map_err(|e| format!("Ошибка сериализации категорий: {e}"))?;
+    fs::write(&file_path, text)
+        .map_err(|e| format!("Не удалось сохранить categories.json: {e}"))?;
+    Ok(())
+}
+
+#[tauri::command]
+fn load_reference_project() -> Result<Value, String> {
+    Err("Демонстрационный референс-проект обновлен до новой базы компонентов".to_string())
 }
 
 /// Сохраняет проект в контейнер .mycad (ZIP-архив) или .json файл.
@@ -272,7 +436,15 @@ pub fn run() {
             load_reference_project,
             save_project,
             load_project,
-            read_image_file
+            read_image_file,
+            get_components_dir,
+            init_component_storage,
+            load_component_library,
+            save_device,
+            delete_device,
+            save_package,
+            delete_package,
+            save_categories
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

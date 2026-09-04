@@ -36,6 +36,7 @@ import {
   Target,
   DraftingCompass,
   Eye,
+  Package,
 } from "lucide-react";
 import { ImageTransformBox } from "./ImageTransformBox";
 import { MeasureOverlay } from "./MeasureOverlay";
@@ -54,6 +55,7 @@ interface BoardCanvasProps {
   onSelectComponent: (id: string | undefined) => void;
   onSelectPin: (componentId: string, pinId: string) => void;
   onSelectTarget?: (target: BoardSelectionTarget) => void;
+  onOpenLibrary?: () => void;
 }
 
 interface CalibrationState {
@@ -76,6 +78,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   onSelectComponent,
   onSelectPin,
   onSelectTarget,
+  onOpenLibrary,
 }) => {
   const boardData = normalizeBoardData(rawBoardData);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -654,6 +657,15 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         e.preventDefault();
         setZoom((z) => Math.max(z / 1.25, 0.02));
         return;
+      }
+
+      if ((e.key === "l" || e.key === "L" || e.key === "F2" || e.key === "д" || e.key === "Д") && !e.ctrlKey && !e.metaKey) {
+        const activeTag = (document.activeElement?.tagName || "").toLowerCase();
+        if (activeTag !== "input" && activeTag !== "textarea") {
+          e.preventDefault();
+          onOpenLibrary?.();
+          return;
+        }
       }
 
       if (e.key === "Escape") {
@@ -1401,7 +1413,16 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         {/* CONTEXTUAL TOOLBAR 2: Компоненты (Монтаж деталей) */}
         {toolMode === "components" && (
           <div className="toolbar-section comp-tools">
-            <span className="section-label">Добавить:</span>
+            <button
+              className="cad-tool-btn highlight-lib-btn"
+              onClick={onOpenLibrary}
+              title="Открыть библиотеку компонентов (L / F2)"
+            >
+              <Package size={14} />
+              <span>Библиотека компонентов</span>
+            </button>
+            <div className="toolbar-divider" />
+            <span className="section-label">Быстро:</span>
             <button className="cad-tool-btn" onClick={() => handleAddComponent("resistor")} title="Резистор">
               + R
             </button>

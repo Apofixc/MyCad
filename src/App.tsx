@@ -12,6 +12,11 @@ import { ProjectTree } from "./components/Sidebar/ProjectTree";
 import { BoardCanvas } from "./components/Viewport/BoardCanvas";
 import { InspectorSidebar } from "./components/Sidebar/InspectorSidebar";
 import { NewFileDialog, ProjectFileType } from "./components/Modals/NewFileDialog";
+import { ComponentLibraryModal } from "./components/Modals/ComponentLibraryModal";
+import { DeviceEditorModal } from "./components/Modals/DeviceEditorModal";
+import { PackageEditorModal } from "./components/Modals/PackageEditorModal";
+import { ComponentDatabaseService } from "./services/componentDatabase";
+import { DeviceDefinition, PackageDefinition } from "./types/componentLibrary";
 import { saveProject, openProject } from "./storage";
 import {
   X,
@@ -35,6 +40,18 @@ export const App: React.FC = () => {
   const [toast, setToast] = useState<ToastInfo | null>(null);
   const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
+
+  // Модальные окна базы данных компонентов
+  const [isLibraryModalOpen, setIsLibraryModalOpen] = useState(false);
+  const [isDeviceEditorOpen, setIsDeviceEditorOpen] = useState(false);
+  const [editingDevice, setEditingDevice] = useState<DeviceDefinition | undefined>(undefined);
+  const [isPackageEditorOpen, setIsPackageEditorOpen] = useState(false);
+  const [editingPackage, setEditingPackage] = useState<PackageDefinition | undefined>(undefined);
+
+  // Инициализация базы данных компонентов на старте
+  useEffect(() => {
+    ComponentDatabaseService.getInstance().load().catch(console.error);
+  }, []);
 
   // Состояние боковой панели (Sidebar / ProjectTree)
   const [leftSidebarWidth, setLeftSidebarWidth] = useState<number>(() => {
@@ -639,6 +656,7 @@ export const App: React.FC = () => {
               onSelectComponent={handleSelectComponent}
               onSelectPin={handleSelectPin}
               onSelectTarget={handleSelectTarget}
+              onOpenLibrary={() => setIsLibraryModalOpen(true)}
             />
           ) : activeFile?.type === "sch" ? (
             <div className="cad-schematic-placeholder">
@@ -783,6 +801,74 @@ export const App: React.FC = () => {
           <span>{toast.message}</span>
         </div>
       )}
+
+      {/* Component Database Modals */}
+      <ComponentLibraryModal
+        isOpen={isLibraryModalOpen}
+        onClose={() => setIsLibraryModalOpen(false)}
+        onPlaceOnBoard={(deviceId, packageId, variantId) => {
+          if (!project) return;
+          const activeFile = project.files.find((f) => f.id === project.activeFileId);
+          if (!activeFile || activeFile.type !== "board") return;
+
+          const board = normalizeBoardData(activeFile.data as BoardData);
+          const db = ComponentDatabaseService.getInstance();
+
+          const newComp = db.instantiateComponent({
+            deviceId,
+            packageId,
+            variantId,
+            x: 0,
+            y: 0,
+            layer: board.activeSideView === "bottom" ? "bottom" : "top",
+            existingComponents: board.components,
+          });
+
+          const updatedBoard: BoardData = {
+            ...board,
+            components: [...board.components, newComp],
+            selectedComponentId: newComp.id,
+            selectedTarget: { type: "component", id: newComp.id },
+          };
+
+          const updatedFiles = project.files.map((f) =>
+            f.id === project.activeFileId ? { ...f, data: updatedBoard } : f
+          );
+
+          setProject({ ...project, files: updatedFiles });
+          setIsDirty(true);
+          setToast({
+            message: `Размещен компонент ${newComp.refDes} (${newComp.value})`,
+            type: "success",
+          });
+        }}
+        onOpenDeviceEditor={(device) => {
+          setEditingDevice(device);
+          setIsDeviceEditorOpen(true);
+        }}
+        onOpenPackageEditor={(pkg) => {
+          setEditingPackage(pkg);
+          setIsPackageEditorOpen(true);
+        }}
+      />
+
+      <DeviceEditorModal
+        isOpen={isDeviceEditorOpen}
+        initialDevice={editingDevice}
+        onClose={() => {
+          setIsDeviceEditorOpen(false);
+          setEditingDevice(undefined);
+        }}
+      />
+
+      <PackageEditorModal
+        isOpen={isPackageEditorOpen}
+        initialPackage={editingPackage}
+        onClose={() => {
+          setIsPackageEditorOpen(false);
+          setEditingPackage(undefined);
+        }}
+      />
     </div>
   );
 };

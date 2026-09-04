@@ -5,9 +5,16 @@ export interface Pin {
   x: number;         // offset relative to component center in mm/px
   y: number;
   netId?: string;    // e.g. "GND", "NET_12V"
+  padNum?: number;   // physical pad number on package (1..N)
+  logicalPinId?: string; // logical pin ID in device
+  shape?: "circle" | "rect" | "rounded_rect" | "oval";
+  width?: number;    // pad width
+  height?: number;   // pad height
+  drillDiameter?: number; // drill hole for THT
+  electricalType?: string; // power_in, input, output, etc.
 }
 
-export type ComponentType = "resistor" | "capacitor" | "diode" | "ic_soic8" | "ic_dip8" | "testpoint";
+export type ComponentType = "resistor" | "capacitor" | "diode" | "ic_soic8" | "ic_dip8" | "testpoint" | string;
 
 export type BoardSide = "top" | "bottom";
 
@@ -75,6 +82,19 @@ export interface ComponentItem {
   rotation: number;   // 0, 90, 180, 270 degrees
   layer?: BoardSide;  // "top" | "bottom" (default "top")
   pins: Pin[];
+  // CAD Library Fields:
+  deviceId?: string;       // Link to DeviceDefinition
+  packageId?: string;      // Link to PackageDefinition
+  variantId?: string;      // Link to PackageVariant
+  description?: string;
+  category?: string;
+  subcategory?: string;
+  packageFamily?: string;
+  bodyWidth?: number;
+  bodyHeight?: number;
+  bodyColor?: string;
+  keyType?: string;
+  hasPolarityMark?: boolean;
 }
 
 export interface BoardData {

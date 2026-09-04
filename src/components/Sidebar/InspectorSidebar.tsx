@@ -26,6 +26,7 @@ import {
   Ruler,
   X,
 } from "lucide-react";
+import { ComponentDatabaseService } from "../../services/componentDatabase";
 
 interface InspectorSidebarProps {
   width?: number;
@@ -875,10 +876,51 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
               />
             </div>
 
-            <div className="cad-field-row">
-              <label>Корпус:</label>
-              <span className="cad-tag">{selectedComp.type}</span>
-            </div>
+            {(() => {
+              const db = ComponentDatabaseService.getInstance();
+              const currentPkg = selectedComp.packageId ? db.getPackage(selectedComp.packageId) : undefined;
+              const currentDev = selectedComp.deviceId ? db.getDevice(selectedComp.deviceId) : undefined;
+              return (
+                <>
+                  {currentDev && (
+                    <div className="cad-field-row">
+                      <label>Устройство:</label>
+                      <span className="cad-tag" style={{ color: "#38bdf8" }}>{currentDev.name}</span>
+                    </div>
+                  )}
+                  <div className="cad-field-row">
+                    <label>Корпус:</label>
+                    <span className="cad-tag">{currentPkg?.name || selectedComp.type}</span>
+                  </div>
+                  {currentPkg && currentPkg.variants.length > 1 && (
+                    <div className="cad-field-row variant-inspector-row">
+                      <label>Исполнение:</label>
+                      <select
+                        className="cad-field-input"
+                        value={selectedComp.variantId || currentPkg.defaultVariantId}
+                        onChange={(e) => {
+                          const chosen = currentPkg.variants.find((v) => v.id === e.target.value);
+                          if (chosen) {
+                            handleUpdateComponent({
+                              variantId: chosen.id,
+                              bodyColor: chosen.bodyColor,
+                              keyType: chosen.keyType,
+                              hasPolarityMark: chosen.hasPolarityMark,
+                            });
+                          }
+                        }}
+                      >
+                        {currentPkg.variants.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
 
             {/* Component Side (Top / Bottom) Switcher */}
             <div className="cad-field-row side-control-row">
@@ -981,6 +1023,16 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
             <div className="cad-prop-group net-group">
               <div className="group-header">
                 Вывод <strong>№{selectedPin.number}</strong>
+                {selectedPin.name && selectedPin.name !== String(selectedPin.number) && (
+                  <span className="cad-tag" style={{ marginLeft: "8px", color: "#38bdf8" }}>
+                    {selectedPin.name}
+                  </span>
+                )}
+                {selectedPin.electricalType && (
+                  <span className="cad-tag" style={{ marginLeft: "4px", fontSize: "10px", opacity: 0.8 }}>
+                    {selectedPin.electricalType}
+                  </span>
+                )}
               </div>
 
               <div className="cad-field-row">
