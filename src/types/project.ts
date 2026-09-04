@@ -202,18 +202,25 @@ export const normalizeBoardData = (raw: Partial<BoardData>): BoardData => {
     };
   }
 
-  // Determine active tool mode: if user has an image layer selected or board has images, or default to "images" if no components
-  let activeToolMode = raw.activeToolMode;
-  if (!activeToolMode) {
-    if (selectedTarget?.type === "layer_bg_top" || selectedTarget?.type === "layer_bg_bottom") {
-      activeToolMode = "images";
-    } else if (selectedTarget?.type === "component" || selectedTarget?.type === "layer_comps_top" || selectedTarget?.type === "layer_comps_bottom") {
-      activeToolMode = "components";
-    } else if (components.length > 0) {
-      activeToolMode = "components";
-    } else {
-      activeToolMode = "images";
-    }
+  // Determine active tool mode strictly based on the active layer/selection target:
+  let activeToolMode: "images" | "components" = "images";
+  if (
+    selectedTarget?.type === "layer_comps_top" ||
+    selectedTarget?.type === "layer_comps_bottom" ||
+    selectedTarget?.type === "component"
+  ) {
+    activeToolMode = "components";
+  } else if (
+    selectedTarget?.type === "layer_bg_top" ||
+    selectedTarget?.type === "layer_bg_bottom"
+  ) {
+    activeToolMode = "images";
+  } else if (raw.activeToolMode) {
+    activeToolMode = raw.activeToolMode;
+  } else if (components.length > 0 && bgTop.images.length === 0 && bgBottom.images.length === 0) {
+    activeToolMode = "components";
+  } else {
+    activeToolMode = "images";
   }
 
   return {

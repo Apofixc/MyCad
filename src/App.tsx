@@ -218,11 +218,23 @@ export const App: React.FC = () => {
     const compId = target?.type === "component" ? target.id : undefined;
     const pinId = target?.type === "component" ? target.pinId : undefined;
 
+    let newToolMode = board.activeToolMode;
+    if (target?.type === "layer_bg_top" || target?.type === "layer_bg_bottom") {
+      newToolMode = "images";
+    } else if (
+      target?.type === "layer_comps_top" ||
+      target?.type === "layer_comps_bottom" ||
+      target?.type === "component"
+    ) {
+      newToolMode = "components";
+    }
+
     handleUpdateActiveBoardData({
       ...board,
       selectedTarget: target,
       selectedComponentId: compId,
       selectedPinId: pinId,
+      activeToolMode: newToolMode,
     });
   };
 

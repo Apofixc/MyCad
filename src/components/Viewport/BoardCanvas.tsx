@@ -10,8 +10,6 @@ import {
 } from "../../types/project";
 import { SvgComponent } from "../SvgRenderer/SvgComponents";
 import {
-  Image as ImageIcon,
-  Cpu,
   Plus,
   Ruler,
   RotateCw,
@@ -83,8 +81,21 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     showModal: false,
   });
 
-  // Current Mode: "images" | "components"
-  const toolMode = boardData.activeToolMode || "images";
+  // Find active image if any
+  const selectedTarget = boardData.selectedTarget;
+  const isImageLayerSelected =
+    selectedTarget?.type === "layer_bg_top" || selectedTarget?.type === "layer_bg_bottom";
+  const isCompLayerSelected =
+    selectedTarget?.type === "layer_comps_top" ||
+    selectedTarget?.type === "layer_comps_bottom" ||
+    selectedTarget?.type === "component";
+
+  // Current Mode: strictly derived from target and activeToolMode
+  const toolMode: "images" | "components" = isCompLayerSelected
+    ? "components"
+    : isImageLayerSelected
+    ? "images"
+    : boardData.activeToolMode || "images";
 
   const setToolMode = (mode: "images" | "components") => {
     onChangeBoardData({
@@ -92,11 +103,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       activeToolMode: mode,
     });
   };
-
-  // Find active image if any
-  const selectedTarget = boardData.selectedTarget;
-  const isImageLayerSelected =
-    selectedTarget?.type === "layer_bg_top" || selectedTarget?.type === "layer_bg_bottom";
 
   const activeLayerKey: "bgTop" | "bgBottom" =
     selectedTarget?.type === "layer_bg_bottom" ? "bgBottom" : "bgTop";
@@ -198,7 +204,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       ) {
         onSelectComponent(undefined);
         if (toolMode === "components") {
-          onSelectTarget?.(null);
+          const compSide = boardData.activeSideView === "bottom" ? "layer_comps_bottom" : "layer_comps_top";
+          onSelectTarget?.({ type: compSide });
         }
       }
     }
@@ -586,54 +593,13 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         onChange={handleCanvasAddImages}
       />
 
-      {/* Floating Mode-Based CAD Canvas Toolbar */}
+      {/* Floating CAD Canvas Contextual Toolbar */}
       <div className="cad-canvas-toolbar" onMouseDown={(e) => e.stopPropagation()}>
-        {/* Workspace Mode Switcher Tabs */}
-        <div className="cad-toolbar-mode-tabs">
-          <button
-            className={`cad-mode-tab ${toolMode === "images" ? "active" : ""}`}
-            onClick={() => {
-              setToolMode("images");
-              if (!isImageLayerSelected) {
-                onSelectTarget?.({ type: "layer_bg_top", imageId: boardData.bgTop.images[0]?.id });
-              }
-            }}
-            title="Слой: Подложка (сканы, фото, калибровка, совмещение)"
-          >
-            <ImageIcon size={13} />
-            <span>Подложка</span>
-          </button>
-          <button
-            className={`cad-mode-tab ${toolMode === "components" ? "active" : ""}`}
-            onClick={() => {
-              setToolMode("components");
-              if (selectedTarget?.type !== "layer_comps_top" && selectedTarget?.type !== "layer_comps_bottom" && selectedTarget?.type !== "component") {
-                onSelectTarget?.({ type: "layer_comps_top" });
-              }
-            }}
-            title="Слой: Компоненты (монтаж деталей, расстановка, трассировка)"
-          >
-            <Cpu size={13} />
-            <span>Компоненты</span>
-          </button>
-        </div>
-
-        <div className="toolbar-divider" />
-
-        {/* CONTEXTUAL TOOLBAR 1: Images & Reverse Engineering Mode */}
+        {/* CONTEXTUAL TOOLBAR 1: Подложка (Фон / Фото) */}
         {toolMode === "images" && (
           <div className="toolbar-section image-tools">
-            <button
-              className="cad-tool-btn primary"
-              onClick={() => fileInputRef.current?.click()}
-              title="Загрузить одно или несколько изображений на слой"
-            >
-              <Plus size={13} />
-              <span>Добавить фото</span>
-            </button>
-
-            {/* Active Layer Indicator & Switch */}
-            <div className="cad-layer-switch-pill">
+            {/* Active Layer Side Switch */}
+            <div className="cad-layer-switch-pill" title="Сторона подложки: Лицевая (Top) / Обратная (Bottom)">
               <button
                 className={`pill-btn ${activeLayerKey === "bgTop" ? "active" : ""}`}
                 onClick={() =>
@@ -657,6 +623,15 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                 Bottom
               </button>
             </div>
+
+            <button
+              className="cad-tool-btn primary"
+              onClick={() => fileInputRef.current?.click()}
+              title="Загрузить фото или скан платы на выбранную сторону"
+            >
+              <Plus size={13} />
+              <span>Добавить фото</span>
+            </button>
 
             {/* Specialized Image Tools for Active Image */}
             {activeImage && (
@@ -759,7 +734,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           </div>
         )}
 
-        {/* CONTEXTUAL TOOLBAR 2: Mounting & Components Mode */}
+        {/* CONTEXTUAL TOOLBAR 2: Компоненты (Монтаж деталей) */}
         {toolMode === "components" && (
           <div className="toolbar-section comp-tools">
             {/* Active Component Side Indicator & Switch */}
