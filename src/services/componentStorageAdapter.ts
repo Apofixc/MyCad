@@ -76,12 +76,8 @@ export class ComponentStorageAdapter {
    */
   public static async saveDevice(device: DeviceDefinition): Promise<void> {
     if (isTauri()) {
-      try {
-        await invoke("save_device", { device });
-        return;
-      } catch (err) {
-        console.warn("Ошибка save_device в Tauri:", err);
-      }
+      await invoke("save_device", { device });
+      return;
     }
 
     const payload = this.loadFromLocalStorage();
@@ -99,12 +95,8 @@ export class ComponentStorageAdapter {
    */
   public static async deleteDevice(id: string): Promise<void> {
     if (isTauri()) {
-      try {
-        await invoke("delete_device", { id });
-        return;
-      } catch (err) {
-        console.warn("Ошибка delete_device в Tauri:", err);
-      }
+      await invoke("delete_device", { id });
+      return;
     }
 
     const payload = this.loadFromLocalStorage();
@@ -117,12 +109,8 @@ export class ComponentStorageAdapter {
    */
   public static async savePackage(pkg: PackageDefinition): Promise<void> {
     if (isTauri()) {
-      try {
-        await invoke("save_package", { package: pkg });
-        return;
-      } catch (err) {
-        console.warn("Ошибка save_package в Tauri:", err);
-      }
+      await invoke("save_package", { package: pkg });
+      return;
     }
 
     const payload = this.loadFromLocalStorage();
@@ -140,12 +128,8 @@ export class ComponentStorageAdapter {
    */
   public static async deletePackage(id: string): Promise<void> {
     if (isTauri()) {
-      try {
-        await invoke("delete_package", { id });
-        return;
-      } catch (err) {
-        console.warn("Ошибка delete_package в Tauri:", err);
-      }
+      await invoke("delete_package", { id });
+      return;
     }
 
     const payload = this.loadFromLocalStorage();
@@ -158,17 +142,65 @@ export class ComponentStorageAdapter {
    */
   public static async saveCategories(categories: CatalogCategory[]): Promise<void> {
     if (isTauri()) {
-      try {
-        await invoke("save_categories", { categories });
-        return;
-      } catch (err) {
-        console.warn("Ошибка save_categories в Tauri:", err);
-      }
+      await invoke("save_categories", { categories });
+      return;
     }
 
     const payload = this.loadFromLocalStorage();
     payload.categories = categories;
     this.saveToLocalStorage(payload);
+  }
+
+  /**
+   * Быстрый поиск девайсов через нативный бэкенд Rust
+   */
+  public static async searchDevices(
+    query: string,
+    category?: string,
+    subcategory?: string,
+    tag?: string
+  ): Promise<DeviceDefinition[]> {
+    if (isTauri()) {
+      try {
+        return await invoke<DeviceDefinition[]>("search_devices", {
+          query,
+          category: category || null,
+          subcategory: subcategory || null,
+          tag: tag || null,
+        });
+      } catch (err) {
+        console.warn("Ошибка search_devices в Tauri:", err);
+      }
+    }
+    return [];
+  }
+
+  /**
+   * Получить девайс по ID из Rust
+   */
+  public static async getDevice(id: string): Promise<DeviceDefinition | null> {
+    if (isTauri()) {
+      try {
+        return await invoke<DeviceDefinition | null>("get_device", { id });
+      } catch (err) {
+        console.warn("Ошибка get_device в Tauri:", err);
+      }
+    }
+    return null;
+  }
+
+  /**
+   * Получить корпус по ID из Rust
+   */
+  public static async getPackage(id: string): Promise<PackageDefinition | null> {
+    if (isTauri()) {
+      try {
+        return await invoke<PackageDefinition | null>("get_package", { id });
+      } catch (err) {
+        console.warn("Ошибка get_package в Tauri:", err);
+      }
+    }
+    return null;
   }
 
   // -------------------------------------------------------------------------

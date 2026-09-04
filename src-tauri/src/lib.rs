@@ -1,9 +1,14 @@
+use mycad_core::library::{
+    CatalogCategory, ComponentLibraryPayload, DeviceDefinition, LibraryService, PackageDefinition,
+};
 use serde_json::{json, Value};
-use std::fs;
 use std::io::{Cursor, Read, Seek, Write};
 use std::path::PathBuf;
+use std::sync::Mutex;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
+
+pub struct LibraryState(pub Mutex<LibraryService>);
 
 /// Возвращает канонический путь к каталогу компонентов пользователя: ~/.mycad/components
 fn get_components_base_dir() -> PathBuf {
@@ -13,174 +18,99 @@ fn get_components_base_dir() -> PathBuf {
     PathBuf::from(home).join(".mycad").join("components")
 }
 
-fn sanitize_id(id: &str) -> String {
-    id.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
-        .collect()
+#[tauri::command]
+fn get_components_dir(state: tauri::State<'_, LibraryState>) -> Result<String, String> {
+    let lib = state.0.lock().map_err(|e| e.to_string())?;
+    Ok(lib.base_dir().to_string_lossy().to_string())
 }
 
 #[tauri::command]
-fn get_components_dir() -> Result<String, String> {
-    let path = get_components_base_dir();
-    Ok(path.to_string_lossy().to_string())
+fn init_component_storage(state: tauri::State<'_, LibraryState>) -> Result<String, String> {
+    let lib = state.0.lock().map_err(|e| e.to_string())?;
+    lib.init_storage()?;
+    Ok(lib.base_dir().to_string_lossy().to_string())
 }
 
 #[tauri::command]
-fn init_component_storage() -> Result<String, String> {
-    let base = get_components_base_dir();
-    let packages_dir = base.join("packages");
-    let devices_dir = base.join("devices");
-
-    fs::create_dir_all(&packages_dir)
-        .map_err(|e| format!("Не удалось создать директорию packages: {e}"))?;
-    fs::create_dir_all(&devices_dir)
-        .map_err(|e| format!("Не удалось создать директорию devices: {e}"))?;
-
-    let categories_path = base.join("categories.json");
-    if !categories_path.exists() {
-        // Создаем пустой массив категорий, если еще нет
-        let default_cats = json!([]);
-        let _ = fs::write(&categories_path, default_cats.to_string());
-    }
-
-    Ok(base.to_string_lossy().to_string())
+fn load_component_library(
+    state: tauri::State<'_, LibraryState>,
+) -> Result<ComponentLibraryPayload, String> {
+    let mut lib = state.0.lock().map_err(|e| e.to_string())?;
+    lib.load_all()
 }
 
 #[tauri::command]
-fn load_component_library() -> Result<Value, String> {
-    let base = get_components_base_dir();
-    let packages_dir = base.join("packages");
-    let devices_dir = base.join("devices");
-    let categories_path = base.join("categories.json");
-
-    // Читаем дерево категорий
-    let categories: Value = if categories_path.exists() {
-        let content = fs::read_to_string(&categories_path).unwrap_or_else(|_| "[]".to_string());
-        serde_json::from_str(&content).unwrap_or(json!([]))
-    } else {
-        json!([])
-    };
-
-    // Читаем все корпуса (packages)
-    let mut packages_list = Vec::new();
-    if packages_dir.exists() {
-        if let Ok(entries) = fs::read_dir(&packages_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
-                    if let Ok(text) = fs::read_to_string(&path) {
-                        if let Ok(val) = serde_json::from_str::<Value>(&text) {
-                            packages_list.push(val);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    // Читаем все девайсы (devices)
-    let mut devices_list = Vec::new();
-    if devices_dir.exists() {
-        if let Ok(entries) = fs::read_dir(&devices_dir) {
-            for entry in entries.flatten() {
-                let path = entry.path();
-                if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
-                    if let Ok(text) = fs::read_to_string(&path) {
-                        if let Ok(val) = serde_json::from_str::<Value>(&text) {
-                            devices_list.push(val);
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    Ok(json!({
-        "categories": categories,
-        "packages": packages_list,
-        "devices": devices_list
-    }))
+fn save_device(
+    state: tauri::State<'_, LibraryState>,
+    device: DeviceDefinition,
+) -> Result<(), String> {
+    let mut lib = state.0.lock().map_err(|e| e.to_string())?;
+    lib.save_device(device)
 }
 
 #[tauri::command]
-fn save_device(device: Value) -> Result<(), String> {
-    let id = device
-        .get("id")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| "Компонент не содержит поля 'id'".to_string())?;
-    
-    let safe_id = sanitize_id(id);
-    let base = get_components_base_dir();
-    let devices_dir = base.join("devices");
-    fs::create_dir_all(&devices_dir)
-        .map_err(|e| format!("Не удалось создать папку devices: {e}"))?;
-
-    let file_path = devices_dir.join(format!("{safe_id}.json"));
-    let text = serde_json::to_string_pretty(&device)
-        .map_err(|e| format!("Ошибка сериализации девайса: {e}"))?;
-    fs::write(&file_path, text)
-        .map_err(|e| format!("Не удалось сохранить {}: {e}", file_path.display()))?;
-
-    Ok(())
+fn delete_device(state: tauri::State<'_, LibraryState>, id: String) -> Result<(), String> {
+    let mut lib = state.0.lock().map_err(|e| e.to_string())?;
+    lib.delete_device(&id)
 }
 
 #[tauri::command]
-fn delete_device(id: String) -> Result<(), String> {
-    let safe_id = sanitize_id(&id);
-    let base = get_components_base_dir();
-    let file_path = base.join("devices").join(format!("{safe_id}.json"));
-    if file_path.exists() {
-        fs::remove_file(&file_path)
-            .map_err(|e| format!("Не удалось удалить девайс {}: {e}", file_path.display()))?;
-    }
-    Ok(())
+fn save_package(
+    state: tauri::State<'_, LibraryState>,
+    package: PackageDefinition,
+) -> Result<(), String> {
+    let mut lib = state.0.lock().map_err(|e| e.to_string())?;
+    lib.save_package(package)
 }
 
 #[tauri::command]
-fn save_package(package: Value) -> Result<(), String> {
-    let id = package
-        .get("id")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| "Корпус не содержит поля 'id'".to_string())?;
-
-    let safe_id = sanitize_id(id);
-    let base = get_components_base_dir();
-    let packages_dir = base.join("packages");
-    fs::create_dir_all(&packages_dir)
-        .map_err(|e| format!("Не удалось создать папку packages: {e}"))?;
-
-    let file_path = packages_dir.join(format!("{safe_id}.json"));
-    let text = serde_json::to_string_pretty(&package)
-        .map_err(|e| format!("Ошибка сериализации корпуса: {e}"))?;
-    fs::write(&file_path, text)
-        .map_err(|e| format!("Не удалось сохранить {}: {e}", file_path.display()))?;
-
-    Ok(())
+fn delete_package(state: tauri::State<'_, LibraryState>, id: String) -> Result<(), String> {
+    let mut lib = state.0.lock().map_err(|e| e.to_string())?;
+    lib.delete_package(&id)
 }
 
 #[tauri::command]
-fn delete_package(id: String) -> Result<(), String> {
-    let safe_id = sanitize_id(&id);
-    let base = get_components_base_dir();
-    let file_path = base.join("packages").join(format!("{safe_id}.json"));
-    if file_path.exists() {
-        fs::remove_file(&file_path)
-            .map_err(|e| format!("Не удалось удалить корпус {}: {e}", file_path.display()))?;
-    }
-    Ok(())
+fn save_categories(
+    state: tauri::State<'_, LibraryState>,
+    categories: Vec<CatalogCategory>,
+) -> Result<(), String> {
+    let mut lib = state.0.lock().map_err(|e| e.to_string())?;
+    lib.save_categories(categories)
 }
 
 #[tauri::command]
-fn save_categories(categories: Value) -> Result<(), String> {
-    let base = get_components_base_dir();
-    fs::create_dir_all(&base)
-        .map_err(|e| format!("Не удалось создать папку компонентов: {e}"))?;
-    let file_path = base.join("categories.json");
-    let text = serde_json::to_string_pretty(&categories)
-        .map_err(|e| format!("Ошибка сериализации категорий: {e}"))?;
-    fs::write(&file_path, text)
-        .map_err(|e| format!("Не удалось сохранить categories.json: {e}"))?;
-    Ok(())
+fn search_devices(
+    state: tauri::State<'_, LibraryState>,
+    query: String,
+    category: Option<String>,
+    subcategory: Option<String>,
+    tag: Option<String>,
+) -> Result<Vec<DeviceDefinition>, String> {
+    let lib = state.0.lock().map_err(|e| e.to_string())?;
+    Ok(lib.search_devices(
+        &query,
+        category.as_deref(),
+        subcategory.as_deref(),
+        tag.as_deref(),
+    ))
+}
+
+#[tauri::command]
+fn get_device(
+    state: tauri::State<'_, LibraryState>,
+    id: String,
+) -> Result<Option<DeviceDefinition>, String> {
+    let lib = state.0.lock().map_err(|e| e.to_string())?;
+    Ok(lib.get_device(&id))
+}
+
+#[tauri::command]
+fn get_package(
+    state: tauri::State<'_, LibraryState>,
+    id: String,
+) -> Result<Option<PackageDefinition>, String> {
+    let lib = state.0.lock().map_err(|e| e.to_string())?;
+    Ok(lib.get_package(&id))
 }
 
 #[tauri::command]
@@ -430,8 +360,12 @@ fn chrono_or_system_time() -> String {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let base_dir = get_components_base_dir();
+    let library_service = LibraryService::new(base_dir);
+
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .manage(LibraryState(Mutex::new(library_service)))
         .invoke_handler(tauri::generate_handler![
             load_reference_project,
             save_project,
@@ -444,7 +378,10 @@ pub fn run() {
             delete_device,
             save_package,
             delete_package,
-            save_categories
+            save_categories,
+            search_devices,
+            get_device,
+            get_package
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
