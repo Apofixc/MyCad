@@ -248,11 +248,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                                 activeSelectionTarget?.type === "layer_bg_bottom"
                                   ? "layer_bg_bottom"
                                   : "layer_bg_top";
-                              const activeImgId =
-                                targetSide === "layer_bg_bottom"
-                                  ? boardData.bgBottom.activeImageId || boardData.bgBottom.images?.[0]?.id
-                                  : boardData.bgTop.activeImageId || boardData.bgTop.images?.[0]?.id;
-                              onSelectTarget?.({ type: targetSide, imageId: activeImgId });
+                              onSelectTarget?.({ type: targetSide });
                             }}
                             title="Слой: Подложка (нажмите для выбора, стрелка — раскрыть стороны)"
                           >
@@ -302,7 +298,6 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                                   onSelectFile(file.id);
                                   onSelectTarget?.({
                                     type: "layer_bg_top",
-                                    imageId: boardData.bgTop.activeImageId || boardData.bgTop.images?.[0]?.id,
                                   });
                                 }}
                                 title="Подложка: Top (Лицевая сторона)"
@@ -340,7 +335,6 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                                   onSelectFile(file.id);
                                   onSelectTarget?.({
                                     type: "layer_bg_bottom",
-                                    imageId: boardData.bgBottom.activeImageId || boardData.bgBottom.images?.[0]?.id,
                                   });
                                 }}
                                 title="Подложка: Bottom (Обратная сторона)"

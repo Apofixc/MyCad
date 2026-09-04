@@ -298,10 +298,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         (e.target as HTMLElement).id === "cad-bg-plane"
       ) {
         onSelectComponent(undefined);
-        if (toolMode === "components") {
-          const compSide = boardData.activeSideView === "bottom" ? "layer_comps_bottom" : "layer_comps_top";
-          onSelectTarget?.({ type: compSide });
-        }
+        onSelectTarget?.(null);
       }
     }
   };
@@ -515,6 +512,9 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       if (e.key === "Escape") {
         if (calibration.active) {
           setCalibration({ active: false, step: 1, realMm: "2.54", showModal: false });
+        } else {
+          onSelectComponent(undefined);
+          onSelectTarget?.(null);
         }
         return;
       }
@@ -878,32 +878,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         {/* CONTEXTUAL TOOLBAR 1: Подложка (Фон / Фото) */}
         {toolMode === "images" && (
           <div className="toolbar-section image-tools">
-            {/* Active Layer Side Switch */}
-            <div className="cad-layer-switch-pill" title="Сторона подложки: Лицевая (Top) / Обратная (Bottom)">
-              <button
-                className={`pill-btn ${activeLayerKey === "bgTop" ? "active" : ""}`}
-                onClick={() =>
-                  onSelectTarget?.({
-                    type: "layer_bg_top",
-                    imageId: boardData.bgTop.activeImageId || boardData.bgTop.images[0]?.id,
-                  })
-                }
-              >
-                Top
-              </button>
-              <button
-                className={`pill-btn ${activeLayerKey === "bgBottom" ? "active" : ""}`}
-                onClick={() =>
-                  onSelectTarget?.({
-                    type: "layer_bg_bottom",
-                    imageId: boardData.bgBottom.activeImageId || boardData.bgBottom.images[0]?.id,
-                  })
-                }
-              >
-                Bottom
-              </button>
-            </div>
-
             <button
               className="cad-tool-btn primary"
               onClick={async () => {
@@ -917,51 +891,43 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
               <Plus size={13} />
               <span>Добавить фото</span>
             </button>
+
+            <button
+              className={`cad-tool-btn ${calibration.active ? "btn-active-highlight" : ""}`}
+              onClick={() =>
+                setCalibration({
+                  active: !calibration.active,
+                  step: 1,
+                  realMm: "2.54",
+                  showModal: false,
+                })
+              }
+              title="Калибровать масштаб: кликните 2 точки на холсте и укажите точное расстояние в мм"
+            >
+              <Ruler size={13} />
+              <span>Калибровка (2 точки)</span>
+            </button>
           </div>
         )}
 
         {/* CONTEXTUAL TOOLBAR 2: Компоненты (Монтаж деталей) */}
         {toolMode === "components" && (
           <div className="toolbar-section comp-tools">
-            {/* Active Component Side Indicator & Switch */}
-            <div className="cad-layer-switch-pill" title="Сторона монтажа: Лицевая (Top) / Обратная (Bottom)">
-              <button
-                className={`pill-btn ${boardData.activeSideView !== "bottom" ? "active" : ""}`}
-                onClick={() => {
-                  onChangeBoardData({ ...boardData, activeSideView: "top" });
-                  onSelectTarget?.({ type: "layer_comps_top" });
-                }}
-              >
-                Top
-              </button>
-              <button
-                className={`pill-btn ${boardData.activeSideView === "bottom" ? "active" : ""}`}
-                onClick={() => {
-                  onChangeBoardData({ ...boardData, activeSideView: "bottom" });
-                  onSelectTarget?.({ type: "layer_comps_bottom" });
-                }}
-              >
-                Bottom
-              </button>
-            </div>
-
-            <div className="toolbar-divider" />
-
             <span className="section-label">Добавить:</span>
             <button className="cad-tool-btn" onClick={() => handleAddComponent("resistor")} title="Резистор">
-              R
+              + R
             </button>
             <button className="cad-tool-btn" onClick={() => handleAddComponent("capacitor")} title="Конденсатор">
-              C
+              + C
             </button>
             <button className="cad-tool-btn" onClick={() => handleAddComponent("diode")} title="Диод">
-              D
+              + D
             </button>
             <button className="cad-tool-btn" onClick={() => handleAddComponent("ic_soic8")} title="Микросхема SOIC-8">
-              SOIC-8
+              + SOIC-8
             </button>
             <button className="cad-tool-btn" onClick={() => handleAddComponent("testpoint")} title="Тестпоинт">
-              TP
+              + TP
             </button>
           </div>
         )}

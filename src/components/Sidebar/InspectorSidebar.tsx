@@ -9,19 +9,14 @@ import {
 } from "../../types/project";
 
 import {
-  Image as ImageIcon,
   FlipHorizontal,
   FlipVertical,
   RotateCw,
   Trash2,
-  Layers,
-  Eye,
-  EyeOff,
   Lock,
   Unlock,
-  ArrowUp,
-  ArrowDown,
   Ruler,
+  X,
 } from "lucide-react";
 
 interface InspectorSidebarProps {
@@ -42,7 +37,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
   onStartCalibration,
 }) => {
   const boardData = normalizeBoardData(rawBoardData);
-
   const selectedTarget = boardData.selectedTarget;
 
   // Selected component if any
@@ -75,6 +69,11 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
       });
     });
   }
+
+  const handleClose = () => {
+    onSelectComponent(undefined);
+    onSelectTarget?.(null);
+  };
 
   // Handlers for component
   const handleUpdateComponent = (updates: Partial<ComponentItem>) => {
@@ -119,12 +118,14 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
     });
   };
 
-  // Helper for background layer multi-image inspector
-  const renderImageLayerInspector = (layerKey: "bgTop" | "bgBottom") => {
+  // Render properties for a specifically selected image
+  const renderSelectedImageInspector = (layerKey: "bgTop" | "bgBottom", imageId: string) => {
     const isTop = layerKey === "bgTop";
-    const targetType = isTop ? "layer_bg_top" : "layer_bg_bottom";
     const bg = isTop ? boardData.bgTop : boardData.bgBottom;
-    const title = isTop ? "Подложка: Top (Лицевая)" : "Подложка: Bottom (Обратная)";
+    const images = bg.images || [];
+    const activeImage = images.find((img) => img.id === imageId);
+
+    if (!activeImage) return null;
 
     const updateBg = (updates: Partial<typeof bg>) => {
       onChangeBoardData({
@@ -133,14 +134,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
       });
     };
 
-    const images = bg.images || [];
-    const targetImageId =
-      selectedTarget?.type === targetType ? selectedTarget.imageId : undefined;
-    const activeImageId = targetImageId || bg.activeImageId || images[0]?.id;
-    const activeImage = images.find((img) => img.id === activeImageId) || images[0];
-
     const handleUpdateActiveImage = (updates: Partial<LayerImageItem>) => {
-      if (!activeImage) return;
       const updatedImages = images.map((img) =>
         img.id === activeImage.id ? { ...img, ...updates } : img
       );
@@ -150,591 +144,348 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
       });
     };
 
-    const handleSelectImage = (id: string) => {
-      onChangeBoardData({
-        ...boardData,
-        [layerKey]: { ...bg, activeImageId: id },
-        selectedTarget: { type: targetType, imageId: id },
-      });
-    };
-
-    const handleDeleteImage = (id: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      const filtered = images.filter((img) => img.id !== id);
-      const nextActiveId = filtered.length > 0 ? filtered[0].id : undefined;
+    const handleDeleteActiveImage = () => {
+      const filtered = images.filter((img) => img.id !== activeImage.id);
       onChangeBoardData({
         ...boardData,
         [layerKey]: {
           ...bg,
           images: filtered,
-          activeImageId: nextActiveId,
+          activeImageId: undefined,
           image: filtered[0]?.src,
         },
-        selectedTarget: nextActiveId
-          ? { type: targetType, imageId: nextActiveId }
-          : { type: targetType },
+        selectedTarget: null,
       });
-    };
-
-    const handleToggleImageVisibility = (id: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      const updated = images.map((img) =>
-        img.id === id ? { ...img, visible: !img.visible } : img
-      );
-      updateBg({ images: updated });
-    };
-
-    const handleToggleImageLock = (id: string, e: React.MouseEvent) => {
-      e.stopPropagation();
-      const updated = images.map((img) =>
-        img.id === id ? { ...img, locked: !img.locked } : img
-      );
-      updateBg({ images: updated });
-    };
-
-    const handleMoveOrder = (id: string, direction: "up" | "down", e: React.MouseEvent) => {
-      e.stopPropagation();
-      const idx = images.findIndex((img) => img.id === id);
-      if (idx === -1) return;
-      if (direction === "up" && idx === 0) return;
-      if (direction === "down" && idx === images.length - 1) return;
-
-      const newArr = [...images];
-      const targetIdx = direction === "up" ? idx - 1 : idx + 1;
-      const temp = newArr[idx];
-      newArr[idx] = newArr[targetIdx];
-      newArr[targetIdx] = temp;
-      updateBg({ images: newArr });
     };
 
     return (
       <aside className="cad-inspector-panel">
         <div className="cad-inspector-header">
-          <span className="cad-inspector-title">{title}</span>
-          <label className="cad-layer-vis-switch" title="Видимость слоя">
-            <input
-              type="checkbox"
-              checked={bg.visible}
-              onChange={(e) => updateBg({ visible: e.target.checked })}
-            />
-            {bg.visible ? <Eye size={14} className="eye-on" /> : <EyeOff size={14} className="eye-off" />}
-          </label>
+          <div className="cad-header-title-group">
+            <span className="cad-inspector-title">Изображение</span>
+            <span className="cad-inspector-subtitle" title={activeImage.name}>
+              {activeImage.name}
+            </span>
+          </div>
+          <div className="cad-header-actions">
+            <button
+              className={`cad-card-btn ${activeImage.locked ? "active-lock" : ""}`}
+              onClick={() => handleUpdateActiveImage({ locked: !activeImage.locked })}
+              title={activeImage.locked ? "Разблокировать" : "Заблокировать от перемещения"}
+            >
+              {activeImage.locked ? <Lock size={13} /> : <Unlock size={13} />}
+            </button>
+            <button
+              className="cad-inspector-close-btn"
+              onClick={handleClose}
+              title="Закрыть свойства"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
 
         <div className="cad-inspector-body">
-          {/* Group 1: Multi-Image Quick Access & Manager */}
+          {/* Scale & 2-Point Calibration */}
           <div className="cad-prop-group">
-            <div className="group-header">
-              <span>Изображения на слое ({images.length})</span>
-            </div>
+            <div className="group-header">Масштаб и калибровка</div>
 
-            {images.length === 0 ? (
-              <div className="cad-empty-dropzone">
-                <ImageIcon size={28} className="dropzone-icon" />
-                <p>На этом слое пока нет фото или сканов</p>
-                <small>Для добавления используйте кнопку «Добавить фото» на верхней панели или перетащите файл на холст</small>
-              </div>
-            ) : (
-              <div className="cad-image-card-list">
-                {images.map((img, idx) => {
-                  const isSelected = activeImage?.id === img.id;
-                  return (
-                    <div
-                      key={img.id}
-                      className={`cad-image-card ${isSelected ? "selected" : ""}`}
-                      onClick={() => handleSelectImage(img.id)}
-                    >
-                      <div className="cad-card-thumb-wrap">
-                        <img
-                          src={img.src}
-                          alt={img.name}
-                          className="cad-card-thumb"
-                          style={{
-                            transform: img.mirrored ? "scaleX(-1)" : "none",
-                            filter: `brightness(${img.brightness}%) contrast(${img.contrast}%) ${
-                              img.invert ? "invert(1)" : ""
-                            }`,
-                            opacity: img.opacity,
-                          }}
-                        />
-                        {img.locked && (
-                          <div className="card-lock-badge" title="Заблокировано от сдвига">
-                            <Lock size={10} />
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="cad-card-info">
-                        <input
-                          type="text"
-                          className="cad-card-name-input"
-                          value={img.name}
-                          onClick={(e) => e.stopPropagation()}
-                          onChange={(e) => {
-                            const updated = images.map((item) =>
-                              item.id === img.id ? { ...item, name: e.target.value } : item
-                            );
-                            updateBg({ images: updated });
-                          }}
-                        />
-                        <div className="cad-card-meta">
-                          <span>{Math.round(img.scale * 100)}%</span>
-                          <span>•</span>
-                          <span>{img.rotation.toFixed(1)}°</span>
-                          {img.mirrored && (
-                            <>
-                              <span>•</span>
-                              <span className="card-flip-tag">FLIP</span>
-                            </>
-                          )}
-                        </div>
-                      </div>
-
-                      <div className="cad-card-actions">
-                        <button
-                          className={`cad-card-btn ${img.visible ? "" : "inactive"}`}
-                          onClick={(e) => handleToggleImageVisibility(img.id, e)}
-                          title={img.visible ? "Скрыть изображение" : "Показать изображение"}
-                        >
-                          {img.visible ? <Eye size={12} /> : <EyeOff size={12} />}
-                        </button>
-                        <button
-                          className={`cad-card-btn ${img.locked ? "active-lock" : ""}`}
-                          onClick={(e) => handleToggleImageLock(img.id, e)}
-                          title={img.locked ? "Разблокировать" : "Заблокировать от перемещения"}
-                        >
-                          {img.locked ? <Lock size={12} /> : <Unlock size={12} />}
-                        </button>
-                        <button
-                          className="cad-card-btn"
-                          disabled={idx === 0}
-                          onClick={(e) => handleMoveOrder(img.id, "up", e)}
-                          title="Переместить слой выше"
-                        >
-                          <ArrowUp size={12} />
-                        </button>
-                        <button
-                          className="cad-card-btn"
-                          disabled={idx === images.length - 1}
-                          onClick={(e) => handleMoveOrder(img.id, "down", e)}
-                          title="Переместить слой ниже"
-                        >
-                          <ArrowDown size={12} />
-                        </button>
-                        <button
-                          className="cad-card-btn danger"
-                          onClick={(e) => handleDeleteImage(img.id, e)}
-                          title="Удалить это изображение"
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-
-          {/* Group 2: Specialized Tools for Active Image */}
-          {activeImage && (
-            <>
-              {/* Scale & 2-Point Calibration */}
-              <div className="cad-prop-group">
-                <div className="group-header flex-between">
-                  <span>Масштаб и калибровка</span>
-                  <span className="active-img-badge">{activeImage.name}</span>
-                </div>
-
-                <div className="cad-field-row">
-                  <label>Множитель:</label>
-                  <div className="cad-input-with-actions">
-                    <input
-                      type="number"
-                      step="0.01"
-                      min="0.05"
-                      max="20"
-                      className="cad-field-input"
-                      value={activeImage.scale}
-                      onChange={(e) =>
-                        handleUpdateActiveImage({ scale: parseFloat(e.target.value) || 1 })
-                      }
-                    />
-                    <button
-                      className="cad-btn-flat btn-xs"
-                      onClick={() => handleUpdateActiveImage({ scale: 1 })}
-                      title="Сбросить масштаб на 100% (1.0x)"
-                    >
-                      1.0×
-                    </button>
-                  </div>
-                </div>
-
-                {/* 2-Point Scale Calibration Action */}
+            <div className="cad-field-row">
+              <label>Множитель:</label>
+              <div className="cad-input-with-actions">
+                <input
+                  type="number"
+                  step="0.01"
+                  min="0.05"
+                  max="20"
+                  className="cad-field-input"
+                  value={activeImage.scale}
+                  onChange={(e) =>
+                    handleUpdateActiveImage({ scale: parseFloat(e.target.value) || 1 })
+                  }
+                />
                 <button
-                  className="cad-btn-action full-width"
-                  style={{ marginTop: "6px" }}
-                  onClick={() => {
-                    if (onStartCalibration) {
-                      onStartCalibration();
-                    } else {
-                      window.dispatchEvent(
-                        new CustomEvent("mycad-start-calibration", {
-                          detail: { layerKey, imageId: activeImage.id },
-                        })
-                      );
-                    }
-                  }}
-                  title="Кликните 2 точки на холсте (например, 2 вывода детали) и укажите точное расстояние в мм"
+                  className="cad-btn-flat btn-xs"
+                  onClick={() => handleUpdateActiveImage({ scale: 1 })}
+                  title="Сбросить масштаб на 100% (1.0x)"
                 >
-                  <Ruler size={13} />
-                  <span>Калибровать по 2 точкам...</span>
+                  1.0×
                 </button>
               </div>
+            </div>
 
-              {/* Angle & Alignment Tools */}
-              <div className="cad-prop-group">
-                <div className="group-header">Поворот и выравнивание</div>
+            {/* 2-Point Scale Calibration Action */}
+            <button
+              className="cad-btn-action full-width"
+              style={{ marginTop: "6px" }}
+              onClick={() => {
+                if (onStartCalibration) {
+                  onStartCalibration();
+                } else {
+                  window.dispatchEvent(
+                    new CustomEvent("mycad-start-calibration", {
+                      detail: { layerKey, imageId: activeImage.id },
+                    })
+                  );
+                }
+              }}
+              title="Кликните 2 точки на холсте и укажите точное расстояние в мм"
+            >
+              <Ruler size={13} />
+              <span>Калибровать по 2 точкам...</span>
+            </button>
+          </div>
 
-                {/* Fine Angle Adjuster Stepper */}
-                <div className="cad-fine-angle-bar">
-                  <button
-                    className="cad-step-btn"
-                    onClick={() =>
-                      handleUpdateActiveImage({
-                        rotation: Math.round((activeImage.rotation - 1) * 10) / 10,
-                      })
-                    }
-                    title="Повернуть на -1.0°"
-                  >
-                    -1°
-                  </button>
-                  <button
-                    className="cad-step-btn"
-                    onClick={() =>
-                      handleUpdateActiveImage({
-                        rotation: Math.round((activeImage.rotation - 0.1) * 10) / 10,
-                      })
-                    }
-                    title="Точная подгонка на -0.1°"
-                  >
-                    -0.1°
-                  </button>
-                  <input
-                    type="number"
-                    step="0.1"
-                    className="cad-angle-input"
-                    value={activeImage.rotation}
-                    onChange={(e) =>
-                      handleUpdateActiveImage({ rotation: parseFloat(e.target.value) || 0 })
-                    }
-                  />
-                  <button
-                    className="cad-step-btn"
-                    onClick={() =>
-                      handleUpdateActiveImage({
-                        rotation: Math.round((activeImage.rotation + 0.1) * 10) / 10,
-                      })
-                    }
-                    title="Точная подгонка на +0.1°"
-                  >
-                    +0.1°
-                  </button>
-                  <button
-                    className="cad-step-btn"
-                    onClick={() =>
-                      handleUpdateActiveImage({
-                        rotation: Math.round((activeImage.rotation + 1) * 10) / 10,
-                      })
-                    }
-                    title="Повернуть на +1.0°"
-                  >
-                    +1°
-                  </button>
-                </div>
+          {/* Angle & Alignment Tools */}
+          <div className="cad-prop-group">
+            <div className="group-header">Поворот и выравнивание</div>
 
-                <div className="cad-btn-grid-2">
-                  <button
-                    className="cad-btn-flat btn-sm"
-                    onClick={() =>
-                      handleUpdateActiveImage({
-                        rotation: (Math.round(activeImage.rotation) + 90) % 360,
-                      })
-                    }
-                    title="Повернуть на 90° по часовой стрелке"
-                  >
-                    <RotateCw size={13} />
-                    <span>Повернуть 90°</span>
-                  </button>
-                  <button
-                    className="cad-btn-flat btn-sm"
-                    onClick={() => handleUpdateActiveImage({ rotation: 0 })}
-                    title="Сбросить угол в 0°"
-                  >
-                    <span>Сброс (0°)</span>
-                  </button>
-                </div>
+            {/* Fine Angle Stepper */}
+            <div className="cad-fine-angle-bar">
+              <button
+                className="cad-step-btn"
+                onClick={() =>
+                  handleUpdateActiveImage({
+                    rotation: Math.round((activeImage.rotation - 1) * 10) / 10,
+                  })
+                }
+                title="Повернуть на -1.0°"
+              >
+                -1°
+              </button>
+              <button
+                className="cad-step-btn"
+                onClick={() =>
+                  handleUpdateActiveImage({
+                    rotation: Math.round((activeImage.rotation - 0.1) * 10) / 10,
+                  })
+                }
+                title="Точная подгонка на -0.1°"
+              >
+                -0.1°
+              </button>
+              <input
+                type="number"
+                step="0.1"
+                className="cad-angle-input"
+                value={activeImage.rotation}
+                onChange={(e) =>
+                  handleUpdateActiveImage({ rotation: parseFloat(e.target.value) || 0 })
+                }
+              />
+              <button
+                className="cad-step-btn"
+                onClick={() =>
+                  handleUpdateActiveImage({
+                    rotation: Math.round((activeImage.rotation + 0.1) * 10) / 10,
+                  })
+                }
+                title="Точная подгонка на +0.1°"
+              >
+                +0.1°
+              </button>
+              <button
+                className="cad-step-btn"
+                onClick={() =>
+                  handleUpdateActiveImage({
+                    rotation: Math.round((activeImage.rotation + 1) * 10) / 10,
+                  })
+                }
+                title="Повернуть на +1.0°"
+              >
+                +1°
+              </button>
+            </div>
 
-                {/* Mirroring / Flips */}
-                <div className="cad-btn-grid-2" style={{ marginTop: "6px" }}>
-                  <button
-                    className={`cad-btn-flat btn-sm ${activeImage.mirrored ? "active" : ""}`}
-                    onClick={() =>
-                      handleUpdateActiveImage({ mirrored: !activeImage.mirrored })
-                    }
-                    title="Отзеркалить по горизонтали (Flip X)"
-                  >
-                    <FlipHorizontal size={13} />
-                    <span>Зеркало X</span>
-                  </button>
-                  <button
-                    className={`cad-btn-flat btn-sm ${activeImage.flipV ? "active" : ""}`}
-                    onClick={() =>
-                      handleUpdateActiveImage({ flipV: !activeImage.flipV })
-                    }
-                    title="Отзеркалить по вертикали (Flip Y)"
-                  >
-                    <FlipVertical size={13} />
-                    <span>Зеркало Y</span>
-                  </button>
-                </div>
+            <div className="cad-btn-grid-2">
+              <button
+                className="cad-btn-flat btn-sm"
+                onClick={() =>
+                  handleUpdateActiveImage({
+                    rotation: (Math.round(activeImage.rotation) + 90) % 360,
+                  })
+                }
+                title="Повернуть на 90° по часовой стрелке"
+              >
+                <RotateCw size={13} />
+                <span>Повернуть 90°</span>
+              </button>
+              <button
+                className="cad-btn-flat btn-sm"
+                onClick={() => handleUpdateActiveImage({ rotation: 0 })}
+                title="Сбросить угол в 0°"
+              >
+                <span>Сброс (0°)</span>
+              </button>
+            </div>
+
+            <div className="cad-btn-grid-2" style={{ marginTop: "6px" }}>
+              <button
+                className={`cad-btn-flat btn-sm ${activeImage.mirrored ? "active" : ""}`}
+                onClick={() =>
+                  handleUpdateActiveImage({ mirrored: !activeImage.mirrored })
+                }
+                title="Отзеркалить по горизонтали (Flip X)"
+              >
+                <FlipHorizontal size={13} />
+                <span>Зеркало X</span>
+              </button>
+              <button
+                className={`cad-btn-flat btn-sm ${activeImage.flipV ? "active" : ""}`}
+                onClick={() =>
+                  handleUpdateActiveImage({ flipV: !activeImage.flipV })
+                }
+                title="Отзеркалить по вертикали (Flip Y)"
+              >
+                <FlipVertical size={13} />
+                <span>Зеркало Y</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Positioning */}
+          <div className="cad-prop-group">
+            <div className="group-header">Позиция</div>
+
+            <div className="cad-field-grid-2">
+              <div className="cad-labeled-input">
+                <label>Позиция X (px)</label>
+                <input
+                  type="number"
+                  className="cad-field-input"
+                  value={activeImage.x}
+                  onChange={(e) =>
+                    handleUpdateActiveImage({ x: parseInt(e.target.value, 10) || 0 })
+                  }
+                />
               </div>
-
-              {/* Positioning */}
-              <div className="cad-prop-group">
-                <div className="group-header">Позиция</div>
-
-                <div className="cad-field-grid-2">
-                  <div className="cad-labeled-input">
-                    <label>Позиция X (px)</label>
-                    <input
-                      type="number"
-                      className="cad-field-input"
-                      value={activeImage.x}
-                      onChange={(e) =>
-                        handleUpdateActiveImage({ x: parseInt(e.target.value, 10) || 0 })
-                      }
-                    />
-                  </div>
-                  <div className="cad-labeled-input">
-                    <label>Позиция Y (px)</label>
-                    <input
-                      type="number"
-                      className="cad-field-input"
-                      value={activeImage.y}
-                      onChange={(e) =>
-                        handleUpdateActiveImage({ y: parseInt(e.target.value, 10) || 0 })
-                      }
-                    />
-                  </div>
-                </div>
+              <div className="cad-labeled-input">
+                <label>Позиция Y (px)</label>
+                <input
+                  type="number"
+                  className="cad-field-input"
+                  value={activeImage.y}
+                  onChange={(e) =>
+                    handleUpdateActiveImage({ y: parseInt(e.target.value, 10) || 0 })
+                  }
+                />
               </div>
+            </div>
+          </div>
 
-              {/* Display Filters & Transparency */}
-              <div className="cad-prop-group">
-                <div className="group-header">Фильтры и видимость</div>
+          {/* Display Filters & Transparency */}
+          <div className="cad-prop-group">
+            <div className="group-header">Фильтры и видимость</div>
 
-                <div className="cad-slider-group">
-                  <div className="cad-slider-label">
-                    <span>Прозрачность:</span>
-                    <strong>{Math.round(activeImage.opacity * 100)}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="0.05"
-                    max="1"
-                    step="0.05"
-                    value={activeImage.opacity}
-                    onChange={(e) =>
-                      handleUpdateActiveImage({ opacity: parseFloat(e.target.value) })
-                    }
-                  />
-                </div>
-
-                <div className="cad-slider-group">
-                  <div className="cad-slider-label">
-                    <span>Яркость:</span>
-                    <strong>{activeImage.brightness}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="30"
-                    max="200"
-                    step="5"
-                    value={activeImage.brightness}
-                    onChange={(e) =>
-                      handleUpdateActiveImage({ brightness: parseInt(e.target.value, 10) })
-                    }
-                  />
-                </div>
-
-                <div className="cad-slider-group">
-                  <div className="cad-slider-label">
-                    <span>Контрастность:</span>
-                    <strong>{activeImage.contrast}%</strong>
-                  </div>
-                  <input
-                    type="range"
-                    min="50"
-                    max="250"
-                    step="5"
-                    value={activeImage.contrast}
-                    onChange={(e) =>
-                      handleUpdateActiveImage({ contrast: parseInt(e.target.value, 10) })
-                    }
-                  />
-                </div>
-
-                <div className="cad-field-row checkbox-row">
-                  <label className="cad-checkbox-label">
-                    <input
-                      type="checkbox"
-                      checked={activeImage.invert}
-                      onChange={(e) =>
-                        handleUpdateActiveImage({ invert: e.target.checked })
-                      }
-                    />
-                    <span>Инвертировать чертеж (Темный режим)</span>
-                  </label>
-                </div>
+            <div className="cad-slider-group">
+              <div className="cad-slider-label">
+                <span>Прозрачность:</span>
+                <strong>{Math.round(activeImage.opacity * 100)}%</strong>
               </div>
-            </>
-          )}
+              <input
+                type="range"
+                min="0.05"
+                max="1"
+                step="0.05"
+                value={activeImage.opacity}
+                onChange={(e) =>
+                  handleUpdateActiveImage({ opacity: parseFloat(e.target.value) })
+                }
+              />
+            </div>
+
+            <div className="cad-slider-group">
+              <div className="cad-slider-label">
+                <span>Яркость:</span>
+                <strong>{activeImage.brightness}%</strong>
+              </div>
+              <input
+                type="range"
+                min="30"
+                max="200"
+                step="5"
+                value={activeImage.brightness}
+                onChange={(e) =>
+                  handleUpdateActiveImage({ brightness: parseInt(e.target.value, 10) })
+                }
+              />
+            </div>
+
+            <div className="cad-slider-group">
+              <div className="cad-slider-label">
+                <span>Контрастность:</span>
+                <strong>{activeImage.contrast}%</strong>
+              </div>
+              <input
+                type="range"
+                min="50"
+                max="250"
+                step="5"
+                value={activeImage.contrast}
+                onChange={(e) =>
+                  handleUpdateActiveImage({ contrast: parseInt(e.target.value, 10) })
+                }
+              />
+            </div>
+
+            <div className="cad-field-row checkbox-row">
+              <label className="cad-checkbox-label">
+                <input
+                  type="checkbox"
+                  checked={activeImage.invert}
+                  onChange={(e) =>
+                    handleUpdateActiveImage({ invert: e.target.checked })
+                  }
+                />
+                <span>Инвертировать чертеж (Темный режим)</span>
+              </label>
+            </div>
+          </div>
+
+          {/* Action: Delete Image */}
+          <div className="cad-prop-actions">
+            <button
+              className="cad-btn-danger-xs"
+              style={{ width: "100%", justifyContent: "center", padding: "6px" }}
+              onClick={handleDeleteActiveImage}
+              title="Удалить это изображение со слоя"
+            >
+              <Trash2 size={13} />
+              <span>Удалить изображение</span>
+            </button>
+          </div>
         </div>
       </aside>
     );
   };
 
-  // 1. Layer: Background Top
-  if (selectedTarget?.type === "layer_bg_top") {
-    return renderImageLayerInspector("bgTop");
+  // 1. If an image is selected on either background layer
+  if (
+    (selectedTarget?.type === "layer_bg_top" || selectedTarget?.type === "layer_bg_bottom") &&
+    selectedTarget.imageId
+  ) {
+    const layerKey = selectedTarget.type === "layer_bg_top" ? "bgTop" : "bgBottom";
+    return renderSelectedImageInspector(layerKey, selectedTarget.imageId);
   }
 
-  // 2. Layer: Background Bottom
-  if (selectedTarget?.type === "layer_bg_bottom") {
-    return renderImageLayerInspector("bgBottom");
-  }
-
-  // 3. Layer: Components Top
-  if (selectedTarget?.type === "layer_comps_top") {
-    const topComps = boardData.components.filter((c) => (c.layer || "top") === "top");
-
-    return (
-      <aside className="cad-inspector-panel">
-        <div className="cad-inspector-header">
-          <span className="cad-inspector-title">Компоненты: Top (Лицевая)</span>
-        </div>
-
-        <div className="cad-inspector-body">
-          <div className="cad-prop-group">
-            <div className="group-header">Управление видимостью</div>
-            <div className="cad-field-row checkbox-row">
-              <label className="cad-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={boardData.showCompsTop}
-                  onChange={(e) =>
-                    onChangeBoardData({ ...boardData, showCompsTop: e.target.checked })
-                  }
-                />
-                <span>Показывать компоненты Top на плате</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="cad-prop-group">
-            <div className="group-header">
-              Список деталей ({topComps.length} шт)
-            </div>
-            <ul className="cad-layer-comp-list">
-              {topComps.map((c) => (
-                <li
-                  key={c.id}
-                  className="comp-row"
-                  onClick={() => {
-                    onSelectComponent(c.id);
-                    onSelectTarget?.({ type: "component", id: c.id });
-                  }}
-                >
-                  <span className="comp-ref">{c.refDes}</span>
-                  <span className="comp-val">{c.value}</span>
-                  <span className="comp-type">{c.type}</span>
-                </li>
-              ))}
-              {topComps.length === 0 && (
-                <li className="empty-hint">На лицевой стороне нет компонентов.</li>
-              )}
-            </ul>
-          </div>
-        </div>
-      </aside>
-    );
-  }
-
-  // 4. Layer: Components Bottom
-  if (selectedTarget?.type === "layer_comps_bottom") {
-    const bottomComps = boardData.components.filter((c) => c.layer === "bottom");
-
-    return (
-      <aside className="cad-inspector-panel">
-        <div className="cad-inspector-header">
-          <span className="cad-inspector-title">Компоненты: Bottom (Обратная)</span>
-        </div>
-
-        <div className="cad-inspector-body">
-          <div className="cad-prop-group">
-            <div className="group-header">Управление видимостью</div>
-            <div className="cad-field-row checkbox-row">
-              <label className="cad-checkbox-label">
-                <input
-                  type="checkbox"
-                  checked={boardData.showCompsBottom}
-                  onChange={(e) =>
-                    onChangeBoardData({ ...boardData, showCompsBottom: e.target.checked })
-                  }
-                />
-                <span>Показывать компоненты Bottom на плате</span>
-              </label>
-            </div>
-          </div>
-
-          <div className="cad-prop-group">
-            <div className="group-header">
-              Список деталей ({bottomComps.length} шт)
-            </div>
-            <ul className="cad-layer-comp-list">
-              {bottomComps.map((c) => (
-                <li
-                  key={c.id}
-                  className="comp-row"
-                  onClick={() => {
-                    onSelectComponent(c.id);
-                    onSelectTarget?.({ type: "component", id: c.id });
-                  }}
-                >
-                  <span className="comp-ref">{c.refDes}</span>
-                  <span className="comp-val">{c.value}</span>
-                  <span className="comp-type">{c.type}</span>
-                </li>
-              ))}
-              {bottomComps.length === 0 && (
-                <li className="empty-hint">На обратной стороне нет компонентов.</li>
-              )}
-            </ul>
-          </div>
-        </div>
-      </aside>
-    );
-  }
-
-  // 5. Selected Component Inspector
+  // 2. If a component is selected
   if (selectedComp) {
     const compSide: BoardSide = selectedComp.layer || "top";
 
     return (
       <aside className="cad-inspector-panel">
         <div className="cad-inspector-header">
-          <span className="cad-inspector-title">Компонент: {selectedComp.refDes}</span>
+          <div className="cad-header-title-group">
+            <span className="cad-inspector-title">Компонент</span>
+            <span className="cad-inspector-subtitle">{selectedComp.refDes}</span>
+          </div>
+          <button
+            className="cad-inspector-close-btn"
+            onClick={handleClose}
+            title="Закрыть свойства"
+          >
+            <X size={14} />
+          </button>
         </div>
 
         <div className="cad-inspector-body">
@@ -784,6 +535,32 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                 >
                   Обратная (Bottom)
                 </button>
+              </div>
+            </div>
+
+            {/* Position X / Y for component */}
+            <div className="cad-field-grid-2" style={{ marginBottom: "6px" }}>
+              <div className="cad-labeled-input">
+                <label>Позиция X (px)</label>
+                <input
+                  type="number"
+                  className="cad-field-input"
+                  value={Math.round(selectedComp.x)}
+                  onChange={(e) =>
+                    handleUpdateComponent({ x: parseInt(e.target.value, 10) || 0 })
+                  }
+                />
+              </div>
+              <div className="cad-labeled-input">
+                <label>Позиция Y (px)</label>
+                <input
+                  type="number"
+                  className="cad-field-input"
+                  value={Math.round(selectedComp.y)}
+                  onChange={(e) =>
+                    handleUpdateComponent({ y: parseInt(e.target.value, 10) || 0 })
+                  }
+                />
               </div>
             </div>
 
@@ -880,22 +657,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
     );
   }
 
-  // 6. Default Empty State
-  return (
-    <aside className="cad-inspector-panel">
-      <div className="cad-inspector-header">
-        <span className="cad-inspector-title">Свойства</span>
-      </div>
-
-      <div className="cad-inspector-empty">
-        <div className="empty-icon-wrap">
-          <Layers size={28} />
-        </div>
-        <p>Элемент не выбран</p>
-        <small>
-          Выберите слой в дереве слева (<strong>Подложка</strong>, <strong>Компоненты</strong>) или кликните по радиодетали на плате для просмотра и настройки параметров.
-        </small>
-      </div>
-    </aside>
-  );
+  // 3. If nothing is selected, Inspector is completely hidden!
+  return null;
 };

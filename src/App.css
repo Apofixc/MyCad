@@ -2234,12 +2234,53 @@ body, html, #root {
   justify-content: space-between;
 }
 
+.cad-header-title-group {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
 .cad-inspector-title {
-  font-size: 11px;
-  font-weight: 600;
+  font-size: 10px;
+  font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   color: var(--cad-text-muted);
+}
+
+.cad-inspector-subtitle {
+  font-size: 12.5px;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 160px;
+}
+
+.cad-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cad-inspector-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.cad-inspector-close-btn:hover {
+  color: var(--cad-text-primary);
+  background-color: var(--cad-bg-hover);
 }
 
 .cad-inspector-empty {
