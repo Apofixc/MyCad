@@ -29,7 +29,23 @@ import {
   X,
   Image as ImageIcon,
   Maximize2,
+  Move,
+  Compass,
+  Columns2,
+  ZoomIn,
+  Target,
+  DraftingCompass,
+  Eye,
 } from "lucide-react";
+import { ImageTransformBox } from "./ImageTransformBox";
+import { MeasureOverlay } from "./MeasureOverlay";
+import { InteractiveCurtain } from "./InteractiveCurtain";
+import { ScreenMagnifier } from "./ScreenMagnifier";
+import {
+  calculateCalibratedScale,
+  calculate2PointRegistration,
+  Point2D,
+} from "../../utils/alignmentMath";
 
 interface BoardCanvasProps {
   boardData: BoardData;
@@ -98,7 +114,28 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   } | null>(null);
   const rafIdRef = useRef<number | null>(null);
 
-  // 2-Point Calibration Tool State
+  // Active Image Tool (1 of 8 specialized CAD tools)
+  type ActiveImageTool =
+    | "transform"
+    | "calibrate"
+    | "level"
+    | "register"
+    | "curtain"
+    | "measure"
+    | "magnifier"
+    | "blink"
+    | null;
+
+  const [activeImageTool, setActiveImageTool] = useState<ActiveImageTool>("transform");
+  const [curtainSplitPercent, setCurtainSplitPercent] = useState<number>(50);
+  const [blinkSide, setBlinkSide] = useState<"top" | "bottom">("top");
+  const [registrationState, setRegistrationState] = useState<{
+    step: 1 | 2;
+    topPts: Point2D[];
+    bottomPts: Point2D[];
+  }>({ step: 1, topPts: [], bottomPts: [] });
+
+  // 2-Point Calibration Tool State (legacy compatibility)
   const [calibration, setCalibration] = useState<CalibrationState>({
     active: false,
     step: 1,
@@ -594,6 +631,11 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       }
 
       if (e.key === "Escape") {
+        if (activeImageTool && activeImageTool !== "transform") {
+          setActiveImageTool("transform");
+          setRegistrationState({ step: 1, topPts: [], bottomPts: [] });
+          return;
+        }
         if (calibration.active) {
           setCalibration({ active: false, step: 1, realMm: "2.54", showModal: false });
         } else {
@@ -971,7 +1013,85 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     };
   }, [toolMode, activeImage, activeLayerKey, boardData, handleFitAll]);
 
-  // Apply 2-Point Calibration
+  // Blink comparator loop
+  useEffect(() => {
+    if (activeImageTool !== "blink") return;
+    const interval = window.setInterval(() => {
+      setBlinkSide((s) => (s === "top" ? "bottom" : "top"));
+    }, 400);
+    return () => window.clearInterval(interval);
+  }, [activeImageTool]);
+
+  // Apply Leveling Angle (Tool 3)
+  const handleApplyLeveling = (deltaAngle: number) => {
+    if (!activeImage) return;
+    const newRot = Math.round(((activeImage.rotation + deltaAngle) % 360) * 100) / 100;
+    handleUpdateActiveImage({ rotation: newRot });
+    setActiveImageTool("transform");
+  };
+
+  // Apply Calibrated Scale (Tool 2)
+  const handleApplyCalibratedScale = (measuredDistancePx: number, realDistanceMm: number) => {
+    if (!activeImage) return;
+    const newScale = calculateCalibratedScale(measuredDistancePx, realDistanceMm, activeImage.scale);
+    handleUpdateActiveImage({ scale: newScale });
+    setActiveImageTool("transform");
+  };
+
+  // Apply 2-Point Registration (Tool 4)
+  const handleRegistrationCanvasClick = (e: React.MouseEvent) => {
+    if (activeImageTool !== "register" || !containerRef.current) return;
+    const rect = containerRef.current.getBoundingClientRect();
+    const clickX = Math.round((e.clientX - rect.left - pan.x) / zoom);
+    const clickY = Math.round((e.clientY - rect.top - pan.y) / zoom);
+    const pt: Point2D = { x: clickX, y: clickY };
+
+    if (registrationState.step === 1) {
+      const updated = [...registrationState.topPts, pt];
+      if (updated.length >= 2) {
+        setRegistrationState({ step: 2, topPts: updated, bottomPts: [] });
+      } else {
+        setRegistrationState({ ...registrationState, topPts: updated });
+      }
+    } else if (registrationState.step === 2) {
+      const updated = [...registrationState.bottomPts, pt];
+      if (updated.length >= 2) {
+        const reg = calculate2PointRegistration(
+          registrationState.topPts[0],
+          registrationState.topPts[1],
+          updated[0],
+          updated[1]
+        );
+        const bottomImg = boardData.bgBottom.images[0];
+        if (bottomImg) {
+          const updatedBottomImages = boardData.bgBottom.images.map((img, idx) =>
+            idx === 0
+              ? {
+                  ...img,
+                  x: Math.round(img.x + reg.dx),
+                  y: Math.round(img.y + reg.dy),
+                  rotation: Math.round(((img.rotation + reg.rotationDelta) % 360) * 10) / 10,
+                  scale: Math.round(img.scale * reg.scaleRatio * 1000) / 1000,
+                }
+              : img
+          );
+          onChangeBoardData({
+            ...boardData,
+            bgBottom: {
+              ...boardData.bgBottom,
+              images: updatedBottomImages,
+            },
+          });
+        }
+        setActiveImageTool("transform");
+        setRegistrationState({ step: 1, topPts: [], bottomPts: [] });
+      } else {
+        setRegistrationState({ ...registrationState, bottomPts: updated });
+      }
+    }
+  };
+
+  // Apply 2-Point Calibration (legacy)
   const handleApplyCalibration = () => {
     const mm = parseFloat(calibration.realMm);
     if (isNaN(mm) || mm <= 0 || !calibration.measuredPx || !activeImage) {
@@ -1114,20 +1234,89 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
               <span>Добавить фото</span>
             </button>
 
+            <div className="toolbar-divider" />
+
+            {/* 1. Выбор и трансформация */}
             <button
-              className={`cad-tool-btn ${calibration.active ? "btn-active-highlight" : ""}`}
-              onClick={() =>
-                setCalibration({
-                  active: !calibration.active,
-                  step: 1,
-                  realMm: "2.54",
-                  showModal: false,
-                })
-              }
+              className={`cad-tool-btn ${activeImageTool === "transform" ? "btn-active-highlight" : ""}`}
+              onClick={() => setActiveImageTool("transform")}
+              title="Выбор и трансформация (масштабирование и поворот)"
+            >
+              <Move size={13} />
+              <span>Трансформация</span>
+            </button>
+
+            {/* 2. Калибровка масштаба (2 точки) */}
+            <button
+              className={`cad-tool-btn ${activeImageTool === "calibrate" ? "btn-active-highlight" : ""}`}
+              onClick={() => setActiveImageTool(activeImageTool === "calibrate" ? "transform" : "calibrate")}
               title="Калибровать масштаб: кликните 2 точки на холсте и укажите точное расстояние в мм"
             >
               <Ruler size={13} />
-              <span>Калибровка (2 точки)</span>
+              <span>Калибровка</span>
+            </button>
+
+            {/* 3. Выравнивание горизонта */}
+            <button
+              className={`cad-tool-btn ${activeImageTool === "level" ? "btn-active-highlight" : ""}`}
+              onClick={() => setActiveImageTool(activeImageTool === "level" ? "transform" : "level")}
+              title="Выровнять горизонт: кликните 2 точки одной линии для устранения перекоса скана"
+            >
+              <Compass size={13} />
+              <span>Горизонт</span>
+            </button>
+
+            {/* 4. Совмещение слоев Top / Bottom */}
+            <button
+              className={`cad-tool-btn ${activeImageTool === "register" ? "btn-active-highlight" : ""}`}
+              onClick={() => {
+                setActiveImageTool(activeImageTool === "register" ? "transform" : "register");
+                setRegistrationState({ step: 1, topPts: [], bottomPts: [] });
+              }}
+              title="Совмещение слоев Top и Bottom по 2 переходным отверстиям (VIA)"
+            >
+              <Target size={13} />
+              <span>Совмещение</span>
+            </button>
+
+            {/* 5. Шторка сравнения */}
+            <button
+              className={`cad-tool-btn ${activeImageTool === "curtain" ? "btn-active-highlight" : ""}`}
+              onClick={() => setActiveImageTool(activeImageTool === "curtain" ? "transform" : "curtain")}
+              title="Интерактивная шторка сравнения (сплиттер слоев Top vs Bottom)"
+            >
+              <Columns2 size={13} />
+              <span>Шторка</span>
+            </button>
+
+            {/* 6. Измерительная линейка */}
+            <button
+              className={`cad-tool-btn ${activeImageTool === "measure" ? "btn-active-highlight" : ""}`}
+              onClick={() => setActiveImageTool(activeImageTool === "measure" ? "transform" : "measure")}
+              title="Измерительная линейка: свободный замер расстояний в мм и mil"
+            >
+              <DraftingCompass size={13} />
+              <span>Линейка</span>
+            </button>
+
+            {/* 7. Экранная лупа */}
+            <button
+              className={`cad-tool-btn ${activeImageTool === "magnifier" ? "btn-active-highlight" : ""}`}
+              onClick={() => setActiveImageTool(activeImageTool === "magnifier" ? "transform" : "magnifier")}
+              title="Экранная лупа 4x / 8x для прецизионного наведения (нажмите Z для смены зума)"
+            >
+              <ZoomIn size={13} />
+              <span>Лупа</span>
+            </button>
+
+            {/* 8. Мерцание (Блинк-компаратор) */}
+            <button
+              className={`cad-tool-btn ${activeImageTool === "blink" ? "btn-active-highlight" : ""}`}
+              onClick={() => setActiveImageTool(activeImageTool === "blink" ? "transform" : "blink")}
+              title="Мерцание (Блинк-компаратор) слоев Top и Bottom"
+            >
+              <Eye size={13} />
+              <span>Блинк</span>
             </button>
           </div>
         )}
@@ -1155,28 +1344,89 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         )}
       </div>
 
-      {/* Floating Interactive Calibration Banner */}
-      {calibration.active && (
+      {/* Registration Tool Banner */}
+      {activeImageTool === "register" && (
         <div className="cad-calibration-banner" onMouseDown={(e) => e.stopPropagation()}>
           <div className="banner-content">
-            <Ruler size={16} className="banner-icon" />
+            <Target size={16} className="banner-icon" />
             <div className="banner-text">
-              <strong>Калибровка масштаба по 2 точкам</strong>
+              <strong>Совмещение слоев Top и Bottom по реперам</strong>
               <span>
-                {calibration.step === 1
-                  ? "Кликните Точку 1 на изображении (первый вывод микросхемы или отметку)"
-                  : "Кликните Точку 2 (соседний вывод или известное расстояние)"}
+                {registrationState.step === 1
+                  ? `Кликните 2 переходных отверстия на слое Top (${registrationState.topPts.length}/2)`
+                  : `Теперь кликните те же 2 отверстия на слое Bottom (${registrationState.bottomPts.length}/2)`}
               </span>
             </div>
           </div>
           <button
             className="cad-btn-flat btn-xs"
-            onClick={() => setCalibration({ active: false, step: 1, realMm: "2.54", showModal: false })}
+            onClick={() => {
+              setActiveImageTool("transform");
+              setRegistrationState({ step: 1, topPts: [], bottomPts: [] });
+            }}
           >
             Отмена (Esc)
           </button>
         </div>
       )}
+
+      {/* Blink Comparator Banner */}
+      {activeImageTool === "blink" && (
+        <div className="cad-calibration-banner" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="banner-content">
+            <Eye size={16} className="banner-icon" />
+            <div className="banner-text">
+              <strong>Режим мерцания (Блинк-компаратор)</strong>
+              <span>
+                Активен слой: {blinkSide === "top" ? "Top (Лицевая сторона)" : "Bottom (Обратная сторона)"} (частота 2.5 Гц)
+              </span>
+            </div>
+          </div>
+          <button
+            className="cad-btn-flat btn-xs"
+            onClick={() => setActiveImageTool("transform")}
+          >
+            Остановить (Esc)
+          </button>
+        </div>
+      )}
+
+      {/* Measure / Calibrate / Level Overlay (Tools 2, 3, 6) */}
+      <MeasureOverlay
+        mode={
+          activeImageTool === "calibrate"
+            ? "calibrate"
+            : activeImageTool === "level"
+            ? "level"
+            : activeImageTool === "measure"
+            ? "measure"
+            : null
+        }
+        zoom={zoom}
+        pan={pan}
+        containerRef={containerRef}
+        onApplyCalibration={handleApplyCalibratedScale}
+        onApplyLeveling={handleApplyLeveling}
+        onClose={() => setActiveImageTool("transform")}
+      />
+
+      {/* Interactive Curtain Overlay (Tool 5) */}
+      <InteractiveCurtain
+        isActive={activeImageTool === "curtain"}
+        splitPercent={curtainSplitPercent}
+        onChangeSplitPercent={setCurtainSplitPercent}
+        containerRef={containerRef}
+        onClose={() => setActiveImageTool("transform")}
+      />
+
+      {/* Screen Magnifier Overlay (Tool 7) */}
+      <ScreenMagnifier
+        isActive={activeImageTool === "magnifier"}
+        containerRef={containerRef}
+        pan={pan}
+        zoom={zoom}
+        onClose={() => setActiveImageTool("transform")}
+      />
 
       {/* Calibration Input Modal */}
       {calibration.showModal && calibration.measuredPx && (
@@ -1261,11 +1511,35 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       )}
 
       {/* SVG Viewport */}
-      <svg className="cad-svg-canvas" width="100%" height="100%">
+      <svg
+        className="cad-svg-canvas"
+        width="100%"
+        height="100%"
+        onClick={(e) => {
+          if (activeImageTool === "register") handleRegistrationCanvasClick(e);
+        }}
+      >
         <defs>
           <pattern id="cad-grid-pattern" width="20" height="20" patternUnits="userSpaceOnUse">
             <circle cx="10" cy="10" r="0.75" fill="rgba(148, 163, 184, 0.15)" />
           </pattern>
+          {/* Curtain Split ClipPath if active */}
+          {activeImageTool === "curtain" && (
+            <clipPath id="cad-curtain-clip" clipPathUnits="userSpaceOnUse">
+              <rect
+                x="-500000"
+                y="-500000"
+                width={
+                  500000 +
+                  ((containerRef.current
+                    ? containerRef.current.clientWidth * (curtainSplitPercent / 100) - pan.x
+                    : 0) /
+                    zoom)
+                }
+                height="1000000"
+              />
+            </clipPath>
+          )}
         </defs>
 
         <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
@@ -1295,7 +1569,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
               const w = img.width || 800;
               const h = img.height || 600;
-              const strokeColor = layerKey === "bgTop" ? "#38bdf8" : "#60a5fa";
 
               return (
                 <g
@@ -1328,44 +1601,68 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     preserveAspectRatio="none"
                     style={{ pointerEvents: "auto", userSelect: "none" }}
                   />
-                  {isSelected && (
-                    <g className="cad-img-selection-box" pointerEvents="none">
-                      <rect
-                        x={0}
-                        y={0}
-                        width={w}
-                        height={h}
-                        fill="none"
-                        stroke={strokeColor}
-                        strokeWidth={1.5 / zoom}
-                        strokeDasharray="6 3"
+                    {/* If selected in Transform mode, render interactive Transform Box with 8 handles and rotation */}
+                    {isSelected && activeImageTool === "transform" && (
+                      <ImageTransformBox
+                        image={img}
+                        zoom={zoom}
+                        pan={pan}
+                        containerRef={containerRef}
+                        isActive={isSelected && activeImageTool === "transform"}
+                        onUpdateImage={handleUpdateActiveImage}
                       />
-                      {/* Corner Handles - Crisp CAD style */}
-                      <rect x={-4 / zoom} y={-4 / zoom} width={8 / zoom} height={8 / zoom} fill="#ffffff" stroke={strokeColor} strokeWidth={1.2 / zoom} />
-                      <rect x={w - 4 / zoom} y={-4 / zoom} width={8 / zoom} height={8 / zoom} fill="#ffffff" stroke={strokeColor} strokeWidth={1.2 / zoom} />
-                      <rect x={-4 / zoom} y={h - 4 / zoom} width={8 / zoom} height={8 / zoom} fill="#ffffff" stroke={strokeColor} strokeWidth={1.2 / zoom} />
-                      <rect x={w - 4 / zoom} y={h - 4 / zoom} width={8 / zoom} height={8 / zoom} fill="#ffffff" stroke={strokeColor} strokeWidth={1.2 / zoom} />
-                      {/* Center Crosshair */}
-                      <line x1={w / 2 - 8 / zoom} y1={h / 2} x2={w / 2 + 8 / zoom} y2={h / 2} stroke={strokeColor} strokeWidth={1 / zoom} />
-                      <line x1={w / 2} y1={h / 2 - 8 / zoom} x2={w / 2} y2={h / 2 + 8 / zoom} stroke={strokeColor} strokeWidth={1 / zoom} />
-                    </g>
-                  )}
-                </g>
+                    )}
+                  </g>
+                );
+              };
+
+              return (
+                <>
+                  {/* Layer 1: Bottom Images (solder side) */}
+                  {boardData.bgBottom.visible &&
+                    (activeImageTool !== "blink" || blinkSide === "bottom") &&
+                    boardData.bgBottom.images.map((img) => renderImageItem("bgBottom", img))}
+
+                  {/* Layer 2: Top Images (component side) */}
+                  {boardData.bgTop.visible &&
+                    (activeImageTool !== "blink" || blinkSide === "top") && (
+                      <g
+                        clipPath={
+                          activeImageTool === "curtain" && containerRef.current
+                            ? "url(#cad-curtain-clip)"
+                            : undefined
+                        }
+                      >
+                        {boardData.bgTop.images.map((img) => renderImageItem("bgTop", img))}
+                      </g>
+                    )}
+                </>
               );
-            };
+            })()}
 
-            return (
-              <>
-                {/* Layer 1: Bottom Images (solder side) */}
-                {boardData.bgBottom.visible &&
-                  boardData.bgBottom.images.map((img) => renderImageItem("bgBottom", img))}
-
-                {/* Layer 2: Top Images (component side) */}
-                {boardData.bgTop.visible &&
-                  boardData.bgTop.images.map((img) => renderImageItem("bgTop", img))}
-              </>
-            );
-          })()}
+            {/* Registration Targets in SVG */}
+            {activeImageTool === "register" && (
+              <g className="cad-registration-targets" pointerEvents="none">
+                {registrationState.topPts.map((pt, idx) => (
+                  <g key={`reg_top_${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
+                    <circle cx={0} cy={0} r={6 / zoom} fill="none" stroke="#38bdf8" strokeWidth={2 / zoom} />
+                    <circle cx={0} cy={0} r={2 / zoom} fill="#38bdf8" />
+                    <text x={8 / zoom} y={-8 / zoom} fill="#38bdf8" fontSize={11 / zoom} fontWeight="bold">
+                      Top-{idx + 1}
+                    </text>
+                  </g>
+                ))}
+                {registrationState.bottomPts.map((pt, idx) => (
+                  <g key={`reg_bot_${idx}`} transform={`translate(${pt.x}, ${pt.y})`}>
+                    <circle cx={0} cy={0} r={6 / zoom} fill="none" stroke="#60a5fa" strokeWidth={2 / zoom} />
+                    <circle cx={0} cy={0} r={2 / zoom} fill="#60a5fa" />
+                    <text x={8 / zoom} y={-8 / zoom} fill="#60a5fa" fontSize={11 / zoom} fontWeight="bold">
+                      Bot-{idx + 1}
+                    </text>
+                  </g>
+                ))}
+              </g>
+            )}
 
           {/* Interactive Calibration Guide Lines & Points */}
           {calibration.active && (
