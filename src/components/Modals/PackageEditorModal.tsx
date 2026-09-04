@@ -184,6 +184,8 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
     onClose();
   };
 
+  if (!isOpen) return null;
+
   return (
     <div className="cad-modal-overlay" onClick={onClose}>
       <div

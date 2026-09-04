@@ -3935,27 +3935,193 @@ body, html, #root {
   margin: 0 4px;
 }
 
-/* Main Library Modal Window */
-.component-library-modal {
-  width: 96vw;
-  max-width: 1280px;
-  height: 88vh;
-  max-height: 860px;
+/* ==========================================================================
+   CAD Modal System & Dialog Overlays
+   ========================================================================== */
+.cad-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(3, 7, 18, 0.82);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+  box-sizing: border-box;
+  animation: cadModalFadeIn 0.15s ease-out;
+}
+
+@keyframes cadModalFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.cad-modal-container {
   display: flex;
   flex-direction: column;
   background: #0f172a;
   border: 1px solid #1e293b;
-  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.85);
-  border-radius: 10px;
+  border-radius: 12px;
+  box-shadow: 
+    0 24px 64px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(56, 189, 248, 0.18),
+    0 0 35px rgba(2, 132, 199, 0.12);
+  overflow: hidden;
+  box-sizing: border-box;
+  animation: cadModalSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cadModalSlideUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cad-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 14px 20px;
+  background: #0b1120;
+  border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.header-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.header-title-group .header-icon {
+  color: #38bdf8;
+  flex-shrink: 0;
+}
+
+.header-title-group h3 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: #f8fafc;
+  line-height: 1.2;
+}
+
+.header-subtitle {
+  font-size: 11.5px;
+  color: #94a3b8;
+  display: block;
+  margin-top: 2px;
+}
+
+.cad-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.cad-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.cad-modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 20px;
+  background: #080d17;
+  border-top: 1px solid #1e293b;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+/* Common Secondary Button & Sizes */
+.cad-btn-secondary {
+  background: #1e293b;
+  color: #cbd5e1;
+  border: 1px solid #334155;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.cad-btn-secondary:hover:not(:disabled) {
+  background: #273549;
+  border-color: #38bdf8;
+  color: #38bdf8;
+}
+
+.cad-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.cad-btn-secondary.btn-sm,
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 11px;
+}
+
+/* Form Section (Used in Modals) */
+.form-section {
+  background: #0c1220;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ==========================================================================
+   Main Library Modal Window
+   ========================================================================== */
+.component-library-modal {
+  width: 95vw;
+  max-width: 1340px;
+  height: 88vh;
+  max-height: 880px;
+  display: flex;
+  flex-direction: column;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 12px;
   overflow: hidden;
 }
 
 .component-library-body {
   display: grid;
-  grid-template-columns: 240px 1fr 380px;
+  grid-template-columns: 240px 1fr 400px;
   flex: 1;
   min-height: 0;
   background: #090d16;
+  overflow: hidden;
 }
 
 /* Column 1: Categories Tree */
@@ -3965,6 +4131,7 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 0;
 }
 
 .library-tab-switcher {
@@ -3973,6 +4140,7 @@ body, html, #root {
   gap: 6px;
   background: #080d17;
   border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
 }
 
 .library-tab-switcher .tab-btn {
@@ -4074,6 +4242,7 @@ body, html, #root {
   border-right: 1px solid #1e293b;
   background: #090e1a;
   min-height: 0;
+  overflow: hidden;
 }
 
 .middle-toolbar {
@@ -4083,6 +4252,7 @@ body, html, #root {
   padding: 10px 14px;
   background: #0c1220;
   border-bottom: 1px solid #1e293b;
+  flex-shrink: 0;
 }
 
 .library-search-box {
@@ -4090,6 +4260,7 @@ body, html, #root {
   position: relative;
   display: flex;
   align-items: center;
+  min-width: 140px;
 }
 
 .library-search-box input {
@@ -4102,6 +4273,7 @@ body, html, #root {
   font-size: 13px;
   outline: none;
   transition: border-color 0.15s ease;
+  box-sizing: border-box;
 }
 
 .library-search-box input:focus {
@@ -4123,6 +4295,14 @@ body, html, #root {
   border: none;
   color: #64748b;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+}
+
+.clear-search-btn:hover {
+  color: #e2e8f0;
 }
 
 .mount-type-filter {
@@ -4131,6 +4311,7 @@ body, html, #root {
   border: 1px solid #334155;
   border-radius: 6px;
   padding: 2px;
+  flex-shrink: 0;
 }
 
 .mount-type-filter .chip-btn {
@@ -4142,6 +4323,9 @@ body, html, #root {
   color: #94a3b8;
   border-radius: 4px;
   cursor: pointer;
+  white-space: nowrap;
+  line-height: 1.2;
+  transition: all 0.15s ease;
 }
 
 .mount-type-filter .chip-btn.active {
@@ -4159,6 +4343,21 @@ body, html, #root {
   border-bottom: 1px solid #182234;
   font-size: 12px;
   color: #64748b;
+  flex-shrink: 0;
+  gap: 10px;
+}
+
+.items-count {
+  font-size: 12px;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.action-buttons-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
 }
 
 .library-items-list {
@@ -4168,6 +4367,7 @@ body, html, #root {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-height: 0;
 }
 
 .library-card {
@@ -4298,6 +4498,8 @@ body, html, #root {
   flex-direction: column;
   background: #0d1322;
   min-height: 0;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .details-scroll-content {
@@ -4306,34 +4508,42 @@ body, html, #root {
   padding: 14px;
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
+  min-height: 0;
 }
 
 .preview-card-wrapper {
   background: #090e18;
   border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 10px;
+  padding: 12px;
 }
 
 .preview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
 }
 
 .section-title {
-  font-size: 12px;
-  font-weight: 600;
-  color: #cbd5e1;
+  font-size: 11px;
+  font-weight: 700;
+  color: #94a3b8;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.pitch-info, .variant-note {
+.pitch-info {
   font-size: 11px;
-  color: #64748b;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.1);
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  padding: 2px 7px;
+  border-radius: 4px;
+  white-space: nowrap;
 }
 
 /* Variants selector */
@@ -4341,14 +4551,22 @@ body, html, #root {
   background: #0c1220;
   border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 10px;
+  padding: 12px;
 }
 
 .section-title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 8px;
   margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.variant-note {
+  font-size: 10.5px;
+  color: #64748b;
+  white-space: nowrap;
 }
 
 .variants-chips-list {
@@ -4388,6 +4606,7 @@ body, html, #root {
   height: 10px;
   border-radius: 50%;
   display: inline-block;
+  flex-shrink: 0;
 }
 
 .pkg-buttons-row {
@@ -4419,7 +4638,7 @@ body, html, #root {
   background: #0c1220;
   border: 1px solid #1e293b;
   border-radius: 8px;
-  padding: 10px;
+  padding: 12px;
 }
 
 .pinout-table-wrapper {
@@ -4440,10 +4659,11 @@ body, html, #root {
   background: #141c2c;
   color: #94a3b8;
   text-align: left;
-  padding: 5px 8px;
+  padding: 6px 8px;
   font-weight: 600;
   position: sticky;
   top: 0;
+  z-index: 1;
 }
 
 .pinout-table td {
@@ -4506,19 +4726,101 @@ body, html, #root {
   font-weight: 600;
 }
 
-/* Footer */
-.library-right-footer {
+/* Empty State */
+.empty-details-placeholder {
+  flex: 1;
   display: flex;
-  justify-content: flex-end;
-  gap: 10px;
-  padding: 12px 14px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  color: #64748b;
+  padding: 30px;
+  text-align: center;
+  font-size: 13px;
+}
+
+.empty-details-placeholder svg {
+  color: #334155;
+}
+
+/* Unified Modal Bottom Footer */
+.library-bottom-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 18px;
   background: #080d17;
   border-top: 1px solid #1e293b;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.footer-status-bar {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.footer-status-label {
+  color: #64748b;
+}
+
+.footer-status-name {
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.footer-status-val {
+  color: #10b981;
+  font-weight: 600;
+}
+
+.footer-status-pkg {
+  color: #94a3b8;
+}
+
+.footer-status-pkg strong {
+  color: #e2e8f0;
+}
+
+.footer-hint-text {
+  color: #64748b;
+  font-size: 12px;
+}
+
+.footer-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
 }
 
 .place-btn {
   background: linear-gradient(135deg, #0284c7 0%, #0369a1 100%);
+  color: #ffffff;
   font-weight: 700;
+  border: 1px solid #0284c7;
+  padding: 7px 16px;
+  border-radius: 6px;
+  box-shadow: 0 2px 10px rgba(2, 132, 199, 0.35);
+  transition: all 0.15s ease;
+}
+
+.place-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #0369a1 0%, #0284c7 100%);
+  box-shadow: 0 4px 14px rgba(2, 132, 199, 0.5);
+  transform: translateY(-1px);
+}
+
+.place-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
 }
 
 /* Modal Editors (Device & Package) */

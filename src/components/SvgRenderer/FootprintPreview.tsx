@@ -13,8 +13,8 @@ interface FootprintPreviewProps {
   packageDef: PackageDefinition;
   variant?: PackageVariant;
   deviceDef?: DeviceDefinition;
-  width?: number;
-  height?: number;
+  width?: number | string;
+  height?: number | string;
   showDimensions?: boolean;
   showCourtyard?: boolean;
   interactive?: boolean;
@@ -25,8 +25,8 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
   packageDef,
   variant,
   deviceDef,
-  width = 360,
-  height = 280,
+  width = "100%",
+  height = 240,
   showDimensions = true,
   showCourtyard = true,
   interactive = true,

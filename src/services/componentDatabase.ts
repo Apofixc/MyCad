@@ -9,6 +9,7 @@ import {
 } from "../types/componentLibrary";
 import { ComponentItem, Pin, BoardSide } from "../types/project";
 import { ComponentStorageAdapter } from "./componentStorageAdapter";
+import { DEFAULT_LIBRARY_PAYLOAD } from "../data/defaultComponentLibrary";
 
 // Масштабный коэффициент: сколько экранных CAD-пикселей в 1 мм
 export const CAD_PIXELS_PER_MM = 10;
@@ -16,9 +17,13 @@ export const CAD_PIXELS_PER_MM = 10;
 export class ComponentDatabaseService {
   private static instance: ComponentDatabaseService | null = null;
 
-  private categories: CatalogCategory[] = [];
-  private packages: Map<string, PackageDefinition> = new Map();
-  private devices: Map<string, DeviceDefinition> = new Map();
+  private categories: CatalogCategory[] = DEFAULT_LIBRARY_PAYLOAD.categories;
+  private packages: Map<string, PackageDefinition> = new Map(
+    DEFAULT_LIBRARY_PAYLOAD.packages.map((p) => [p.id, p])
+  );
+  private devices: Map<string, DeviceDefinition> = new Map(
+    DEFAULT_LIBRARY_PAYLOAD.devices.map((d) => [d.id, d])
+  );
   private isLoaded: boolean = false;
   private listeners: Set<() => void> = new Set();
 
@@ -113,7 +118,7 @@ export class ComponentDatabaseService {
 
       // Фильтр по типу монтажа (через поддерживаемые корпуса)
       if (mountType && mountType !== "all") {
-        const hasMatchingPackage = dev.supportedPackages.some((m) => {
+        const hasMatchingPackage = (dev.supportedPackages || []).some((m) => {
           const pkg = this.packages.get(m.packageId);
           return pkg && pkg.mountType === mountType;
         });
@@ -122,13 +127,13 @@ export class ComponentDatabaseService {
 
       // Полнотекстовый поиск
       if (query) {
-        const matchesName = dev.name.toLowerCase().includes(query);
-        const matchesValue = dev.parameters.value?.toLowerCase().includes(query);
-        const matchesPrefix = dev.designatorPrefix.toLowerCase().includes(query);
-        const matchesDesc = dev.description.toLowerCase().includes(query);
-        const matchesTags = dev.tags.some((t) => t.toLowerCase().includes(query));
-        const matchesPins = dev.logicalPins.some((p) =>
-          p.name.toLowerCase().includes(query) || p.id.toLowerCase().includes(query)
+        const matchesName = (dev.name || "").toLowerCase().includes(query);
+        const matchesValue = (dev.parameters?.value || "").toLowerCase().includes(query);
+        const matchesPrefix = (dev.designatorPrefix || "").toLowerCase().includes(query);
+        const matchesDesc = (dev.description || "").toLowerCase().includes(query);
+        const matchesTags = (dev.tags || []).some((t) => (t || "").toLowerCase().includes(query));
+        const matchesPins = (dev.logicalPins || []).some((p) =>
+          (p.name || "").toLowerCase().includes(query) || (p.id || "").toLowerCase().includes(query)
         );
 
         if (!matchesName && !matchesValue && !matchesPrefix && !matchesDesc && !matchesTags && !matchesPins) {
@@ -156,9 +161,9 @@ export class ComponentDatabaseService {
       if (mountType && mountType !== "all" && pkg.mountType !== mountType) return false;
 
       if (query) {
-        const matchesName = pkg.name.toLowerCase().includes(query);
-        const matchesId = pkg.id.toLowerCase().includes(query);
-        const matchesStandard = pkg.standard?.toLowerCase().includes(query);
+        const matchesName = (pkg.name || "").toLowerCase().includes(query);
+        const matchesId = (pkg.id || "").toLowerCase().includes(query);
+        const matchesStandard = (pkg.standard || "").toLowerCase().includes(query);
         if (!matchesName && !matchesId && !matchesStandard) return false;
       }
 

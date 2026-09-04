@@ -81,21 +81,23 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
 
   // Установка начального выбора девайса
   useEffect(() => {
+    if (!isOpen) return;
     if (activeTab === "devices" && filteredDevices.length > 0) {
       if (!selectedDeviceId || !filteredDevices.some((d) => d.id === selectedDeviceId)) {
         setSelectedDeviceId(filteredDevices[0].id);
       }
     }
-  }, [activeTab, filteredDevices, selectedDeviceId]);
+  }, [isOpen, activeTab, filteredDevices, selectedDeviceId]);
 
   // Установка начального выбора корпуса
   useEffect(() => {
+    if (!isOpen) return;
     if (activeTab === "packages" && filteredPackages.length > 0) {
       if (!selectedPackageId || !filteredPackages.some((p) => p.id === selectedPackageId)) {
         setSelectedPackageId(filteredPackages[0].id);
       }
     }
-  }, [activeTab, filteredPackages, selectedPackageId]);
+  }, [isOpen, activeTab, filteredPackages, selectedPackageId]);
 
   // Текущий выбранный девайс
   const selectedDevice = useMemo(() => {
@@ -127,13 +129,31 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
     );
   }, [currentPackage, selectedVariantId]);
 
-  if (!isOpen) return null;
-
   const handlePlace = () => {
     if (!selectedDevice || !currentPackage || !currentVariant) return;
     onPlaceOnBoard(selectedDevice.id, currentPackage.id, currentVariant.id);
     onClose();
   };
+
+  // Горячие клавиши модального окна (Esc - закрыть, Enter - разместить)
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        onClose();
+      } else if (e.key === "Enter" && !e.shiftKey && !e.ctrlKey && !e.altKey) {
+        const target = e.target as HTMLElement | null;
+        const tag = (target?.tagName || "").toLowerCase();
+        if (tag !== "input" && tag !== "textarea") {
+          if (activeTab === "devices" && selectedDevice && currentPackage && currentVariant) {
+            handlePlace();
+          }
+        }
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [isOpen, onClose, activeTab, selectedDevice, currentPackage, currentVariant]);
 
   const handleDeleteDevice = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
@@ -183,6 +203,8 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
         return "#64748b";
     }
   };
+
+  if (!isOpen) return null;
 
   return (
     <div className="cad-modal-overlay" onClick={onClose}>
@@ -387,6 +409,18 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                             setSelectedVariantId(dev.supportedPackages[0].defaultVariantId || null);
                           }
                         }}
+                        onDoubleClick={() => {
+                          if (dev.supportedPackages.length > 0) {
+                            const pId = dev.supportedPackages[0].packageId;
+                            const vId = dev.supportedPackages[0].defaultVariantId || undefined;
+                            const pkg = db.getPackage(pId);
+                            if (pkg) {
+                              onPlaceOnBoard(dev.id, pkg.id, vId || pkg.defaultVariantId);
+                              onClose();
+                            }
+                          }
+                        }}
+                        title="Кликните для выбора, двойной клик — быстро разместить на плате"
                       >
                         <div className="card-top-row">
                           <span className="refdes-badge">{dev.designatorPrefix}</span>
@@ -512,7 +546,7 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                     packageDef={currentPackage}
                     variant={currentVariant}
                     deviceDef={activeTab === "devices" ? selectedDevice : undefined}
-                    width={330}
+                    width="100%"
                     height={230}
                   />
                 </div>
@@ -721,23 +755,54 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                 <span>Выберите компонент или корпус для просмотра</span>
               </div>
             )}
+          </div>
+        </div>
 
-            {/* Нижняя фиксированная панель действий */}
-            <div className="library-right-footer">
-              <button className="cad-btn-secondary" onClick={onClose}>
-                Отмена
+        {/* Единый подвал модального окна на всю ширину с информацией и кнопками */}
+        <div className="cad-modal-footer library-bottom-footer">
+          <div className="footer-status-bar">
+            {activeTab === "devices" && selectedDevice ? (
+              <span className="footer-status-text">
+                <span className="footer-status-label">Выбран:</span>{" "}
+                <strong className="footer-status-name">{selectedDevice.name}</strong>{" "}
+                {selectedDevice.parameters.value && (
+                  <span className="footer-status-val">({selectedDevice.parameters.value})</span>
+                )}
+                {currentPackage && (
+                  <span className="footer-status-pkg">
+                    {" "}• Корпус: <strong>{currentPackage.name}</strong>
+                    {currentVariant && <span> [{currentVariant.name}]</span>}
+                  </span>
+                )}
+              </span>
+            ) : activeTab === "packages" && currentPackage ? (
+              <span className="footer-status-text">
+                <span className="footer-status-label">Выбран корпус:</span>{" "}
+                <strong className="footer-status-name">{currentPackage.name}</strong>
+                {currentVariant && <span> • Вариант: [{currentVariant.name}]</span>}
+              </span>
+            ) : (
+              <span className="footer-hint-text">
+                💡 Выберите компонент из списка для предпросмотра и размещения на плате (двойной клик или Enter)
+              </span>
+            )}
+          </div>
+
+          <div className="footer-actions">
+            <button className="cad-btn-secondary" onClick={onClose}>
+              Отмена
+            </button>
+            {activeTab === "devices" && (
+              <button
+                className="cad-btn-primary place-btn"
+                disabled={!selectedDevice || !currentPackage}
+                onClick={handlePlace}
+                title="Разместить выбранный компонент на плате (Enter)"
+              >
+                <Plus size={16} />
+                <span>Разместить на плате</span>
               </button>
-              {activeTab === "devices" && (
-                <button
-                  className="cad-btn-primary place-btn"
-                  disabled={!selectedDevice || !currentPackage}
-                  onClick={handlePlace}
-                >
-                  <Plus size={16} />
-                  <span>Разместить на плате</span>
-                </button>
-              )}
-            </div>
+            )}
           </div>
         </div>
       </div>

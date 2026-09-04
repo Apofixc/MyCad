@@ -194,6 +194,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
   const currentCategoryObj = categories.find((c) => c.id === category);
 
+  if (!isOpen) return null;
+
   return (
     <div className="cad-modal-overlay" onClick={onClose}>
       <div
