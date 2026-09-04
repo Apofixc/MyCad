@@ -44,6 +44,10 @@ interface ProjectTreeProps {
     fileId: string,
     layerKey: "bg" | "comps" | "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
   ) => void;
+  onToggleLayerLock?: (
+    fileId: string,
+    layerKey: "bg" | "comps" | "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
+  ) => void;
   onUpdateBoardData?: (fileId: string, updatedBoardData: BoardData) => void;
 }
 
@@ -61,6 +65,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
   activeSelectionTarget,
   onSelectTarget,
   onToggleLayerVisibility,
+  onToggleLayerLock,
   onUpdateBoardData,
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
@@ -268,6 +273,10 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
       activeSelectionTarget?.type === (layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom") &&
       (activeSelectionTarget as any).imageId === img.id;
 
+    const fileBoard = file.type === "board" ? normalizeBoardData(file.data as BoardData) : null;
+    const isParentLocked = Boolean(fileBoard && (fileBoard.lockBg || fileBoard[layerKey]?.locked));
+    const isImgLocked = Boolean(img.locked || isParentLocked);
+
     return (
       <div
         key={img.id}
@@ -295,11 +304,17 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
           </button>
 
           <button
-            className={`tree-lock-btn ${img.locked ? "locked" : ""}`}
+            className={`tree-lock-btn ${isImgLocked ? "locked" : ""}`}
             onClick={(e) => handleToggleImageLock(file.id, layerKey, img.id, e)}
-            title={img.locked ? "Разблокировать" : "Заблокировать от перемещения"}
+            title={
+              isParentLocked
+                ? `Заблокировано (заблокирован ${fileBoard?.lockBg ? "весь слой Подложка" : "подслой " + layerTitle})`
+                : img.locked
+                ? "Разблокировать"
+                : "Заблокировать от перемещения"
+            }
           >
-            {img.locked ? <Lock size={10} /> : <Unlock size={10} />}
+            {isImgLocked ? <Lock size={10} /> : <Unlock size={10} />}
           </button>
 
           <div
@@ -363,8 +378,13 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
             <button
               className="tree-img-action-btn danger"
-              onClick={(e) => handleDeleteImageFromTree(file.id, layerKey, img.id, e)}
-              title="Удалить это изображение"
+              onClick={(e) => {
+                if (isImgLocked) return;
+                handleDeleteImageFromTree(file.id, layerKey, img.id, e);
+              }}
+              disabled={isImgLocked}
+              style={isImgLocked ? { opacity: 0.25, cursor: "not-allowed" } : undefined}
+              title={isImgLocked ? "Удаление недоступно: слой/изображение заблокировано" : "Удалить это изображение"}
             >
               <Trash2 size={10} />
             </button>
@@ -512,6 +532,9 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                       const bgKey = `${file.id}_bg`;
                       const isBgExpanded = isGroupExpanded(bgKey);
                       const isBgVisible = boardData.bgTop.visible || boardData.bgBottom.visible;
+                      const isBgLocked = Boolean(
+                        boardData.lockBg || (boardData.bgTop.locked && boardData.bgBottom.locked)
+                      );
                       const topImagesCount = boardData.bgTop.images?.length || (boardData.bgTop.image ? 1 : 0);
                       const bottomImagesCount = boardData.bgBottom.images?.length || (boardData.bgBottom.image ? 1 : 0);
                       const totalBgImages = topImagesCount + bottomImagesCount;
@@ -559,6 +582,17 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                               )}
                             </button>
 
+                            <button
+                              className={`tree-lock-btn ${isBgLocked ? "locked" : ""}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleLayerLock?.(file.id, "bg");
+                              }}
+                              title={isBgLocked ? "Разблокировать слой Подложка (обе стороны)" : "Заблокировать слой Подложка (обе стороны)"}
+                            >
+                              {isBgLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                            </button>
+
                             <ImageIcon size={13} className="layer-group-icon icon-bg" />
                             <span className="layer-group-title">Подложка</span>
 
@@ -573,10 +607,12 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                           {isBgExpanded && (() => {
                             const topKey = `${file.id}_bg_top`;
                             const isTopExpanded = isGroupExpanded(topKey);
+                            const isTopLocked = Boolean(boardData.lockBg || boardData.bgTop.locked);
                             const topImages = boardData.bgTop.images || [];
 
                             const bottomKey = `${file.id}_bg_bottom`;
                             const isBottomExpanded = isGroupExpanded(bottomKey);
+                            const isBottomLocked = Boolean(boardData.lockBg || boardData.bgBottom.locked);
                             const bottomImages = boardData.bgBottom.images || [];
 
                             return (
@@ -616,6 +652,16 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                                     ) : (
                                       <EyeOff size={12} className="eye-off" />
                                     )}
+                                  </button>
+                                  <button
+                                    className={`tree-lock-btn ${isTopLocked ? "locked" : ""}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleLayerLock?.(file.id, "bgTop");
+                                    }}
+                                    title={isTopLocked ? "Разблокировать подслой Top" : "Заблокировать подслой Top"}
+                                  >
+                                    {isTopLocked ? <Lock size={11} /> : <Unlock size={11} />}
                                   </button>
                                   <span className="layer-color-dot dot-bg-top" />
                                   <span className="layer-title">Top (Лицевая)</span>
@@ -680,6 +726,16 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                                       <EyeOff size={12} className="eye-off" />
                                     )}
                                   </button>
+                                  <button
+                                    className={`tree-lock-btn ${isBottomLocked ? "locked" : ""}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleLayerLock?.(file.id, "bgBottom");
+                                    }}
+                                    title={isBottomLocked ? "Разблокировать подслой Bottom" : "Заблокировать подслой Bottom"}
+                                  >
+                                    {isBottomLocked ? <Lock size={11} /> : <Unlock size={11} />}
+                                  </button>
                                   <span className="layer-color-dot dot-bg-bottom" />
                                   <span className="layer-title">Bottom (Обратная)</span>
                                   {boardData.bgBottom.mirrored && <span className="layer-badge-flip">FLIP</span>}
@@ -719,6 +775,9 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                       const compsKey = `${file.id}_comps`;
                       const isCompsExpanded = isGroupExpanded(compsKey);
                       const isCompsVisible = boardData.showCompsTop || boardData.showCompsBottom;
+                      const isCompsLocked = Boolean(
+                        boardData.lockComps || (boardData.lockCompsTop && boardData.lockCompsBottom)
+                      );
                       const isCompsActive =
                         isActive &&
                         (activeSelectionTarget?.type === "layer_comps_top" ||
@@ -764,6 +823,17 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                               )}
                             </button>
 
+                            <button
+                              className={`tree-lock-btn ${isCompsLocked ? "locked" : ""}`}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                onToggleLayerLock?.(file.id, "comps");
+                              }}
+                              title={isCompsLocked ? "Разблокировать слой Компоненты (обе стороны)" : "Заблокировать слой Компоненты (обе стороны)"}
+                            >
+                              {isCompsLocked ? <Lock size={12} /> : <Unlock size={12} />}
+                            </button>
+
                             <Cpu size={13} className="layer-group-icon icon-comps" />
                             <span className="layer-group-title">Компоненты</span>
 
@@ -773,69 +843,94 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                           </div>
 
                           {/* Виртуальные подслои: Top (Лицевая) и Bottom (Обратная) */}
-                          {isCompsExpanded && (
-                            <div className="kicad-sub-layers-list">
-                              {/* Виртуальный подслой: Top */}
-                              <div
-                                className={`kicad-layer-tree-item virtual-sub ${isActive && activeSelectionTarget?.type === "layer_comps_top" ? "selected" : ""
-                                  }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onSelectFile(file.id);
-                                  onSelectTarget?.({ type: "layer_comps_top" });
-                                }}
-                                title="Компоненты: Top (Лицевая сторона)"
-                              >
-                                <button
-                                  className="layer-vis-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleLayerVisibility?.(file.id, "compsTop");
-                                  }}
-                                  title={boardData.showCompsTop ? "Скрыть Top" : "Показать Top"}
-                                >
-                                  {boardData.showCompsTop ? (
-                                    <Eye size={12} className="eye-on" />
-                                  ) : (
-                                    <EyeOff size={12} className="eye-off" />
-                                  )}
-                                </button>
-                                <span className="layer-color-dot dot-comps-top" />
-                                <span className="layer-title">Top (Лицевая)</span>
-                                <span className="layer-count-badge">{topCompsCount}</span>
-                              </div>
+                          {isCompsExpanded && (() => {
+                            const isCompsTopLocked = Boolean(boardData.lockComps || boardData.lockCompsTop);
+                            const isCompsBottomLocked = Boolean(boardData.lockComps || boardData.lockCompsBottom);
 
-                              {/* Виртуальный подслой: Bottom */}
-                              <div
-                                className={`kicad-layer-tree-item virtual-sub ${isActive && activeSelectionTarget?.type === "layer_comps_bottom" ? "selected" : ""
-                                  }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onSelectFile(file.id);
-                                  onSelectTarget?.({ type: "layer_comps_bottom" });
-                                }}
-                                title="Компоненты: Bottom (Обратная сторона)"
-                              >
-                                <button
-                                  className="layer-vis-btn"
+                            return (
+                              <div className="kicad-sub-layers-list">
+                                {/* Виртуальный подслой: Top */}
+                                <div
+                                  className={`kicad-layer-tree-item virtual-sub ${isActive && activeSelectionTarget?.type === "layer_comps_top" ? "selected" : ""
+                                    }`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onToggleLayerVisibility?.(file.id, "compsBottom");
+                                    onSelectFile(file.id);
+                                    onSelectTarget?.({ type: "layer_comps_top" });
                                   }}
-                                  title={boardData.showCompsBottom ? "Скрыть Bottom" : "Показать Bottom"}
+                                  title="Компоненты: Top (Лицевая сторона)"
                                 >
-                                  {boardData.showCompsBottom ? (
-                                    <Eye size={12} className="eye-on" />
-                                  ) : (
-                                    <EyeOff size={12} className="eye-off" />
-                                  )}
-                                </button>
-                                <span className="layer-color-dot dot-comps-bottom" />
-                                <span className="layer-title">Bottom (Обратная)</span>
-                                <span className="layer-count-badge">{bottomCompsCount}</span>
+                                  <button
+                                    className="layer-vis-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleLayerVisibility?.(file.id, "compsTop");
+                                    }}
+                                    title={boardData.showCompsTop ? "Скрыть Top" : "Показать Top"}
+                                  >
+                                    {boardData.showCompsTop ? (
+                                      <Eye size={12} className="eye-on" />
+                                    ) : (
+                                      <EyeOff size={12} className="eye-off" />
+                                    )}
+                                  </button>
+                                  <button
+                                    className={`tree-lock-btn ${isCompsTopLocked ? "locked" : ""}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleLayerLock?.(file.id, "compsTop");
+                                    }}
+                                    title={isCompsTopLocked ? "Разблокировать компоненты Top" : "Заблокировать компоненты Top"}
+                                  >
+                                    {isCompsTopLocked ? <Lock size={11} /> : <Unlock size={11} />}
+                                  </button>
+                                  <span className="layer-color-dot dot-comps-top" />
+                                  <span className="layer-title">Top (Лицевая)</span>
+                                  <span className="layer-count-badge">{topCompsCount}</span>
+                                </div>
+
+                                {/* Виртуальный подслой: Bottom */}
+                                <div
+                                  className={`kicad-layer-tree-item virtual-sub ${isActive && activeSelectionTarget?.type === "layer_comps_bottom" ? "selected" : ""
+                                    }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectFile(file.id);
+                                    onSelectTarget?.({ type: "layer_comps_bottom" });
+                                  }}
+                                  title="Компоненты: Bottom (Обратная сторона)"
+                                >
+                                  <button
+                                    className="layer-vis-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleLayerVisibility?.(file.id, "compsBottom");
+                                    }}
+                                    title={boardData.showCompsBottom ? "Скрыть Bottom" : "Показать Bottom"}
+                                  >
+                                    {boardData.showCompsBottom ? (
+                                      <Eye size={12} className="eye-on" />
+                                    ) : (
+                                      <EyeOff size={12} className="eye-off" />
+                                    )}
+                                  </button>
+                                  <button
+                                    className={`tree-lock-btn ${isCompsBottomLocked ? "locked" : ""}`}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleLayerLock?.(file.id, "compsBottom");
+                                    }}
+                                    title={isCompsBottomLocked ? "Разблокировать компоненты Bottom" : "Заблокировать компоненты Bottom"}
+                                  >
+                                    {isCompsBottomLocked ? <Lock size={11} /> : <Unlock size={11} />}
+                                  </button>
+                                  <span className="layer-color-dot dot-comps-bottom" />
+                                  <span className="layer-title">Bottom (Обратная)</span>
+                                  <span className="layer-count-badge">{bottomCompsCount}</span>
+                                </div>
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       );
                     })()}

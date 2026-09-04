@@ -415,6 +415,64 @@ export const App: React.FC = () => {
     setIsDirty(true);
   };
 
+  const handleToggleLayerLock = (
+    fileId: string,
+    layerKey: "bg" | "comps" | "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
+  ) => {
+    setProject((prev) => {
+      if (!prev) return prev;
+      const targetFile = prev.files.find((f) => f.id === fileId);
+      if (!targetFile || targetFile.type !== "board") return prev;
+
+      const board = normalizeBoardData(targetFile.data as BoardData);
+      let updatedBoard = { ...board };
+
+      if (layerKey === "bg") {
+        const isCurrentlyLocked = Boolean(board.lockBg || (board.bgTop.locked && board.bgBottom.locked));
+        const nextLock = !isCurrentlyLocked;
+        updatedBoard.lockBg = nextLock;
+        updatedBoard.bgTop = { ...board.bgTop, locked: nextLock };
+        updatedBoard.bgBottom = { ...board.bgBottom, locked: nextLock };
+      } else if (layerKey === "comps") {
+        const isCurrentlyLocked = Boolean(board.lockComps || (board.lockCompsTop && board.lockCompsBottom));
+        const nextLock = !isCurrentlyLocked;
+        updatedBoard.lockComps = nextLock;
+        updatedBoard.lockCompsTop = nextLock;
+        updatedBoard.lockCompsBottom = nextLock;
+      } else if (layerKey === "bgTop") {
+        const nextLocked = !board.bgTop.locked;
+        updatedBoard.bgTop = { ...board.bgTop, locked: nextLocked };
+        if (!nextLocked && board.lockBg) {
+          updatedBoard.lockBg = false;
+        }
+      } else if (layerKey === "bgBottom") {
+        const nextLocked = !board.bgBottom.locked;
+        updatedBoard.bgBottom = { ...board.bgBottom, locked: nextLocked };
+        if (!nextLocked && board.lockBg) {
+          updatedBoard.lockBg = false;
+        }
+      } else if (layerKey === "compsTop") {
+        const nextLocked = !board.lockCompsTop;
+        updatedBoard.lockCompsTop = nextLocked;
+        if (!nextLocked && board.lockComps) {
+          updatedBoard.lockComps = false;
+        }
+      } else if (layerKey === "compsBottom") {
+        const nextLocked = !board.lockCompsBottom;
+        updatedBoard.lockCompsBottom = nextLocked;
+        if (!nextLocked && board.lockComps) {
+          updatedBoard.lockComps = false;
+        }
+      }
+
+      const updatedFiles = prev.files.map((f) =>
+        f.id === fileId ? { ...f, data: updatedBoard } : f
+      );
+      return { ...prev, files: updatedFiles };
+    });
+    setIsDirty(true);
+  };
+
   const handleSelectComponent = (compId: string | undefined) => {
     setProject((prev) => {
       if (!prev) return prev;
@@ -553,6 +611,7 @@ export const App: React.FC = () => {
             activeSelectionTarget={boardData?.selectedTarget}
             onSelectTarget={handleSelectTarget}
             onToggleLayerVisibility={handleToggleLayerVisibility}
+            onToggleLayerLock={handleToggleLayerLock}
             onUpdateBoardData={handleUpdateBoardDataForFile}
           />
         )}

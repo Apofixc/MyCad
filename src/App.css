@@ -1366,6 +1366,7 @@ body, html, #root {
   align-items: center;
   border-radius: 3px;
   font-size: 10px;
+  transition: color 0.12s ease;
 }
 
 .tree-lock-btn:hover {
@@ -1374,6 +1375,15 @@ body, html, #root {
 
 .tree-lock-btn.locked {
   color: #f59e0b;
+}
+
+.tree-lock-btn.locked:hover {
+  color: #fbbf24;
+}
+
+.kicad-layer-group-header .tree-lock-btn,
+.kicad-layer-tree-item .tree-lock-btn {
+  margin-right: 1px;
 }
 
 .tree-img-action-btn {

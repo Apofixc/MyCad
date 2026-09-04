@@ -435,6 +435,13 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     const comp = boardData.components.find((c) => c.id === compId);
     if (!comp || !containerRef.current) return;
 
+    const compSide = comp.layer || "top";
+    const isCompLocked = Boolean(
+      boardData.lockComps ||
+      (compSide === "top" ? boardData.lockCompsTop : boardData.lockCompsBottom)
+    );
+    if (isCompLocked) return;
+
     const rect = containerRef.current.getBoundingClientRect();
     const mouseSvgX = (e.clientX - rect.left - pan.x) / zoom;
     const mouseSvgY = (e.clientY - rect.top - pan.y) / zoom;
@@ -476,7 +483,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       });
     }
 
-    if (image.locked) return; // Do not drag locked image
+    const isLayerLocked = Boolean(boardData.lockBg || boardData[layerKey]?.locked);
+    if (image.locked || isLayerLocked) return; // Do not drag locked image
 
     const dragInfo = {
       layerKey,
@@ -658,6 +666,13 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         if (activeTag === "input" || activeTag === "textarea") return;
 
         if (selectedComp) {
+          const compSide = selectedComp.layer || "top";
+          const isCompLocked = Boolean(
+            boardData.lockComps ||
+            (compSide === "top" ? boardData.lockCompsTop : boardData.lockCompsBottom)
+          );
+          if (isCompLocked) return;
+
           e.preventDefault();
           const filtered = boardData.components.filter((c) => c.id !== selectedComp.id);
           onChangeBoardData({
@@ -670,7 +685,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           return;
         }
 
-        if (activeImage && !activeImage.locked && isImageLayerSelected && selectedTarget?.imageId) {
+        const isLayerLocked = Boolean(boardData.lockBg || boardData[activeLayerKey]?.locked);
+        if (activeImage && !activeImage.locked && !isLayerLocked && isImageLayerSelected && selectedTarget?.imageId) {
           e.preventDefault();
           const images = activeLayer.images || [];
           const filtered = images.filter((img) => img.id !== activeImage.id);
@@ -689,7 +705,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       }
 
       // Keyboard arrow keys for nudge active image
-      if (toolMode === "images" && activeImage && !activeImage.locked) {
+      const isLayerLocked = Boolean(boardData.lockBg || boardData[activeLayerKey]?.locked);
+      if (toolMode === "images" && activeImage && !activeImage.locked && !isLayerLocked) {
         const step = e.shiftKey ? 10 : 1;
         if (e.key === "ArrowLeft") {
           e.preventDefault();
@@ -975,7 +992,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         setIsShiftPressed(true);
       }
 
-      if (toolMode === "images" && activeImage && !activeImage.locked) {
+      const isLayerLocked = Boolean(boardData.lockBg || boardData[activeLayerKey]?.locked);
+      if (toolMode === "images" && activeImage && !activeImage.locked && !isLayerLocked) {
         const step = e.shiftKey ? 10 : 1;
         let dx = 0;
         let dy = 0;
@@ -1764,6 +1782,9 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
               }
               const cssFilter = filterParts.length > 0 ? filterParts.join(" ") : undefined;
 
+              const isLayerLocked = Boolean(boardData.lockBg || boardData[layerKey]?.locked);
+              const isImgLocked = Boolean(img.locked || isLayerLocked);
+
               return (
                 <g
                   key={img.id}
@@ -1777,7 +1798,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     filter: cssFilter,
                     mixBlendMode: (img.blendMode && img.blendMode !== "normal" ? img.blendMode : undefined) as any,
                     opacity: img.opacity,
-                    cursor: toolMode === "images" ? (img.locked ? "not-allowed" : isBeingDragged ? "grabbing" : "grab") : "default",
+                    cursor: toolMode === "images" ? (isImgLocked ? "not-allowed" : isBeingDragged ? "grabbing" : "grab") : "default",
                     userSelect: "none",
                   }}
                   onMouseDown={(e) => handleStartImageDrag(e, layerKey, img)}
@@ -1794,7 +1815,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     {/* If selected in Transform mode, render interactive Transform Box with 8 handles and rotation */}
                     {isSelected && activeImageTool === "transform" && (
                       <ImageTransformBox
-                        image={img}
+                        image={{ ...img, locked: isImgLocked }}
                         zoom={zoom}
                         pan={pan}
                         containerRef={containerRef}

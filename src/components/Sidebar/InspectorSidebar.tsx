@@ -287,6 +287,9 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
     const widthMm = (curW / currentPxPerMm).toFixed(1);
     const heightMm = (curH / currentPxPerMm).toFixed(1);
 
+    const isLayerLocked = Boolean(boardData.lockBg || boardData[layerKey]?.locked);
+    const isImgLocked = Boolean(activeImage.locked || isLayerLocked);
+
     return (
       <aside className="cad-inspector-panel" style={width ? { width: `${width}px` } : undefined}>
         {/* Header & Status */}
@@ -303,11 +306,20 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
           </div>
           <div className="cad-header-actions">
             <button
-              className={`cad-card-btn ${activeImage.locked ? "active-lock" : ""}`}
-              onClick={() => handleUpdateActiveImage({ locked: !activeImage.locked })}
-              title={activeImage.locked ? "Разблокировать" : "Заблокировать от перемещения"}
+              className={`cad-card-btn ${isImgLocked ? "active-lock" : ""}`}
+              onClick={() => {
+                if (isLayerLocked) return;
+                handleUpdateActiveImage({ locked: !activeImage.locked });
+              }}
+              title={
+                isLayerLocked
+                  ? `Заблокировано (${boardData.lockBg ? "слой Подложка заблокирован" : "подслой " + (layerKey === "bgTop" ? "Top" : "Bottom") + " заблокирован"})`
+                  : activeImage.locked
+                  ? "Разблокировать"
+                  : "Заблокировать от перемещения"
+              }
             >
-              {activeImage.locked ? <Lock size={13} /> : <Unlock size={13} />}
+              {isImgLocked ? <Lock size={13} /> : <Unlock size={13} />}
             </button>
             <button
               className="cad-card-btn"
@@ -809,13 +821,26 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
   // 2. If a component is selected
   if (selectedComp) {
     const compSide: BoardSide = selectedComp.layer || "top";
+    const isCompLocked = Boolean(
+      boardData.lockComps ||
+      (compSide === "top" ? boardData.lockCompsTop : boardData.lockCompsBottom)
+    );
 
     return (
       <aside className="cad-inspector-panel" style={width ? { width: `${width}px` } : undefined}>
         <div className="cad-inspector-header">
-          <div className="cad-header-title-group">
+          <div className="cad-header-title-group" style={{ display: "flex", alignItems: "center", gap: "6px" }}>
             <span className="cad-inspector-title">Компонент</span>
             <span className="cad-inspector-subtitle">{selectedComp.refDes}</span>
+            {isCompLocked && (
+              <span
+                className="cad-lock-pill locked"
+                title={`Слой компонентов ${boardData.lockComps ? "полностью" : "(" + (compSide === "top" ? "Top" : "Bottom") + ")"} заблокирован`}
+                style={{ fontSize: "10px", padding: "1px 5px", display: "inline-flex", alignItems: "center", gap: "3px" }}
+              >
+                <Lock size={10} /> Блокирован
+              </span>
+            )}
           </div>
           <button
             className="cad-inspector-close-btn"
@@ -863,6 +888,8 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                   type="button"
                   className={`cad-side-btn ${compSide === "top" ? "active" : ""}`}
                   onClick={() => handleUpdateComponent({ layer: "top" })}
+                  disabled={isCompLocked}
+                  style={isCompLocked ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
                 >
                   Лицевая (Top)
                 </button>
@@ -870,6 +897,8 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                   type="button"
                   className={`cad-side-btn ${compSide === "bottom" ? "active" : ""}`}
                   onClick={() => handleUpdateComponent({ layer: "bottom" })}
+                  disabled={isCompLocked}
+                  style={isCompLocked ? { opacity: 0.5, cursor: "not-allowed" } : undefined}
                 >
                   Обратная (Bottom)
                 </button>
@@ -884,6 +913,8 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                   type="number"
                   className="cad-field-input"
                   value={Math.round(selectedComp.x)}
+                  disabled={isCompLocked}
+                  style={isCompLocked ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
                   onChange={(e) =>
                     handleUpdateComponent({ x: parseInt(e.target.value, 10) || 0 })
                   }
@@ -895,6 +926,8 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                   type="number"
                   className="cad-field-input"
                   value={Math.round(selectedComp.y)}
+                  disabled={isCompLocked}
+                  style={isCompLocked ? { opacity: 0.6, cursor: "not-allowed" } : undefined}
                   onChange={(e) =>
                     handleUpdateComponent({ y: parseInt(e.target.value, 10) || 0 })
                   }
@@ -906,7 +939,13 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
               <label>Ориентация:</label>
               <div className="row-flex">
                 <span className="cad-tag">{selectedComp.rotation}°</span>
-                <button className="cad-btn-xs" onClick={handleRotate} title="Повернуть на 90 градусов">
+                <button
+                  className="cad-btn-xs"
+                  onClick={handleRotate}
+                  disabled={isCompLocked}
+                  style={isCompLocked ? { opacity: 0.35, cursor: "not-allowed" } : undefined}
+                  title={isCompLocked ? "Слой компонентов заблокирован" : "Повернуть на 90 градусов"}
+                >
                   <RotateCw size={13} />
                   <span>90°</span>
                 </button>
@@ -914,11 +953,23 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
             </div>
 
             <div className="cad-prop-actions">
-              <button className="cad-btn-flat btn-sm" onClick={handleToggleCompSide}>
+              <button
+                className="cad-btn-flat btn-sm"
+                onClick={handleToggleCompSide}
+                disabled={isCompLocked}
+                style={isCompLocked ? { opacity: 0.35, cursor: "not-allowed" } : undefined}
+                title={isCompLocked ? "Слой компонентов заблокирован" : undefined}
+              >
                 <FlipHorizontal size={13} />
                 <span>Перенести на {compSide === "top" ? "Bottom" : "Top"}</span>
               </button>
-              <button className="cad-btn-danger-xs" onClick={handleDeleteComp}>
+              <button
+                className="cad-btn-danger-xs"
+                onClick={handleDeleteComp}
+                disabled={isCompLocked}
+                style={isCompLocked ? { opacity: 0.35, cursor: "not-allowed" } : undefined}
+                title={isCompLocked ? "Слой компонентов заблокирован" : "Удалить"}
+              >
                 <Trash2 size={13} />
                 <span>Удалить</span>
               </button>

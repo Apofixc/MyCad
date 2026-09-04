@@ -52,6 +52,7 @@ export interface BackgroundLayer {
   images: LayerImageItem[]; // Multi-image support per layer
   activeImageId?: string;   // currently selected image within this layer
   visible: boolean;         // layer visibility
+  locked?: boolean;         // lock against accidental movement/edits
   opacity: number;          // layer master opacity 0.0 - 1.0 (default 0.85)
   brightness: number;       // layer master brightness 50 - 200% (default 100)
   contrast: number;         // layer master contrast 50 - 250% (default 100)
@@ -83,8 +84,12 @@ export interface BoardData {
   bgBottom: BackgroundLayer;
   activeSideView: "top" | "bottom" | "both";
   activeToolMode?: "images" | "components"; // Contextual tool mode
+  lockBg?: boolean;           // lock entire Background layer
   showCompsTop: boolean;
   showCompsBottom: boolean;
+  lockComps?: boolean;        // lock entire Components layer
+  lockCompsTop?: boolean;     // lock Top components sublayer
+  lockCompsBottom?: boolean;  // lock Bottom components sublayer
   components: ComponentItem[];
   selectedTarget?: BoardSelectionTarget;
   // Legacy fields retained for backwards compatibility
@@ -102,6 +107,7 @@ export const createDefaultBackgroundLayer = (mirrored = false): BackgroundLayer 
   activeImageId: undefined,
   image: undefined,
   visible: true,
+  locked: false,
   opacity: 0.85,
   brightness: 100,
   contrast: 100,
@@ -187,6 +193,7 @@ export const normalizeBoardData = (raw: Partial<BoardData>): BoardData => {
     images: topImages,
     activeImageId: raw.bgTop?.activeImageId || topImages[0]?.id,
     image: topImages[0]?.src || legacyImage,
+    locked: Boolean(raw.bgTop?.locked),
     opacity: raw.bgTop?.opacity ?? legacyOpacity,
     scale: raw.bgTop?.scale ?? legacyScale,
     offsetX: raw.bgTop?.offsetX ?? legacyOffsetX,
@@ -200,6 +207,7 @@ export const normalizeBoardData = (raw: Partial<BoardData>): BoardData => {
     images: bottomImages,
     activeImageId: raw.bgBottom?.activeImageId || bottomImages[0]?.id,
     image: bottomImages[0]?.src,
+    locked: Boolean(raw.bgBottom?.locked),
   };
 
   const components: ComponentItem[] = (raw.components || []).map((c) => ({
@@ -244,8 +252,12 @@ export const normalizeBoardData = (raw: Partial<BoardData>): BoardData => {
     bgBottom,
     activeSideView: raw.activeSideView || "top",
     activeToolMode,
+    lockBg: Boolean(raw.lockBg),
     showCompsTop: raw.showCompsTop !== false,
     showCompsBottom: raw.showCompsBottom !== false,
+    lockComps: Boolean(raw.lockComps),
+    lockCompsTop: Boolean(raw.lockCompsTop),
+    lockCompsBottom: Boolean(raw.lockCompsBottom),
     components,
     selectedTarget,
     selectedComponentId: raw.selectedComponentId,
