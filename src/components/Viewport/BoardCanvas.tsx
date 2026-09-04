@@ -149,7 +149,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     });
   };
 
-  // Listen to custom calibration trigger from Inspector
+  // Listen to custom calibration trigger from Inspector and image focus trigger from tree
   useEffect(() => {
     const handleCalibrationEvent = (e: Event) => {
       const customEvent = e as CustomEvent<{ layerKey: "bgTop" | "bgBottom"; imageId: string }>;
@@ -164,8 +164,51 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       setToolMode("images");
     };
 
+    const handleFocusImageEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ layerKey?: "bgTop" | "bgBottom"; imageId: string }>;
+      const imageId = customEvent.detail?.imageId;
+      if (!imageId || !containerRef.current) return;
+
+      const allImages = [...boardData.bgTop.images, ...boardData.bgBottom.images];
+      const img = allImages.find((i) => i.id === imageId);
+      if (!img) return;
+
+      const rect = containerRef.current.getBoundingClientRect();
+      const viewportW = rect.width || 800;
+      const viewportH = rect.height || 600;
+
+      const w = (img.width || 800) * (img.scale || 1);
+      const h = (img.height || 600) * (img.scale || 1);
+      const minX = img.x;
+      const minY = img.y;
+      const maxX = img.x + w;
+      const maxY = img.y + h;
+
+      const contentW = maxX - minX;
+      const contentH = maxY - minY;
+      const padding = 60;
+
+      const scaleX = (viewportW - padding * 2) / Math.max(contentW, 100);
+      const scaleY = (viewportH - padding * 2) / Math.max(contentH, 100);
+      const newZ = Math.min(Math.max(Math.min(scaleX, scaleY), 0.04), 4);
+
+      const centerX = (minX + maxX) / 2;
+      const centerY = (minY + maxY) / 2;
+
+      const newPanX = Math.round(viewportW / 2 - centerX * newZ);
+      const newPanY = Math.round(viewportH / 2 - centerY * newZ);
+
+      setZoom(newZ);
+      setPan({ x: newPanX, y: newPanY });
+      setToolMode("images");
+    };
+
     window.addEventListener("mycad-start-calibration", handleCalibrationEvent);
-    return () => window.removeEventListener("mycad-start-calibration", handleCalibrationEvent);
+    window.addEventListener("mycad-focus-image", handleFocusImageEvent);
+    return () => {
+      window.removeEventListener("mycad-start-calibration", handleCalibrationEvent);
+      window.removeEventListener("mycad-focus-image", handleFocusImageEvent);
+    };
   }, [boardData]);
 
   // Fit all items (images + components) nicely inside viewport

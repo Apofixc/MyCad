@@ -1308,16 +1308,25 @@ body, html, #root {
 }
 
 .tree-img-thumb-mini {
-  width: 15px;
-  height: 15px;
-  border-radius: 2px;
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
   overflow: hidden;
   background-color: #0b0f17;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
+  cursor: pointer;
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.35);
+}
+
+.tree-img-thumb-mini:hover {
+  border-color: var(--cad-accent-blue);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.45);
+  transform: scale(1.1);
 }
 
 .tree-img-thumb-mini img {
@@ -1338,7 +1347,7 @@ body, html, #root {
   display: flex;
   align-items: center;
   gap: 1px;
-  opacity: 0.3;
+  opacity: 0.35;
   transition: opacity 0.12s;
   margin-left: auto;
 }
@@ -1376,7 +1385,7 @@ body, html, #root {
   display: flex;
   align-items: center;
   border-radius: 2px;
-  opacity: 0.4;
+  opacity: 0.5;
   transition: all 0.1s;
 }
 
@@ -1394,6 +1403,123 @@ body, html, #root {
 .tree-img-action-btn.danger:hover {
   color: #f87171;
   background-color: rgba(239, 68, 68, 0.2);
+}
+
+/* Карточка быстрого предпросмотра изображения при наведении */
+.cad-image-hover-card {
+  position: fixed;
+  z-index: 99999;
+  width: 250px;
+  background: #0f172a;
+  border: 1px solid rgba(56, 189, 248, 0.35);
+  border-radius: 8px;
+  box-shadow: 0 16px 36px -4px rgba(0, 0, 0, 0.8), 0 0 16px rgba(56, 189, 248, 0.2);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+  pointer-events: auto;
+  animation: cadCardPop 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cadCardPop {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateX(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateX(0);
+  }
+}
+
+.hover-card-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.hover-card-layer-badge {
+  font-size: 9.5px;
+  font-weight: 700;
+  color: #0b0f17;
+  padding: 1px 6px;
+  border-radius: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  flex-shrink: 0;
+}
+
+.hover-card-title {
+  font-size: 11px;
+  font-weight: 600;
+  color: #f1f5f9;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hover-card-img-wrap {
+  width: 100%;
+  height: 140px;
+  border-radius: 6px;
+  overflow: hidden;
+  background-color: #090d14;
+  background-image: 
+    linear-gradient(45deg, #131b2e 25%, transparent 25%), 
+    linear-gradient(-45deg, #131b2e 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, #131b2e 75%), 
+    linear-gradient(-45deg, transparent 75%, #131b2e 75%);
+  background-size: 14px 14px;
+  background-position: 0 0, 0 7px, 7px -7px, -7px 0;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.hover-card-img-wrap img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.hover-card-meta-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px 8px;
+  background: rgba(18, 24, 38, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-size: 10.5px;
+}
+
+.hover-meta-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.hover-meta-item .meta-label {
+  color: var(--cad-text-muted);
+}
+
+.hover-meta-item .meta-value {
+  color: #e2e8f0;
+  font-weight: 600;
+  font-family: monospace;
+}
+
+.hover-card-footer {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 10px;
+  color: var(--cad-accent-blue);
+  opacity: 0.9;
+  padding-top: 2px;
 }
 
 /* Layer inspector styles */

@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from "react";
+import { createPortal } from "react-dom";
 import {
   Project,
   ProjectFile,
   BoardData,
   BoardSelectionTarget,
+  LayerImageItem,
   normalizeBoardData,
 } from "../../types/project";
 import {
@@ -23,6 +25,7 @@ import {
   ArrowDown,
   Trash2,
   PanelLeftClose,
+  Crosshair,
 } from "lucide-react";
 
 interface ProjectTreeProps {
@@ -186,6 +189,67 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
     });
   };
 
+  // Фокусировка и центрирование холста на выбранном изображении
+  const handleFocusImage = (
+    fileId: string,
+    layerKey: "bgTop" | "bgBottom",
+    imageId: string
+  ) => {
+    onSelectFile(fileId);
+    onSelectTarget?.({
+      type: layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom",
+      imageId,
+    });
+    // Если слой подложки скрыт, автоматически включаем его видимость
+    const file = project.files.find((f) => f.id === fileId);
+    if (file && file.type === "board") {
+      const board = normalizeBoardData(file.data as BoardData);
+      if (!board[layerKey].visible) {
+        onToggleLayerVisibility?.(fileId, layerKey);
+      }
+    }
+    window.dispatchEvent(
+      new CustomEvent("mycad-focus-image", {
+        detail: { layerKey, imageId },
+      })
+    );
+  };
+
+  // Состояние всплывающего быстрого предпросмотра при наведении
+  const [hoveredPreview, setHoveredPreview] = useState<{
+    img: LayerImageItem;
+    rect: DOMRect;
+    layerTitle: string;
+    layerColor: string;
+  } | null>(null);
+  const hoverTimerRef = useRef<number | null>(null);
+
+  const handleMouseEnterThumb = (
+    e: React.MouseEvent<HTMLElement>,
+    img: LayerImageItem,
+    layerTitle: string,
+    layerColor: string
+  ) => {
+    const elRect = e.currentTarget.getBoundingClientRect();
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = window.setTimeout(() => {
+      setHoveredPreview({ img, rect: elRect, layerTitle, layerColor });
+    }, 180);
+  };
+
+  const handleMouseLeaveThumb = () => {
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = window.setTimeout(() => {
+      setHoveredPreview(null);
+    }, 140);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    };
+  }, []);
+
   // Закрытие контекстного меню при клике в любое место или Escape
   useEffect(() => {
     if (!contextMenu) return;
@@ -215,8 +279,130 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
     setContextMenu({ x: e.clientX, y: e.clientY });
   };
 
+  // Отрисовка строки изображения с быстрым доступом, фокусировкой и предпросмотром
+  const renderTreeImageItem = (
+    img: LayerImageItem,
+    idx: number,
+    layerKey: "bgTop" | "bgBottom",
+    file: ProjectFile,
+    imagesList: LayerImageItem[],
+    layerTitle: string,
+    layerColor: string,
+    isActiveFile: boolean
+  ) => {
+    const isImgSelected =
+      isActiveFile &&
+      activeSelectionTarget?.type === (layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom") &&
+      (activeSelectionTarget as any).imageId === img.id;
+
+    return (
+      <div
+        key={img.id}
+        className={`kicad-tree-image-item ${isImgSelected ? "selected" : ""}`}
+          onClick={(e) => {
+            e.stopPropagation();
+            onSelectFile(file.id);
+            onSelectTarget?.({
+              type: layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom",
+              imageId: img.id,
+            });
+          }}
+          onDoubleClick={(e) => {
+            e.stopPropagation();
+            handleFocusImage(file.id, layerKey, img.id);
+          }}
+          title={`${img.name}\nМасштаб: ${Math.round((img.scale || 1) * 100)}% | Угол: ${(img.rotation || 0).toFixed(1)}°\nДвойной клик — показать на холсте`}
+        >
+          <button
+            className="layer-vis-btn"
+            onClick={(e) => handleToggleImageVisibility(file.id, layerKey, img.id, e)}
+            title={img.visible ? "Скрыть изображение" : "Показать изображение"}
+          >
+            {img.visible ? <Eye size={11} className="eye-on" /> : <EyeOff size={11} className="eye-off" />}
+          </button>
+
+          <button
+            className={`tree-lock-btn ${img.locked ? "locked" : ""}`}
+            onClick={(e) => handleToggleImageLock(file.id, layerKey, img.id, e)}
+            title={img.locked ? "Разблокировать" : "Заблокировать от перемещения"}
+          >
+            {img.locked ? <Lock size={10} /> : <Unlock size={10} />}
+          </button>
+
+          <div
+            className="tree-img-thumb-mini"
+            onMouseEnter={(e) => handleMouseEnterThumb(e, img, layerTitle, layerColor)}
+            onMouseLeave={handleMouseLeaveThumb}
+            onClick={(e) => {
+              e.stopPropagation();
+              handleFocusImage(file.id, layerKey, img.id);
+            }}
+            title="Наведите для быстрого просмотра, кликните для фокусировки на холсте"
+          >
+            <img
+              src={img.src}
+              alt=""
+              style={{
+                transform: img.mirrored ? "scaleX(-1)" : "none",
+                opacity: img.visible ? 1 : 0.4,
+              }}
+            />
+          </div>
+
+          <span
+            className="tree-img-name"
+            onMouseEnter={(e) => handleMouseEnterThumb(e, img, layerTitle, layerColor)}
+            onMouseLeave={handleMouseLeaveThumb}
+          >
+            {img.name}
+          </span>
+
+          <div className="tree-img-actions">
+            <button
+              className="tree-img-action-btn"
+              onClick={(e) => {
+                e.stopPropagation();
+                handleFocusImage(file.id, layerKey, img.id);
+              }}
+              title="Фокусировать и центрировать холст на этом изображении (Двойной клик)"
+            >
+              <Crosshair size={11} />
+            </button>
+            {imagesList.length > 1 && (
+              <>
+                <button
+                  className="tree-img-action-btn"
+                  disabled={idx === 0}
+                  onClick={(e) => handleMoveImageOrder(file.id, layerKey, img.id, "up", e)}
+                  title="Переместить слой выше"
+                >
+                  <ArrowUp size={10} />
+                </button>
+                <button
+                  className="tree-img-action-btn"
+                  disabled={idx === imagesList.length - 1}
+                  onClick={(e) => handleMoveImageOrder(file.id, layerKey, img.id, "down", e)}
+                  title="Переместить слой ниже"
+                >
+                  <ArrowDown size={10} />
+                </button>
+              </>
+            )}
+            <button
+              className="tree-img-action-btn danger"
+              onClick={(e) => handleDeleteImageFromTree(file.id, layerKey, img.id, e)}
+              title="Удалить это изображение"
+            >
+              <Trash2 size={10} />
+            </button>
+          </div>
+        </div>
+    );
+  };
+
   return (
-    <aside className="kicad-tree-panel" style={width ? { width: `${width}px` } : undefined}>
+    <>
+      <aside className="kicad-tree-panel" style={width ? { width: `${width}px` } : undefined}>
       {/* Чистый заголовок панели: только основные инструменты */}
       <div className="kicad-tree-header">
         <span className="kicad-tree-title">Проект</span>
@@ -470,87 +656,18 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                                 {/* Список снимков на Top */}
                                 {isTopExpanded && topImages.length > 0 && (
                                   <div className="kicad-images-subgroup">
-                                    {topImages.map((img, idx) => {
-                                      const isImgSelected =
-                                        isActive &&
-                                        activeSelectionTarget?.type === "layer_bg_top" &&
-                                        (activeSelectionTarget as any).imageId === img.id;
-
-                                      return (
-                                        <div
-                                          key={img.id}
-                                          className={`kicad-tree-image-item ${isImgSelected ? "selected" : ""}`}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            onSelectFile(file.id);
-                                            onSelectTarget?.({
-                                              type: "layer_bg_top",
-                                              imageId: img.id,
-                                            });
-                                          }}
-                                          title={`${img.name}\nМасштаб: ${Math.round(img.scale * 100)}% | Угол: ${img.rotation.toFixed(1)}°`}
-                                        >
-                                          <button
-                                            className="layer-vis-btn"
-                                            onClick={(e) => handleToggleImageVisibility(file.id, "bgTop", img.id, e)}
-                                            title={img.visible ? "Скрыть изображение" : "Показать изображение"}
-                                          >
-                                            {img.visible ? <Eye size={11} className="eye-on" /> : <EyeOff size={11} className="eye-off" />}
-                                          </button>
-
-                                          <button
-                                            className={`tree-lock-btn ${img.locked ? "locked" : ""}`}
-                                            onClick={(e) => handleToggleImageLock(file.id, "bgTop", img.id, e)}
-                                            title={img.locked ? "Разблокировать" : "Заблокировать от перемещения"}
-                                          >
-                                            {img.locked ? <Lock size={10} /> : <Unlock size={10} />}
-                                          </button>
-
-                                          <div className="tree-img-thumb-mini">
-                                            <img
-                                              src={img.src}
-                                              alt=""
-                                              style={{
-                                                transform: img.mirrored ? "scaleX(-1)" : "none",
-                                                opacity: img.visible ? 1 : 0.4,
-                                              }}
-                                            />
-                                          </div>
-
-                                          <span className="tree-img-name">{img.name}</span>
-
-                                          <div className="tree-img-actions">
-                                            {topImages.length > 1 && (
-                                              <>
-                                                <button
-                                                  className="tree-img-action-btn"
-                                                  disabled={idx === 0}
-                                                  onClick={(e) => handleMoveImageOrder(file.id, "bgTop", img.id, "up", e)}
-                                                  title="Переместить слой выше"
-                                                >
-                                                  <ArrowUp size={10} />
-                                                </button>
-                                                <button
-                                                  className="tree-img-action-btn"
-                                                  disabled={idx === topImages.length - 1}
-                                                  onClick={(e) => handleMoveImageOrder(file.id, "bgTop", img.id, "down", e)}
-                                                  title="Переместить слой ниже"
-                                                >
-                                                  <ArrowDown size={10} />
-                                                </button>
-                                              </>
-                                            )}
-                                            <button
-                                              className="tree-img-action-btn danger"
-                                              onClick={(e) => handleDeleteImageFromTree(file.id, "bgTop", img.id, e)}
-                                              title="Удалить это изображение"
-                                            >
-                                              <Trash2 size={10} />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
+                                    {topImages.map((img, idx) =>
+                                      renderTreeImageItem(
+                                        img,
+                                        idx,
+                                        "bgTop",
+                                        file,
+                                        topImages,
+                                        "Top (Лицевая)",
+                                        "#38bdf8",
+                                        isActive
+                                      )
+                                    )}
                                   </div>
                                 )}
 
@@ -603,87 +720,18 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                                 {/* Список снимков на Bottom */}
                                 {isBottomExpanded && bottomImages.length > 0 && (
                                   <div className="kicad-images-subgroup">
-                                    {bottomImages.map((img, idx) => {
-                                      const isImgSelected =
-                                        isActive &&
-                                        activeSelectionTarget?.type === "layer_bg_bottom" &&
-                                        (activeSelectionTarget as any).imageId === img.id;
-
-                                      return (
-                                        <div
-                                          key={img.id}
-                                          className={`kicad-tree-image-item ${isImgSelected ? "selected" : ""}`}
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            onSelectFile(file.id);
-                                            onSelectTarget?.({
-                                              type: "layer_bg_bottom",
-                                              imageId: img.id,
-                                            });
-                                          }}
-                                          title={`${img.name}\nМасштаб: ${Math.round(img.scale * 100)}% | Угол: ${img.rotation.toFixed(1)}°`}
-                                        >
-                                          <button
-                                            className="layer-vis-btn"
-                                            onClick={(e) => handleToggleImageVisibility(file.id, "bgBottom", img.id, e)}
-                                            title={img.visible ? "Скрыть изображение" : "Показать изображение"}
-                                          >
-                                            {img.visible ? <Eye size={11} className="eye-on" /> : <EyeOff size={11} className="eye-off" />}
-                                          </button>
-
-                                          <button
-                                            className={`tree-lock-btn ${img.locked ? "locked" : ""}`}
-                                            onClick={(e) => handleToggleImageLock(file.id, "bgBottom", img.id, e)}
-                                            title={img.locked ? "Разблокировать" : "Заблокировать от перемещения"}
-                                          >
-                                            {img.locked ? <Lock size={10} /> : <Unlock size={10} />}
-                                          </button>
-
-                                          <div className="tree-img-thumb-mini">
-                                            <img
-                                              src={img.src}
-                                              alt=""
-                                              style={{
-                                                transform: img.mirrored ? "scaleX(-1)" : "none",
-                                                opacity: img.visible ? 1 : 0.4,
-                                              }}
-                                            />
-                                          </div>
-
-                                          <span className="tree-img-name">{img.name}</span>
-
-                                          <div className="tree-img-actions">
-                                            {bottomImages.length > 1 && (
-                                              <>
-                                                <button
-                                                  className="tree-img-action-btn"
-                                                  disabled={idx === 0}
-                                                  onClick={(e) => handleMoveImageOrder(file.id, "bgBottom", img.id, "up", e)}
-                                                  title="Переместить слой выше"
-                                                >
-                                                  <ArrowUp size={10} />
-                                                </button>
-                                                <button
-                                                  className="tree-img-action-btn"
-                                                  disabled={idx === bottomImages.length - 1}
-                                                  onClick={(e) => handleMoveImageOrder(file.id, "bgBottom", img.id, "down", e)}
-                                                  title="Переместить слой ниже"
-                                                >
-                                                  <ArrowDown size={10} />
-                                                </button>
-                                              </>
-                                            )}
-                                            <button
-                                              className="tree-img-action-btn danger"
-                                              onClick={(e) => handleDeleteImageFromTree(file.id, "bgBottom", img.id, e)}
-                                              title="Удалить это изображение"
-                                            >
-                                              <Trash2 size={10} />
-                                            </button>
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
+                                    {bottomImages.map((img, idx) =>
+                                      renderTreeImageItem(
+                                        img,
+                                        idx,
+                                        "bgBottom",
+                                        file,
+                                        bottomImages,
+                                        "Bottom (Обратная)",
+                                        "#10b981",
+                                        isActive
+                                      )
+                                    )}
                                   </div>
                                 )}
                               </div>
@@ -889,5 +937,82 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
         </div>
       )}
     </aside>
+
+    {/* Всплывающее окно быстрого просмотра изображения при наведении */}
+    {hoveredPreview &&
+      createPortal(
+        <div
+          className="cad-image-hover-card"
+          style={{
+            top: Math.max(10, Math.min(hoveredPreview.rect.top - 20, window.innerHeight - 290)),
+            left: hoveredPreview.rect.right + 10,
+          }}
+          onMouseEnter={() => {
+            if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+          }}
+          onMouseLeave={handleMouseLeaveThumb}
+        >
+          <div className="hover-card-header">
+            <span
+              className="hover-card-layer-badge"
+              style={{ backgroundColor: hoveredPreview.layerColor }}
+            >
+              {hoveredPreview.layerTitle}
+            </span>
+            <span className="hover-card-title" title={hoveredPreview.img.name}>
+              {hoveredPreview.img.name}
+            </span>
+          </div>
+
+          <div className="hover-card-img-wrap">
+            <img
+              src={hoveredPreview.img.src}
+              alt={hoveredPreview.img.name}
+              style={{
+                transform: hoveredPreview.img.mirrored ? "scaleX(-1)" : "none",
+                filter: `brightness(${hoveredPreview.img.brightness || 100}%) contrast(${
+                  hoveredPreview.img.contrast || 100
+                }%) ${hoveredPreview.img.invert ? "invert(1)" : ""}`,
+              }}
+            />
+          </div>
+
+          <div className="hover-card-meta-grid">
+            <div className="hover-meta-item">
+              <span className="meta-label">Разрешение:</span>
+              <span className="meta-value">
+                {hoveredPreview.img.width && hoveredPreview.img.height
+                  ? `${hoveredPreview.img.width} × ${hoveredPreview.img.height} px`
+                  : "Оригинал"}
+              </span>
+            </div>
+            <div className="hover-meta-item">
+              <span className="meta-label">Масштаб:</span>
+              <span className="meta-value">
+                {Math.round((hoveredPreview.img.scale || 1) * 100)}%
+              </span>
+            </div>
+            <div className="hover-meta-item">
+              <span className="meta-label">Поворот:</span>
+              <span className="meta-value">
+                {(hoveredPreview.img.rotation || 0).toFixed(1)}°
+              </span>
+            </div>
+            <div className="hover-meta-item">
+              <span className="meta-label">Прозрачность:</span>
+              <span className="meta-value">
+                {Math.round((hoveredPreview.img.opacity ?? 1) * 100)}%
+              </span>
+            </div>
+          </div>
+
+          <div className="hover-card-footer">
+            <Crosshair size={11} />
+            <span>Двойной клик — показать на холсте</span>
+          </div>
+        </div>,
+        document.body
+      )}
+    </>
   );
 };
