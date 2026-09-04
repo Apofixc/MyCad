@@ -472,21 +472,39 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
   }, [draggingHandle, zoom, mode, imgDims, originalImage]);
 
   // Toggle Live Preview
+  const savedViewRef = useRef<{ pan: { x: number; y: number }; zoom: number }>({ pan: { x: 0, y: 0 }, zoom: 1 });
+
   const handleTogglePreview = async () => {
     if (showPreview) {
       setShowPreview(false);
+      setPan(savedViewRef.current.pan);
+      setZoom(savedViewRef.current.zoom);
       return;
     }
 
     if (!originalImage) return;
     setIsProcessing(true);
     try {
+      let res: { dataUrl: string; width: number; height: number };
       if (mode === "perspective") {
-        const res = await warpPerspective(originalImage, quad, { maxDimension: 1800 });
-        setPreviewDataUrl(res.dataUrl);
+        res = await warpPerspective(originalImage, quad, { maxDimension: 2400 });
       } else {
-        const res = await cropImage(originalImage, cropRect);
-        setPreviewDataUrl(res.dataUrl);
+        res = await cropImage(originalImage, cropRect);
+      }
+      setPreviewDataUrl(res.dataUrl);
+      savedViewRef.current = { pan: { ...pan }, zoom };
+
+      // Fit preview into container
+      if (containerRef.current) {
+        const rect = containerRef.current.getBoundingClientRect();
+        const availW = Math.max(100, rect.width - 60);
+        const availH = Math.max(100, rect.height - 60);
+        const scale = Math.min(availW / res.width, availH / res.height, 1);
+        setZoom(scale);
+        setPan({
+          x: (rect.width - res.width * scale) / 2,
+          y: (rect.height - res.height * scale) / 2,
+        });
       }
       setShowPreview(true);
     } catch (e) {
@@ -548,14 +566,23 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
     return imageToScreen({ x, y });
   };
 
+  // Global Escape key handler
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleGlobalKeyDown);
+    return () => window.removeEventListener("keydown", handleGlobalKeyDown);
+  }, [onClose]);
+
   return (
     <div
       className="cad-modal-backdrop"
-      onKeyDown={(e) => {
-        if (e.key === "Escape") onClose();
-        if (e.key === "Enter" && !isProcessing) handleConfirmApply();
-      }}
-      tabIndex={-1}
+      onClick={onClose}
     >
       <div className="cad-preprocess-modal" onClick={(e) => e.stopPropagation()}>
         {/* MODAL HEADER */}
@@ -573,8 +600,16 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
           </div>
 
           <div className="header-actions">
-            <button className="cad-btn-icon" onClick={onClose} title="Закрыть (Esc)">
-              <X size={16} />
+            <button
+              type="button"
+              className="cad-dialog-close"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              title="Закрыть (Esc)"
+            >
+              <X size={18} />
             </button>
           </div>
         </div>
@@ -712,34 +747,50 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
                     const p1 = getSubdividedPoints(u, 0);
                     const p2 = getSubdividedPoints(u, 1);
                     return (
-                      <line
-                        key={`vgrid-${i}`}
-                        x1={p1.x}
-                        y1={p1.y}
-                        x2={p2.x}
-                        y2={p2.y}
-                        stroke="#38bdf8"
-                        strokeWidth="1"
-                        strokeDasharray="4 4"
-                        opacity="0.45"
-                      />
+                      <g key={`vgrid-${i}`}>
+                        <line
+                          x1={p1.x}
+                          y1={p1.y}
+                          x2={p2.x}
+                          y2={p2.y}
+                          stroke="rgba(0,0,0,0.7)"
+                          strokeWidth="2.5"
+                        />
+                        <line
+                          x1={p1.x}
+                          y1={p1.y}
+                          x2={p2.x}
+                          y2={p2.y}
+                          stroke="#38bdf8"
+                          strokeWidth="1.5"
+                          strokeDasharray="5 5"
+                        />
+                      </g>
                     );
                   })}
                   {[0.333, 0.667].map((v, i) => {
                     const p1 = getSubdividedPoints(0, v);
                     const p2 = getSubdividedPoints(1, v);
                     return (
-                      <line
-                        key={`hgrid-${i}`}
-                        x1={p1.x}
-                        y1={p1.y}
-                        x2={p2.x}
-                        y2={p2.y}
-                        stroke="#38bdf8"
-                        strokeWidth="1"
-                        strokeDasharray="4 4"
-                        opacity="0.45"
-                      />
+                      <g key={`hgrid-${i}`}>
+                        <line
+                          x1={p1.x}
+                          y1={p1.y}
+                          x2={p2.x}
+                          y2={p2.y}
+                          stroke="rgba(0,0,0,0.7)"
+                          strokeWidth="2.5"
+                        />
+                        <line
+                          x1={p1.x}
+                          y1={p1.y}
+                          x2={p2.x}
+                          y2={p2.y}
+                          stroke="#38bdf8"
+                          strokeWidth="1.5"
+                          strokeDasharray="5 5"
+                        />
+                      </g>
                     );
                   })}
 
@@ -911,7 +962,15 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
           </div>
 
           <div className="footer-actions">
-            <button className="cad-btn-secondary" onClick={onClose} disabled={isProcessing}>
+            <button
+              type="button"
+              className="cad-btn-flat"
+              onClick={(e) => {
+                e.stopPropagation();
+                onClose();
+              }}
+              disabled={isProcessing}
+            >
               Отмена
             </button>
             <button

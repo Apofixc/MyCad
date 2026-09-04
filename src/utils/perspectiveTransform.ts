@@ -140,12 +140,12 @@ export async function warpPerspective(
   const det = dx1 * dy2 - dx2 * dy1;
 
   if (Math.abs(det) < 1e-7 || (Math.abs(sx) < 1e-7 && Math.abs(sy) < 1e-7)) {
-    // Аффинное приближение (параллелограмм)
+    // Аффинное приближение (параллелограмм / прямоугольник)
     a = x1 - x0;
-    b = x2 - x1;
+    b = x3 - x0;
     c = x0;
     d = y1 - y0;
-    e = y2 - y1;
+    e = y3 - y0;
     f = y0;
     g = 0;
     h = 0;
