@@ -3439,21 +3439,28 @@ body, html, #root {
 /* Modal Toolbar */
 .cad-preprocess-toolbar {
   padding: 8px 16px;
-  background: rgba(15, 23, 42, 0.7);
+  background: rgba(15, 23, 42, 0.85);
   border-bottom: 1px solid var(--cad-border);
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.cad-preprocess-toolbar::-webkit-scrollbar {
+  display: none;
 }
 
 .cad-preprocess-toolbar .tool-tabs {
   display: flex;
-  background: rgba(30, 41, 59, 0.7);
+  background: rgba(30, 41, 59, 0.8);
   padding: 3px;
   border-radius: 6px;
   gap: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  flex-shrink: 0;
 }
 
 .cad-preprocess-toolbar .tool-tab-btn {
@@ -3462,18 +3469,19 @@ body, html, #root {
   color: var(--cad-text-muted);
   font-size: 12px;
   font-weight: 500;
-  padding: 5px 12px;
+  padding: 5px 10px;
   border-radius: 4px;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  white-space: nowrap;
   transition: all 0.15s ease;
 }
 
 .cad-preprocess-toolbar .tool-tab-btn:hover {
   color: #f8fafc;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.06);
 }
 
 .cad-preprocess-toolbar .tool-tab-btn.active {
@@ -3485,14 +3493,60 @@ body, html, #root {
 .cad-preprocess-toolbar .toolbar-divider {
   width: 1px;
   height: 20px;
-  background: var(--cad-border);
+  background: rgba(255, 255, 255, 0.12);
   margin: 0 4px;
+  flex-shrink: 0;
 }
 
 .cad-preprocess-toolbar .tool-actions-group {
   display: flex;
   align-items: center;
   gap: 6px;
+  flex-shrink: 0;
+}
+
+/* Standalone CAD Tool Buttons in Toolbar */
+.cad-tool-btn {
+  background: rgba(30, 41, 59, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #cbd5e1;
+  font-size: 11.5px;
+  font-weight: 500;
+  padding: 5px 9px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.cad-tool-btn:hover:not(:disabled) {
+  background: rgba(51, 65, 85, 0.85);
+  border-color: rgba(56, 189, 248, 0.35);
+  color: #ffffff;
+}
+
+.cad-tool-btn:active:not(:disabled) {
+  transform: translateY(1px);
+}
+
+.cad-tool-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.cad-tool-btn.btn-active-highlight {
+  background: #0284c7;
+  border-color: #38bdf8;
+  color: #ffffff;
+  box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
+}
+
+.cad-tool-btn.btn-reset:hover:not(:disabled) {
+  border-color: rgba(248, 113, 113, 0.4);
+  color: #fca5a5;
 }
 
 .cad-preprocess-toolbar .toolbar-spacer {
@@ -3522,12 +3576,26 @@ body, html, #root {
   pointer-events: none;
 }
 
-.original-src-img,
+.original-src-img {
+  display: block;
+  pointer-events: none;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
+  border-radius: 2px;
+}
+
 .preview-img-result {
   display: block;
   pointer-events: none;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.8);
   border-radius: 2px;
+  background-image:
+    linear-gradient(45deg, #1e293b 25%, transparent 25%),
+    linear-gradient(-45deg, #1e293b 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #1e293b 75%),
+    linear-gradient(-45deg, transparent 75%, #1e293b 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  background-color: #0b0f19;
 }
 
 .viewport-svg-overlay {

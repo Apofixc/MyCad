@@ -346,3 +346,221 @@ export async function rotateImageFixed(
     height: canvas.height,
   };
 }
+
+/**
+ * Отражает изображение по горизонтали (Flip H) и/или по вертикали (Flip V).
+ */
+export async function flipImage(
+  sourceImage: HTMLImageElement,
+  horizontal: boolean,
+  vertical: boolean,
+  options?: {
+    quality?: number;
+    mimeType?: string;
+  }
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  let srcW = sourceImage.naturalWidth || sourceImage.width;
+  let srcH = sourceImage.naturalHeight || sourceImage.height;
+
+  const MAX_DIM = 4096;
+  let scale = 1;
+  if (srcW > MAX_DIM || srcH > MAX_DIM) {
+    scale = MAX_DIM / Math.max(srcW, srcH);
+    srcW = Math.round(srcW * scale);
+    srcH = Math.round(srcH * scale);
+  }
+
+  const canvas = document.createElement("canvas");
+  canvas.width = srcW;
+  canvas.height = srcH;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to get 2D context");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  ctx.save();
+  ctx.translate(horizontal ? srcW : 0, vertical ? srcH : 0);
+  ctx.scale(horizontal ? -1 : 1, vertical ? -1 : 1);
+  ctx.drawImage(sourceImage, 0, 0, srcW, srcH);
+  ctx.restore();
+
+  const mime = options?.mimeType || "image/jpeg";
+  const quality = options?.quality ?? 0.94;
+  const dataUrl = canvas.toDataURL(mime, quality);
+
+  return {
+    dataUrl,
+    width: canvas.width,
+    height: canvas.height,
+  };
+}
+
+export interface EllipseParams {
+  cx: number;
+  cy: number;
+  rx: number;
+  ry: number;
+}
+
+/**
+ * Многоугольная обрезка (Polygon Crop) по произвольному набору вершин.
+ * Обрезает изображение до Bounding Box многоугольника, а все внешние пиксели делает прозрачными (PNG).
+ */
+export async function cropPolygon(
+  sourceImage: HTMLImageElement,
+  points: Point2D[],
+  options?: {
+    maxDimension?: number;
+  }
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  if (points.length < 3) {
+    throw new Error("Polygon must contain at least 3 points");
+  }
+
+  const srcW = sourceImage.naturalWidth || sourceImage.width;
+  const srcH = sourceImage.naturalHeight || sourceImage.height;
+
+  // 1. Вычисляем Bounding Box
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+
+  for (const pt of points) {
+    if (pt.x < minX) minX = pt.x;
+    if (pt.y < minY) minY = pt.y;
+    if (pt.x > maxX) maxX = pt.x;
+    if (pt.y > maxY) maxY = pt.y;
+  }
+
+  // Ограничиваем пределами исходного изображения
+  minX = Math.max(0, Math.floor(minX));
+  minY = Math.max(0, Math.floor(minY));
+  maxX = Math.min(srcW, Math.ceil(maxX));
+  maxY = Math.min(srcH, Math.ceil(maxY));
+
+  let boxW = Math.max(1, maxX - minX);
+  let boxH = Math.max(1, maxY - minY);
+
+  const maxDim = options?.maxDimension ?? 4096;
+  let scale = 1;
+  if (boxW > maxDim || boxH > maxDim) {
+    scale = maxDim / Math.max(boxW, boxH);
+  }
+
+  const dstW = Math.round(boxW * scale);
+  const dstH = Math.round(boxH * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = dstW;
+  canvas.height = dstH;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to get 2D context");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  // 2. Создаем путь клиппинга многоугольника
+  ctx.beginPath();
+  const startX = (points[0].x - minX) * scale;
+  const startY = (points[0].y - minY) * scale;
+  ctx.moveTo(startX, startY);
+
+  for (let i = 1; i < points.length; i++) {
+    const px = (points[i].x - minX) * scale;
+    const py = (points[i].y - minY) * scale;
+    ctx.lineTo(px, py);
+  }
+  ctx.closePath();
+  ctx.clip();
+
+  // 3. Отрисовываем исходное изображение со смещением
+  ctx.drawImage(
+    sourceImage,
+    -minX * scale,
+    -minY * scale,
+    srcW * scale,
+    srcH * scale
+  );
+
+  // Возвращаем PNG для сохранения прозрачности за пределами многоугольника
+  const dataUrl = canvas.toDataURL("image/png");
+
+  return {
+    dataUrl,
+    width: dstW,
+    height: dstH,
+  };
+}
+
+/**
+ * Круглая / овальная обрезка (Ellipse Crop).
+ * Обрезает изображение до внешнего габарита круга, внешние пиксели — прозрачный PNG.
+ */
+export async function cropEllipse(
+  sourceImage: HTMLImageElement,
+  ellipse: EllipseParams,
+  options?: {
+    maxDimension?: number;
+  }
+): Promise<{ dataUrl: string; width: number; height: number }> {
+  const srcW = sourceImage.naturalWidth || sourceImage.width;
+  const srcH = sourceImage.naturalHeight || sourceImage.height;
+
+  const rx = Math.max(1, ellipse.rx);
+  const ry = Math.max(1, ellipse.ry);
+
+  let minX = Math.max(0, Math.floor(ellipse.cx - rx));
+  let minY = Math.max(0, Math.floor(ellipse.cy - ry));
+  let maxX = Math.min(srcW, Math.ceil(ellipse.cx + rx));
+  let maxY = Math.min(srcH, Math.ceil(ellipse.cy + ry));
+
+  let boxW = Math.max(1, maxX - minX);
+  let boxH = Math.max(1, maxY - minY);
+
+  const maxDim = options?.maxDimension ?? 4096;
+  let scale = 1;
+  if (boxW > maxDim || boxH > maxDim) {
+    scale = maxDim / Math.max(boxW, boxH);
+  }
+
+  const dstW = Math.round(boxW * scale);
+  const dstH = Math.round(boxH * scale);
+
+  const canvas = document.createElement("canvas");
+  canvas.width = dstW;
+  canvas.height = dstH;
+
+  const ctx = canvas.getContext("2d");
+  if (!ctx) throw new Error("Failed to get 2D context");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  // Центр относительно canvas
+  const cCanvasX = (ellipse.cx - minX) * scale;
+  const cCanvasY = (ellipse.cy - minY) * scale;
+  const rCanvasX = rx * scale;
+  const rCanvasY = ry * scale;
+
+  ctx.beginPath();
+  ctx.ellipse(cCanvasX, cCanvasY, rCanvasX, rCanvasY, 0, 0, Math.PI * 2);
+  ctx.closePath();
+  ctx.clip();
+
+  ctx.drawImage(
+    sourceImage,
+    -minX * scale,
+    -minY * scale,
+    srcW * scale,
+    srcH * scale
+  );
+
+  const dataUrl = canvas.toDataURL("image/png");
+
+  return {
+    dataUrl,
+    width: dstW,
+    height: dstH,
+  };
+}
