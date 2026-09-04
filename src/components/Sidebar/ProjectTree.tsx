@@ -165,7 +165,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
     const nextSelected =
       activeSelectionTarget?.type === targetType &&
-      (activeSelectionTarget as any).imageId === imageId
+        (activeSelectionTarget as any).imageId === imageId
         ? null
         : activeSelectionTarget || null;
 
@@ -343,7 +343,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                       const isBgActive =
                         isActive &&
                         (activeSelectionTarget?.type === "layer_bg_top" ||
-                         activeSelectionTarget?.type === "layer_bg_bottom");
+                          activeSelectionTarget?.type === "layer_bg_bottom");
 
                       return (
                         <div className="kicad-layer-group">
@@ -408,9 +408,8 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                               <div className="kicad-sub-layers-list">
                                 {/* Виртуальный подслой: Top */}
                                 <div
-                                  className={`kicad-layer-tree-item virtual-sub ${
-                                    isActive && activeSelectionTarget?.type === "layer_bg_top" && !(activeSelectionTarget as any).imageId ? "selected" : ""
-                                  }`}
+                                  className={`kicad-layer-tree-item virtual-sub ${isActive && activeSelectionTarget?.type === "layer_bg_top" && !(activeSelectionTarget as any).imageId ? "selected" : ""
+                                    }`}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     onSelectFile(file.id);
@@ -541,9 +540,8 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
                                 {/* Виртуальный подслой: Bottom */}
                                 <div
-                                  className={`kicad-layer-tree-item virtual-sub ${
-                                    isActive && activeSelectionTarget?.type === "layer_bg_bottom" && !(activeSelectionTarget as any).imageId ? "selected" : ""
-                                  }`}
+                                  className={`kicad-layer-tree-item virtual-sub ${isActive && activeSelectionTarget?.type === "layer_bg_bottom" && !(activeSelectionTarget as any).imageId ? "selected" : ""
+                                    }`}
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     onSelectFile(file.id);
@@ -687,8 +685,8 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                       const isCompsActive =
                         isActive &&
                         (activeSelectionTarget?.type === "layer_comps_top" ||
-                         activeSelectionTarget?.type === "layer_comps_bottom" ||
-                         activeSelectionTarget?.type === "component");
+                          activeSelectionTarget?.type === "layer_comps_bottom" ||
+                          activeSelectionTarget?.type === "component");
 
                       return (
                         <div className="kicad-layer-group">
@@ -742,9 +740,8 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                             <div className="kicad-sub-layers-list">
                               {/* Виртуальный подслой: Top */}
                               <div
-                                className={`kicad-layer-tree-item virtual-sub ${
-                                  isActive && activeSelectionTarget?.type === "layer_comps_top" ? "selected" : ""
-                                }`}
+                                className={`kicad-layer-tree-item virtual-sub ${isActive && activeSelectionTarget?.type === "layer_comps_top" ? "selected" : ""
+                                  }`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onSelectFile(file.id);
@@ -773,9 +770,8 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
 
                               {/* Виртуальный подслой: Bottom */}
                               <div
-                                className={`kicad-layer-tree-item virtual-sub ${
-                                  isActive && activeSelectionTarget?.type === "layer_comps_bottom" ? "selected" : ""
-                                }`}
+                                className={`kicad-layer-tree-item virtual-sub ${isActive && activeSelectionTarget?.type === "layer_comps_bottom" ? "selected" : ""
+                                  }`}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   onSelectFile(file.id);

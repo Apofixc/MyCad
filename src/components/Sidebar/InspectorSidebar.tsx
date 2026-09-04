@@ -15,7 +15,6 @@ import {
   Trash2,
   Lock,
   Unlock,
-  Ruler,
   X,
 } from "lucide-react";
 
@@ -25,7 +24,6 @@ interface InspectorSidebarProps {
   onSelectComponent: (id: string | undefined) => void;
   onSelectPin: (componentId: string, pinId: string) => void;
   onSelectTarget?: (target: BoardSelectionTarget) => void;
-  onStartCalibration?: () => void;
 }
 
 export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
@@ -34,7 +32,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
   onSelectComponent,
   onSelectPin,
   onSelectTarget,
-  onStartCalibration,
 }) => {
   const boardData = normalizeBoardData(rawBoardData);
   const selectedTarget = boardData.selectedTarget;
@@ -144,19 +141,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
       });
     };
 
-    const handleDeleteActiveImage = () => {
-      const filtered = images.filter((img) => img.id !== activeImage.id);
-      onChangeBoardData({
-        ...boardData,
-        [layerKey]: {
-          ...bg,
-          images: filtered,
-          activeImageId: undefined,
-          image: filtered[0]?.src,
-        },
-        selectedTarget: null,
-      });
-    };
 
     return (
       <aside className="cad-inspector-panel">
@@ -186,9 +170,9 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
         </div>
 
         <div className="cad-inspector-body">
-          {/* Scale & 2-Point Calibration */}
+          {/* Scale */}
           <div className="cad-prop-group">
-            <div className="group-header">Масштаб и калибровка</div>
+            <div className="group-header">Масштаб</div>
 
             <div className="cad-field-row">
               <label>Множитель:</label>
@@ -213,27 +197,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
                 </button>
               </div>
             </div>
-
-            {/* 2-Point Scale Calibration Action */}
-            <button
-              className="cad-btn-action full-width"
-              style={{ marginTop: "6px" }}
-              onClick={() => {
-                if (onStartCalibration) {
-                  onStartCalibration();
-                } else {
-                  window.dispatchEvent(
-                    new CustomEvent("mycad-start-calibration", {
-                      detail: { layerKey, imageId: activeImage.id },
-                    })
-                  );
-                }
-              }}
-              title="Кликните 2 точки на холсте и укажите точное расстояние в мм"
-            >
-              <Ruler size={13} />
-              <span>Калибровать по 2 точкам...</span>
-            </button>
           </div>
 
           {/* Angle & Alignment Tools */}
@@ -442,18 +405,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
             </div>
           </div>
 
-          {/* Action: Delete Image */}
-          <div className="cad-prop-actions">
-            <button
-              className="cad-btn-danger-xs"
-              style={{ width: "100%", justifyContent: "center", padding: "6px" }}
-              onClick={handleDeleteActiveImage}
-              title="Удалить это изображение со слоя"
-            >
-              <Trash2 size={13} />
-              <span>Удалить изображение</span>
-            </button>
-          </div>
         </div>
       </aside>
     );

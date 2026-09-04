@@ -130,6 +130,9 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     activeLayer.images[0]?.id;
   const activeImage = activeLayer.images.find((img) => img.id === activeImageId);
 
+  const selectedCompId = selectedTarget?.type === "component" ? selectedTarget.id : undefined;
+  const selectedComp = boardData.components.find((c) => c.id === selectedCompId);
+
   // Helper to update active image
   const handleUpdateActiveImage = (updates: Partial<LayerImageItem>) => {
     if (!activeImage) return;
@@ -519,6 +522,42 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         return;
       }
 
+      // Delete key for selected component or active image
+      if (e.key === "Delete" || e.key === "Backspace") {
+        const activeTag = (document.activeElement?.tagName || "").toLowerCase();
+        if (activeTag === "input" || activeTag === "textarea") return;
+
+        if (selectedComp) {
+          e.preventDefault();
+          const filtered = boardData.components.filter((c) => c.id !== selectedComp.id);
+          onChangeBoardData({
+            ...boardData,
+            components: filtered,
+            selectedComponentId: undefined,
+            selectedPinId: undefined,
+            selectedTarget: null,
+          });
+          return;
+        }
+
+        if (activeImage && !activeImage.locked && isImageLayerSelected && selectedTarget?.imageId) {
+          e.preventDefault();
+          const images = activeLayer.images || [];
+          const filtered = images.filter((img) => img.id !== activeImage.id);
+          onChangeBoardData({
+            ...boardData,
+            [activeLayerKey]: {
+              ...activeLayer,
+              images: filtered,
+              activeImageId: undefined,
+              image: filtered[0]?.src,
+            },
+            selectedTarget: null,
+          });
+          return;
+        }
+      }
+
       // Keyboard arrow keys for nudge active image
       if (toolMode === "images" && activeImage && !activeImage.locked) {
         const step = e.shiftKey ? 10 : 1;
@@ -540,7 +579,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [toolMode, activeImage, calibration.active]);
+  }, [toolMode, activeImage, calibration.active, selectedComp, boardData, activeLayer, activeLayerKey, isImageLayerSelected, selectedTarget]);
 
   // Add Component Tool
   const handleAddComponent = (type: ComponentType) => {
