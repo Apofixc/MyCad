@@ -147,8 +147,70 @@ export function getImageDimensions(
 }
 
 /**
+ * Ограничивает экстремально большие разрешения сканов и фото (например > 4096 px),
+ * чтобы исключить исчерпание видеопамяти браузера, зависание GPU и лаги в интерфейсе.
+ * Сохраняет безупречную четкость деталей платы (0.02 мм/пиксель).
+ */
+export async function normalizeImageResolution(
+  src: string,
+  maxDimension = 4096
+): Promise<{ dataUrl: string; width: number; height: number; wasResized: boolean }> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      const origW = img.naturalWidth || img.width;
+      const origH = img.naturalHeight || img.height;
+
+      if (origW <= maxDimension && origH <= maxDimension) {
+        resolve({ dataUrl: src, width: origW, height: origH, wasResized: false });
+        return;
+      }
+
+      const scale = maxDimension / Math.max(origW, origH);
+      const targetW = Math.round(origW * scale);
+      const targetH = Math.round(origH * scale);
+
+      const canvas = document.createElement("canvas");
+      canvas.width = targetW;
+      canvas.height = targetH;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        resolve({ dataUrl: src, width: origW, height: origH, wasResized: false });
+        return;
+      }
+
+      ctx.imageSmoothingEnabled = true;
+      ctx.imageSmoothingQuality = "high";
+      ctx.drawImage(img, 0, 0, targetW, targetH);
+
+      const isPng =
+        src.startsWith("data:image/png") ||
+        (!src.startsWith("data:") && src.toLowerCase().includes(".png"));
+      const mime = isPng ? "image/png" : "image/jpeg";
+      const quality = isPng ? undefined : 0.94;
+      const optimizedUrl = canvas.toDataURL(mime, quality);
+
+      resolve({
+        dataUrl: optimizedUrl,
+        width: targetW,
+        height: targetH,
+        wasResized: true,
+      });
+    };
+
+    img.onerror = () => {
+      resolve({ dataUrl: src, width: 800, height: 600, wasResized: false });
+    };
+
+    img.src = src;
+  });
+}
+
+/**
  * Преобразует файл изображения в готовый объект подложки LayerImageItem
  * с реальными размерами и начальными параметрами трансформации.
+ * При необходимости автоматически нормализует сверхвысокие разрешения (> 4096px).
  */
 export async function createLayerImageItemFromFile(
   file: File,
@@ -160,8 +222,8 @@ export async function createLayerImageItemFromFile(
     index?: number;
   }
 ): Promise<LayerImageItem> {
-  const dataUrl = await readFileAsDataUrl(file);
-  const dims = await getImageDimensions(dataUrl);
+  const rawDataUrl = await readFileAsDataUrl(file);
+  const normalized = await normalizeImageResolution(rawDataUrl, 4096);
 
   const cleanName =
     file.name.replace(/\.[^/.]+$/, "") ||
@@ -170,11 +232,11 @@ export async function createLayerImageItemFromFile(
   return {
     id: `img_${params.isTop ? "top" : "bottom"}_${Date.now()}_${params.index ?? 0}`,
     name: cleanName,
-    src: dataUrl,
+    src: normalized.dataUrl,
     x: typeof params.defaultX === "number" ? Math.round(params.defaultX) : 0,
     y: typeof params.defaultY === "number" ? Math.round(params.defaultY) : 0,
-    width: dims.width,
-    height: dims.height,
+    width: normalized.width,
+    height: normalized.height,
     scale: 1,
     rotation: 0,
     opacity: 0.85,

@@ -91,8 +91,21 @@ export async function warpPerspective(
   const { width: targetW, height: targetH } = calculateTargetDimensions(quad, maxDim);
 
   // 1. Получаем пиксели исходного изображения
-  const srcW = sourceImage.naturalWidth || sourceImage.width;
-  const srcH = sourceImage.naturalHeight || sourceImage.height;
+  const rawSrcW = sourceImage.naturalWidth || sourceImage.width;
+  const rawSrcH = sourceImage.naturalHeight || sourceImage.height;
+
+  // Ограничиваем рабочий исходный canvas максимум 4096px,
+  // чтобы исключить создание гигантских 600-мегабайтных буферов и зависание JS
+  const MAX_SOURCE_DIM = 4096;
+  let srcScale = 1;
+  let srcW = rawSrcW;
+  let srcH = rawSrcH;
+
+  if (rawSrcW > MAX_SOURCE_DIM || rawSrcH > MAX_SOURCE_DIM) {
+    srcScale = MAX_SOURCE_DIM / Math.max(rawSrcW, rawSrcH);
+    srcW = Math.round(rawSrcW * srcScale);
+    srcH = Math.round(rawSrcH * srcScale);
+  }
 
   const srcCanvas = document.createElement("canvas");
   srcCanvas.width = srcW;
@@ -100,7 +113,7 @@ export async function warpPerspective(
   const srcCtx = srcCanvas.getContext("2d", { willReadFrequently: true });
   if (!srcCtx) throw new Error("Failed to get 2D context for source canvas");
 
-  srcCtx.drawImage(sourceImage, 0, 0);
+  srcCtx.drawImage(sourceImage, 0, 0, srcW, srcH);
   const srcData = srcCtx.getImageData(0, 0, srcW, srcH);
   const srcPixels = srcData.data;
 
@@ -116,14 +129,14 @@ export async function warpPerspective(
 
   // 3. Вычисляем коэффициенты проективного преобразования из единичного квадрата (u, v) in [0, 1]
   // в четырехугольник (x0, y0), (x1, y1), (x2, y2), (x3, y3) на исходном изображении
-  const x0 = quad.topLeft.x;
-  const y0 = quad.topLeft.y;
-  const x1 = quad.topRight.x;
-  const y1 = quad.topRight.y;
-  const x2 = quad.bottomRight.x;
-  const y2 = quad.bottomRight.y;
-  const x3 = quad.bottomLeft.x;
-  const y3 = quad.bottomLeft.y;
+  const x0 = quad.topLeft.x * srcScale;
+  const y0 = quad.topLeft.y * srcScale;
+  const x1 = quad.topRight.x * srcScale;
+  const y1 = quad.topRight.y * srcScale;
+  const x2 = quad.bottomRight.x * srcScale;
+  const y2 = quad.bottomRight.y * srcScale;
+  const x3 = quad.bottomLeft.x * srcScale;
+  const y3 = quad.bottomLeft.y * srcScale;
 
   const dx1 = x1 - x2;
   const dx2 = x3 - x2;
@@ -168,14 +181,18 @@ export async function warpPerspective(
 
   for (let yd = 0; yd < targetH; yd++) {
     const v = (yd + 0.5) * invH;
+    const bv_c = b * v + c;
+    const ev_f = e * v + f;
+    const hv_1 = h * v + 1;
+
     for (let xd = 0; xd < targetW; xd++) {
       const u = (xd + 0.5) * invW;
 
-      const denom = g * u + h * v + 1;
+      const denom = g * u + hv_1;
       const invDenom = Math.abs(denom) > 1e-7 ? 1 / denom : 1;
 
-      const xs = (a * u + b * v + c) * invDenom;
-      const ys = (d * u + e * v + f) * invDenom;
+      const xs = (a * u + bv_c) * invDenom;
+      const ys = (d * u + ev_f) * invDenom;
 
       // Билинейная интерполяция
       if (xs >= 0 && xs < srcW - 1 && ys >= 0 && ys < srcH - 1) {
@@ -224,7 +241,7 @@ export async function warpPerspective(
   dstCtx.putImageData(dstData, 0, 0);
 
   const mime = options?.mimeType || "image/jpeg";
-  const quality = options?.quality ?? 0.92;
+  const quality = options?.quality ?? 0.94;
   const dataUrl = dstCanvas.toDataURL(mime, quality);
 
   return {
@@ -235,7 +252,7 @@ export async function warpPerspective(
 }
 
 /**
- * Прямоугольное кадрирование (Crop) изображения.
+ * Прямоугольное кадрирование (Crop) изображения с контролем лимита размеров.
  */
 export async function cropImage(
   sourceImage: HTMLImageElement,
@@ -251,25 +268,35 @@ export async function cropImage(
   // Ограничиваем прямоугольник пределами изображения
   const x = Math.max(0, Math.min(srcW - 1, Math.round(rect.x)));
   const y = Math.max(0, Math.min(srcH - 1, Math.round(rect.y)));
-  const w = Math.max(1, Math.min(srcW - x, Math.round(rect.width)));
-  const h = Math.max(1, Math.min(srcH - y, Math.round(rect.height)));
+  let w = Math.max(1, Math.min(srcW - x, Math.round(rect.width)));
+  let h = Math.max(1, Math.min(srcH - y, Math.round(rect.height)));
+
+  const MAX_DIM = 4096;
+  let scale = 1;
+  if (w > MAX_DIM || h > MAX_DIM) {
+    scale = MAX_DIM / Math.max(w, h);
+  }
+  const dstW = Math.round(w * scale);
+  const dstH = Math.round(h * scale);
 
   const canvas = document.createElement("canvas");
-  canvas.width = w;
-  canvas.height = h;
+  canvas.width = dstW;
+  canvas.height = dstH;
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Failed to get 2D context");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
-  ctx.drawImage(sourceImage, x, y, w, h, 0, 0, w, h);
+  ctx.drawImage(sourceImage, x, y, w, h, 0, 0, dstW, dstH);
 
   const mime = options?.mimeType || "image/jpeg";
-  const quality = options?.quality ?? 0.92;
+  const quality = options?.quality ?? 0.94;
   const dataUrl = canvas.toDataURL(mime, quality);
 
   return {
     dataUrl,
-    width: w,
-    height: h,
+    width: dstW,
+    height: dstH,
   };
 }
 
@@ -284,8 +311,16 @@ export async function rotateImageFixed(
     mimeType?: string;
   }
 ): Promise<{ dataUrl: string; width: number; height: number }> {
-  const srcW = sourceImage.naturalWidth || sourceImage.width;
-  const srcH = sourceImage.naturalHeight || sourceImage.height;
+  let srcW = sourceImage.naturalWidth || sourceImage.width;
+  let srcH = sourceImage.naturalHeight || sourceImage.height;
+
+  const MAX_DIM = 4096;
+  let scale = 1;
+  if (srcW > MAX_DIM || srcH > MAX_DIM) {
+    scale = MAX_DIM / Math.max(srcW, srcH);
+    srcW = Math.round(srcW * scale);
+    srcH = Math.round(srcH * scale);
+  }
 
   const canvas = document.createElement("canvas");
   const isSwap = angleDeg === 90 || angleDeg === 270;
@@ -294,13 +329,15 @@ export async function rotateImageFixed(
 
   const ctx = canvas.getContext("2d");
   if (!ctx) throw new Error("Failed to get 2D context");
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
 
   ctx.translate(canvas.width / 2, canvas.height / 2);
   ctx.rotate((angleDeg * Math.PI) / 180);
-  ctx.drawImage(sourceImage, -srcW / 2, -srcH / 2);
+  ctx.drawImage(sourceImage, -srcW / 2, -srcH / 2, srcW, srcH);
 
   const mime = options?.mimeType || "image/jpeg";
-  const quality = options?.quality ?? 0.92;
+  const quality = options?.quality ?? 0.94;
   const dataUrl = canvas.toDataURL(mime, quality);
 
   return {

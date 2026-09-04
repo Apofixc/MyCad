@@ -16,6 +16,7 @@ import {
   readFileAsDataUrl,
   extractImagesFromDrop,
   extractImageFromClipboard,
+  normalizeImageResolution,
 } from "../../utils/imageLoader";
 import {
   ImagePreprocessModal,
@@ -69,7 +70,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [isSpacePressed, setIsSpacePressed] = useState(false);
-  const [cursorCadPos, setCursorCadPos] = useState({ x: 0, y: 0 });
+  const cursorXRef = useRef<HTMLSpanElement>(null);
+  const cursorYRef = useRef<HTMLSpanElement>(null);
 
   // Component Dragging
   const [draggingCompId, setDraggingCompId] = useState<string | null>(null);
@@ -457,7 +459,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         const rect = containerRef.current.getBoundingClientRect();
         const svgX = Math.round((e.clientX - rect.left - pan.x) / zoom);
         const svgY = Math.round((e.clientY - rect.top - pan.y) / zoom);
-        setCursorCadPos({ x: svgX, y: svgY });
+        if (cursorXRef.current) cursorXRef.current.textContent = `${(svgX / 10).toFixed(1)} мм`;
+        if (cursorYRef.current) cursorYRef.current.textContent = `${(svgY / 10).toFixed(1)} мм`;
         if (calibration.active) {
           setCalibration((prev) => ({ ...prev, cursorPos: { x: svgX, y: svgY } }));
         }
@@ -780,10 +783,11 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     if (!files || files.length === 0) return;
     if (files.length === 1) {
       try {
-        const dataUrl = await readFileAsDataUrl(files[0]);
+        const rawDataUrl = await readFileAsDataUrl(files[0]);
+        const normalized = await normalizeImageResolution(rawDataUrl, 4096);
         setPendingPreprocess({
           file: files[0],
-          dataUrl,
+          dataUrl: normalized.dataUrl,
           name: files[0].name,
           customPos,
         });
@@ -1303,9 +1307,12 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     img.flipV ? -h : 0
                   })`}
                   style={{
-                    filter: `brightness(${img.brightness}%) contrast(${img.contrast}%) ${
-                      img.invert ? "invert(1)" : ""
-                    }`,
+                    filter:
+                      img.brightness === 100 && img.contrast === 100 && !img.invert
+                        ? undefined
+                        : `brightness(${img.brightness}%) contrast(${img.contrast}%) ${
+                            img.invert ? "invert(1)" : ""
+                          }`,
                     opacity: img.opacity,
                     cursor: toolMode === "images" ? (img.locked ? "not-allowed" : isBeingDragged ? "grabbing" : "grab") : "default",
                     userSelect: "none",
@@ -1439,11 +1446,11 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       <div className="cad-canvas-status-bar" onMouseDown={(e) => e.stopPropagation()}>
         <div className="status-item">
           <span className="status-label">X:</span>
-          <span className="status-val">{(cursorCadPos.x / 10).toFixed(1)} мм</span>
+          <span ref={cursorXRef} className="status-val">0.0 мм</span>
         </div>
         <div className="status-item">
           <span className="status-label">Y:</span>
-          <span className="status-val">{(cursorCadPos.y / 10).toFixed(1)} мм</span>
+          <span ref={cursorYRef} className="status-val">0.0 мм</span>
         </div>
         <div className="status-divider" />
         <div className="status-item cad-status-zoom-group">

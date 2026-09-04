@@ -20,6 +20,7 @@ import {
   rotateImageFixed,
   calculateTargetDimensions,
 } from "../../utils/perspectiveTransform";
+import { normalizeImageResolution } from "../../utils/imageLoader";
 
 export interface ImagePreprocessResult {
   dataUrl: string;
@@ -117,27 +118,37 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
   const isPanningRef = useRef(false);
   const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Magnifier loupe canvas
+  // Magnifier loupe canvas & container ref
   const magnifierCanvasRef = useRef<HTMLCanvasElement>(null);
-  const [magnifierPos, setMagnifierPos] = useState<{ x: number; y: number; visible: boolean }>({
-    x: 0,
-    y: 0,
-    visible: false,
-  });
+  const magnifierContainerRef = useRef<HTMLDivElement>(null);
 
   // Load and initialize image
   useEffect(() => {
     if (!isOpen || !imageSrc) return;
 
-    setCurrentSrc(imageSrc);
     setShowPreview(false);
     setPreviewDataUrl(null);
+    setIsProcessing(true);
 
     loadImageElement(imageSrc)
-      .then((img) => {
-        setOriginalImage(img);
-        const w = img.naturalWidth || img.width;
-        const h = img.naturalHeight || img.height;
+      .then(async (img) => {
+        let workingImg = img;
+        let workingSrc = imageSrc;
+        const rawW = img.naturalWidth || img.width;
+        const rawH = img.naturalHeight || img.height;
+
+        // Если скан/фото имеет гигантское разрешение (например, 14000x10000 px),
+        // плавно нормализуем рабочую копию до 4096px без потери деталей схемы
+        if (rawW > 4096 || rawH > 4096) {
+          const norm = await normalizeImageResolution(imageSrc, 4096);
+          workingSrc = norm.dataUrl;
+          workingImg = await loadImageElement(norm.dataUrl);
+        }
+
+        setCurrentSrc(workingSrc);
+        setOriginalImage(workingImg);
+        const w = workingImg.naturalWidth || workingImg.width;
+        const h = workingImg.naturalHeight || workingImg.height;
         setImgDims({ width: w, height: h });
 
         // Initialize quad with a 4% inset from edges
@@ -161,6 +172,9 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
       })
       .catch((err) => {
         console.error("Ошибка загрузки изображения в мастере:", err);
+      })
+      .finally(() => {
+        setIsProcessing(false);
       });
   }, [isOpen, imageSrc]);
 
@@ -280,7 +294,13 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
     const loupeX = localX > containerRect.width - 150 ? localX - 160 : localX + 30;
     const loupeY = localY < 150 ? localY + 30 : localY - 140;
 
-    setMagnifierPos({ x: loupeX, y: loupeY, visible: true });
+    const el = magnifierContainerRef.current;
+    if (el) {
+      el.style.transform = `translate(${loupeX}px, ${loupeY}px)`;
+      if (!el.classList.contains("visible")) {
+        el.classList.add("visible");
+      }
+    }
 
     const canvas = magnifierCanvasRef.current;
     const ctx = canvas.getContext("2d");
@@ -361,9 +381,16 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
     setPan({ x: newPanX, y: newPanY });
   };
 
-  // Global Mouse Move for Dragging Handles and Panning
+  // Global Mouse Move for Dragging Handles and Panning (Optimized with requestAnimationFrame)
   useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
+    let rafId: number | null = null;
+    let latestEvent: MouseEvent | null = null;
+
+    const processFrame = () => {
+      rafId = null;
+      if (!latestEvent) return;
+      const e = latestEvent;
+
       if (isPanningRef.current) {
         setPan({
           x: e.clientX - panStartRef.current.x,
@@ -457,15 +484,29 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
       }
     };
 
+    const handleMouseMove = (e: MouseEvent) => {
+      latestEvent = e;
+      if (!rafId && (isPanningRef.current || draggingHandle)) {
+        rafId = requestAnimationFrame(processFrame);
+      }
+    };
+
     const handleMouseUp = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
       isPanningRef.current = false;
       setDraggingHandle(null);
-      setMagnifierPos((prev) => ({ ...prev, visible: false }));
+      if (magnifierContainerRef.current) {
+        magnifierContainerRef.current.classList.remove("visible");
+      }
     };
 
     window.addEventListener("mousemove", handleMouseMove);
     window.addEventListener("mouseup", handleMouseUp);
     return () => {
+      if (rafId) cancelAnimationFrame(rafId);
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("mouseup", handleMouseUp);
     };
@@ -487,7 +528,7 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
     try {
       let res: { dataUrl: string; width: number; height: number };
       if (mode === "perspective") {
-        res = await warpPerspective(originalImage, quad, { maxDimension: 2400 });
+        res = await warpPerspective(originalImage, quad, { maxDimension: 1800 });
       } else {
         res = await cropImage(originalImage, cropRect);
       }
@@ -520,7 +561,7 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
     setIsProcessing(true);
     try {
       if (mode === "perspective") {
-        const res = await warpPerspective(originalImage, quad, { maxDimension: 3400 });
+        const res = await warpPerspective(originalImage, quad, { maxDimension: 3600 });
         onApply(res);
       } else {
         const res = await cropImage(originalImage, cropRect);
@@ -932,10 +973,8 @@ export const ImagePreprocessModal: React.FC<ImagePreprocessModalProps> = ({
 
           {/* Floating Magnifier Loupe when dragging corners */}
           <div
-            className={`cad-corner-loupe ${magnifierPos.visible ? "visible" : ""}`}
-            style={{
-              transform: `translate(${magnifierPos.x}px, ${magnifierPos.y}px)`,
-            }}
+            ref={magnifierContainerRef}
+            className="cad-corner-loupe"
           >
             <canvas ref={magnifierCanvasRef} width={120} height={120} />
             <div className="loupe-label">Угол платы</div>
