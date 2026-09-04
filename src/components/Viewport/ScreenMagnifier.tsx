@@ -1,11 +1,15 @@
 import React, { useState, useEffect, useCallback } from "react";
 import { CAD_PX_PER_MM } from "../../utils/alignmentMath";
 
-interface ScreenMagnifierProps {
+export type MagnifierLevel = 2 | 4 | 8 | 16;
+
+export interface ScreenMagnifierProps {
   isActive: boolean;
   containerRef: React.RefObject<HTMLDivElement | null>;
   pan: { x: number; y: number };
   zoom: number;
+  magnification?: MagnifierLevel;
+  onChangeMagnification?: (mag: MagnifierLevel) => void;
   onClose: () => void;
 }
 
@@ -14,24 +18,29 @@ export const ScreenMagnifier: React.FC<ScreenMagnifierProps> = ({
   containerRef,
   pan,
   zoom,
+  magnification = 4,
+  onChangeMagnification,
   onClose,
 }) => {
   if (!isActive) return null;
 
   const [mousePos, setMousePos] = useState<{ clientX: number; clientY: number } | null>(null);
-  const [magnification, setMagnification] = useState<4 | 8>(4);
 
-  const LOUPE_RADIUS = 75; // 150px diameter
+  const LOUPE_RADIUS = 90; // 180px diameter circular lens
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     setMousePos({ clientX: e.clientX, clientY: e.clientY });
   }, []);
 
+  const MAG_LEVELS: MagnifierLevel[] = [2, 4, 8, 16];
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
       if (e.key === "z" || e.key === "Z") {
-        setMagnification((m) => (m === 4 ? 8 : 4));
+        const curIdx = MAG_LEVELS.indexOf(magnification);
+        const next = MAG_LEVELS[(curIdx + 1) % MAG_LEVELS.length];
+        onChangeMagnification?.(next);
       }
     };
 
@@ -41,7 +50,7 @@ export const ScreenMagnifier: React.FC<ScreenMagnifierProps> = ({
       window.removeEventListener("mousemove", handleMouseMove);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [handleMouseMove, onClose]);
+  }, [handleMouseMove, onClose, magnification, onChangeMagnification]);
 
   if (!mousePos || !containerRef.current) return null;
 
@@ -62,182 +71,181 @@ export const ScreenMagnifier: React.FC<ScreenMagnifierProps> = ({
   const worldMmY = (worldY / CAD_PX_PER_MM).toFixed(2);
 
   // Position loupe offset from cursor so it doesn't block the cursor point
-  const offsetX = relX + LOUPE_RADIUS + 30 > rect.width ? -LOUPE_RADIUS - 30 : LOUPE_RADIUS + 30;
-  const offsetY = relY - LOUPE_RADIUS - 30 < 0 ? LOUPE_RADIUS + 30 : -LOUPE_RADIUS - 30;
+  const PADDING = 40;
+  const offsetX = relX + LOUPE_RADIUS + PADDING > rect.width ? -LOUPE_RADIUS - PADDING : LOUPE_RADIUS + PADDING;
+  const offsetY = relY - LOUPE_RADIUS - PADDING < 0 ? LOUPE_RADIUS + PADDING : -LOUPE_RADIUS - PADDING;
 
   const loupeCenterX = relX + offsetX;
   const loupeCenterY = relY + offsetY;
 
+  // Dotted guide line connecting cursor to loupe rim
+  const dist = Math.hypot(offsetX, offsetY);
+  const edgeX = dist > 0 ? loupeCenterX - (offsetX / dist) * LOUPE_RADIUS : loupeCenterX;
+  const edgeY = dist > 0 ? loupeCenterY - (offsetY / dist) * LOUPE_RADIUS : loupeCenterY;
+
   return (
-    <div
-      className="cad-screen-magnifier-container"
-      style={{
-        position: "absolute",
-        top: 0,
-        left: 0,
-        width: "100%",
-        height: "100%",
-        pointerEvents: "none",
-        zIndex: 38,
-      }}
-    >
-      {/* Floating Loupe Circular Lens */}
-      <div
-        style={{
-          position: "absolute",
-          left: `${loupeCenterX}px`,
-          top: `${loupeCenterY}px`,
-          transform: "translate(-50%, -50%)",
-          width: `${LOUPE_RADIUS * 2}px`,
-          height: `${LOUPE_RADIUS * 2}px`,
-          borderRadius: "50%",
-          border: "3px solid #38bdf8",
-          boxShadow: "0 8px 32px rgba(0, 0, 0, 0.6), inset 0 0 12px rgba(56, 189, 248, 0.3)",
-          overflow: "hidden",
-          background: "rgba(15, 23, 42, 0.95)",
-        }}
-      >
-        {/* Pixel grid inside loupe */}
-        <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            backgroundImage: `
-              linear-gradient(to right, rgba(56, 189, 248, 0.15) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(56, 189, 248, 0.15) 1px, transparent 1px)
-            `,
-            backgroundSize: `${magnification * 3}px ${magnification * 3}px`,
-            backgroundPosition: "center center",
-          }}
+    <g className="cad-screen-magnifier" pointerEvents="none">
+      <defs>
+        <clipPath id="cad-magnifier-lens-clip">
+          <circle cx={0} cy={0} r={LOUPE_RADIUS} />
+        </clipPath>
+        <filter id="cad-magnifier-glow" x="-30%" y="-30%" width="160%" height="160%">
+          <feDropShadow dx="0" dy="8" stdDeviation="12" floodColor="#000000" floodOpacity="0.75" />
+        </filter>
+        <pattern id="cad-magnifier-grid" width={magnification * 3} height={magnification * 3} patternUnits="userSpaceOnUse">
+          <path
+            d={`M ${magnification * 3} 0 L 0 0 0 ${magnification * 3}`}
+            fill="none"
+            stroke="rgba(56, 189, 248, 0.12)"
+            strokeWidth="0.5"
+          />
+        </pattern>
+      </defs>
+
+      {/* Guide line linking cursor point to loupe rim */}
+      <line
+        x1={relX}
+        y1={relY}
+        x2={edgeX}
+        y2={edgeY}
+        stroke="#38bdf8"
+        strokeWidth={1.5}
+        strokeDasharray="4 4"
+        opacity={0.65}
+      />
+
+      {/* Crosshair at cursor position */}
+      <g transform={`translate(${relX}, ${relY})`}>
+        <circle cx={0} cy={0} r={6} fill="none" stroke="#38bdf8" strokeWidth={1.5} />
+        <circle cx={0} cy={0} r={1.5} fill="#38bdf8" />
+        <line x1={-14} y1={0} x2={-6} y2={0} stroke="#38bdf8" strokeWidth={1.2} />
+        <line x1={6} y1={0} x2={14} y2={0} stroke="#38bdf8" strokeWidth={1.2} />
+        <line x1={0} y1={-14} x2={0} y2={-6} stroke="#38bdf8" strokeWidth={1.2} />
+        <line x1={0} y1={6} x2={0} y2={14} stroke="#38bdf8" strokeWidth={1.2} />
+      </g>
+
+      {/* Floating Loupe Lens */}
+      <g transform={`translate(${loupeCenterX}, ${loupeCenterY})`}>
+        {/* Dark drop shadow backing circle */}
+        <circle
+          cx={0}
+          cy={0}
+          r={LOUPE_RADIUS}
+          fill="#090d16"
+          filter="url(#cad-magnifier-glow)"
         />
 
-        {/* Central Precision Crosshair */}
-        <div
-          style={{
-            position: "absolute",
-            left: "50%",
-            top: "50%",
-            transform: "translate(-50%, -50%)",
-            width: "14px",
-            height: "14px",
-            border: "1px solid #38bdf8",
-            borderRadius: "50%",
-          }}
-        >
-          <div
-            style={{
-              position: "absolute",
-              top: "-8px",
-              left: "6px",
-              width: "1px",
-              height: "7px",
-              background: "#38bdf8",
-            }}
+        {/* Magnified scene clipped to the circular lens */}
+        <g clipPath="url(#cad-magnifier-lens-clip)">
+          {/* Solid background in case board is transparent */}
+          <rect
+            x={-LOUPE_RADIUS}
+            y={-LOUPE_RADIUS}
+            width={LOUPE_RADIUS * 2}
+            height={LOUPE_RADIUS * 2}
+            fill="#090d16"
           />
-          <div
-            style={{
-              position: "absolute",
-              bottom: "-8px",
-              left: "6px",
-              width: "1px",
-              height: "7px",
-              background: "#38bdf8",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              left: "-8px",
-              top: "6px",
-              height: "1px",
-              width: "7px",
-              background: "#38bdf8",
-            }}
-          />
-          <div
-            style={{
-              position: "absolute",
-              right: "-8px",
-              top: "6px",
-              height: "1px",
-              width: "7px",
-              background: "#38bdf8",
-            }}
-          />
-        </div>
 
-        {/* Top Zoom Multiplier Badge */}
-        <div
-          style={{
-            position: "absolute",
-            top: "8px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "rgba(2, 132, 199, 0.9)",
-            color: "#fff",
-            fontSize: "10px",
-            fontWeight: "bold",
-            padding: "1px 6px",
-            borderRadius: "4px",
-            fontFamily: "monospace",
-          }}
-        >
-          {magnification}× ZOOM
-        </div>
+          {/* Real-time magnified view of the board viewport */}
+          <g transform={`scale(${magnification}) translate(${-relX}, ${-relY})`}>
+            <use href="#cad-screen-viewport" xlinkHref="#cad-screen-viewport" />
+          </g>
+
+          {/* Subtle precision pixel grid inside the lens */}
+          <rect
+            x={-LOUPE_RADIUS}
+            y={-LOUPE_RADIUS}
+            width={LOUPE_RADIUS * 2}
+            height={LOUPE_RADIUS * 2}
+            fill="url(#cad-magnifier-grid)"
+            pointerEvents="none"
+          />
+        </g>
+
+        {/* Outer Bezel Rings */}
+        <circle
+          cx={0}
+          cy={0}
+          r={LOUPE_RADIUS}
+          fill="none"
+          stroke="#38bdf8"
+          strokeWidth={3.5}
+        />
+        <circle
+          cx={0}
+          cy={0}
+          r={LOUPE_RADIUS - 2}
+          fill="none"
+          stroke="rgba(255, 255, 255, 0.3)"
+          strokeWidth={1}
+        />
+        <circle
+          cx={0}
+          cy={0}
+          r={LOUPE_RADIUS - 5}
+          fill="none"
+          stroke="rgba(56, 189, 248, 0.2)"
+          strokeWidth={0.75}
+        />
+
+        {/* Central Precision Crosshairs inside the lens */}
+        <line x1={-24} y1={0} x2={-7} y2={0} stroke="#38bdf8" strokeWidth={1.5} />
+        <line x1={7} y1={0} x2={24} y2={0} stroke="#38bdf8" strokeWidth={1.5} />
+        <line x1={0} y1={-24} x2={0} y2={-7} stroke="#38bdf8" strokeWidth={1.5} />
+        <line x1={0} y1={7} x2={0} y2={24} stroke="#38bdf8" strokeWidth={1.5} />
+        <circle cx={0} cy={0} r={7} fill="none" stroke="#38bdf8" strokeWidth={1.2} />
+        <circle cx={0} cy={0} r={1.5} fill="#38bdf8" />
+
+        {/* Top Magnification Badge */}
+        <g transform={`translate(0, ${-LOUPE_RADIUS - 14})`}>
+          <rect
+            x={-44}
+            y={-11}
+            width={88}
+            height={22}
+            rx={11}
+            fill="rgba(2, 132, 199, 0.95)"
+            stroke="#38bdf8"
+            strokeWidth={1}
+          />
+          <text
+            x={0}
+            y={4}
+            textAnchor="middle"
+            fill="#ffffff"
+            fontSize={11}
+            fontWeight="bold"
+            fontFamily="system-ui, -apple-system, sans-serif"
+          >
+            {magnification}× ZOOM
+          </text>
+        </g>
 
         {/* Bottom Coordinates Badge */}
-        <div
-          style={{
-            position: "absolute",
-            bottom: "8px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            background: "rgba(15, 23, 42, 0.9)",
-            color: "#e2e8f0",
-            fontSize: "9px",
-            padding: "2px 6px",
-            borderRadius: "4px",
-            fontFamily: "monospace",
-            whiteSpace: "nowrap",
-          }}
-        >
-          X:{worldMmX} Y:{worldMmY} мм
-        </div>
-      </div>
-
-      {/* Crosshair indicator at the actual cursor location */}
-      <div
-        style={{
-          position: "absolute",
-          left: `${relX}px`,
-          top: `${relY}px`,
-          transform: "translate(-50%, -50%)",
-          width: "20px",
-          height: "20px",
-          pointerEvents: "none",
-        }}
-      >
-        <div
-          style={{
-            position: "absolute",
-            top: 0,
-            left: "9.5px",
-            width: "1px",
-            height: "20px",
-            background: "rgba(56, 189, 248, 0.8)",
-          }}
-        />
-        <div
-          style={{
-            position: "absolute",
-            left: 0,
-            top: "9.5px",
-            height: "1px",
-            width: "20px",
-            background: "rgba(56, 189, 248, 0.8)",
-          }}
-        />
-      </div>
-    </div>
+        <g transform={`translate(0, ${LOUPE_RADIUS + 14})`}>
+          <rect
+            x={-72}
+            y={-11}
+            width={144}
+            height={22}
+            rx={11}
+            fill="rgba(15, 23, 42, 0.95)"
+            stroke="#38bdf8"
+            strokeWidth={1}
+          />
+          <text
+            x={0}
+            y={4}
+            textAnchor="middle"
+            fill="#38bdf8"
+            fontSize={10.5}
+            fontWeight="bold"
+            fontFamily="monospace"
+          >
+            X:{worldMmX} Y:{worldMmY} мм
+          </text>
+        </g>
+      </g>
+    </g>
   );
 };

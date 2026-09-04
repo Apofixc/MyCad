@@ -127,6 +127,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     | null;
 
   const [activeImageTool, setActiveImageTool] = useState<ActiveImageTool>("transform");
+  const [magnifierMag, setMagnifierMag] = useState<2 | 4 | 8 | 16>(4);
   const [curtainSplitPercent, setCurtainSplitPercent] = useState<number>(50);
   const [blinkSide, setBlinkSide] = useState<"top" | "bottom">("top");
   const [registrationState, setRegistrationState] = useState<{
@@ -347,6 +348,16 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
   // Zoom with Wheel
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
+    if (activeImageTool === "magnifier") {
+      const MAG_LEVELS: (2 | 4 | 8 | 16)[] = [2, 4, 8, 16];
+      const curIdx = MAG_LEVELS.indexOf(magnifierMag);
+      if (e.deltaY < 0) {
+        setMagnifierMag(MAG_LEVELS[Math.min(curIdx + 1, MAG_LEVELS.length - 1)]);
+      } else {
+        setMagnifierMag(MAG_LEVELS[Math.max(curIdx - 1, 0)]);
+      }
+      return;
+    }
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
@@ -462,7 +473,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     if (e.button !== 0 || isSpacePressed) return;
     e.stopPropagation();
     e.preventDefault();
-    if (toolMode !== "images" || calibration.active) return;
+    if (toolMode !== "images" || calibration.active || activeImageTool !== "transform") return;
 
     // Select the image and target layer
     const targetType = layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom";
@@ -1589,6 +1600,46 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         </div>
       )}
 
+      {/* Screen Magnifier Banner */}
+      {activeImageTool === "magnifier" && (
+        <div className="cad-calibration-banner" onMouseDown={(e) => e.stopPropagation()}>
+          <div className="banner-content">
+            <ZoomIn size={16} className="banner-icon" />
+            <div className="banner-text">
+              <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+                <strong>Экранная лупа</strong>
+                <span style={{ fontSize: "11px", color: "#94a3b8" }}>
+                  Прецизионное увеличение выбранной области платы
+                </span>
+              </div>
+              <span>
+                Клавиша <strong>Z</strong> или колёсико мыши: кратность ({magnifierMag}×).
+                Перемещайте курсор над платой.
+              </span>
+            </div>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+            {([2, 4, 8, 16] as const).map((mag) => (
+              <button
+                key={mag}
+                className={`cad-btn-flat btn-xs ${magnifierMag === mag ? "btn-active-highlight" : ""}`}
+                onClick={() => setMagnifierMag(mag)}
+                title={`Установить увеличение ${mag}×`}
+              >
+                {mag}×
+              </button>
+            ))}
+            <button
+              className="cad-btn-flat btn-xs"
+              onClick={() => setActiveImageTool("transform")}
+              title="Закрыть лупу (Escape)"
+            >
+              Закрыть (Esc)
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Measure / Calibrate / Level Overlay (Tools 2, 3, 6) */}
       <MeasureOverlay
         mode={
@@ -1614,15 +1665,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
         splitPercent={curtainSplitPercent}
         onChangeSplitPercent={setCurtainSplitPercent}
         containerRef={containerRef}
-        onClose={() => setActiveImageTool("transform")}
-      />
-
-      {/* Screen Magnifier Overlay (Tool 7) */}
-      <ScreenMagnifier
-        isActive={activeImageTool === "magnifier"}
-        containerRef={containerRef}
-        pan={pan}
-        zoom={zoom}
         onClose={() => setActiveImageTool("transform")}
       />
 
@@ -1740,7 +1782,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
           )}
         </defs>
 
-        <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
+        <g id="cad-screen-viewport" transform={`translate(${pan.x}, ${pan.y}) scale(${zoom})`}>
           {/* Background Grid (Infinite Plane) */}
           <rect
             id="cad-bg-plane"
@@ -2290,6 +2332,19 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
             />
           ))}
         </g>
+
+        {/* Screen Magnifier Loupe Layer */}
+        {activeImageTool === "magnifier" && (
+          <ScreenMagnifier
+            isActive={activeImageTool === "magnifier"}
+            containerRef={containerRef}
+            pan={pan}
+            zoom={zoom}
+            magnification={magnifierMag}
+            onChangeMagnification={setMagnifierMag}
+            onClose={() => setActiveImageTool("transform")}
+          />
+        )}
       </svg>
 
       {/* Bottom CAD Viewport Status Bar */}
