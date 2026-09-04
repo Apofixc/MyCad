@@ -210,6 +210,19 @@ export const App: React.FC = () => {
     setIsDirty(true);
   };
 
+  // Update board data for any file by ID
+  const handleUpdateBoardDataForFile = (fileId: string, updated: BoardData) => {
+    const normalized = normalizeBoardData(updated);
+    setProject((prev) => {
+      if (!prev) return prev;
+      const updatedFiles = prev.files.map((f) =>
+        f.id === fileId ? { ...f, data: normalized } : f
+      );
+      return { ...prev, files: updatedFiles };
+    });
+    setIsDirty(true);
+  };
+
   // Target & Selection handlers
   const handleSelectTarget = (target: BoardSelectionTarget) => {
     setProject((prev) => {
@@ -405,6 +418,7 @@ export const App: React.FC = () => {
           activeSelectionTarget={boardData?.selectedTarget}
           onSelectTarget={handleSelectTarget}
           onToggleLayerVisibility={handleToggleLayerVisibility}
+          onUpdateBoardData={handleUpdateBoardDataForFile}
         />
 
         {/* Center: Canvas Viewport */}

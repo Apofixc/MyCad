@@ -17,6 +17,11 @@ import {
   EyeOff,
   Image as ImageIcon,
   Cpu,
+  Lock,
+  Unlock,
+  ArrowUp,
+  ArrowDown,
+  Trash2,
 } from "lucide-react";
 
 interface ProjectTreeProps {
@@ -34,6 +39,7 @@ interface ProjectTreeProps {
     fileId: string,
     layerKey: "bg" | "comps" | "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
   ) => void;
+  onUpdateBoardData?: (fileId: string, updatedBoardData: BoardData) => void;
 }
 
 export const ProjectTree: React.FC<ProjectTreeProps> = ({
@@ -48,6 +54,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
   activeSelectionTarget,
   onSelectTarget,
   onToggleLayerVisibility,
+  onUpdateBoardData,
 }) => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [expandedBoards, setExpandedBoards] = useState<Record<string, boolean>>({});
@@ -70,6 +77,108 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
   const toggleBoardExpand = (fileId: string, e: React.MouseEvent) => {
     e.stopPropagation();
     setExpandedBoards((prev) => ({ ...prev, [fileId]: !prev[fileId] }));
+  };
+
+  const handleToggleImageVisibility = (
+    fileId: string,
+    layerKey: "bgTop" | "bgBottom",
+    imageId: string,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    const file = project.files.find((f) => f.id === fileId);
+    if (!file || file.type !== "board") return;
+    const board = normalizeBoardData(file.data as BoardData);
+    const bg = board[layerKey];
+    const updatedImages = (bg.images || []).map((img) =>
+      img.id === imageId ? { ...img, visible: !img.visible } : img
+    );
+    onUpdateBoardData?.(fileId, {
+      ...board,
+      [layerKey]: { ...bg, images: updatedImages },
+    });
+  };
+
+  const handleToggleImageLock = (
+    fileId: string,
+    layerKey: "bgTop" | "bgBottom",
+    imageId: string,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    const file = project.files.find((f) => f.id === fileId);
+    if (!file || file.type !== "board") return;
+    const board = normalizeBoardData(file.data as BoardData);
+    const bg = board[layerKey];
+    const updatedImages = (bg.images || []).map((img) =>
+      img.id === imageId ? { ...img, locked: !img.locked } : img
+    );
+    onUpdateBoardData?.(fileId, {
+      ...board,
+      [layerKey]: { ...bg, images: updatedImages },
+    });
+  };
+
+  const handleMoveImageOrder = (
+    fileId: string,
+    layerKey: "bgTop" | "bgBottom",
+    imageId: string,
+    direction: "up" | "down",
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    const file = project.files.find((f) => f.id === fileId);
+    if (!file || file.type !== "board") return;
+    const board = normalizeBoardData(file.data as BoardData);
+    const bg = board[layerKey];
+    const images = bg.images || [];
+    const idx = images.findIndex((img) => img.id === imageId);
+    if (idx === -1) return;
+    if (direction === "up" && idx === 0) return;
+    if (direction === "down" && idx === images.length - 1) return;
+
+    const newArr = [...images];
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    const temp = newArr[idx];
+    newArr[idx] = newArr[targetIdx];
+    newArr[targetIdx] = temp;
+
+    onUpdateBoardData?.(fileId, {
+      ...board,
+      [layerKey]: { ...bg, images: newArr, image: newArr[0]?.src },
+    });
+  };
+
+  const handleDeleteImageFromTree = (
+    fileId: string,
+    layerKey: "bgTop" | "bgBottom",
+    imageId: string,
+    e: React.MouseEvent
+  ) => {
+    e.stopPropagation();
+    const file = project.files.find((f) => f.id === fileId);
+    if (!file || file.type !== "board") return;
+    const board = normalizeBoardData(file.data as BoardData);
+    const bg = board[layerKey];
+    const filtered = (bg.images || []).filter((img) => img.id !== imageId);
+    const targetType = layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom";
+
+    const nextSelected =
+      activeSelectionTarget?.type === targetType &&
+      (activeSelectionTarget as any).imageId === imageId
+        ? null
+        : activeSelectionTarget || null;
+
+    onUpdateBoardData?.(fileId, {
+      ...board,
+      [layerKey]: {
+        ...bg,
+        images: filtered,
+        activeImageId: filtered[0]?.id,
+        image: filtered[0]?.src,
+      },
+      selectedTarget: nextSelected,
+    });
   };
 
   // Закрытие контекстного меню при клике в любое место или Escape
@@ -285,85 +394,287 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
                             )}
                           </div>
 
-                          {/* Виртуальные подслои: Top (Лицевая) и Bottom (Обратная) */}
-                          {isBgExpanded && (
-                            <div className="kicad-sub-layers-list">
-                              {/* Виртуальный подслой: Top */}
-                              <div
-                                className={`kicad-layer-tree-item virtual-sub ${
-                                  isActive && activeSelectionTarget?.type === "layer_bg_top" ? "selected" : ""
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onSelectFile(file.id);
-                                  onSelectTarget?.({
-                                    type: "layer_bg_top",
-                                  });
-                                }}
-                                title="Подложка: Top (Лицевая сторона)"
-                              >
-                                <button
-                                  className="layer-vis-btn"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    onToggleLayerVisibility?.(file.id, "bgTop");
-                                  }}
-                                  title={boardData.bgTop.visible ? "Скрыть Top" : "Показать Top"}
-                                >
-                                  {boardData.bgTop.visible ? (
-                                    <Eye size={12} className="eye-on" />
-                                  ) : (
-                                    <EyeOff size={12} className="eye-off" />
-                                  )}
-                                </button>
-                                <span className="layer-color-dot dot-bg-top" />
-                                <span className="layer-title">Top (Лицевая)</span>
-                                {topImagesCount > 0 && (
-                                  <span className="layer-badge-sub-img">
-                                    {topImagesCount > 1 ? `${topImagesCount}` : "1"}
-                                  </span>
-                                )}
-                              </div>
+                          {/* Виртуальные подслои: Top (Лицевая) и Bottom (Обратная) с изображениями */}
+                          {isBgExpanded && (() => {
+                            const topKey = `${file.id}_bg_top`;
+                            const isTopExpanded = isGroupExpanded(topKey);
+                            const topImages = boardData.bgTop.images || [];
 
-                              {/* Виртуальный подслой: Bottom */}
-                              <div
-                                className={`kicad-layer-tree-item virtual-sub ${
-                                  isActive && activeSelectionTarget?.type === "layer_bg_bottom" ? "selected" : ""
-                                }`}
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  onSelectFile(file.id);
-                                  onSelectTarget?.({
-                                    type: "layer_bg_bottom",
-                                  });
-                                }}
-                                title="Подложка: Bottom (Обратная сторона)"
-                              >
-                                <button
-                                  className="layer-vis-btn"
+                            const bottomKey = `${file.id}_bg_bottom`;
+                            const isBottomExpanded = isGroupExpanded(bottomKey);
+                            const bottomImages = boardData.bgBottom.images || [];
+
+                            return (
+                              <div className="kicad-sub-layers-list">
+                                {/* Виртуальный подслой: Top */}
+                                <div
+                                  className={`kicad-layer-tree-item virtual-sub ${
+                                    isActive && activeSelectionTarget?.type === "layer_bg_top" && !(activeSelectionTarget as any).imageId ? "selected" : ""
+                                  }`}
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    onToggleLayerVisibility?.(file.id, "bgBottom");
+                                    onSelectFile(file.id);
+                                    onSelectTarget?.({
+                                      type: "layer_bg_top",
+                                    });
                                   }}
-                                  title={boardData.bgBottom.visible ? "Скрыть Bottom" : "Показать Bottom"}
+                                  title="Подложка: Top (Лицевая сторона)"
                                 >
-                                  {boardData.bgBottom.visible ? (
-                                    <Eye size={12} className="eye-on" />
-                                  ) : (
-                                    <EyeOff size={12} className="eye-off" />
+                                  {topImages.length > 0 && (
+                                    <button
+                                      className="kicad-group-expand-btn"
+                                      onClick={(e) => toggleGroupExpand(topKey, e)}
+                                      title={isTopExpanded ? "Свернуть снимки" : "Развернуть снимки"}
+                                    >
+                                      {isTopExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                                    </button>
                                   )}
-                                </button>
-                                <span className="layer-color-dot dot-bg-bottom" />
-                                <span className="layer-title">Bottom (Обратная)</span>
-                                {boardData.bgBottom.mirrored && <span className="layer-badge-flip">FLIP</span>}
-                                {bottomImagesCount > 0 && (
-                                  <span className="layer-badge-sub-img">
-                                    {bottomImagesCount > 1 ? `${bottomImagesCount}` : "1"}
-                                  </span>
+                                  <button
+                                    className="layer-vis-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleLayerVisibility?.(file.id, "bgTop");
+                                    }}
+                                    title={boardData.bgTop.visible ? "Скрыть Top" : "Показать Top"}
+                                  >
+                                    {boardData.bgTop.visible ? (
+                                      <Eye size={12} className="eye-on" />
+                                    ) : (
+                                      <EyeOff size={12} className="eye-off" />
+                                    )}
+                                  </button>
+                                  <span className="layer-color-dot dot-bg-top" />
+                                  <span className="layer-title">Top (Лицевая)</span>
+                                  {topImagesCount > 0 && (
+                                    <span className="layer-badge-sub-img">
+                                      {topImagesCount > 1 ? `${topImagesCount}` : "1"}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Список снимков на Top */}
+                                {isTopExpanded && topImages.length > 0 && (
+                                  <div className="kicad-images-subgroup">
+                                    {topImages.map((img, idx) => {
+                                      const isImgSelected =
+                                        isActive &&
+                                        activeSelectionTarget?.type === "layer_bg_top" &&
+                                        (activeSelectionTarget as any).imageId === img.id;
+
+                                      return (
+                                        <div
+                                          key={img.id}
+                                          className={`kicad-tree-image-item ${isImgSelected ? "selected" : ""}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onSelectFile(file.id);
+                                            onSelectTarget?.({
+                                              type: "layer_bg_top",
+                                              imageId: img.id,
+                                            });
+                                          }}
+                                          title={`${img.name}\nМасштаб: ${Math.round(img.scale * 100)}% | Угол: ${img.rotation.toFixed(1)}°`}
+                                        >
+                                          <button
+                                            className="layer-vis-btn"
+                                            onClick={(e) => handleToggleImageVisibility(file.id, "bgTop", img.id, e)}
+                                            title={img.visible ? "Скрыть изображение" : "Показать изображение"}
+                                          >
+                                            {img.visible ? <Eye size={11} className="eye-on" /> : <EyeOff size={11} className="eye-off" />}
+                                          </button>
+
+                                          <button
+                                            className={`tree-lock-btn ${img.locked ? "locked" : ""}`}
+                                            onClick={(e) => handleToggleImageLock(file.id, "bgTop", img.id, e)}
+                                            title={img.locked ? "Разблокировать" : "Заблокировать от перемещения"}
+                                          >
+                                            {img.locked ? <Lock size={10} /> : <Unlock size={10} />}
+                                          </button>
+
+                                          <div className="tree-img-thumb-mini">
+                                            <img
+                                              src={img.src}
+                                              alt=""
+                                              style={{
+                                                transform: img.mirrored ? "scaleX(-1)" : "none",
+                                                opacity: img.visible ? 1 : 0.4,
+                                              }}
+                                            />
+                                          </div>
+
+                                          <span className="tree-img-name">{img.name}</span>
+
+                                          <div className="tree-img-actions">
+                                            {topImages.length > 1 && (
+                                              <>
+                                                <button
+                                                  className="tree-img-action-btn"
+                                                  disabled={idx === 0}
+                                                  onClick={(e) => handleMoveImageOrder(file.id, "bgTop", img.id, "up", e)}
+                                                  title="Переместить слой выше"
+                                                >
+                                                  <ArrowUp size={10} />
+                                                </button>
+                                                <button
+                                                  className="tree-img-action-btn"
+                                                  disabled={idx === topImages.length - 1}
+                                                  onClick={(e) => handleMoveImageOrder(file.id, "bgTop", img.id, "down", e)}
+                                                  title="Переместить слой ниже"
+                                                >
+                                                  <ArrowDown size={10} />
+                                                </button>
+                                              </>
+                                            )}
+                                            <button
+                                              className="tree-img-action-btn danger"
+                                              onClick={(e) => handleDeleteImageFromTree(file.id, "bgTop", img.id, e)}
+                                              title="Удалить это изображение"
+                                            >
+                                              <Trash2 size={10} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                )}
+
+                                {/* Виртуальный подслой: Bottom */}
+                                <div
+                                  className={`kicad-layer-tree-item virtual-sub ${
+                                    isActive && activeSelectionTarget?.type === "layer_bg_bottom" && !(activeSelectionTarget as any).imageId ? "selected" : ""
+                                  }`}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    onSelectFile(file.id);
+                                    onSelectTarget?.({
+                                      type: "layer_bg_bottom",
+                                    });
+                                  }}
+                                  title="Подложка: Bottom (Обратная сторона)"
+                                >
+                                  {bottomImages.length > 0 && (
+                                    <button
+                                      className="kicad-group-expand-btn"
+                                      onClick={(e) => toggleGroupExpand(bottomKey, e)}
+                                      title={isBottomExpanded ? "Свернуть снимки" : "Развернуть снимки"}
+                                    >
+                                      {isBottomExpanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
+                                    </button>
+                                  )}
+                                  <button
+                                    className="layer-vis-btn"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      onToggleLayerVisibility?.(file.id, "bgBottom");
+                                    }}
+                                    title={boardData.bgBottom.visible ? "Скрыть Bottom" : "Показать Bottom"}
+                                  >
+                                    {boardData.bgBottom.visible ? (
+                                      <Eye size={12} className="eye-on" />
+                                    ) : (
+                                      <EyeOff size={12} className="eye-off" />
+                                    )}
+                                  </button>
+                                  <span className="layer-color-dot dot-bg-bottom" />
+                                  <span className="layer-title">Bottom (Обратная)</span>
+                                  {boardData.bgBottom.mirrored && <span className="layer-badge-flip">FLIP</span>}
+                                  {bottomImagesCount > 0 && (
+                                    <span className="layer-badge-sub-img">
+                                      {bottomImagesCount > 1 ? `${bottomImagesCount}` : "1"}
+                                    </span>
+                                  )}
+                                </div>
+
+                                {/* Список снимков на Bottom */}
+                                {isBottomExpanded && bottomImages.length > 0 && (
+                                  <div className="kicad-images-subgroup">
+                                    {bottomImages.map((img, idx) => {
+                                      const isImgSelected =
+                                        isActive &&
+                                        activeSelectionTarget?.type === "layer_bg_bottom" &&
+                                        (activeSelectionTarget as any).imageId === img.id;
+
+                                      return (
+                                        <div
+                                          key={img.id}
+                                          className={`kicad-tree-image-item ${isImgSelected ? "selected" : ""}`}
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            onSelectFile(file.id);
+                                            onSelectTarget?.({
+                                              type: "layer_bg_bottom",
+                                              imageId: img.id,
+                                            });
+                                          }}
+                                          title={`${img.name}\nМасштаб: ${Math.round(img.scale * 100)}% | Угол: ${img.rotation.toFixed(1)}°`}
+                                        >
+                                          <button
+                                            className="layer-vis-btn"
+                                            onClick={(e) => handleToggleImageVisibility(file.id, "bgBottom", img.id, e)}
+                                            title={img.visible ? "Скрыть изображение" : "Показать изображение"}
+                                          >
+                                            {img.visible ? <Eye size={11} className="eye-on" /> : <EyeOff size={11} className="eye-off" />}
+                                          </button>
+
+                                          <button
+                                            className={`tree-lock-btn ${img.locked ? "locked" : ""}`}
+                                            onClick={(e) => handleToggleImageLock(file.id, "bgBottom", img.id, e)}
+                                            title={img.locked ? "Разблокировать" : "Заблокировать от перемещения"}
+                                          >
+                                            {img.locked ? <Lock size={10} /> : <Unlock size={10} />}
+                                          </button>
+
+                                          <div className="tree-img-thumb-mini">
+                                            <img
+                                              src={img.src}
+                                              alt=""
+                                              style={{
+                                                transform: img.mirrored ? "scaleX(-1)" : "none",
+                                                opacity: img.visible ? 1 : 0.4,
+                                              }}
+                                            />
+                                          </div>
+
+                                          <span className="tree-img-name">{img.name}</span>
+
+                                          <div className="tree-img-actions">
+                                            {bottomImages.length > 1 && (
+                                              <>
+                                                <button
+                                                  className="tree-img-action-btn"
+                                                  disabled={idx === 0}
+                                                  onClick={(e) => handleMoveImageOrder(file.id, "bgBottom", img.id, "up", e)}
+                                                  title="Переместить слой выше"
+                                                >
+                                                  <ArrowUp size={10} />
+                                                </button>
+                                                <button
+                                                  className="tree-img-action-btn"
+                                                  disabled={idx === bottomImages.length - 1}
+                                                  onClick={(e) => handleMoveImageOrder(file.id, "bgBottom", img.id, "down", e)}
+                                                  title="Переместить слой ниже"
+                                                >
+                                                  <ArrowDown size={10} />
+                                                </button>
+                                              </>
+                                            )}
+                                            <button
+                                              className="tree-img-action-btn danger"
+                                              onClick={(e) => handleDeleteImageFromTree(file.id, "bgBottom", img.id, e)}
+                                              title="Удалить это изображение"
+                                            >
+                                              <Trash2 size={10} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
                                 )}
                               </div>
-                            </div>
-                          )}
+                            );
+                          })()}
                         </div>
                       );
                     })()}

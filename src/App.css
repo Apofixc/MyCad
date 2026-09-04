@@ -1195,6 +1195,131 @@ body, html, #root {
   border-radius: 3px;
 }
 
+/* KiCad Tree Image items (под слоями Top/Bottom) */
+.kicad-images-subgroup {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  margin-left: 14px;
+  padding-left: 6px;
+  border-left: 1px dotted rgba(255, 255, 255, 0.12);
+  margin-top: 1px;
+  margin-bottom: 3px;
+}
+
+.kicad-tree-image-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2.5px 6px;
+  border-radius: 4px;
+  font-size: 11px;
+  color: var(--cad-text-secondary);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  position: relative;
+}
+
+.kicad-tree-image-item:hover {
+  background-color: var(--cad-bg-surface);
+  color: var(--cad-text-primary);
+}
+
+.kicad-tree-image-item.selected {
+  background-color: rgba(56, 189, 248, 0.16);
+  color: #38bdf8;
+  font-weight: 600;
+}
+
+.tree-img-thumb-mini {
+  width: 15px;
+  height: 15px;
+  border-radius: 2px;
+  overflow: hidden;
+  background-color: #0b0f17;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.tree-img-thumb-mini img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.tree-img-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 11px;
+}
+
+.tree-img-actions {
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  opacity: 0.3;
+  transition: opacity 0.12s;
+  margin-left: auto;
+}
+
+.kicad-tree-image-item:hover .tree-img-actions {
+  opacity: 1;
+}
+
+.tree-lock-btn {
+  background: transparent;
+  border: none;
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 3px;
+  font-size: 10px;
+}
+
+.tree-lock-btn:hover {
+  color: var(--cad-text-primary);
+}
+
+.tree-lock-btn.locked {
+  color: #f59e0b;
+}
+
+.tree-img-action-btn {
+  background: transparent;
+  border: none;
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  border-radius: 2px;
+  opacity: 0.4;
+  transition: all 0.1s;
+}
+
+.tree-img-action-btn:hover {
+  opacity: 1;
+  color: var(--cad-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tree-img-action-btn:disabled {
+  opacity: 0.15;
+  cursor: not-allowed;
+}
+
+.tree-img-action-btn.danger:hover {
+  color: #f87171;
+  background-color: rgba(239, 68, 68, 0.2);
+}
+
 /* Layer inspector styles */
 
 .cad-tool-btn.active {
