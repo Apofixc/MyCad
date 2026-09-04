@@ -190,6 +190,45 @@ export async function createLayerImageItemFromFile(
 }
 
 /**
+ * Создает объект подложки LayerImageItem напрямую из Data URL с указанными размерами.
+ */
+export function createLayerImageItemFromDataUrl(
+  dataUrl: string,
+  name: string,
+  width: number,
+  height: number,
+  params: {
+    isTop: boolean;
+    defaultX?: number;
+    defaultY?: number;
+    order?: number;
+    index?: number;
+  }
+): LayerImageItem {
+  const cleanName = name.replace(/\.[^/.]+$/, "") || `Скан_${params.isTop ? "Top" : "Bottom"}`;
+  return {
+    id: `img_${params.isTop ? "top" : "bottom"}_${Date.now()}_${params.index ?? 0}`,
+    name: cleanName,
+    src: dataUrl,
+    x: typeof params.defaultX === "number" ? Math.round(params.defaultX) : 0,
+    y: typeof params.defaultY === "number" ? Math.round(params.defaultY) : 0,
+    width,
+    height,
+    scale: 1,
+    rotation: 0,
+    opacity: 0.85,
+    brightness: 100,
+    contrast: 100,
+    invert: false,
+    mirrored: !params.isTop,
+    flipV: false,
+    locked: false,
+    visible: true,
+    order: params.order ?? 0,
+  };
+}
+
+/**
  * Извлекает файлы изображений из события Drag-and-Drop.
  */
 export function extractImagesFromDrop(e: React.DragEvent): File[] {

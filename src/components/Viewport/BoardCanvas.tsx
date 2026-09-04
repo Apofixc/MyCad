@@ -12,9 +12,15 @@ import { SvgComponent } from "../SvgRenderer/SvgComponents";
 import {
   openImageFileDialog,
   createLayerImageItemFromFile,
+  createLayerImageItemFromDataUrl,
+  readFileAsDataUrl,
   extractImagesFromDrop,
   extractImageFromClipboard,
 } from "../../utils/imageLoader";
+import {
+  ImagePreprocessModal,
+  ImagePreprocessResult,
+} from "../Modals/ImagePreprocessModal";
 import {
   Plus,
   Ruler,
@@ -97,6 +103,16 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     realMm: "2.54",
     showModal: false,
   });
+
+  // Pending Image for Preprocessing Modal (Crop / Perspective)
+  const [pendingPreprocess, setPendingPreprocess] = useState<{
+    file?: File;
+    dataUrl: string;
+    name: string;
+    customPos?: { x: number; y: number };
+    replaceLayerKey?: "bgTop" | "bgBottom";
+    replaceImageId?: string;
+  } | null>(null);
 
   // Find active image if any
   const selectedTarget = boardData.selectedTarget;
@@ -203,11 +219,30 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       setToolMode("images");
     };
 
+    const handlePreprocessEvent = (e: Event) => {
+      const customEvent = e as CustomEvent<{ layerKey: "bgTop" | "bgBottom"; imageId: string }>;
+      const lk = customEvent.detail?.layerKey;
+      const id = customEvent.detail?.imageId;
+      if (!lk || !id) return;
+      const targetLayer = boardData[lk];
+      const targetItem = targetLayer.images.find((img) => img.id === id);
+      if (targetItem) {
+        setPendingPreprocess({
+          dataUrl: targetItem.src,
+          name: targetItem.name,
+          replaceLayerKey: lk,
+          replaceImageId: targetItem.id,
+        });
+      }
+    };
+
     window.addEventListener("mycad-start-calibration", handleCalibrationEvent);
     window.addEventListener("mycad-focus-image", handleFocusImageEvent);
+    window.addEventListener("mycad-preprocess-image", handlePreprocessEvent);
     return () => {
       window.removeEventListener("mycad-start-calibration", handleCalibrationEvent);
       window.removeEventListener("mycad-focus-image", handleFocusImageEvent);
+      window.removeEventListener("mycad-preprocess-image", handlePreprocessEvent);
     };
   }, [boardData]);
 
@@ -695,8 +730,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     onSelectTarget?.({ type: "component", id: newComp.id });
   };
 
-  // Upload Images to Active Layer
-  const handleAddImagesToLayer = async (
+  // Upload Images to Active Layer (Raw insertion)
+  const rawInsertImages = async (
     files: File[],
     customPos?: { x: number; y: number }
   ) => {
@@ -735,6 +770,107 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       },
       selectedTarget: { type: targetType, imageId: newActiveId },
     });
+  };
+
+  // Upload Images to Active Layer (With Preprocessing Wizard)
+  const handleAddImagesToLayer = async (
+    files: File[],
+    customPos?: { x: number; y: number }
+  ) => {
+    if (!files || files.length === 0) return;
+    if (files.length === 1) {
+      try {
+        const dataUrl = await readFileAsDataUrl(files[0]);
+        setPendingPreprocess({
+          file: files[0],
+          dataUrl,
+          name: files[0].name,
+          customPos,
+        });
+        return;
+      } catch (err) {
+        console.error("Ошибка чтения файла изображения:", err);
+      }
+    }
+    await rawInsertImages(files, customPos);
+  };
+
+  // Apply processed result from Preprocessing Modal
+  const handlePreprocessApply = (result: ImagePreprocessResult) => {
+    if (!pendingPreprocess) return;
+
+    // Case 1: Editing existing image in-place
+    if (pendingPreprocess.replaceImageId && pendingPreprocess.replaceLayerKey) {
+      const lk = pendingPreprocess.replaceLayerKey;
+      const targetLayer = boardData[lk];
+      const updatedImages = targetLayer.images.map((img) =>
+        img.id === pendingPreprocess.replaceImageId
+          ? {
+              ...img,
+              src: result.dataUrl,
+              width: result.width,
+              height: result.height,
+            }
+          : img
+      );
+
+      onChangeBoardData({
+        ...boardData,
+        [lk]: {
+          ...targetLayer,
+          images: updatedImages,
+          image: updatedImages[0]?.src,
+        },
+      });
+      setPendingPreprocess(null);
+      return;
+    }
+
+    // Case 2: Inserting newly preprocessed image
+    const isTop = activeLayerKey === "bgTop";
+    const targetType = isTop ? "layer_bg_top" : "layer_bg_bottom";
+    const baseX = pendingPreprocess.customPos
+      ? pendingPreprocess.customPos.x
+      : Math.round((-pan.x + 200) / zoom);
+    const baseY = pendingPreprocess.customPos
+      ? pendingPreprocess.customPos.y
+      : Math.round((-pan.y + 150) / zoom);
+
+    const newItem = createLayerImageItemFromDataUrl(
+      result.dataUrl,
+      pendingPreprocess.name,
+      result.width,
+      result.height,
+      {
+        isTop,
+        defaultX: baseX,
+        defaultY: baseY,
+        order: activeLayer.images.length,
+      }
+    );
+
+    const combined = [...activeLayer.images, newItem];
+    onChangeBoardData({
+      ...boardData,
+      [activeLayerKey]: {
+        ...activeLayer,
+        images: combined,
+        activeImageId: newItem.id,
+        image: combined[0]?.src,
+        visible: true,
+      },
+      selectedTarget: { type: targetType, imageId: newItem.id },
+    });
+    setPendingPreprocess(null);
+  };
+
+  // Bypass processing and insert directly as-is
+  const handlePreprocessBypass = async () => {
+    if (!pendingPreprocess) return;
+    if (pendingPreprocess.file) {
+      await rawInsertImages([pendingPreprocess.file], pendingPreprocess.customPos);
+    }
+    setPendingPreprocess(null);
   };
 
   // Paste from Clipboard (Ctrl+V)
@@ -1106,6 +1242,18 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
             </div>
           </div>
         </div>
+      )}
+
+      {/* Image Preprocessing Wizard Modal (Crop & 4-Point Perspective) */}
+      {pendingPreprocess && (
+        <ImagePreprocessModal
+          isOpen={Boolean(pendingPreprocess)}
+          imageSrc={pendingPreprocess.dataUrl}
+          fileName={pendingPreprocess.name}
+          onClose={() => setPendingPreprocess(null)}
+          onApply={handlePreprocessApply}
+          onBypass={handlePreprocessBypass}
+        />
       )}
 
       {/* SVG Viewport */}
