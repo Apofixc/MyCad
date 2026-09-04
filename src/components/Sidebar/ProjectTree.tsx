@@ -22,11 +22,14 @@ import {
   ArrowUp,
   ArrowDown,
   Trash2,
+  PanelLeftClose,
 } from "lucide-react";
 
 interface ProjectTreeProps {
   project: Project;
   isDirty?: boolean;
+  width?: number;
+  onToggleCollapse?: () => void;
   onSelectFile: (fileId: string) => void;
   onOpenNewFileDialog: () => void;
   onDeleteFile: (fileId: string) => void;
@@ -45,6 +48,8 @@ interface ProjectTreeProps {
 export const ProjectTree: React.FC<ProjectTreeProps> = ({
   project,
   isDirty,
+  width,
+  onToggleCollapse,
   onSelectFile,
   onOpenNewFileDialog,
   onDeleteFile,
@@ -211,7 +216,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
   };
 
   return (
-    <aside className="kicad-tree-panel">
+    <aside className="kicad-tree-panel" style={width ? { width: `${width}px` } : undefined}>
       {/* Чистый заголовок панели: только основные инструменты */}
       <div className="kicad-tree-header">
         <span className="kicad-tree-title">Проект</span>
@@ -234,6 +239,17 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
             >
               <Save size={14} />
               {isDirty && <span className="kicad-save-badge" />}
+            </button>
+          )}
+
+          {/* 3. Скрыть панель */}
+          {onToggleCollapse && (
+            <button
+              className="kicad-icon-btn kicad-btn-collapse"
+              onClick={onToggleCollapse}
+              title="Скрыть панель (Ctrl+B)"
+            >
+              <PanelLeftClose size={14} />
             </button>
           )}
         </div>

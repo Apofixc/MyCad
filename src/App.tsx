@@ -19,6 +19,7 @@ import {
   CheckCircle2,
   AlertCircle,
   FileCode,
+  PanelLeft,
 } from "lucide-react";
 import "./App.css";
 
@@ -34,6 +35,118 @@ export const App: React.FC = () => {
   const [toast, setToast] = useState<ToastInfo | null>(null);
   const [isNewFileModalOpen, setIsNewFileModalOpen] = useState(false);
   const [showCloseModal, setShowCloseModal] = useState(false);
+
+  // Состояние боковой панели (Sidebar / ProjectTree)
+  const [leftSidebarWidth, setLeftSidebarWidth] = useState<number>(() => {
+    const saved = localStorage.getItem("mycad_sidebar_width");
+    const parsed = saved ? parseInt(saved, 10) : 240;
+    return isNaN(parsed) || parsed < 160 || parsed > 700 ? 240 : parsed;
+  });
+
+  const [isLeftSidebarCollapsed, setIsLeftSidebarCollapsed] = useState<boolean>(() => {
+    return localStorage.getItem("mycad_sidebar_collapsed") === "true";
+  });
+
+  // Состояние правой панели (Inspector)
+  const [inspectorWidth, setInspectorWidth] = useState<number>(() => {
+    const saved = localStorage.getItem("mycad_inspector_width");
+    const parsed = saved ? parseInt(saved, 10) : 280;
+    return isNaN(parsed) || parsed < 220 || parsed > 750 ? 280 : parsed;
+  });
+
+  const [isDraggingLeft, setIsDraggingLeft] = useState(false);
+  const [isDraggingRight, setIsDraggingRight] = useState(false);
+
+  // Переключение видимости левой панели
+  const handleToggleLeftSidebar = useCallback(() => {
+    setIsLeftSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem("mycad_sidebar_collapsed", String(next));
+      return next;
+    });
+  }, []);
+
+  const updateLeftSidebarWidth = useCallback((newWidth: number) => {
+    setLeftSidebarWidth(newWidth);
+    localStorage.setItem("mycad_sidebar_width", String(newWidth));
+  }, []);
+
+  const updateInspectorWidth = useCallback((newWidth: number) => {
+    setInspectorWidth(newWidth);
+    localStorage.setItem("mycad_inspector_width", String(newWidth));
+  }, []);
+
+  // Перетаскивание левого разделителя (ProjectTree resize)
+  const handleStartResizeLeft = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDraggingLeft(true);
+    const startX = e.clientX;
+    const startWidth = leftSidebarWidth;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const targetWidth = startWidth + deltaX;
+
+      // Если уменьшили левее 110px — сворачиваем панель
+      if (targetWidth < 110) {
+        setIsLeftSidebarCollapsed(true);
+        localStorage.setItem("mycad_sidebar_collapsed", "true");
+      } else {
+        setIsLeftSidebarCollapsed(false);
+        localStorage.setItem("mycad_sidebar_collapsed", "false");
+        const clamped = Math.max(160, Math.min(650, Math.round(targetWidth)));
+        updateLeftSidebarWidth(clamped);
+      }
+    };
+
+    const onPointerUp = () => {
+      setIsDraggingLeft(false);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  }, [leftSidebarWidth, updateLeftSidebarWidth]);
+
+  const handleResetLeftSidebarWidth = useCallback(() => {
+    updateLeftSidebarWidth(240);
+    setIsLeftSidebarCollapsed(false);
+    localStorage.setItem("mycad_sidebar_collapsed", "false");
+  }, [updateLeftSidebarWidth]);
+
+  // Перетаскивание правого разделителя (Inspector resize)
+  const handleStartResizeRight = useCallback((e: React.PointerEvent) => {
+    e.preventDefault();
+    setIsDraggingRight(true);
+    const startX = e.clientX;
+    const startWidth = inspectorWidth;
+
+    const onPointerMove = (moveEvent: PointerEvent) => {
+      // Смещение влево увеличивает инспектор
+      const deltaX = startX - moveEvent.clientX;
+      const targetWidth = startWidth + deltaX;
+      const clamped = Math.max(220, Math.min(750, Math.round(targetWidth)));
+      updateInspectorWidth(clamped);
+    };
+
+    const onPointerUp = () => {
+      setIsDraggingRight(false);
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      window.removeEventListener("pointercancel", onPointerUp);
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+    window.addEventListener("pointercancel", onPointerUp);
+  }, [inspectorWidth, updateInspectorWidth]);
+
+  const handleResetInspectorWidth = useCallback(() => {
+    updateInspectorWidth(280);
+  }, [updateInspectorWidth]);
 
   // Вспомогательное всплывающее уведомление
   const showToast = useCallback((message: string, type: "success" | "error" | "info" = "success") => {
@@ -125,25 +238,28 @@ export const App: React.FC = () => {
     }
   };
 
-  // Горячие клавиши (Ctrl+S, Ctrl+Shift+S, Ctrl+O)
+  // Горячие клавиши (Ctrl+S, Ctrl+Shift+S, Ctrl+O, Ctrl+B)
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Игнорируем в текстовых полях ввода
       const target = e.target as HTMLElement;
       if (target && ["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName)) return;
 
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+      if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "s" || e.code === "KeyS")) {
         e.preventDefault();
         handleSaveProject(e.shiftKey);
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "o") {
+      } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "o" || e.code === "KeyO")) {
         e.preventDefault();
         handleOpenProject();
+      } else if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === "b" || e.code === "KeyB")) {
+        e.preventDefault();
+        handleToggleLeftSidebar();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleSaveProject, handleOpenProject]);
+  }, [handleSaveProject, handleOpenProject, handleToggleLeftSidebar]);
 
   // Create a new file manually (.board or .sch) with custom name
   const handleCreateFile = (type: ProjectFileType, fileName: string) => {
@@ -376,11 +492,27 @@ export const App: React.FC = () => {
     activeNetId = pin?.netId;
   }
 
+  const isInspectorActive = Boolean(
+    isBoardActive &&
+    boardData &&
+    (
+      ((boardData.selectedTarget?.type === "layer_bg_top" || boardData.selectedTarget?.type === "layer_bg_bottom") && boardData.selectedTarget.imageId) ||
+      Boolean(boardData.components.some(c => c.id === (boardData.selectedTarget?.type === "component" ? boardData.selectedTarget.id : boardData.selectedComponentId)))
+    )
+  );
+
   return (
     <div className="cad-app-shell">
       {/* CAD Top Menu / Tab Bar */}
       <header className="cad-top-bar">
         <div className="cad-top-left">
+          <button
+            className={`cad-topbar-toggle-btn ${isLeftSidebarCollapsed ? "is-collapsed" : ""}`}
+            onClick={handleToggleLeftSidebar}
+            title={isLeftSidebarCollapsed ? "Показать боковую панель (Ctrl+B)" : "Скрыть боковую панель (Ctrl+B)"}
+          >
+            <PanelLeft size={15} />
+          </button>
           <div className="cad-app-title">MyCad</div>
           <span className="cad-sep">/</span>
           <div className="cad-proj-info-wrap">
@@ -404,25 +536,42 @@ export const App: React.FC = () => {
       </header>
 
       {/* Main Workspace Layout */}
-      <div className="cad-workspace-body">
+      <div className={`cad-workspace-body ${isDraggingLeft || isDraggingRight ? "cad-resizing-col" : ""}`}>
         {/* Left: KiCad Project Tree with layers dropdown */}
-        <ProjectTree
-          project={project}
-          isDirty={isDirty}
-          onSelectFile={handleSelectFile}
-          onOpenNewFileDialog={() => setIsNewFileModalOpen(true)}
-          onDeleteFile={handleDeleteFile}
-          onSaveProject={() => handleSaveProject(false)}
-          onSaveProjectAs={() => handleSaveProject(true)}
-          onCloseProject={handleRequestClose}
-          activeSelectionTarget={boardData?.selectedTarget}
-          onSelectTarget={handleSelectTarget}
-          onToggleLayerVisibility={handleToggleLayerVisibility}
-          onUpdateBoardData={handleUpdateBoardDataForFile}
-        />
+        {!isLeftSidebarCollapsed && (
+          <ProjectTree
+            width={leftSidebarWidth}
+            onToggleCollapse={handleToggleLeftSidebar}
+            project={project}
+            isDirty={isDirty}
+            onSelectFile={handleSelectFile}
+            onOpenNewFileDialog={() => setIsNewFileModalOpen(true)}
+            onDeleteFile={handleDeleteFile}
+            onSaveProject={() => handleSaveProject(false)}
+            onSaveProjectAs={() => handleSaveProject(true)}
+            onCloseProject={handleRequestClose}
+            activeSelectionTarget={boardData?.selectedTarget}
+            onSelectTarget={handleSelectTarget}
+            onToggleLayerVisibility={handleToggleLayerVisibility}
+            onUpdateBoardData={handleUpdateBoardDataForFile}
+          />
+        )}
+
+        {/* Left Sidebar Resizer */}
+        {!isLeftSidebarCollapsed && (
+          <div
+            className={`cad-resizer cad-resizer-left ${isDraggingLeft ? "is-dragging" : ""}`}
+            onPointerDown={handleStartResizeLeft}
+            onDoubleClick={handleResetLeftSidebarWidth}
+            title="Потяните для изменения ширины (Двойной клик — сброс 240px)"
+          >
+            <div className="cad-resizer-line" />
+          </div>
+        )}
 
         {/* Center: Canvas Viewport */}
         <main className="cad-canvas-area">
+
           {isBoardActive && boardData ? (
             <BoardCanvas
               boardData={boardData}
@@ -448,9 +597,22 @@ export const App: React.FC = () => {
           )}
         </main>
 
+        {/* Right Resizer: only when Inspector is active */}
+        {isInspectorActive && (
+          <div
+            className={`cad-resizer cad-resizer-right ${isDraggingRight ? "is-dragging" : ""}`}
+            onPointerDown={handleStartResizeRight}
+            onDoubleClick={handleResetInspectorWidth}
+            title="Потяните для изменения ширины инспектора (Двойной клик — сброс 280px)"
+          >
+            <div className="cad-resizer-line" />
+          </div>
+        )}
+
         {/* Right: Inspector Sidebar */}
         {isBoardActive && boardData && (
           <InspectorSidebar
+            width={inspectorWidth}
             boardData={boardData}
             onChangeBoardData={handleUpdateActiveBoardData}
             onSelectComponent={handleSelectComponent}

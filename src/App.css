@@ -713,12 +713,88 @@ body, html, #root {
   position: relative;
 }
 
+/* Resizing drag state on workspace */
+.cad-workspace-body.cad-resizing-col {
+  cursor: col-resize !important;
+  user-select: none !important;
+}
+
+.cad-workspace-body.cad-resizing-col * {
+  user-select: none !important;
+}
+
+.cad-workspace-body.cad-resizing-col .cad-canvas-area {
+  pointer-events: none !important;
+}
+
+/* Draggable resizers between panels and canvas */
+.cad-resizer {
+  position: relative;
+  width: 8px;
+  margin: 0 -4px;
+  cursor: col-resize;
+  flex-shrink: 0;
+  z-index: 25;
+  display: flex;
+  justify-content: center;
+  align-items: stretch;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.cad-resizer .cad-resizer-line {
+  width: 1px;
+  background-color: var(--cad-border);
+  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.cad-resizer:hover,
+.cad-resizer.is-dragging {
+  background: rgba(56, 189, 248, 0.08);
+}
+
+.cad-resizer:hover .cad-resizer-line,
+.cad-resizer.is-dragging .cad-resizer-line {
+  width: 2px;
+  background-color: var(--cad-accent-blue);
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.7);
+}
+
+/* Topbar sidebar toggle button */
+.cad-topbar-toggle-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  padding: 4px 6px;
+  margin-right: 6px;
+  border-radius: 4px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.cad-topbar-toggle-btn:hover {
+  color: var(--cad-text-primary);
+  background: var(--cad-bg-hover);
+  border-color: var(--cad-border);
+}
+
+.cad-topbar-toggle-btn.is-collapsed {
+  color: var(--cad-accent-blue);
+  background: rgba(56, 189, 248, 0.12);
+  border-color: rgba(56, 189, 248, 0.3);
+}
+
 /* ==========================================================================
    KiCad Project Tree Panel (Left)
    ========================================================================== */
 .kicad-tree-panel {
-  width: 220px;
-  min-width: 180px;
+  width: 240px;
+  min-width: 160px;
+  max-width: 700px;
+  flex-shrink: 0;
   background-color: var(--cad-bg-panel);
   border-right: 1px solid var(--cad-border);
   display: flex;
@@ -2344,7 +2420,10 @@ body, html, #root {
    CAD Property Inspector Panel (Right)
    ========================================================================== */
 .cad-inspector-panel {
-  width: 260px;
+  width: 280px;
+  min-width: 220px;
+  max-width: 750px;
+  flex-shrink: 0;
   background-color: var(--cad-bg-panel);
   border-left: 1px solid var(--cad-border);
   display: flex;

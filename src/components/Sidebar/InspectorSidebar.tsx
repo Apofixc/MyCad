@@ -19,6 +19,7 @@ import {
 } from "lucide-react";
 
 interface InspectorSidebarProps {
+  width?: number;
   boardData: BoardData;
   onChangeBoardData: (updated: BoardData) => void;
   onSelectComponent: (id: string | undefined) => void;
@@ -27,6 +28,7 @@ interface InspectorSidebarProps {
 }
 
 export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
+  width,
   boardData: rawBoardData,
   onChangeBoardData,
   onSelectComponent,
@@ -143,7 +145,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
 
 
     return (
-      <aside className="cad-inspector-panel">
+      <aside className="cad-inspector-panel" style={width ? { width: `${width}px` } : undefined}>
         <div className="cad-inspector-header">
           <div className="cad-header-title-group">
             <span className="cad-inspector-title">Изображение</span>
@@ -424,7 +426,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
     const compSide: BoardSide = selectedComp.layer || "top";
 
     return (
-      <aside className="cad-inspector-panel">
+      <aside className="cad-inspector-panel" style={width ? { width: `${width}px` } : undefined}>
         <div className="cad-inspector-header">
           <div className="cad-header-title-group">
             <span className="cad-inspector-title">Компонент</span>
