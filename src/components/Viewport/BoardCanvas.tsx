@@ -10,6 +10,12 @@ import {
 } from "../../types/project";
 import { SvgComponent } from "../SvgRenderer/SvgComponents";
 import {
+  openImageFileDialog,
+  createLayerImageItemFromFile,
+  extractImagesFromDrop,
+  extractImageFromClipboard,
+} from "../../utils/imageLoader";
+import {
   Plus,
   Ruler,
   RotateCw,
@@ -18,6 +24,7 @@ import {
   Unlock,
   Check,
   X,
+  Image as ImageIcon,
 } from "lucide-react";
 
 interface BoardCanvasProps {
@@ -52,7 +59,7 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 }) => {
   const boardData = normalizeBoardData(rawBoardData);
   const containerRef = useRef<HTMLDivElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isCanvasDragOver, setIsCanvasDragOver] = useState(false);
 
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 250, y: 200 });
@@ -241,7 +248,6 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
     // Select the image and target layer
     const targetType = layerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom";
-    onSelectTarget?.({ type: targetType, imageId: image.id });
     onChangeBoardData({
       ...boardData,
       [layerKey]: {
@@ -452,59 +458,131 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     onSelectTarget?.({ type: "component", id: newComp.id });
   };
 
-  // Upload Images from Canvas Toolbar
-  const handleCanvasAddImages = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length === 0) return;
-
-    let loadedCount = 0;
-    const newItems: LayerImageItem[] = [];
+  // Upload Images to Active Layer
+  const handleAddImagesToLayer = async (
+    files: File[],
+    customPos?: { x: number; y: number }
+  ) => {
+    if (!files || files.length === 0) return;
     const isTop = activeLayerKey === "bgTop";
+    const targetType = isTop ? "layer_bg_top" : "layer_bg_bottom";
+    const newItems: LayerImageItem[] = [];
 
-    files.forEach((file, index) => {
-      const reader = new FileReader();
-      reader.onload = () => {
-        newItems.push({
-          id: `img_${activeLayerKey}_${Date.now()}_${index}`,
-          name: file.name.replace(/\.[^/.]+$/, "") || `Фото ${activeLayer.images.length + index + 1}`,
-          src: reader.result as string,
-          x: Math.round((-pan.x + 200) / zoom),
-          y: Math.round((-pan.y + 150) / zoom),
-          scale: 1,
-          rotation: 0,
-          opacity: 0.85,
-          brightness: 100,
-          contrast: 100,
-          invert: false,
-          mirrored: !isTop,
-          flipV: false,
-          locked: false,
-          visible: true,
-          order: activeLayer.images.length + index,
-        });
-        loadedCount++;
-        if (loadedCount === files.length) {
-          const combined = [...activeLayer.images, ...newItems];
-          const newActiveId = newItems[newItems.length - 1].id;
-          const targetType = activeLayerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom";
+    const baseX = customPos ? customPos.x : Math.round((-pan.x + 200) / zoom);
+    const baseY = customPos ? customPos.y : Math.round((-pan.y + 150) / zoom);
+
+    for (let i = 0; i < files.length; i++) {
+      const item = await createLayerImageItemFromFile(files[i], {
+        isTop,
+        defaultX: baseX + i * 30,
+        defaultY: baseY + i * 30,
+        order: activeLayer.images.length + i,
+        index: i,
+      });
+      newItems.push(item);
+    }
+
+    if (newItems.length === 0) return;
+
+    const combined = [...activeLayer.images, ...newItems];
+    const newActiveId = newItems[newItems.length - 1].id;
+
+    onChangeBoardData({
+      ...boardData,
+      [activeLayerKey]: {
+        ...activeLayer,
+        images: combined,
+        activeImageId: newActiveId,
+        image: combined[0]?.src,
+        visible: true,
+      },
+      selectedTarget: { type: targetType, imageId: newActiveId },
+    });
+  };
+
+  // Paste from Clipboard (Ctrl+V)
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const file = extractImageFromClipboard(e);
+      if (file) {
+        e.preventDefault();
+        await handleAddImagesToLayer([file]);
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [activeLayerKey, activeLayer, pan, zoom, boardData]);
+
+  // Keyboard Nudge (Arrows) and Delete for selected image
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (toolMode === "images" && activeImage && !activeImage.locked) {
+        const step = e.shiftKey ? 10 : 1;
+        let dx = 0;
+        let dy = 0;
+
+        if (e.key === "ArrowUp") dy = -step;
+        else if (e.key === "ArrowDown") dy = step;
+        else if (e.key === "ArrowLeft") dx = -step;
+        else if (e.key === "ArrowRight") dx = step;
+
+        if (dx !== 0 || dy !== 0) {
+          e.preventDefault();
+          const targetLayer = boardData[activeLayerKey];
+          const updated = targetLayer.images.map((img) =>
+            img.id === activeImage.id ? { ...img, x: img.x + dx, y: img.y + dy } : img
+          );
           onChangeBoardData({
             ...boardData,
             [activeLayerKey]: {
-              ...activeLayer,
-              images: combined,
-              activeImageId: newActiveId,
-              image: combined[0]?.src,
-              visible: true,
+              ...targetLayer,
+              images: updated,
             },
-            selectedTarget: { type: targetType, imageId: newActiveId },
           });
-          onSelectTarget?.({ type: targetType, imageId: newActiveId });
-          if (fileInputRef.current) fileInputRef.current.value = "";
+          return;
         }
-      };
-      reader.readAsDataURL(file);
-    });
-  };
+
+        if (e.key === "Delete" || e.key === "Backspace") {
+          e.preventDefault();
+          const targetLayer = boardData[activeLayerKey];
+          const remaining = targetLayer.images.filter((img) => img.id !== activeImage.id);
+          const nextActiveId = remaining[0]?.id;
+          const targetType = activeLayerKey === "bgTop" ? "layer_bg_top" : "layer_bg_bottom";
+
+          onChangeBoardData({
+            ...boardData,
+            [activeLayerKey]: {
+              ...targetLayer,
+              images: remaining,
+              activeImageId: nextActiveId,
+              image: remaining[0]?.src,
+            },
+            selectedTarget: nextActiveId ? { type: targetType, imageId: nextActiveId } : null,
+          });
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [toolMode, activeImage, activeLayerKey, boardData]);
 
   // Apply 2-Point Calibration
   const handleApplyCalibration = () => {
@@ -582,16 +660,40 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
       onWheel={handleWheel}
       onMouseDown={handleCanvasMouseDown}
       onContextMenu={(e) => e.preventDefault()}
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (!isCanvasDragOver) setIsCanvasDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsCanvasDragOver(false);
+      }}
+      onDrop={async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsCanvasDragOver(false);
+        const files = extractImagesFromDrop(e);
+        if (files.length > 0 && containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          const dropSvgX = Math.round((e.clientX - rect.left - pan.x) / zoom);
+          const dropSvgY = Math.round((e.clientY - rect.top - pan.y) / zoom);
+          await handleAddImagesToLayer(files, { x: dropSvgX, y: dropSvgY });
+        }
+      }}
     >
-      {/* Hidden File Input for Canvas Toolbar */}
-      <input
-        ref={fileInputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        style={{ display: "none" }}
-        onChange={handleCanvasAddImages}
-      />
+      {/* Visual Overlay during Drag and Drop */}
+      {isCanvasDragOver && (
+        <div className="cad-canvas-dragover-overlay">
+          <ImageIcon size={48} className="dragover-icon" />
+          <h3>Перетащите скан или фото платы сюда</h3>
+          <p>
+            Изображение будет добавлено на выбранную сторону (
+            {activeLayerKey === "bgTop" ? "Top — Лицевая" : "Bottom — Обратная"})
+          </p>
+        </div>
+      )}
 
       {/* Floating CAD Canvas Contextual Toolbar */}
       <div className="cad-canvas-toolbar" onMouseDown={(e) => e.stopPropagation()}>
@@ -626,7 +728,12 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
 
             <button
               className="cad-tool-btn primary"
-              onClick={() => fileInputRef.current?.click()}
+              onClick={async () => {
+                const files = await openImageFileDialog();
+                if (files.length > 0) {
+                  await handleAddImagesToLayer(files);
+                }
+              }}
               title="Загрузить фото или скан платы на выбранную сторону"
             >
               <Plus size={13} />
@@ -924,14 +1031,18 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
             fill="url(#cad-grid-pattern)"
           />
 
-          {/* Layer 1: Bottom Images (solder side) */}
-          {boardData.bgBottom.visible &&
-            boardData.bgBottom.images.map((img) => {
+          {/* Render Helper for Image Layer */}
+          {(() => {
+            const renderImageItem = (layerKey: "bgTop" | "bgBottom", img: LayerImageItem) => {
               if (!img.visible) return null;
               const isSelected =
                 toolMode === "images" &&
-                activeLayerKey === "bgBottom" &&
+                activeLayerKey === layerKey &&
                 activeImage?.id === img.id;
+
+              const w = img.width || 800;
+              const h = img.height || 600;
+              const strokeColor = layerKey === "bgTop" ? "#38bdf8" : "#a855f7";
 
               return (
                 <g
@@ -939,7 +1050,9 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                   id={`cad-img-${img.id}`}
                   transform={`translate(${img.x}, ${img.y}) rotate(${img.rotation}) scale(${
                     img.mirrored ? -img.scale : img.scale
-                  }, ${img.flipV ? -img.scale : img.scale})`}
+                  }, ${img.flipV ? -img.scale : img.scale}) translate(${img.mirrored ? -w : 0}, ${
+                    img.flipV ? -h : 0
+                  })`}
                   style={{
                     filter: `brightness(${img.brightness}%) contrast(${img.contrast}%) ${
                       img.invert ? "invert(1)" : ""
@@ -947,70 +1060,67 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     opacity: img.opacity,
                     cursor: toolMode === "images" ? (img.locked ? "not-allowed" : "move") : "default",
                   }}
-                  onMouseDown={(e) => handleStartImageDrag(e, "bgBottom", img)}
+                  onMouseDown={(e) => handleStartImageDrag(e, layerKey, img)}
                 >
-                  <image href={img.src} x={0} y={0} />
+                  <image
+                    href={img.src}
+                    x={0}
+                    y={0}
+                    width={w}
+                    height={h}
+                    preserveAspectRatio="none"
+                  />
                   {isSelected && (
-                    <rect
-                      x="0"
-                      y="0"
-                      width="100%"
-                      height="100%"
-                      fill="none"
-                      stroke="#a855f7"
-                      strokeWidth={1.5 / zoom}
-                      strokeDasharray="4 4"
-                    />
+                    <g className="cad-img-selection-box" pointerEvents="none">
+                      <rect
+                        x={0}
+                        y={0}
+                        width={w}
+                        height={h}
+                        fill="none"
+                        stroke={strokeColor}
+                        strokeWidth={1.8 / zoom}
+                        strokeDasharray="6 4"
+                      />
+                      {/* Corner Handles */}
+                      <rect x={-4 / zoom} y={-4 / zoom} width={8 / zoom} height={8 / zoom} fill={strokeColor} />
+                      <rect x={w - 4 / zoom} y={-4 / zoom} width={8 / zoom} height={8 / zoom} fill={strokeColor} />
+                      <rect x={-4 / zoom} y={h - 4 / zoom} width={8 / zoom} height={8 / zoom} fill={strokeColor} />
+                      <rect x={w - 4 / zoom} y={h - 4 / zoom} width={8 / zoom} height={8 / zoom} fill={strokeColor} />
+                      {/* Center Crosshair */}
+                      <line x1={w / 2 - 10 / zoom} y1={h / 2} x2={w / 2 + 10 / zoom} y2={h / 2} stroke={strokeColor} strokeWidth={1 / zoom} />
+                      <line x1={w / 2} y1={h / 2 - 10 / zoom} x2={w / 2} y2={h / 2 + 10 / zoom} stroke={strokeColor} strokeWidth={1 / zoom} />
+                    </g>
                   )}
                 </g>
               );
-            })}
+            };
 
-          {/* Layer 2: Top Images (component side) */}
-          {boardData.bgTop.visible &&
-            boardData.bgTop.images.map((img) => {
-              if (!img.visible) return null;
-              const isSelected =
-                toolMode === "images" &&
-                activeLayerKey === "bgTop" &&
-                activeImage?.id === img.id;
+            return (
+              <>
+                {/* Layer 1: Bottom Images (solder side) */}
+                {boardData.bgBottom.visible &&
+                  boardData.bgBottom.images.map((img) => renderImageItem("bgBottom", img))}
 
-              return (
-                <g
-                  key={img.id}
-                  id={`cad-img-${img.id}`}
-                  transform={`translate(${img.x}, ${img.y}) rotate(${img.rotation}) scale(${
-                    img.mirrored ? -img.scale : img.scale
-                  }, ${img.flipV ? -img.scale : img.scale})`}
-                  style={{
-                    filter: `brightness(${img.brightness}%) contrast(${img.contrast}%) ${
-                      img.invert ? "invert(1)" : ""
-                    }`,
-                    opacity: img.opacity,
-                    cursor: toolMode === "images" ? (img.locked ? "not-allowed" : "move") : "default",
-                  }}
-                  onMouseDown={(e) => handleStartImageDrag(e, "bgTop", img)}
-                >
-                  <image href={img.src} x={0} y={0} />
-                  {isSelected && (
-                    <rect
-                      x="0"
-                      y="0"
-                      width="100%"
-                      height="100%"
-                      fill="none"
-                      stroke="#38bdf8"
-                      strokeWidth={1.5 / zoom}
-                      strokeDasharray="4 4"
-                    />
-                  )}
-                </g>
-              );
-            })}
+                {/* Layer 2: Top Images (component side) */}
+                {boardData.bgTop.visible &&
+                  boardData.bgTop.images.map((img) => renderImageItem("bgTop", img))}
+              </>
+            );
+          })()}
 
           {/* If no images loaded at all */}
           {!hasAnyImages && (
-            <g transform="translate(0, 0)">
+            <g
+              transform="translate(0, 0)"
+              style={{ cursor: "pointer" }}
+              onClick={async () => {
+                const files = await openImageFileDialog();
+                if (files.length > 0) {
+                  await handleAddImagesToLayer(files);
+                }
+              }}
+            >
               <rect
                 x="0"
                 y="0"
@@ -1022,11 +1132,14 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                 strokeDasharray="4 4"
                 rx="6"
               />
-              <text x="260" y="145" textAnchor="middle" fill="#94a3b8" fontSize="14" fontFamily="sans-serif">
+              <text x="260" y="135" textAnchor="middle" fill="#94a3b8" fontSize="14" fontFamily="sans-serif">
                 Подложки платы не загружены
               </text>
-              <text x="260" y="172" textAnchor="middle" fill="#64748b" fontSize="12" fontFamily="sans-serif">
-                Нажмите «+ Добавить фото» на панели сверху или выберите слой в дереве
+              <text x="260" y="165" textAnchor="middle" fill="#38bdf8" fontSize="13" fontFamily="sans-serif" fontWeight="bold">
+                Нажмите сюда или перетащите фото платы
+              </text>
+              <text x="260" y="190" textAnchor="middle" fill="#64748b" fontSize="11" fontFamily="sans-serif">
+                Поддерживаются форматы PNG, JPG, WEBP, BMP, SVG
               </text>
             </g>
           )}

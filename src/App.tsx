@@ -199,109 +199,135 @@ export const App: React.FC = () => {
 
   // Update board data of active file
   const handleUpdateActiveBoardData = (updated: BoardData) => {
-    if (!project) return;
     const normalized = normalizeBoardData(updated);
-    const updatedFiles = project.files.map((f) =>
-      f.id === project.activeFileId ? { ...f, data: normalized } : f
-    );
-    setProject({ ...project, files: updatedFiles });
+    setProject((prev) => {
+      if (!prev) return prev;
+      const updatedFiles = prev.files.map((f) =>
+        f.id === prev.activeFileId ? { ...f, data: normalized } : f
+      );
+      return { ...prev, files: updatedFiles };
+    });
     setIsDirty(true);
   };
 
   // Target & Selection handlers
   const handleSelectTarget = (target: BoardSelectionTarget) => {
-    if (!project) return;
-    const activeFile = project.files.find((f) => f.id === project.activeFileId);
-    if (!activeFile || activeFile.type !== "board") return;
+    setProject((prev) => {
+      if (!prev) return prev;
+      const activeFile = prev.files.find((f) => f.id === prev.activeFileId);
+      if (!activeFile || activeFile.type !== "board") return prev;
 
-    const board = normalizeBoardData(activeFile.data as BoardData);
-    const compId = target?.type === "component" ? target.id : undefined;
-    const pinId = target?.type === "component" ? target.pinId : undefined;
+      const board = normalizeBoardData(activeFile.data as BoardData);
+      const compId = target?.type === "component" ? target.id : undefined;
+      const pinId = target?.type === "component" ? target.pinId : undefined;
 
-    let newToolMode = board.activeToolMode;
-    if (target?.type === "layer_bg_top" || target?.type === "layer_bg_bottom") {
-      newToolMode = "images";
-    } else if (
-      target?.type === "layer_comps_top" ||
-      target?.type === "layer_comps_bottom" ||
-      target?.type === "component"
-    ) {
-      newToolMode = "components";
-    }
+      let newToolMode = board.activeToolMode;
+      if (target?.type === "layer_bg_top" || target?.type === "layer_bg_bottom") {
+        newToolMode = "images";
+      } else if (
+        target?.type === "layer_comps_top" ||
+        target?.type === "layer_comps_bottom" ||
+        target?.type === "component"
+      ) {
+        newToolMode = "components";
+      }
 
-    handleUpdateActiveBoardData({
-      ...board,
-      selectedTarget: target,
-      selectedComponentId: compId,
-      selectedPinId: pinId,
-      activeToolMode: newToolMode,
+      const updatedBoard: BoardData = {
+        ...board,
+        selectedTarget: target,
+        selectedComponentId: compId,
+        selectedPinId: pinId,
+        activeToolMode: newToolMode,
+      };
+
+      const updatedFiles = prev.files.map((f) =>
+        f.id === prev.activeFileId ? { ...f, data: updatedBoard } : f
+      );
+      return { ...prev, files: updatedFiles };
     });
+    setIsDirty(true);
   };
 
   const handleToggleLayerVisibility = (
     fileId: string,
     layerKey: "bg" | "comps" | "bgTop" | "bgBottom" | "compsTop" | "compsBottom"
   ) => {
-    if (!project) return;
-    const targetFile = project.files.find((f) => f.id === fileId);
-    if (!targetFile || targetFile.type !== "board") return;
+    setProject((prev) => {
+      if (!prev) return prev;
+      const targetFile = prev.files.find((f) => f.id === fileId);
+      if (!targetFile || targetFile.type !== "board") return prev;
 
-    const board = normalizeBoardData(targetFile.data as BoardData);
-    let updatedBoard = { ...board };
+      const board = normalizeBoardData(targetFile.data as BoardData);
+      let updatedBoard = { ...board };
 
-    if (layerKey === "bg") {
-      const anyVisible = board.bgTop.visible || board.bgBottom.visible;
-      updatedBoard.bgTop = { ...board.bgTop, visible: !anyVisible };
-      updatedBoard.bgBottom = { ...board.bgBottom, visible: !anyVisible };
-    } else if (layerKey === "comps") {
-      const anyVisible = board.showCompsTop || board.showCompsBottom;
-      updatedBoard.showCompsTop = !anyVisible;
-      updatedBoard.showCompsBottom = !anyVisible;
-    } else if (layerKey === "bgTop") {
-      updatedBoard.bgTop = { ...board.bgTop, visible: !board.bgTop.visible };
-    } else if (layerKey === "bgBottom") {
-      updatedBoard.bgBottom = { ...board.bgBottom, visible: !board.bgBottom.visible };
-    } else if (layerKey === "compsTop") {
-      updatedBoard.showCompsTop = !board.showCompsTop;
-    } else if (layerKey === "compsBottom") {
-      updatedBoard.showCompsBottom = !board.showCompsBottom;
-    }
+      if (layerKey === "bg") {
+        const anyVisible = board.bgTop.visible || board.bgBottom.visible;
+        updatedBoard.bgTop = { ...board.bgTop, visible: !anyVisible };
+        updatedBoard.bgBottom = { ...board.bgBottom, visible: !anyVisible };
+      } else if (layerKey === "comps") {
+        const anyVisible = board.showCompsTop || board.showCompsBottom;
+        updatedBoard.showCompsTop = !anyVisible;
+        updatedBoard.showCompsBottom = !anyVisible;
+      } else if (layerKey === "bgTop") {
+        updatedBoard.bgTop = { ...board.bgTop, visible: !board.bgTop.visible };
+      } else if (layerKey === "bgBottom") {
+        updatedBoard.bgBottom = { ...board.bgBottom, visible: !board.bgBottom.visible };
+      } else if (layerKey === "compsTop") {
+        updatedBoard.showCompsTop = !board.showCompsTop;
+      } else if (layerKey === "compsBottom") {
+        updatedBoard.showCompsBottom = !board.showCompsBottom;
+      }
 
-    const updatedFiles = project.files.map((f) =>
-      f.id === fileId ? { ...f, data: updatedBoard } : f
-    );
-    setProject({ ...project, files: updatedFiles });
+      const updatedFiles = prev.files.map((f) =>
+        f.id === fileId ? { ...f, data: updatedBoard } : f
+      );
+      return { ...prev, files: updatedFiles };
+    });
     setIsDirty(true);
   };
 
   const handleSelectComponent = (compId: string | undefined) => {
-    if (!project) return;
-    const activeFile = project.files.find((f) => f.id === project.activeFileId);
-    if (!activeFile || activeFile.type !== "board") return;
+    setProject((prev) => {
+      if (!prev) return prev;
+      const activeFile = prev.files.find((f) => f.id === prev.activeFileId);
+      if (!activeFile || activeFile.type !== "board") return prev;
 
-    const board = normalizeBoardData(activeFile.data as BoardData);
-    const target: BoardSelectionTarget = compId ? { type: "component", id: compId } : null;
-    handleUpdateActiveBoardData({
-      ...board,
-      selectedTarget: target,
-      selectedComponentId: compId,
-      selectedPinId: compId ? board.selectedPinId : undefined,
+      const board = normalizeBoardData(activeFile.data as BoardData);
+      const target: BoardSelectionTarget = compId ? { type: "component", id: compId } : null;
+      const updatedBoard: BoardData = {
+        ...board,
+        selectedTarget: target,
+        selectedComponentId: compId,
+        selectedPinId: compId ? board.selectedPinId : undefined,
+      };
+      const updatedFiles = prev.files.map((f) =>
+        f.id === prev.activeFileId ? { ...f, data: updatedBoard } : f
+      );
+      return { ...prev, files: updatedFiles };
     });
+    setIsDirty(true);
   };
 
   const handleSelectPin = (compId: string, pinId: string) => {
-    if (!project) return;
-    const activeFile = project.files.find((f) => f.id === project.activeFileId);
-    if (!activeFile || activeFile.type !== "board") return;
+    setProject((prev) => {
+      if (!prev) return prev;
+      const activeFile = prev.files.find((f) => f.id === prev.activeFileId);
+      if (!activeFile || activeFile.type !== "board") return prev;
 
-    const board = normalizeBoardData(activeFile.data as BoardData);
-    const target: BoardSelectionTarget = { type: "component", id: compId, pinId };
-    handleUpdateActiveBoardData({
-      ...board,
-      selectedTarget: target,
-      selectedComponentId: compId,
-      selectedPinId: pinId,
+      const board = normalizeBoardData(activeFile.data as BoardData);
+      const target: BoardSelectionTarget = { type: "component", id: compId, pinId };
+      const updatedBoard: BoardData = {
+        ...board,
+        selectedTarget: target,
+        selectedComponentId: compId,
+        selectedPinId: pinId,
+      };
+      const updatedFiles = prev.files.map((f) =>
+        f.id === prev.activeFileId ? { ...f, data: updatedBoard } : f
+      );
+      return { ...prev, files: updatedFiles };
     });
+    setIsDirty(true);
   };
 
   if (!project) {

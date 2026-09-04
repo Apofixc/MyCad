@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useState } from "react";
 import {
   BoardData,
   BoardSelectionTarget,
@@ -7,6 +7,11 @@ import {
   LayerImageItem,
   normalizeBoardData,
 } from "../../types/project";
+import {
+  openImageFileDialog,
+  createLayerImageItemFromFile,
+  extractImagesFromDrop,
+} from "../../utils/imageLoader";
 import {
   Image as ImageIcon,
   FlipHorizontal,
@@ -42,8 +47,7 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
   onStartCalibration,
 }) => {
   const boardData = normalizeBoardData(rawBoardData);
-  const fileInputTopRef = useRef<HTMLInputElement>(null);
-  const fileInputBottomRef = useRef<HTMLInputElement>(null);
+  const [isDropzoneHovered, setIsDropzoneHovered] = useState(false);
 
   const selectedTarget = boardData.selectedTarget;
 
@@ -127,7 +131,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
     const targetType = isTop ? "layer_bg_top" : "layer_bg_bottom";
     const bg = isTop ? boardData.bgTop : boardData.bgBottom;
     const title = isTop ? "Подложка: Top (Лицевая)" : "Подложка: Bottom (Обратная)";
-    const fileInputRef = isTop ? fileInputTopRef : fileInputBottomRef;
 
     const updateBg = (updates: Partial<typeof bg>) => {
       onChangeBoardData({
@@ -154,20 +157,29 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
     };
 
     const handleSelectImage = (id: string) => {
-      updateBg({ activeImageId: id });
-      onSelectTarget?.({ type: targetType, imageId: id });
+      onChangeBoardData({
+        ...boardData,
+        [layerKey]: { ...bg, activeImageId: id },
+        selectedTarget: { type: targetType, imageId: id },
+      });
     };
 
     const handleDeleteImage = (id: string, e: React.MouseEvent) => {
       e.stopPropagation();
       const filtered = images.filter((img) => img.id !== id);
       const nextActiveId = filtered.length > 0 ? filtered[0].id : undefined;
-      updateBg({
-        images: filtered,
-        activeImageId: nextActiveId,
-        image: filtered[0]?.src,
+      onChangeBoardData({
+        ...boardData,
+        [layerKey]: {
+          ...bg,
+          images: filtered,
+          activeImageId: nextActiveId,
+          image: filtered[0]?.src,
+        },
+        selectedTarget: nextActiveId
+          ? { type: targetType, imageId: nextActiveId }
+          : { type: targetType },
       });
-      onSelectTarget?.({ type: targetType, imageId: nextActiveId });
     };
 
     const handleToggleImageVisibility = (id: string, e: React.MouseEvent) => {
@@ -201,49 +213,36 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
       updateBg({ images: newArr });
     };
 
-    const handleMultiUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-      const files = Array.from(e.target.files || []);
-      if (files.length === 0) return;
+    const handleAddImages = async () => {
+      const files = await openImageFileDialog();
+      if (!files || files.length === 0) return;
+      await processAndAddFiles(files);
+    };
 
-      let loadedCount = 0;
+    const processAndAddFiles = async (files: File[]) => {
       const newItems: LayerImageItem[] = [];
+      for (let i = 0; i < files.length; i++) {
+        const item = await createLayerImageItemFromFile(files[i], {
+          isTop,
+          order: images.length + i,
+          index: i,
+        });
+        newItems.push(item);
+      }
+      if (newItems.length === 0) return;
 
-      files.forEach((file, index) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          newItems.push({
-            id: `img_${layerKey}_${Date.now()}_${index}_${Math.random().toString(36).substring(2, 6)}`,
-            name: file.name.replace(/\.[^/.]+$/, "") || `Фото ${images.length + index + 1}`,
-            src: reader.result as string,
-            x: 0,
-            y: 0,
-            scale: 1,
-            rotation: 0,
-            opacity: 0.85,
-            brightness: 100,
-            contrast: 100,
-            invert: false,
-            mirrored: !isTop,
-            flipV: false,
-            locked: false,
-            visible: true,
-            order: images.length + index,
-          });
-          loadedCount++;
-          if (loadedCount === files.length) {
-            const combined = [...images, ...newItems];
-            const newActiveId = newItems[newItems.length - 1].id;
-            updateBg({
-              images: combined,
-              activeImageId: newActiveId,
-              image: combined[0]?.src,
-              visible: true,
-            });
-            onSelectTarget?.({ type: targetType, imageId: newActiveId });
-            if (fileInputRef.current) fileInputRef.current.value = "";
-          }
-        };
-        reader.readAsDataURL(file);
+      const combined = [...images, ...newItems];
+      const newActiveId = newItems[newItems.length - 1].id;
+      onChangeBoardData({
+        ...boardData,
+        [layerKey]: {
+          ...bg,
+          images: combined,
+          activeImageId: newActiveId,
+          image: combined[0]?.src,
+          visible: true,
+        },
+        selectedTarget: { type: targetType, imageId: newActiveId },
       });
     };
 
@@ -266,37 +265,50 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
           <div className="cad-prop-group">
             <div className="group-header flex-between">
               <span>Изображения на слое ({images.length})</span>
-              <button
-                className="cad-btn-icon-label"
-                onClick={() => fileInputRef.current?.click()}
-                title="Загрузить одно или несколько изображений (сканы, макро, фрагменты)"
-              >
-                <Plus size={13} />
-                <span>Добавить</span>
-              </button>
+              {images.length > 0 && (
+                <button
+                  className="cad-btn-icon-label"
+                  onClick={handleAddImages}
+                  title="Загрузить дополнительное изображение (скан, макро, фрагмент)"
+                >
+                  <Plus size={13} />
+                  <span>Добавить</span>
+                </button>
+              )}
             </div>
-
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept="image/*"
-              multiple
-              style={{ display: "none" }}
-              onChange={handleMultiUpload}
-            />
 
             {images.length === 0 ? (
               <div
-                className="cad-empty-dropzone"
-                onClick={() => fileInputRef.current?.click()}
+                className={`cad-empty-dropzone ${isDropzoneHovered ? "drop-active" : ""}`}
+                onClick={handleAddImages}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setIsDropzoneHovered(true);
+                }}
+                onDragLeave={() => setIsDropzoneHovered(false)}
+                onDrop={async (e) => {
+                  e.preventDefault();
+                  setIsDropzoneHovered(false);
+                  const files = extractImagesFromDrop(e);
+                  if (files.length > 0) {
+                    await processAndAddFiles(files);
+                  }
+                }}
               >
                 <ImageIcon size={28} className="dropzone-icon" />
                 <p>На этом слое пока нет фото или сканов</p>
-                <button className="cad-btn-primary btn-sm">
+                <button
+                  type="button"
+                  className="cad-btn-primary btn-sm"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAddImages();
+                  }}
+                >
                   <Plus size={13} />
                   <span>Загрузить изображения...</span>
                 </button>
-                <small>Поддерживается выбор нескольких файлов сразу</small>
+                <small>Поддерживается выбор файлов или перетаскивание (Drag & Drop)</small>
               </div>
             ) : (
               <div className="cad-image-card-list">

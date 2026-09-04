@@ -186,6 +186,72 @@ fn load_zip_project<R: Read + Seek>(reader: R, path: &str) -> Result<Value, Stri
     Ok(project)
 }
 
+#[derive(serde::Serialize)]
+pub struct LoadedImageFile {
+    pub name: String,
+    pub mime: String,
+    pub bytes: Vec<u8>,
+    pub data_url: String,
+}
+
+fn bytes_to_base64(bytes: &[u8]) -> String {
+    const CHARSET: &[u8; 64] = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    let mut out = String::with_capacity((bytes.len() + 2) / 3 * 4);
+    for chunk in bytes.chunks(3) {
+        let b0 = chunk[0];
+        let b1 = chunk.get(1).copied().unwrap_or(0);
+        let b2 = chunk.get(2).copied().unwrap_or(0);
+        out.push(CHARSET[(b0 >> 2) as usize] as char);
+        out.push(CHARSET[(((b0 & 3) << 4) | (b1 >> 4)) as usize] as char);
+        if chunk.len() > 1 {
+            out.push(CHARSET[(((b1 & 0x0f) << 2) | (b2 >> 6)) as usize] as char);
+        } else {
+            out.push('=');
+        }
+        if chunk.len() > 2 {
+            out.push(CHARSET[(b2 & 0x3f) as usize] as char);
+        } else {
+            out.push('=');
+        }
+    }
+    out
+}
+
+/// Читает файл изображения по абсолютному пути и возвращает Data URL и метаданные
+#[tauri::command]
+fn read_image_file(path: String) -> Result<LoadedImageFile, String> {
+    let bytes = std::fs::read(&path)
+        .map_err(|e| format!("Не удалось прочитать файл {path}: {e}"))?;
+    let ext = std::path::Path::new(&path)
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("png")
+        .to_lowercase();
+    let mime = match ext.as_str() {
+        "jpg" | "jpeg" => "image/jpeg",
+        "png" => "image/png",
+        "webp" => "image/webp",
+        "bmp" => "image/bmp",
+        "svg" => "image/svg+xml",
+        _ => "image/png",
+    }
+    .to_string();
+    let name = std::path::Path::new(&path)
+        .file_stem()
+        .and_then(|s| s.to_str())
+        .unwrap_or("Image")
+        .to_string();
+
+    let data_url = format!("data:{mime};base64,{}", bytes_to_base64(&bytes));
+
+    Ok(LoadedImageFile {
+        name,
+        mime,
+        bytes: Vec::new(),
+        data_url,
+    })
+}
+
 fn chrono_or_system_time() -> String {
     use std::time::SystemTime;
     let now = SystemTime::now();
@@ -205,8 +271,10 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             load_reference_project,
             save_project,
-            load_project
+            load_project,
+            read_image_file
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
+
