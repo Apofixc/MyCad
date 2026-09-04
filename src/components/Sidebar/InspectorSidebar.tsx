@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   BoardData,
   BoardSelectionTarget,
@@ -7,11 +7,7 @@ import {
   LayerImageItem,
   normalizeBoardData,
 } from "../../types/project";
-import {
-  openImageFileDialog,
-  createLayerImageItemFromFile,
-  extractImagesFromDrop,
-} from "../../utils/imageLoader";
+
 import {
   Image as ImageIcon,
   FlipHorizontal,
@@ -23,7 +19,6 @@ import {
   EyeOff,
   Lock,
   Unlock,
-  Plus,
   ArrowUp,
   ArrowDown,
   Ruler,
@@ -47,7 +42,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
   onStartCalibration,
 }) => {
   const boardData = normalizeBoardData(rawBoardData);
-  const [isDropzoneHovered, setIsDropzoneHovered] = useState(false);
 
   const selectedTarget = boardData.selectedTarget;
 
@@ -213,39 +207,6 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
       updateBg({ images: newArr });
     };
 
-    const handleAddImages = async () => {
-      const files = await openImageFileDialog();
-      if (!files || files.length === 0) return;
-      await processAndAddFiles(files);
-    };
-
-    const processAndAddFiles = async (files: File[]) => {
-      const newItems: LayerImageItem[] = [];
-      for (let i = 0; i < files.length; i++) {
-        const item = await createLayerImageItemFromFile(files[i], {
-          isTop,
-          order: images.length + i,
-          index: i,
-        });
-        newItems.push(item);
-      }
-      if (newItems.length === 0) return;
-
-      const combined = [...images, ...newItems];
-      const newActiveId = newItems[newItems.length - 1].id;
-      onChangeBoardData({
-        ...boardData,
-        [layerKey]: {
-          ...bg,
-          images: combined,
-          activeImageId: newActiveId,
-          image: combined[0]?.src,
-          visible: true,
-        },
-        selectedTarget: { type: targetType, imageId: newActiveId },
-      });
-    };
-
     return (
       <aside className="cad-inspector-panel">
         <div className="cad-inspector-header">
@@ -261,54 +222,17 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
         </div>
 
         <div className="cad-inspector-body">
-          {/* Group 1: Multi-Image Manager */}
+          {/* Group 1: Multi-Image Quick Access & Manager */}
           <div className="cad-prop-group">
-            <div className="group-header flex-between">
+            <div className="group-header">
               <span>Изображения на слое ({images.length})</span>
-              {images.length > 0 && (
-                <button
-                  className="cad-btn-icon-label"
-                  onClick={handleAddImages}
-                  title="Загрузить дополнительное изображение (скан, макро, фрагмент)"
-                >
-                  <Plus size={13} />
-                  <span>Добавить</span>
-                </button>
-              )}
             </div>
 
             {images.length === 0 ? (
-              <div
-                className={`cad-empty-dropzone ${isDropzoneHovered ? "drop-active" : ""}`}
-                onClick={handleAddImages}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  setIsDropzoneHovered(true);
-                }}
-                onDragLeave={() => setIsDropzoneHovered(false)}
-                onDrop={async (e) => {
-                  e.preventDefault();
-                  setIsDropzoneHovered(false);
-                  const files = extractImagesFromDrop(e);
-                  if (files.length > 0) {
-                    await processAndAddFiles(files);
-                  }
-                }}
-              >
+              <div className="cad-empty-dropzone">
                 <ImageIcon size={28} className="dropzone-icon" />
                 <p>На этом слое пока нет фото или сканов</p>
-                <button
-                  type="button"
-                  className="cad-btn-primary btn-sm"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleAddImages();
-                  }}
-                >
-                  <Plus size={13} />
-                  <span>Загрузить изображения...</span>
-                </button>
-                <small>Поддерживается выбор файлов или перетаскивание (Drag & Drop)</small>
+                <small>Для добавления используйте кнопку «Добавить фото» на верхней панели или перетащите файл на холст</small>
               </div>
             ) : (
               <div className="cad-image-card-list">
