@@ -212,4 +212,22 @@ mod tests {
         // Очистка временной директории
         let _ = std::fs::remove_dir_all(&temp_dir);
     }
+
+    #[test]
+    fn autonomous_defaults_seeding() {
+        use crate::library::*;
+        let temp_dir = std::env::temp_dir().join(format!("mycad_test_seed_{}", std::process::id()));
+        let mut svc = LibraryService::new(&temp_dir);
+        let payload = svc.load_all().expect("load_all must seed defaults on empty dir");
+
+        assert!(!payload.categories.is_empty(), "Категории должны быть созданы");
+        assert!(!payload.packages.is_empty(), "Корпуса должны быть созданы");
+        assert!(!payload.devices.is_empty(), "Устройства должны быть созданы");
+
+        // Проверяем наличие ключевых компонентов
+        assert!(svc.get_package("PKG_DIP_8").is_some(), "DIP-8 должен быть в базе");
+        assert!(svc.get_device("DEV_NE555").is_some(), "NE555 должен быть в базе");
+
+        let _ = std::fs::remove_dir_all(&temp_dir);
+    }
 }

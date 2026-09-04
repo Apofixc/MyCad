@@ -113,11 +113,6 @@ fn get_package(
     Ok(lib.get_package(&id))
 }
 
-#[tauri::command]
-fn load_reference_project() -> Result<Value, String> {
-    Err("Демонстрационный референс-проект обновлен до новой базы компонентов".to_string())
-}
-
 /// Сохраняет проект в контейнер .mycad (ZIP-архив) или .json файл.
 #[tauri::command]
 fn save_project(path: String, mut project: Value) -> Result<(), String> {
@@ -367,7 +362,6 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .manage(LibraryState(Mutex::new(library_service)))
         .invoke_handler(tauri::generate_handler![
-            load_reference_project,
             save_project,
             load_project,
             read_image_file,

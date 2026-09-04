@@ -9,7 +9,6 @@ import {
 } from "../types/componentLibrary";
 import { ComponentItem, Pin, BoardSide } from "../types/project";
 import { ComponentStorageAdapter } from "./componentStorageAdapter";
-import { DEFAULT_LIBRARY_PAYLOAD } from "../data/defaultComponentLibrary";
 
 // Масштабный коэффициент: сколько экранных CAD-пикселей в 1 мм
 export const CAD_PIXELS_PER_MM = 10;
@@ -17,13 +16,9 @@ export const CAD_PIXELS_PER_MM = 10;
 export class ComponentDatabaseService {
   private static instance: ComponentDatabaseService | null = null;
 
-  private categories: CatalogCategory[] = DEFAULT_LIBRARY_PAYLOAD.categories;
-  private packages: Map<string, PackageDefinition> = new Map(
-    DEFAULT_LIBRARY_PAYLOAD.packages.map((p) => [p.id, p])
-  );
-  private devices: Map<string, DeviceDefinition> = new Map(
-    DEFAULT_LIBRARY_PAYLOAD.devices.map((d) => [d.id, d])
-  );
+  private categories: CatalogCategory[] = [];
+  private packages: Map<string, PackageDefinition> = new Map();
+  private devices: Map<string, DeviceDefinition> = new Map();
   private isLoaded: boolean = false;
   private listeners: Set<() => void> = new Set();
 

@@ -14,6 +14,13 @@ pub fn sanitize_id(id: &str) -> String {
         .collect()
 }
 
+pub const DEFAULT_LIBRARY_JSON: &str = include_str!("default_library.json");
+
+pub fn get_default_library_payload() -> Result<ComponentLibraryPayload, String> {
+    serde_json::from_str(DEFAULT_LIBRARY_JSON)
+        .map_err(|e| format!("Ошибка десериализации встроенной библиотеки компонентов: {e}"))
+}
+
 #[derive(Debug, Clone)]
 pub struct LibraryService {
     base_dir: PathBuf,
@@ -101,6 +108,22 @@ impl LibraryService {
                             }
                         }
                     }
+                }
+            }
+        }
+
+        // Если при старте библиотека пуста (первый запуск в системе),
+        // автоматически засеиваем стандартными категориями, корпусами и компонентами
+        if self.packages.is_empty() && self.devices.is_empty() {
+            if let Ok(default_payload) = get_default_library_payload() {
+                if self.categories.is_empty() && !default_payload.categories.is_empty() {
+                    let _ = self.save_categories(default_payload.categories);
+                }
+                for pkg in default_payload.packages {
+                    let _ = self.save_package(pkg);
+                }
+                for dev in default_payload.devices {
+                    let _ = self.save_device(dev);
                 }
             }
         }

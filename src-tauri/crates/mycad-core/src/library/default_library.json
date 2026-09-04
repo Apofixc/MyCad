@@ -1,0 +1,1541 @@
+{
+  "categories": [
+    {
+      "id": "passives",
+      "name": "Пассивные компоненты",
+      "icon": "Zap",
+      "description": "Резисторы, конденсаторы, индуктивности",
+      "subcategories": [
+        {
+          "id": "resistors",
+          "name": "Резисторы",
+          "description": "Постоянные, чип SMD, подстроечные"
+        },
+        {
+          "id": "capacitors",
+          "name": "Конденсаторы",
+          "description": "Керамические, электролитические, пленочные"
+        },
+        {
+          "id": "inductors",
+          "name": "Индуктивности",
+          "description": "Дроссели, катушки индуктивности"
+        }
+      ]
+    },
+    {
+      "id": "semiconductors",
+      "name": "Полупроводники",
+      "icon": "Cpu",
+      "description": "Диоды, транзисторы, стабилизаторы",
+      "subcategories": [
+        {
+          "id": "diodes",
+          "name": "Диоды и мосты",
+          "description": "Выпрямительные, Шоттки, стабилитроны, LED"
+        },
+        {
+          "id": "transistors",
+          "name": "Транзисторы",
+          "description": "Биполярные NPN/PNP, полевые MOSFET"
+        },
+        {
+          "id": "voltage_regulators",
+          "name": "Стабилизаторы напряжения",
+          "description": "Линейные регуляторы LDO 78xx, LM317"
+        }
+      ]
+    },
+    {
+      "id": "ics",
+      "name": "Микросхемы (IC)",
+      "icon": "Layers",
+      "description": "Интегральные микросхемы, ОУ, логика, контроллеры",
+      "subcategories": [
+        {
+          "id": "opamps",
+          "name": "Операционные усилители",
+          "description": "Аналоговые ОУ и компараторы"
+        },
+        {
+          "id": "timers_pwm",
+          "name": "Таймеры и генераторы",
+          "description": "NE555, ШИМ-контроллеры"
+        },
+        {
+          "id": "logic",
+          "name": "Цифровая логика",
+          "description": "Логические вентили, регистры, счетчики"
+        },
+        {
+          "id": "mcu",
+          "name": "Микроконтроллеры",
+          "description": "Микроконтроллеры AVR, STM32, PIC"
+        }
+      ]
+    },
+    {
+      "id": "connectors",
+      "name": "Коммутация и разъемы",
+      "icon": "Plug",
+      "description": "Клеммники, разъемы, кнопки, переключатели",
+      "subcategories": [
+        {
+          "id": "terminal_blocks",
+          "name": "Клеммники винтовые",
+          "description": "Винтовые клеммные блоки на плату"
+        },
+        {
+          "id": "headers",
+          "name": "Штыревые разъемы",
+          "description": "Pin Headers 2.54мм, PLS, PBS"
+        },
+        {
+          "id": "switches",
+          "name": "Кнопки и переключатели",
+          "description": "Тактовые кнопки, DIP-переключатели"
+        }
+      ]
+    },
+    {
+      "id": "hardware",
+      "name": "Служебные и механика",
+      "icon": "Crosshair",
+      "description": "Контрольные точки, крепеж, перемычки",
+      "subcategories": [
+        {
+          "id": "testpoints",
+          "name": "Контрольные точки (TP)",
+          "description": "Площадки и штырьки для измерений"
+        },
+        {
+          "id": "mounting_holes",
+          "name": "Крепежные отверстия",
+          "description": "Монтажные отверстия под винты M2, M3, M4"
+        }
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "id": "PKG_DIP_8",
+      "name": "DIP-8 (шаг 2.54мм)",
+      "standard": "JEDEC MS-001",
+      "family": "dip",
+      "mountType": "tht",
+      "bodyWidth": 6.5,
+      "bodyHeight": 9.6,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -3.81,
+          "y": -3.81,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -3.81,
+          "y": -1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -3.81,
+          "y": 1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -3.81,
+          "y": 3.81,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": 3.81,
+          "y": 3.81,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": 3.81,
+          "y": 1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 7,
+          "name": "7",
+          "x": 3.81,
+          "y": -1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 8,
+          "name": "8",
+          "x": 3.81,
+          "y": -3.81,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 10,
+        "courtyardHeight": 11,
+        "maxHeight": 4.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_notch",
+      "variants": [
+        {
+          "id": "black_notch",
+          "name": "Черный пластик (вырез)",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#475569",
+          "keyType": "notch",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "white_dot",
+          "name": "Белый корпус (точка 1-го вывода)",
+          "bodyColor": "#f1f5f9",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "dot",
+          "keyColor": "#ef4444",
+          "silkscreenColor": "#475569"
+        },
+        {
+          "id": "black_dot",
+          "name": "Черный пластик (точка + вырез)",
+          "bodyColor": "#181f2c",
+          "bodyBorderColor": "#334155",
+          "keyType": "dot",
+          "keyColor": "#38bdf8",
+          "silkscreenColor": "#94a3b8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SOIC_8",
+      "name": "SOIC-8 (шаг 1.27мм)",
+      "standard": "JEDEC MS-012",
+      "family": "soic",
+      "mountType": "smd",
+      "bodyWidth": 3.9,
+      "bodyHeight": 4.9,
+      "pitch": 1.27,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -2.6,
+          "y": -1.905,
+          "width": 1.5,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -2.6,
+          "y": -0.635,
+          "width": 1.5,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -2.6,
+          "y": 0.635,
+          "width": 1.5,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -2.6,
+          "y": 1.905,
+          "width": 1.5,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": 2.6,
+          "y": 1.905,
+          "width": 1.5,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": 2.6,
+          "y": 0.635,
+          "width": 1.5,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 7,
+          "name": "7",
+          "x": 2.6,
+          "y": -0.635,
+          "width": 1.5,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 8,
+          "name": "8",
+          "x": 2.6,
+          "y": -1.905,
+          "width": 1.5,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6.5,
+        "courtyardHeight": 5.8,
+        "maxHeight": 1.75,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_chamfer",
+      "variants": [
+        {
+          "id": "black_chamfer",
+          "name": "Черный корпус (скос и точка)",
+          "bodyColor": "#181f2c",
+          "bodyBorderColor": "#334155",
+          "keyType": "chamfer",
+          "keyColor": "#38bdf8",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "white_dot",
+          "name": "Белый / серый корпус",
+          "bodyColor": "#e2e8f0",
+          "bodyBorderColor": "#94a3b8",
+          "keyType": "dot",
+          "keyColor": "#ef4444",
+          "silkscreenColor": "#475569"
+        }
+      ]
+    },
+    {
+      "id": "PKG_0805",
+      "name": "SMD 0805 (2012 Metric)",
+      "standard": "IPC-7351",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 1.25,
+      "bodyHeight": 2,
+      "pitch": 1.8,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -0.9,
+          "width": 1.3,
+          "height": 0.9,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 0.9,
+          "width": 1.3,
+          "height": 0.9,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 2.1,
+        "courtyardHeight": 3.2,
+        "maxHeight": 1.1,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_chip",
+      "variants": [
+        {
+          "id": "black_chip",
+          "name": "Черный чип (Резистор)",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#475569",
+          "keyType": "none",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "brown_ceramic",
+          "name": "Коричневая керамика (Конденсатор)",
+          "bodyColor": "#92400e",
+          "bodyBorderColor": "#b45309",
+          "keyType": "none",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "diode_stripe",
+          "name": "Диод с полосой катода",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#334155",
+          "keyType": "stripe",
+          "hasPolarityMark": true,
+          "polarityColor": "#38bdf8",
+          "silkscreenColor": "#94a3b8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_1206",
+      "name": "SMD 1206 (3216 Metric)",
+      "standard": "IPC-7351",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 1.6,
+      "bodyHeight": 3.2,
+      "pitch": 2.8,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -1.4,
+          "width": 1.6,
+          "height": 1,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 1.4,
+          "width": 1.6,
+          "height": 1,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 2.6,
+        "courtyardHeight": 4.4,
+        "maxHeight": 1.3,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_chip",
+      "variants": [
+        {
+          "id": "black_chip",
+          "name": "Черный чип (Резистор)",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#475569",
+          "keyType": "none",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "brown_ceramic",
+          "name": "Коричневая керамика (Конденсатор)",
+          "bodyColor": "#92400e",
+          "bodyBorderColor": "#b45309",
+          "keyType": "none",
+          "silkscreenColor": "#94a3b8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_AXIAL_D2_L6",
+      "name": "Осевой выводной L6 D2.3мм (МЛТ-0.25)",
+      "standard": "DIN 0207",
+      "family": "axial",
+      "mountType": "tht",
+      "bodyWidth": 2.3,
+      "bodyHeight": 6.2,
+      "pitch": 10.16,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -5.08,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 5.08,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 3.5,
+        "courtyardHeight": 12,
+        "maxHeight": 2.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "res_beige",
+      "variants": [
+        {
+          "id": "res_beige",
+          "name": "Бежевый корпус (углеродистый CF)",
+          "bodyColor": "#d97706",
+          "bodyBorderColor": "#92400e",
+          "keyType": "none",
+          "orientation": "horizontal",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "res_blue_metal",
+          "name": "Синий корпус (металлопленочный MF)",
+          "bodyColor": "#2563eb",
+          "bodyBorderColor": "#1d4ed8",
+          "keyType": "none",
+          "orientation": "horizontal",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "res_green_mlt",
+          "name": "Зеленый корпус (советский МЛТ)",
+          "bodyColor": "#166534",
+          "bodyBorderColor": "#14532d",
+          "keyType": "none",
+          "orientation": "horizontal",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "diode_black_stripe",
+          "name": "Черный с полосой катода (1N4007 / диод)",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#334155",
+          "keyType": "stripe",
+          "hasPolarityMark": true,
+          "polarityColor": "#e2e8f0",
+          "orientation": "horizontal",
+          "silkscreenColor": "#94a3b8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_RADIAL_D63",
+      "name": "Электролит радиальный D6.3мм (шаг 2.5мм)",
+      "standard": "IPC Radial",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 6.3,
+      "bodyHeight": 6.3,
+      "pitch": 2.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "+",
+          "x": -1.25,
+          "y": 0,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "-",
+          "x": 1.25,
+          "y": 0,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 7.5,
+        "courtyardHeight": 7.5,
+        "maxHeight": 11,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "cap_blue_stripe",
+      "variants": [
+        {
+          "id": "cap_blue_stripe",
+          "name": "Синий с белой полосой минуса",
+          "bodyColor": "#1e3a8a",
+          "bodyBorderColor": "#1d4ed8",
+          "keyType": "stripe",
+          "hasPolarityMark": true,
+          "polarityColor": "#ffffff",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "cap_black_gold",
+          "name": "Черный с золотой полосой",
+          "bodyColor": "#18181b",
+          "bodyBorderColor": "#27272a",
+          "keyType": "stripe",
+          "hasPolarityMark": true,
+          "polarityColor": "#eab308",
+          "silkscreenColor": "#94a3b8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_TO_220_V",
+      "name": "TO-220-3 Вертикальный (шаг 2.54мм)",
+      "standard": "JEDEC TO-220AB",
+      "family": "to",
+      "mountType": "tht",
+      "bodyWidth": 10.2,
+      "bodyHeight": 4.5,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -2.54,
+          "y": 0,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 0,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 2.54,
+          "y": 0,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 11.5,
+        "courtyardHeight": 6,
+        "maxHeight": 15,
+        "hasThermalPad": true,
+        "thermalPadNum": 2
+      },
+      "defaultVariantId": "metal_tab",
+      "variants": [
+        {
+          "id": "metal_tab",
+          "name": "Черный с открытым металлическим фланцем",
+          "bodyColor": "#181f2c",
+          "bodyBorderColor": "#334155",
+          "keyType": "none",
+          "silkscreenColor": "#94a3b8"
+        },
+        {
+          "id": "isolated_fullpak",
+          "name": "Изолированный корпус FullPAK",
+          "bodyColor": "#334155",
+          "bodyBorderColor": "#475569",
+          "keyType": "none",
+          "silkscreenColor": "#cbd5e1"
+        }
+      ]
+    },
+    {
+      "id": "PKG_TO_92",
+      "name": "TO-92 (шаг 1.27мм)",
+      "standard": "JEDEC TO-92",
+      "family": "to",
+      "mountType": "tht",
+      "bodyWidth": 4.6,
+      "bodyHeight": 3.8,
+      "pitch": 1.27,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -1.27,
+          "y": 0,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.75
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 1.27,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.75
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 1.27,
+          "y": 0,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.75
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 5.5,
+        "courtyardHeight": 5,
+        "maxHeight": 5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_flat",
+      "variants": [
+        {
+          "id": "black_flat",
+          "name": "Черный с плоским срезом",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#334155",
+          "keyType": "chamfer",
+          "silkscreenColor": "#94a3b8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SOT_23",
+      "name": "SOT-23-3 SMD",
+      "standard": "JEDEC TO-236AB",
+      "family": "sot",
+      "mountType": "smd",
+      "bodyWidth": 1.3,
+      "bodyHeight": 2.9,
+      "pitch": 0.95,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -1,
+          "y": -0.95,
+          "width": 0.9,
+          "height": 0.8,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -1,
+          "y": 0.95,
+          "width": 0.9,
+          "height": 0.8,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 1,
+          "y": 0,
+          "width": 0.9,
+          "height": 0.8,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 3.2,
+        "courtyardHeight": 3.2,
+        "maxHeight": 1.15,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_smd",
+      "variants": [
+        {
+          "id": "black_smd",
+          "name": "Черный пластик SMD",
+          "bodyColor": "#181f2c",
+          "bodyBorderColor": "#334155",
+          "keyType": "none",
+          "silkscreenColor": "#94a3b8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CONN_508_2P",
+      "name": "Клеммник винтовой 2-pin (шаг 5.08мм)",
+      "standard": "Terminal Block 5.08",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 8.5,
+      "bodyHeight": 10.16,
+      "pitch": 5.08,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -2.54,
+          "width": 2.5,
+          "height": 2.5,
+          "shape": "rounded_rect",
+          "drillDiameter": 1.4
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 2.54,
+          "width": 2.5,
+          "height": 2.5,
+          "shape": "rounded_rect",
+          "drillDiameter": 1.4
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 10,
+        "courtyardHeight": 11.5,
+        "maxHeight": 14,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "green_block",
+      "variants": [
+        {
+          "id": "green_block",
+          "name": "Зеленый клеммник (Phoenix Contact)",
+          "bodyColor": "#15803d",
+          "bodyBorderColor": "#166534",
+          "keyType": "none",
+          "silkscreenColor": "#f8fafc"
+        },
+        {
+          "id": "blue_block",
+          "name": "Синий клеммник",
+          "bodyColor": "#1d4ed8",
+          "bodyBorderColor": "#1e40af",
+          "keyType": "none",
+          "silkscreenColor": "#f8fafc"
+        },
+        {
+          "id": "grey_block",
+          "name": "Серый клеммник",
+          "bodyColor": "#475569",
+          "bodyBorderColor": "#334155",
+          "keyType": "none",
+          "silkscreenColor": "#f8fafc"
+        }
+      ]
+    },
+    {
+      "id": "PKG_TESTPOINT",
+      "name": "Контрольная точка (круг d1.8мм)",
+      "standard": "CAD Testpoint",
+      "family": "hardware",
+      "mountType": "tht",
+      "bodyWidth": 2.4,
+      "bodyHeight": 2.4,
+      "pitch": 0,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "TP",
+          "x": 0,
+          "y": 0,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 3,
+        "courtyardHeight": 3,
+        "maxHeight": 2,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "gold_pin",
+      "variants": [
+        {
+          "id": "gold_pin",
+          "name": "Золоченая площадка TP",
+          "bodyColor": "#ca8a04",
+          "bodyBorderColor": "#eab308",
+          "keyType": "none",
+          "silkscreenColor": "#eab308"
+        },
+        {
+          "id": "red_loop",
+          "name": "Красная контрольная петелька",
+          "bodyColor": "#dc2626",
+          "bodyBorderColor": "#b91c1c",
+          "keyType": "none",
+          "silkscreenColor": "#ef4444"
+        }
+      ]
+    }
+  ],
+  "devices": [
+    {
+      "id": "DEV_RES_GENERIC",
+      "name": "Резистор постоянный",
+      "category": "passives",
+      "subcategory": "resistors",
+      "designatorPrefix": "R",
+      "description": "Пассивный резистор общего назначения для ограничения тока и задания напряжений.",
+      "tags": [
+        "резистор",
+        "сопротивление",
+        "resistor",
+        "0805",
+        "1206",
+        "млт"
+      ],
+      "parameters": {
+        "value": "10k",
+        "tolerance": "5%",
+        "powerRating": "0.25W",
+        "operatingTemp": "-55°C...+125°C"
+      },
+      "logicalPins": [
+        {
+          "id": "1",
+          "name": "1",
+          "electricalType": "passive",
+          "description": "Вывод 1"
+        },
+        {
+          "id": "2",
+          "name": "2",
+          "electricalType": "passive",
+          "description": "Вывод 2"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_0805",
+          "defaultVariantId": "black_chip",
+          "pinMap": {
+            "1": 1,
+            "2": 2
+          }
+        },
+        {
+          "packageId": "PKG_1206",
+          "defaultVariantId": "black_chip",
+          "pinMap": {
+            "1": 1,
+            "2": 2
+          }
+        },
+        {
+          "packageId": "PKG_AXIAL_D2_L6",
+          "defaultVariantId": "res_blue_metal",
+          "pinMap": {
+            "1": 1,
+            "2": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_CAP_GENERIC",
+      "name": "Конденсатор керамический (MLCC)",
+      "category": "passives",
+      "subcategory": "capacitors",
+      "designatorPrefix": "C",
+      "description": "Керамический неполярный конденсатор для фильтрации питания и блокировки ВЧ.",
+      "tags": [
+        "конденсатор",
+        "керамика",
+        "capacitor",
+        "mlcc",
+        "100n",
+        "0805"
+      ],
+      "parameters": {
+        "value": "100nF",
+        "tolerance": "10%",
+        "voltageRating": "50V"
+      },
+      "logicalPins": [
+        {
+          "id": "1",
+          "name": "1",
+          "electricalType": "passive",
+          "description": "Обкладка 1"
+        },
+        {
+          "id": "2",
+          "name": "2",
+          "electricalType": "passive",
+          "description": "Обкладка 2"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_0805",
+          "defaultVariantId": "brown_ceramic",
+          "pinMap": {
+            "1": 1,
+            "2": 2
+          }
+        },
+        {
+          "packageId": "PKG_1206",
+          "defaultVariantId": "brown_ceramic",
+          "pinMap": {
+            "1": 1,
+            "2": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_CAP_ELEC",
+      "name": "Конденсатор электролитический",
+      "category": "passives",
+      "subcategory": "capacitors",
+      "designatorPrefix": "C",
+      "description": "Полярный алюминиевый электролитический конденсатор для сглаживания пульсаций.",
+      "tags": [
+        "электролит",
+        "полярный",
+        "конденсатор",
+        "100uF",
+        "470uF"
+      ],
+      "parameters": {
+        "value": "100uF",
+        "voltageRating": "25V",
+        "tolerance": "20%"
+      },
+      "logicalPins": [
+        {
+          "id": "+",
+          "name": "+",
+          "electricalType": "passive",
+          "description": "Положительный вывод (Анод)"
+        },
+        {
+          "id": "-",
+          "name": "-",
+          "electricalType": "passive",
+          "description": "Отрицательный вывод (Катод)"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_RADIAL_D63",
+          "defaultVariantId": "cap_blue_stripe",
+          "pinMap": {
+            "+": 1,
+            "-": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_1N4148",
+      "name": "Диод быстродействующий 1N4148",
+      "category": "semiconductors",
+      "subcategory": "diodes",
+      "designatorPrefix": "VD",
+      "description": "Быстродействующий импульсный кремниевый диод (100V 150mA, 4ns).",
+      "tags": [
+        "диод",
+        "1n4148",
+        "выпрямитель",
+        "импульсный"
+      ],
+      "parameters": {
+        "value": "1N4148",
+        "voltageRating": "100V",
+        "maxCurrent": "150mA"
+      },
+      "logicalPins": [
+        {
+          "id": "A",
+          "name": "A",
+          "electricalType": "passive",
+          "description": "Анод"
+        },
+        {
+          "id": "K",
+          "name": "K",
+          "electricalType": "passive",
+          "description": "Катод"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_AXIAL_D2_L6",
+          "defaultVariantId": "diode_black_stripe",
+          "pinMap": {
+            "A": 1,
+            "K": 2
+          }
+        },
+        {
+          "packageId": "PKG_0805",
+          "defaultVariantId": "diode_stripe",
+          "pinMap": {
+            "A": 1,
+            "K": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_BC547",
+      "name": "Транзистор NPN BC547",
+      "category": "semiconductors",
+      "subcategory": "transistors",
+      "designatorPrefix": "VT",
+      "description": "Маломощный кремниевый биполярный NPN транзистор общего назначения.",
+      "tags": [
+        "транзистор",
+        "bc547",
+        "npn",
+        "bipolar"
+      ],
+      "parameters": {
+        "value": "BC547B",
+        "voltageRating": "45V",
+        "maxCurrent": "100mA"
+      },
+      "logicalPins": [
+        {
+          "id": "C",
+          "name": "C",
+          "electricalType": "passive",
+          "description": "Коллектор"
+        },
+        {
+          "id": "B",
+          "name": "B",
+          "electricalType": "input",
+          "description": "База"
+        },
+        {
+          "id": "E",
+          "name": "E",
+          "electricalType": "passive",
+          "description": "Эмиттер"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_TO_92",
+          "defaultVariantId": "black_flat",
+          "pinMap": {
+            "C": 1,
+            "B": 2,
+            "E": 3
+          }
+        },
+        {
+          "packageId": "PKG_SOT_23",
+          "defaultVariantId": "black_smd",
+          "pinMap": {
+            "B": 1,
+            "E": 2,
+            "C": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_TL072",
+      "name": "TL072CN (Сдвоенный ОУ JFET)",
+      "category": "ics",
+      "subcategory": "opamps",
+      "designatorPrefix": "DA",
+      "description": "Сдвоенный малошумящий операционный усилитель с полевым входом (JFET).",
+      "datasheet": "https://www.ti.com/lit/ds/symlink/tl072.pdf",
+      "tags": [
+        "оу",
+        "tl072",
+        "tl082",
+        "усилитель",
+        "jfet",
+        "dual opamp"
+      ],
+      "parameters": {
+        "value": "TL072CN",
+        "voltageRating": "±18V",
+        "custom": {
+          "Полоса": "3 MHz",
+          "Скорость нарастания": "13 V/µs"
+        }
+      },
+      "logicalPins": [
+        {
+          "id": "OUT1",
+          "name": "1OUT",
+          "electricalType": "output",
+          "unit": "Unit A",
+          "description": "Выход ОУ 1"
+        },
+        {
+          "id": "IN1-",
+          "name": "1IN-",
+          "electricalType": "input",
+          "unit": "Unit A",
+          "description": "Инвертирующий вход 1"
+        },
+        {
+          "id": "IN1+",
+          "name": "1IN+",
+          "electricalType": "input",
+          "unit": "Unit A",
+          "description": "Неинвертирующий вход 1"
+        },
+        {
+          "id": "V-",
+          "name": "V-",
+          "electricalType": "ground",
+          "unit": "Power",
+          "description": "Минус питания / Общий"
+        },
+        {
+          "id": "IN2+",
+          "name": "2IN+",
+          "electricalType": "input",
+          "unit": "Unit B",
+          "description": "Неинвертирующий вход 2"
+        },
+        {
+          "id": "IN2-",
+          "name": "2IN-",
+          "electricalType": "input",
+          "unit": "Unit B",
+          "description": "Инвертирующий вход 2"
+        },
+        {
+          "id": "OUT2",
+          "name": "2OUT",
+          "electricalType": "output",
+          "unit": "Unit B",
+          "description": "Выход ОУ 2"
+        },
+        {
+          "id": "V+",
+          "name": "V+",
+          "electricalType": "power_in",
+          "unit": "Power",
+          "description": "Плюс питания"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_DIP_8",
+          "defaultVariantId": "black_notch",
+          "pinMap": {
+            "OUT1": 1,
+            "IN1-": 2,
+            "IN1+": 3,
+            "V-": 4,
+            "IN2+": 5,
+            "IN2-": 6,
+            "OUT2": 7,
+            "V+": 8
+          }
+        },
+        {
+          "packageId": "PKG_SOIC_8",
+          "defaultVariantId": "black_chamfer",
+          "pinMap": {
+            "OUT1": 1,
+            "IN1-": 2,
+            "IN1+": 3,
+            "V-": 4,
+            "IN2+": 5,
+            "IN2-": 6,
+            "OUT2": 7,
+            "V+": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_NE555",
+      "name": "NE555 (Интегральный таймер)",
+      "category": "ics",
+      "subcategory": "timers_pwm",
+      "designatorPrefix": "DA",
+      "description": "Прецизионный таймер / генератор импульсов для генераторов, задержек и ШИМ.",
+      "datasheet": "https://www.ti.com/lit/ds/symlink/ne555.pdf",
+      "tags": [
+        "таймер",
+        "ne555",
+        "555",
+        "генератор",
+        "шим"
+      ],
+      "parameters": {
+        "value": "NE555P",
+        "voltageRating": "4.5V - 16V",
+        "maxCurrent": "200mA"
+      },
+      "logicalPins": [
+        {
+          "id": "GND",
+          "name": "GND",
+          "electricalType": "ground",
+          "description": "Общий провод"
+        },
+        {
+          "id": "TRIG",
+          "name": "TRIG",
+          "electricalType": "input",
+          "description": "Запуск таймера (Trigger)"
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "electricalType": "output",
+          "description": "Выход сигнала"
+        },
+        {
+          "id": "RESET",
+          "name": "RESET",
+          "electricalType": "input",
+          "description": "Сброс (активный низкий)"
+        },
+        {
+          "id": "CTRL",
+          "name": "CTRL",
+          "electricalType": "input",
+          "description": "Контроль делителя (Control)"
+        },
+        {
+          "id": "THRES",
+          "name": "THRES",
+          "electricalType": "input",
+          "description": "Порог срабатывания (Threshold)"
+        },
+        {
+          "id": "DISCH",
+          "name": "DISCH",
+          "electricalType": "open_collector",
+          "description": "Разрядный ключ (Discharge)"
+        },
+        {
+          "id": "VCC",
+          "name": "VCC",
+          "electricalType": "power_in",
+          "description": "Питание +"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_DIP_8",
+          "defaultVariantId": "black_notch",
+          "pinMap": {
+            "GND": 1,
+            "TRIG": 2,
+            "OUT": 3,
+            "RESET": 4,
+            "CTRL": 5,
+            "THRES": 6,
+            "DISCH": 7,
+            "VCC": 8
+          }
+        },
+        {
+          "packageId": "PKG_SOIC_8",
+          "defaultVariantId": "black_chamfer",
+          "pinMap": {
+            "GND": 1,
+            "TRIG": 2,
+            "OUT": 3,
+            "RESET": 4,
+            "CTRL": 5,
+            "THRES": 6,
+            "DISCH": 7,
+            "VCC": 8
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_LM7805",
+      "name": "LM7805 (+5V Стабилизатор)",
+      "category": "semiconductors",
+      "subcategory": "voltage_regulators",
+      "designatorPrefix": "DA",
+      "description": "Линейный стабилизатор положительного напряжения +5V 1.5A.",
+      "tags": [
+        "стабилизатор",
+        "7805",
+        "lm7805",
+        "5v",
+        "ldo"
+      ],
+      "parameters": {
+        "value": "L7805CV",
+        "voltageRating": "Вход до 35V, Выход 5V",
+        "maxCurrent": "1.5A"
+      },
+      "logicalPins": [
+        {
+          "id": "IN",
+          "name": "IN",
+          "electricalType": "power_in",
+          "description": "Входное напряжение (Vin)"
+        },
+        {
+          "id": "GND",
+          "name": "GND",
+          "electricalType": "ground",
+          "description": "Общий / Земля"
+        },
+        {
+          "id": "OUT",
+          "name": "OUT",
+          "electricalType": "power_out",
+          "description": "Стабилизированный выход (+5V)"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_TO_220_V",
+          "defaultVariantId": "metal_tab",
+          "pinMap": {
+            "IN": 1,
+            "GND": 2,
+            "OUT": 3
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_TERM_2P",
+      "name": "Клеммник винтовой 2 контакта",
+      "category": "connectors",
+      "subcategory": "terminal_blocks",
+      "designatorPrefix": "X",
+      "description": "Винтовой клеммник для подключения внешних проводов питания или сигналов.",
+      "tags": [
+        "клеммник",
+        "разъем",
+        "terminal",
+        "винтовой",
+        "питание"
+      ],
+      "parameters": {
+        "voltageRating": "300V",
+        "maxCurrent": "10A"
+      },
+      "logicalPins": [
+        {
+          "id": "1",
+          "name": "1",
+          "electricalType": "passive",
+          "description": "Контакт 1"
+        },
+        {
+          "id": "2",
+          "name": "2",
+          "electricalType": "passive",
+          "description": "Контакт 2"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_CONN_508_2P",
+          "defaultVariantId": "green_block",
+          "pinMap": {
+            "1": 1,
+            "2": 2
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_TESTPOINT",
+      "name": "Контрольная точка (Test Point)",
+      "category": "hardware",
+      "subcategory": "testpoints",
+      "designatorPrefix": "TP",
+      "description": "Контрольная площадка или штырь для подключения щупов осциллографа и мультиметра.",
+      "tags": [
+        "тестпоинт",
+        "tp",
+        "щуп",
+        "тест",
+        "контрольная точка"
+      ],
+      "parameters": {},
+      "logicalPins": [
+        {
+          "id": "TP",
+          "name": "TP",
+          "electricalType": "passive",
+          "description": "Тестовый контакт"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_TESTPOINT",
+          "defaultVariantId": "gold_pin",
+          "pinMap": {
+            "TP": 1
+          }
+        }
+      ]
+    }
+  ]
+}
