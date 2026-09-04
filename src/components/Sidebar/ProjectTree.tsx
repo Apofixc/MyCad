@@ -21,8 +21,6 @@ import {
   Cpu,
   Lock,
   Unlock,
-  ArrowUp,
-  ArrowDown,
   Trash2,
   PanelLeftClose,
   Crosshair,
@@ -125,36 +123,6 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
     onUpdateBoardData?.(fileId, {
       ...board,
       [layerKey]: { ...bg, images: updatedImages },
-    });
-  };
-
-  const handleMoveImageOrder = (
-    fileId: string,
-    layerKey: "bgTop" | "bgBottom",
-    imageId: string,
-    direction: "up" | "down",
-    e: React.MouseEvent
-  ) => {
-    e.stopPropagation();
-    const file = project.files.find((f) => f.id === fileId);
-    if (!file || file.type !== "board") return;
-    const board = normalizeBoardData(file.data as BoardData);
-    const bg = board[layerKey];
-    const images = bg.images || [];
-    const idx = images.findIndex((img) => img.id === imageId);
-    if (idx === -1) return;
-    if (direction === "up" && idx === 0) return;
-    if (direction === "down" && idx === images.length - 1) return;
-
-    const newArr = [...images];
-    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
-    const temp = newArr[idx];
-    newArr[idx] = newArr[targetIdx];
-    newArr[targetIdx] = temp;
-
-    onUpdateBoardData?.(fileId, {
-      ...board,
-      [layerKey]: { ...bg, images: newArr, image: newArr[0]?.src },
     });
   };
 
@@ -287,10 +255,10 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
   // Отрисовка строки изображения с быстрым доступом, фокусировкой и предпросмотром
   const renderTreeImageItem = (
     img: LayerImageItem,
-    idx: number,
+    _idx: number,
     layerKey: "bgTop" | "bgBottom",
     file: ProjectFile,
-    imagesList: LayerImageItem[],
+    _imagesList: LayerImageItem[],
     layerTitle: string,
     layerColor: string,
     isActiveFile: boolean
@@ -392,26 +360,7 @@ export const ProjectTree: React.FC<ProjectTreeProps> = ({
             >
               <Crosshair size={11} />
             </button>
-            {imagesList.length > 1 && (
-              <>
-                <button
-                  className="tree-img-action-btn"
-                  disabled={idx === 0}
-                  onClick={(e) => handleMoveImageOrder(file.id, layerKey, img.id, "up", e)}
-                  title="Переместить слой выше"
-                >
-                  <ArrowUp size={10} />
-                </button>
-                <button
-                  className="tree-img-action-btn"
-                  disabled={idx === imagesList.length - 1}
-                  onClick={(e) => handleMoveImageOrder(file.id, layerKey, img.id, "down", e)}
-                  title="Переместить слой ниже"
-                >
-                  <ArrowDown size={10} />
-                </button>
-              </>
-            )}
+
             <button
               className="tree-img-action-btn danger"
               onClick={(e) => handleDeleteImageFromTree(file.id, layerKey, img.id, e)}

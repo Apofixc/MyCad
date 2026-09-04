@@ -408,6 +408,8 @@ export const InspectorSidebar: React.FC<InspectorSidebarProps> = ({
             </div>
           </div>
 
+
+
         </div>
       </aside>
     );
