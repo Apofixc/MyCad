@@ -2878,6 +2878,116 @@ body, html, #root {
   color: var(--cad-text-muted);
 }
 
+/* Image Inspector Extended Styles */
+.cad-field-select {
+  background-color: var(--cad-bg-input);
+  border: 1px solid var(--cad-border);
+  color: var(--cad-text-primary);
+  padding: 4px 6px;
+  border-radius: 3px;
+  font-size: 11.5px;
+  outline: none;
+  cursor: pointer;
+  width: 100%;
+}
+.cad-field-select:focus {
+  border-color: var(--cad-accent-blue);
+}
+
+.cad-badge-dim {
+  font-size: 10px;
+  color: var(--cad-accent-cyan);
+  font-family: ui-monospace, monospace;
+  background: rgba(0, 240, 255, 0.08);
+  padding: 2px 6px;
+  border-radius: 3px;
+  border: 1px solid rgba(0, 240, 255, 0.2);
+}
+
+.cad-lock-aspect-btn {
+  background: var(--cad-bg-input);
+  border: 1px solid var(--cad-border);
+  color: var(--cad-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: all 0.12s;
+}
+.cad-lock-aspect-btn:hover {
+  color: var(--cad-text-primary);
+  background: var(--cad-bg-surface);
+}
+.cad-lock-aspect-btn.locked {
+  color: #38bdf8;
+  border-color: #0284c7;
+  background: rgba(2, 132, 199, 0.15);
+}
+
+.cad-quick-actions-list {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cad-quick-action-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--cad-bg-input);
+  border: 1px solid var(--cad-border);
+  color: var(--cad-text-primary);
+  padding: 5px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  width: 100%;
+}
+.cad-quick-action-btn:hover {
+  background: var(--cad-bg-hover, #242c3d);
+  border-color: var(--cad-accent-blue, #38bdf8);
+  color: #ffffff;
+}
+.cad-quick-action-btn.btn-replace {
+  background: rgba(56, 189, 248, 0.1);
+  border-color: rgba(56, 189, 248, 0.3);
+  color: #38bdf8;
+}
+.cad-quick-action-btn.btn-replace:hover {
+  background: rgba(56, 189, 248, 0.2);
+  border-color: #38bdf8;
+}
+.cad-quick-action-btn.btn-reset {
+  background: rgba(245, 158, 11, 0.08);
+  border-color: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+}
+.cad-quick-action-btn.btn-reset:hover {
+  background: rgba(245, 158, 11, 0.18);
+  border-color: #f59e0b;
+}
+
+.cad-editable-name-input {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #f1f5f9;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 1px 4px;
+  border-radius: 3px;
+  max-width: 140px;
+}
+.cad-editable-name-input:focus {
+  background: var(--cad-bg-input);
+  border-color: var(--cad-accent-blue);
+  outline: none;
+}
+
 /* ==========================================================================
    CAD Bottom Status Bar
    ========================================================================== */

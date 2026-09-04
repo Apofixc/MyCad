@@ -19,6 +19,8 @@ export type BoardSelectionTarget =
   | { type: "layer_comps_bottom" }
   | null;
 
+export type ImageBlendMode = "normal" | "multiply" | "screen" | "difference" | "overlay";
+
 export interface LayerImageItem {
   id: string;
   name: string;        // e.g. "Скан_платы_1.png"
@@ -28,11 +30,17 @@ export interface LayerImageItem {
   width?: number;      // natural width
   height?: number;     // natural height
   scale: number;       // scale factor (default 1)
+  lockAspectRatio?: boolean; // lock aspect ratio on scale/dimensions
   rotation: number;    // rotation angle in degrees (e.g. 0.0, 0.5, 90.0)
   opacity: number;     // 0.0 - 1.0 (default 0.85)
   brightness: number;  // 30 - 200% (default 100)
   contrast: number;    // 50 - 250% (default 100)
   invert: boolean;     // inverted colors (dark mode scan)
+  grayscale?: boolean; // black & white mode
+  blendMode?: ImageBlendMode; // layer blend mode (e.g. "difference")
+  tintColor?: string;  // tint color overlay ("none" | "red" | "blue" | "green" etc.)
+  dpi?: number;        // scan resolution (e.g. 600)
+  pxPerMm?: number;    // physical scale calibration (pixels per mm)
   mirrored?: boolean;  // horizontal flip (Flip X)
   flipV?: boolean;     // vertical flip (Flip Y)
   locked?: boolean;    // lock against accidental movement
@@ -119,11 +127,17 @@ const migrateLegacyImage = (
       width: img.width,
       height: img.height,
       scale: typeof img.scale === "number" ? img.scale : (layer.scale || 1),
+      lockAspectRatio: typeof img.lockAspectRatio === "boolean" ? img.lockAspectRatio : true,
       rotation: typeof img.rotation === "number" ? img.rotation : 0,
       opacity: typeof img.opacity === "number" ? img.opacity : (layer.opacity ?? 0.85),
       brightness: typeof img.brightness === "number" ? img.brightness : (layer.brightness ?? 100),
       contrast: typeof img.contrast === "number" ? img.contrast : (layer.contrast ?? 100),
       invert: typeof img.invert === "boolean" ? img.invert : (layer.invert ?? false),
+      grayscale: typeof img.grayscale === "boolean" ? img.grayscale : false,
+      blendMode: img.blendMode || "normal",
+      tintColor: img.tintColor || "none",
+      dpi: typeof img.dpi === "number" ? img.dpi : 600,
+      pxPerMm: typeof img.pxPerMm === "number" ? img.pxPerMm : 23.62,
       mirrored: typeof img.mirrored === "boolean" ? img.mirrored : (layer.mirrored ?? (layerKey === "bottom")),
       flipV: typeof img.flipV === "boolean" ? img.flipV : false,
       locked: typeof img.locked === "boolean" ? img.locked : false,

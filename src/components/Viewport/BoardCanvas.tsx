@@ -711,6 +711,18 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [toolMode, activeImage, calibration.active, selectedComp, boardData, activeLayer, activeLayerKey, isImageLayerSelected, selectedTarget]);
 
+  // Listener for switching active image tool from inspector (e.g. calibration)
+  useEffect(() => {
+    const handleSetTool = (e: Event) => {
+      const customEvt = e as CustomEvent<{ tool: ActiveImageTool }>;
+      if (customEvt.detail?.tool) {
+        setActiveImageTool(customEvt.detail.tool);
+      }
+    };
+    window.addEventListener("cad:set-image-tool", handleSetTool);
+    return () => window.removeEventListener("cad:set-image-tool", handleSetTool);
+  }, []);
+
   // Add Component Tool
   const handleAddComponent = (type: ComponentType) => {
     const count = boardData.components.filter((c) => c.type === type).length + 1;
@@ -1738,6 +1750,20 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
               const w = img.width || 800;
               const h = img.height || 600;
 
+              // Build visual filters
+              const filterParts: string[] = [];
+              if (img.brightness !== 100) filterParts.push(`brightness(${img.brightness}%)`);
+              if (img.contrast !== 100) filterParts.push(`contrast(${img.contrast}%)`);
+              if (img.invert) filterParts.push("invert(1)");
+              if (img.grayscale) filterParts.push("grayscale(100%)");
+              if (img.tintColor && img.tintColor !== "none") {
+                if (img.tintColor === "red") filterParts.push("sepia(100%) hue-rotate(320deg) saturate(300%)");
+                else if (img.tintColor === "blue") filterParts.push("sepia(100%) hue-rotate(180deg) saturate(300%)");
+                else if (img.tintColor === "green") filterParts.push("sepia(100%) hue-rotate(80deg) saturate(300%)");
+                else if (img.tintColor === "amber") filterParts.push("sepia(100%) hue-rotate(10deg) saturate(300%)");
+              }
+              const cssFilter = filterParts.length > 0 ? filterParts.join(" ") : undefined;
+
               return (
                 <g
                   key={img.id}
@@ -1748,12 +1774,8 @@ export const BoardCanvas: React.FC<BoardCanvasProps> = ({
                     img.flipV ? -h : 0
                   })`}
                   style={{
-                    filter:
-                      img.brightness === 100 && img.contrast === 100 && !img.invert
-                        ? undefined
-                        : `brightness(${img.brightness}%) contrast(${img.contrast}%) ${
-                            img.invert ? "invert(1)" : ""
-                          }`,
+                    filter: cssFilter,
+                    mixBlendMode: (img.blendMode && img.blendMode !== "normal" ? img.blendMode : undefined) as any,
                     opacity: img.opacity,
                     cursor: toolMode === "images" ? (img.locked ? "not-allowed" : isBeingDragged ? "grabbing" : "grab") : "default",
                     userSelect: "none",
