@@ -131,6 +131,8 @@ export const ImagePreprocessModal: React.FC = () => {
   const [showGridOverlay, setShowGridOverlay] = useState<boolean>(true);
   const [showOriginalCompare, setShowOriginalCompare] = useState<boolean>(false);
   const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
+  const [showCustomResModal, setShowCustomResModal] = useState<boolean>(false);
+  const [customResInput, setCustomResInput] = useState<string>("3000");
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -1205,8 +1207,60 @@ function renderPolygonPreview(
     selectionDimensions = `⌀ ${d1} × ${d2} px`;
     selectionAspect = d2 > 0 ? `${(d1 / d2).toFixed(2)}:1` : "1:1";
   } else {
-    selectionDimensions = `${polygonPoints.length} вершин`;
+    selectionDimensions = `Многоугольник: ${polygonPoints.length} верш.`;
   }
+
+  const getResultingDimensions = useCallback(
+    (maxDim: number) => {
+      let rawW = 0;
+      let rawH = 0;
+      if (mode === "perspective") {
+        const dTop = Math.hypot(quad.topRight.x - quad.topLeft.x, quad.topRight.y - quad.topLeft.y);
+        const dBottom = Math.hypot(quad.bottomRight.x - quad.bottomLeft.x, quad.bottomRight.y - quad.bottomLeft.y);
+        const dLeft = Math.hypot(quad.bottomLeft.x - quad.topLeft.x, quad.bottomLeft.y - quad.topLeft.y);
+        const dRight = Math.hypot(quad.bottomRight.x - quad.topRight.x, quad.bottomRight.y - quad.topRight.y);
+        rawW = Math.round((dTop + dBottom) / 2);
+        rawH = Math.round((dLeft + dRight) / 2);
+      } else if (mode === "crop") {
+        rawW = Math.round(cropRect.width);
+        rawH = Math.round(cropRect.height);
+      } else if (mode === "circle") {
+        rawW = Math.round(ellipseParams.rx * 2);
+        rawH = Math.round(ellipseParams.ry * 2);
+      } else {
+        if (polygonPoints.length === 0) return { w: naturalDims.width, h: naturalDims.height, mp: "0" };
+        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+        for (const p of polygonPoints) {
+          if (p.x < minX) minX = p.x;
+          if (p.y < minY) minY = p.y;
+          if (p.x > maxX) maxX = p.x;
+          if (p.y > maxY) maxY = p.y;
+        }
+        rawW = Math.round(maxX - minX);
+        rawH = Math.round(maxY - minY);
+      }
+
+      if (rawW <= 0 || rawH <= 0) {
+        rawW = naturalDims.width || 1000;
+        rawH = naturalDims.height || 1000;
+      }
+
+      if (maxDim > 0) {
+        const maxSide = Math.max(rawW, rawH);
+        if (maxSide > maxDim) {
+          const scale = maxDim / maxSide;
+          rawW = Math.round(rawW * scale);
+          rawH = Math.round(rawH * scale);
+        }
+      }
+
+      const mp = ((rawW * rawH) / 1000000).toFixed(1);
+      return { w: rawW, h: rawH, mp };
+    },
+    [mode, quad, cropRect, ellipseParams, polygonPoints, naturalDims]
+  );
+
+  const currRes = getResultingDimensions(maxDimension);
 
   return (
     <div className="cad-preprocess-backdrop" onClick={handleClose}>
@@ -1227,14 +1281,7 @@ function renderPolygonPreview(
                 )}
               </div>
               <div className="modal-subtitle">
-                <span>Кадрирование и выравнивание перспективы для слоя</span>
-                <strong
-                  style={{
-                    color: side === "top" ? "var(--cad-top-layer, #f59e0b)" : "var(--cad-bottom-layer, #06b6d4)",
-                  }}
-                >
-                  {side.toUpperCase()} ({side === "top" ? "Лицевой" : "Оборотный"})
-                </strong>
+                <span>Кадрирование и коррекция перспективы</span>
               </div>
             </div>
           </div>
@@ -1258,7 +1305,7 @@ function renderPolygonPreview(
               }}
             >
               <span>Слой:</span>
-              <span>{side.toUpperCase()}</span>
+              <span>{side.toUpperCase()} ({side === "top" ? "Лицевой" : "Оборотный"})</span>
             </div>
 
             {/* Shortcuts help button */}
@@ -1359,10 +1406,10 @@ function renderPolygonPreview(
                 setMode("polygon");
                 if (isPreviewMode) setIsPreviewMode(false);
               }}
-              title="Многоугольный контур"
+              title="Кадрирование по произвольному многоугольнику"
             >
               <Layers size={13} />
-              <span>Контур</span>
+              <span>Многоугольник</span>
             </button>
             <button
               className={`tool-tab-btn ${mode === "circle" && !isPreviewMode ? "active" : ""}`}
@@ -1687,23 +1734,87 @@ function renderPolygonPreview(
                     stroke="#38bdf8"
                     strokeWidth="2"
                   />
+                  {/* Edges midpoint "+" buttons to add new vertices */}
+                  {polygonPoints.map((p, idx) => {
+                    const nextP = polygonPoints[(idx + 1) % polygonPoints.length];
+                    const s1 = imageToScreen(p.x, p.y);
+                    const s2 = imageToScreen(nextP.x, nextP.y);
+                    const midX = (s1.x + s2.x) / 2;
+                    const midY = (s1.y + s2.y) / 2;
+                    return (
+                      <g
+                        key={`edge_add_${idx}`}
+                        className="cad-polygon-add-btn"
+                        style={{ pointerEvents: "all" }}
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          e.preventDefault();
+                          const newPt = {
+                            x: Math.round((p.x + nextP.x) / 2),
+                            y: Math.round((p.y + nextP.y) / 2),
+                          };
+                          setPolygonPoints((prev) => {
+                            const next = [...prev];
+                            next.splice(idx + 1, 0, newPt);
+                            return next;
+                          });
+                        }}
+                      >
+                        <title>Добавить вершину</title>
+                        {/* Invisible large hit area */}
+                        <circle cx={midX} cy={midY} r="14" fill="transparent" style={{ pointerEvents: "all" }} />
+                        {/* Visible badge */}
+                        <circle
+                          cx={midX}
+                          cy={midY}
+                          r="7.5"
+                          fill="#0f172a"
+                          stroke="#38bdf8"
+                          strokeWidth="2"
+                          className="cad-add-badge"
+                          style={{ pointerEvents: "all" }}
+                        />
+                        <text
+                          x={midX}
+                          y={midY}
+                          textAnchor="middle"
+                          dominantBaseline="central"
+                          fill="#38bdf8"
+                          fontSize="11px"
+                          fontWeight="bold"
+                          style={{ pointerEvents: "none" }}
+                        >
+                          +
+                        </text>
+                      </g>
+                    );
+                  })}
+                  {/* Vertices handles */}
                   {polygonPoints.map((p, idx) => {
                     const sPt = imageToScreen(p.x, p.y);
                     return (
-                      <circle
-                        key={idx}
-                        cx={sPt.x}
-                        cy={sPt.y}
-                        r="6.5"
-                        fill="#38bdf8"
-                        stroke="#ffffff"
-                        strokeWidth="1.5"
-                        className="cad-preprocess-handle"
-                        onMouseDown={(e) => {
-                          e.stopPropagation();
-                          setActiveHandle(`poly_${idx}` as DragHandle);
-                        }}
-                      />
+                      <g key={idx}>
+                        <title>{`Вершина ${idx + 1} (двойной клик — удалить)`}</title>
+                        <circle
+                          cx={sPt.x}
+                          cy={sPt.y}
+                          r="7.5"
+                          fill="#0284c7"
+                          stroke="#ffffff"
+                          strokeWidth="2"
+                          className="cad-preprocess-handle"
+                          onMouseDown={(e) => {
+                            e.stopPropagation();
+                            setActiveHandle(`poly_${idx}` as DragHandle);
+                          }}
+                          onDoubleClick={(e) => {
+                            e.stopPropagation();
+                            if (polygonPoints.length > 3) {
+                              setPolygonPoints((prev) => prev.filter((_, i) => i !== idx));
+                            }
+                          }}
+                        />
+                      </g>
                     );
                   })}
                 </>
@@ -1784,7 +1895,7 @@ function renderPolygonPreview(
             ) : mode === "crop" ? (
               <span>Потяните за края рамки или центр для кадрирования. Нажмите P для предпросмотра.</span>
             ) : mode === "polygon" ? (
-              <span>Перемещайте точки контура платы для произвольной обрезки.</span>
+              <span>Многоугольник: перетаскивайте вершины, нажмите [+] на ребре для добавления точки (двойной клик — удалить).</span>
             ) : (
               <span>Настройте центр и радиус для круглых печатных плат.</span>
             )}
@@ -1794,17 +1905,82 @@ function renderPolygonPreview(
         {/* Footer */}
         <div className="cad-preprocess-footer">
           <div className="cad-preprocess-footer-left">
-            <div className="cad-preprocess-scale-select">
-              <span>Лимит разрешения:</span>
-              <select
-                value={maxDimension}
-                onChange={(e) => setMaxDimension(parseInt(e.target.value, 10))}
-              >
-                <option value={0}>Исходное (без сжатия)</option>
-                <option value={4096}>4K (макс 4096 px)</option>
-                <option value={2048}>2K (макс 2048 px)</option>
-                <option value={1920}>1080p (макс 1920 px)</option>
-              </select>
+            <div className="cad-res-control-group">
+              <span className="cad-res-title">Разрешение:</span>
+
+              <div className="cad-res-pills">
+                <button
+                  className={`cad-res-pill ${maxDimension === 0 ? "active" : ""}`}
+                  onClick={() => setMaxDimension(0)}
+                  title="Без сжатия — сохранить исходную детализацию всех дорожек и переходных отверстий"
+                >
+                  Оригинал (100%)
+                </button>
+                <button
+                  className={`cad-res-pill ${maxDimension === 4096 ? "active" : ""}`}
+                  onClick={() => setMaxDimension(4096)}
+                  title="4K (до 4096 px) — высокая чёткость, быстрая работа"
+                >
+                  4K
+                </button>
+                <button
+                  className={`cad-res-pill ${maxDimension === 2048 ? "active" : ""}`}
+                  onClick={() => setMaxDimension(2048)}
+                  title="2K (до 2048 px) — экономия памяти для слабых ПК"
+                >
+                  2K
+                </button>
+                <button
+                  className={`cad-res-pill ${maxDimension > 0 && maxDimension !== 4096 && maxDimension !== 2048 ? "active" : ""}`}
+                  onClick={() => setShowCustomResModal((s) => !s)}
+                  title="Задать собственное ограничение разрешения в пикселях"
+                >
+                  {maxDimension > 0 && maxDimension !== 4096 && maxDimension !== 2048 ? `${maxDimension} px` : "Своё..."}
+                </button>
+              </div>
+
+              {/* Resulting Dimensions Badge */}
+              <div className="cad-res-result-badge" title="Результирующий размер сохраняемого изображения платы">
+                <span className="badge-arrow">➜</span>
+                <span className="badge-dims">{currRes.w} × {currRes.h} px</span>
+                <span className="badge-mp">({currRes.mp} MP)</span>
+              </div>
+
+              {/* Custom Resolution Popover */}
+              {showCustomResModal && (
+                <div className="cad-custom-res-popover" onClick={(e) => e.stopPropagation()}>
+                  <div className="custom-res-header">
+                    <span>Макс. сторона (px):</span>
+                    <X
+                      size={12}
+                      onClick={() => setShowCustomResModal(false)}
+                      style={{ cursor: "pointer", color: "#94a3b8" }}
+                    />
+                  </div>
+                  <div className="custom-res-input-row">
+                    <input
+                      type="number"
+                      min={300}
+                      max={40000}
+                      step={100}
+                      value={customResInput}
+                      onChange={(e) => setCustomResInput(e.target.value)}
+                      placeholder="3000"
+                    />
+                    <button
+                      onClick={() => {
+                        const val = parseInt(customResInput, 10);
+                        if (val >= 200) {
+                          setMaxDimension(val);
+                          setShowCustomResModal(false);
+                        }
+                      }}
+                    >
+                      ОК
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
 
             {errorMsg && (
