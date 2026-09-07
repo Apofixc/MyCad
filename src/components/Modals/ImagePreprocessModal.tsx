@@ -1507,55 +1507,52 @@ function drawAlignmentGrid(
     selectionDimensions = `Многоугольник: ${polygonPoints.length} верш.`;
   }
 
-  const getResultingDimensions = useCallback(
-    (maxDim: number) => {
-      let rawW = 0;
-      let rawH = 0;
-      if (mode === "perspective") {
-        const dTop = Math.hypot(quad.topRight.x - quad.topLeft.x, quad.topRight.y - quad.topLeft.y);
-        const dBottom = Math.hypot(quad.bottomRight.x - quad.bottomLeft.x, quad.bottomRight.y - quad.bottomLeft.y);
-        const dLeft = Math.hypot(quad.bottomLeft.x - quad.topLeft.x, quad.bottomLeft.y - quad.topLeft.y);
-        const dRight = Math.hypot(quad.bottomRight.x - quad.topRight.x, quad.bottomRight.y - quad.topRight.y);
-        rawW = Math.round((dTop + dBottom) / 2);
-        rawH = Math.round((dLeft + dRight) / 2);
-      } else if (mode === "crop") {
-        rawW = Math.round(cropRect.width);
-        rawH = Math.round(cropRect.height);
-      } else if (mode === "circle") {
-        rawW = Math.round(ellipseParams.rx * 2);
-        rawH = Math.round(ellipseParams.ry * 2);
-      } else {
-        if (polygonPoints.length === 0) return { w: naturalDims.width, h: naturalDims.height, mp: "0" };
-        let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-        for (const p of polygonPoints) {
-          if (p.x < minX) minX = p.x;
-          if (p.y < minY) minY = p.y;
-          if (p.x > maxX) maxX = p.x;
-          if (p.y > maxY) maxY = p.y;
-        }
-        rawW = Math.round(maxX - minX);
-        rawH = Math.round(maxY - minY);
+  const getResultingDimensions = (maxDim: number) => {
+    let rawW = 0;
+    let rawH = 0;
+    if (mode === "perspective") {
+      const dTop = Math.hypot(quad.topRight.x - quad.topLeft.x, quad.topRight.y - quad.topLeft.y);
+      const dBottom = Math.hypot(quad.bottomRight.x - quad.bottomLeft.x, quad.bottomRight.y - quad.bottomLeft.y);
+      const dLeft = Math.hypot(quad.bottomLeft.x - quad.topLeft.x, quad.bottomLeft.y - quad.topLeft.y);
+      const dRight = Math.hypot(quad.bottomRight.x - quad.topRight.x, quad.bottomRight.y - quad.topRight.y);
+      rawW = Math.round((dTop + dBottom) / 2);
+      rawH = Math.round((dLeft + dRight) / 2);
+    } else if (mode === "crop") {
+      rawW = Math.round(cropRect.width);
+      rawH = Math.round(cropRect.height);
+    } else if (mode === "circle") {
+      rawW = Math.round(ellipseParams.rx * 2);
+      rawH = Math.round(ellipseParams.ry * 2);
+    } else {
+      if (polygonPoints.length === 0) return { w: naturalDims.width, h: naturalDims.height, mp: "0" };
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const p of polygonPoints) {
+        if (p.x < minX) minX = p.x;
+        if (p.y < minY) minY = p.y;
+        if (p.x > maxX) maxX = p.x;
+        if (p.y > maxY) maxY = p.y;
       }
+      rawW = Math.round(maxX - minX);
+      rawH = Math.round(maxY - minY);
+    }
 
-      if (rawW <= 0 || rawH <= 0) {
-        rawW = naturalDims.width || 1000;
-        rawH = naturalDims.height || 1000;
+    if (rawW <= 0 || rawH <= 0) {
+      rawW = naturalDims.width || 1000;
+      rawH = naturalDims.height || 1000;
+    }
+
+    if (maxDim > 0) {
+      const maxSide = Math.max(rawW, rawH);
+      if (maxSide > maxDim) {
+        const scale = maxDim / maxSide;
+        rawW = Math.round(rawW * scale);
+        rawH = Math.round(rawH * scale);
       }
+    }
 
-      if (maxDim > 0) {
-        const maxSide = Math.max(rawW, rawH);
-        if (maxSide > maxDim) {
-          const scale = maxDim / maxSide;
-          rawW = Math.round(rawW * scale);
-          rawH = Math.round(rawH * scale);
-        }
-      }
-
-      const mp = ((rawW * rawH) / 1000000).toFixed(1);
-      return { w: rawW, h: rawH, mp };
-    },
-    [mode, quad, cropRect, ellipseParams, polygonPoints, naturalDims]
-  );
+    const mp = ((rawW * rawH) / 1000000).toFixed(1);
+    return { w: rawW, h: rawH, mp };
+  };
 
   const currRes = getResultingDimensions(maxDimension);
 
