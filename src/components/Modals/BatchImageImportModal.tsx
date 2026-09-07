@@ -68,6 +68,27 @@ export const BatchImageImportModal: React.FC = () => {
         }
       }
 
+      // Automatically arrange images side by side to prevent overlapping
+      const { boards, board } = useProjectStore.getState();
+      const currentBoard = board || boards[0];
+      const existing = side === "top" ? currentBoard?.data?.bgTop?.images : currentBoard?.data?.bgBottom?.images;
+      let currentX = 0;
+      if (existing && existing.length > 0) {
+        for (const ex of existing) {
+          const exW = ((ex.width || 2000) / (ex.pxPerMm || 23.62)) * (ex.scale || 1);
+          const r = (ex.offsetX || 0) + exW;
+          if (r > currentX) currentX = r;
+        }
+        if (currentX > 0) currentX += 15; // 15mm gap after the last image
+      }
+
+      for (const layer of importedLayers) {
+        layer.offsetX = Math.round(currentX);
+        layer.offsetY = 0;
+        const wMm = ((layer.width || 2000) / (layer.pxPerMm || 23.62)) * (layer.scale || 1);
+        currentX += wMm + 15; // 15mm gap between each new image
+      }
+
       await updateImageLayers(importedLayers);
       handleClose();
     } catch (err: any) {

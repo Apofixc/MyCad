@@ -371,6 +371,23 @@ export const ImagePreprocessModal: React.FC = () => {
         layer.mirrored = isFlippedH;
         layer.flipV = isFlippedV;
         layer.rotation = rotationAngle;
+        // Position new image next to existing ones if not replacing
+        const { boards, board } = useProjectStore.getState();
+        const currentBoard = board || boards[0];
+        const existing = side === "top" ? currentBoard?.data?.bgTop?.images : currentBoard?.data?.bgBottom?.images;
+        if (!pendingPreprocess.replaceLayerId && existing && existing.length > 0) {
+          let maxRight = 0;
+          for (const ex of existing) {
+            const exW = ((ex.width || 2000) / (ex.pxPerMm || 23.62)) * (ex.scale || 1);
+            const r = (ex.offsetX || 0) + exW;
+            if (r > maxRight) maxRight = r;
+          }
+          if (maxRight > 0) {
+            layer.offsetX = Math.round(maxRight + 15);
+            layer.offsetY = 0;
+          }
+        }
+
         await updateImageLayer(layer);
       }
       handleClose();
@@ -437,6 +454,23 @@ export const ImagePreprocessModal: React.FC = () => {
       layer.mirrored = isFlippedH;
       layer.flipV = isFlippedV;
       layer.rotation = rotationAngle;
+
+      // Position new image next to existing ones if not replacing
+      const { boards, board } = useProjectStore.getState();
+      const currentBoard = board || boards[0];
+      const existing = side === "top" ? currentBoard?.data?.bgTop?.images : currentBoard?.data?.bgBottom?.images;
+      if (!pendingPreprocess.replaceLayerId && existing && existing.length > 0) {
+        let maxRight = 0;
+        for (const ex of existing) {
+          const exW = ((ex.width || 2000) / (ex.pxPerMm || 23.62)) * (ex.scale || 1);
+          const r = (ex.offsetX || 0) + exW;
+          if (r > maxRight) maxRight = r;
+        }
+        if (maxRight > 0) {
+          layer.offsetX = Math.round(maxRight + 15);
+          layer.offsetY = 0;
+        }
+      }
 
       await updateImageLayer(layer);
       handleClose();
