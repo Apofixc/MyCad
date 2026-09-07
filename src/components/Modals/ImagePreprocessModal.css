@@ -597,6 +597,42 @@
   color: #38bdf8;
 }
 
+.cad-split-slider-container {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+}
+
+.cad-split-range-input {
+  width: 80px;
+  height: 4px;
+  -webkit-appearance: none;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  outline: none;
+  cursor: ew-resize;
+}
+
+.cad-split-range-input::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #38bdf8;
+  border: 1.5px solid #ffffff;
+  cursor: ew-resize;
+  box-shadow: 0 0 6px rgba(56, 189, 248, 0.6);
+}
+
+.cad-split-label {
+  font-size: 10px;
+  color: #94a3b8;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
 /* Quick preview PIP mini launcher in bottom right */
 .cad-quick-preview-launcher {
   position: absolute;

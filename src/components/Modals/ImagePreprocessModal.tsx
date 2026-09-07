@@ -22,6 +22,7 @@ import {
   HelpCircle,
   ArrowLeft,
   RefreshCw,
+  SplitSquareVertical,
 } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
@@ -133,6 +134,9 @@ export const ImagePreprocessModal: React.FC = () => {
   const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
   const [showCustomResModal, setShowCustomResModal] = useState<boolean>(false);
   const [customResInput, setCustomResInput] = useState<string>("3000");
+  const [isSplitCompare, setIsSplitCompare] = useState<boolean>(false);
+  const [splitPos, setSplitPos] = useState<number>(0.5);
+  const [isDraggingSplit, setIsDraggingSplit] = useState<boolean>(false);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const [loading, setLoading] = useState<boolean>(false);
@@ -144,6 +148,9 @@ export const ImagePreprocessModal: React.FC = () => {
   const loupeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const loadedImageRef = useRef<HTMLImageElement | null>(null);
   const previewCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const compareCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const editViewportRef = useRef<{ pan: { x: number; y: number }; zoom: number } | null>(null);
+  const previewViewportRef = useRef<{ pan: { x: number; y: number }; zoom: number } | null>(null);
   const hasFittedRef = useRef<boolean>(false);
 
   const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
@@ -204,7 +211,12 @@ export const ImagePreprocessModal: React.FC = () => {
     setIsFlippedV(false);
     setMode("perspective");
     setIsPreviewMode(false);
+    setIsSplitCompare(false);
+    setSplitPos(0.5);
     previewCanvasRef.current = null;
+    compareCanvasRef.current = null;
+    editViewportRef.current = null;
+    previewViewportRef.current = null;
     hasFittedRef.current = false;
 
     let sourceUrl = pendingPreprocess.filePath || pendingPreprocess.dataUrl || "";
@@ -350,6 +362,71 @@ export const ImagePreprocessModal: React.FC = () => {
     [pan, zoom, naturalDims, rotationAngle, isFlippedH, isFlippedV]
   );
 
+  // Screen to Preview Image Coordinates (for previewCanvas)
+  const screenToPreview = useCallback(
+    (sx: number, sy: number): Point2D => {
+      const activeW = previewCanvasRef.current?.width || naturalDims.width || 800;
+      const activeH = previewCanvasRef.current?.height || naturalDims.height || 600;
+      let x = (sx - pan.x) / zoom;
+      let y = (sy - pan.y) / zoom;
+      if (rotationAngle !== 0 || isFlippedH || isFlippedV) {
+        const cx = activeW / 2;
+        const cy = activeH / 2;
+        let dx = x - cx;
+        let dy = y - cy;
+        if (isFlippedH) dx = -dx;
+        if (isFlippedV) dy = -dy;
+        if (rotationAngle !== 0) {
+          const rad = (rotationAngle * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+          const rx = dx * cos + dy * sin;
+          const ry = -dx * sin + dy * cos;
+          dx = rx;
+          dy = ry;
+        }
+        x = dx + cx;
+        y = dy + cy;
+      }
+      return { x, y };
+    },
+    [pan, zoom, naturalDims, rotationAngle, isFlippedH, isFlippedV]
+  );
+
+  // Preview Image to Screen Coordinates
+  const previewToScreen = useCallback(
+    (px: number, py: number): Point2D => {
+      const activeW = previewCanvasRef.current?.width || naturalDims.width || 800;
+      const activeH = previewCanvasRef.current?.height || naturalDims.height || 600;
+      let x = px;
+      let y = py;
+      if (rotationAngle !== 0 || isFlippedH || isFlippedV) {
+        const cx = activeW / 2;
+        const cy = activeH / 2;
+        let dx = x - cx;
+        let dy = y - cy;
+        if (rotationAngle !== 0) {
+          const rad = (rotationAngle * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+          const rx = dx * cos - dy * sin;
+          const ry = dx * sin + dy * cos;
+          dx = rx;
+          dy = ry;
+        }
+        if (isFlippedH) dx = -dx;
+        if (isFlippedV) dy = -dy;
+        x = dx + cx;
+        y = dy + cy;
+      }
+      return {
+        x: x * zoom + pan.x,
+        y: y * zoom + pan.y,
+      };
+    },
+    [pan, zoom, naturalDims, rotationAngle, isFlippedH, isFlippedV]
+  );
+
   // Auto-detect corners with Magic Wand
   const handleAutoDetect = async () => {
     const rawPath = pendingPreprocess?.filePath;
@@ -424,7 +501,7 @@ export const ImagePreprocessModal: React.FC = () => {
 function renderPerspectiveWarp(
   img: HTMLImageElement,
   quad: QuadPoints,
-  maxPreviewDim = 1400
+  maxPreviewDim = 2048
 ): { canvas: HTMLCanvasElement; width: number; height: number } {
   const dTop = Math.hypot(quad.topRight.x - quad.topLeft.x, quad.topRight.y - quad.topLeft.y);
   const dBottom = Math.hypot(quad.bottomRight.x - quad.bottomLeft.x, quad.bottomRight.y - quad.bottomLeft.y);
@@ -495,8 +572,8 @@ function renderPerspectiveWarp(
     };
   };
 
-  const cols = 24;
-  const rows = 24;
+  const cols = 32;
+  const rows = 32;
 
   const drawTriangle = (
     d0: Point2D,
@@ -510,7 +587,7 @@ function renderPerspectiveWarp(
     ctx.beginPath();
     const cx = (d0.x + d1.x + d2.x) / 3;
     const cy = (d0.y + d1.y + d2.y) / 3;
-    const ex = 0.015;
+    const ex = 0.02;
     ctx.moveTo(d0.x + (d0.x - cx) * ex, d0.y + (d0.y - cy) * ex);
     ctx.lineTo(d1.x + (d1.x - cx) * ex, d1.y + (d1.y - cy) * ex);
     ctx.lineTo(d2.x + (d2.x - cx) * ex, d2.y + (d2.y - cy) * ex);
@@ -560,7 +637,7 @@ function renderPerspectiveWarp(
 function renderCropPreview(
   img: HTMLImageElement,
   rect: CropRect,
-  maxPreviewDim = 1400
+  maxPreviewDim = 2048
 ): { canvas: HTMLCanvasElement; width: number; height: number } {
   const w = Math.max(10, Math.round(rect.width));
   const h = Math.max(10, Math.round(rect.height));
@@ -584,7 +661,7 @@ function renderCropPreview(
 function renderEllipsePreview(
   img: HTMLImageElement,
   params: { cx: number; cy: number; rx: number; ry: number },
-  maxPreviewDim = 1400
+  maxPreviewDim = 2048
 ): { canvas: HTMLCanvasElement; width: number; height: number } {
   const w = Math.max(10, Math.round(params.rx * 2));
   const h = Math.max(10, Math.round(params.ry * 2));
@@ -613,7 +690,7 @@ function renderEllipsePreview(
 function renderPolygonPreview(
   img: HTMLImageElement,
   points: Point2D[],
-  maxPreviewDim = 1400
+  maxPreviewDim = 2048
 ): { canvas: HTMLCanvasElement; width: number; height: number } {
   if (points.length < 3) {
     return renderCropPreview(
@@ -657,6 +734,100 @@ function renderPolygonPreview(
   return { canvas, width: dstW, height: dstH };
 }
 
+function renderOriginalCompare(
+  img: HTMLImageElement,
+  mode: ToolMode,
+  quad: QuadPoints,
+  cropRect: CropRect,
+  ellipseParams: { cx: number; cy: number; rx: number; ry: number },
+  polygonPoints: Point2D[],
+  targetW: number,
+  targetH: number
+): HTMLCanvasElement {
+  const canvas = document.createElement("canvas");
+  canvas.width = targetW;
+  canvas.height = targetH;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+
+  if (mode === "perspective") {
+    const minX = Math.min(quad.topLeft.x, quad.topRight.x, quad.bottomRight.x, quad.bottomLeft.x);
+    const minY = Math.min(quad.topLeft.y, quad.topRight.y, quad.bottomRight.y, quad.bottomLeft.y);
+    const maxX = Math.max(quad.topLeft.x, quad.topRight.x, quad.bottomRight.x, quad.bottomLeft.x);
+    const maxY = Math.max(quad.topLeft.y, quad.topRight.y, quad.bottomRight.y, quad.bottomLeft.y);
+    const w = Math.max(10, maxX - minX);
+    const h = Math.max(10, maxY - minY);
+    ctx.drawImage(img, minX, minY, w, h, 0, 0, targetW, targetH);
+  } else if (mode === "crop") {
+    ctx.drawImage(img, cropRect.x, cropRect.y, cropRect.width, cropRect.height, 0, 0, targetW, targetH);
+  } else if (mode === "circle") {
+    const sx = ellipseParams.cx - ellipseParams.rx;
+    const sy = ellipseParams.cy - ellipseParams.ry;
+    ctx.drawImage(img, sx, sy, ellipseParams.rx * 2, ellipseParams.ry * 2, 0, 0, targetW, targetH);
+  } else {
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of polygonPoints) {
+      if (p.x < minX) minX = p.x;
+      if (p.y < minY) minY = p.y;
+      if (p.x > maxX) maxX = p.x;
+      if (p.y > maxY) maxY = p.y;
+    }
+    const w = Math.max(10, maxX - minX);
+    const h = Math.max(10, maxY - minY);
+    ctx.drawImage(img, minX, minY, w, h, 0, 0, targetW, targetH);
+  }
+
+  return canvas;
+}
+
+function drawAlignmentGrid(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  zoom: number
+) {
+  ctx.save();
+  const gridSize = 40;
+  const majorStep = 5;
+  ctx.lineWidth = Math.max(0.5, 1 / zoom);
+
+  // Fine grid lines
+  ctx.strokeStyle = "rgba(56, 189, 248, 0.18)";
+  ctx.beginPath();
+  for (let gx = 0; gx <= w; gx += gridSize) {
+    if (gx % (gridSize * majorStep) !== 0) {
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, h);
+    }
+  }
+  for (let gy = 0; gy <= h; gy += gridSize) {
+    if (gy % (gridSize * majorStep) !== 0) {
+      ctx.moveTo(0, gy);
+      ctx.lineTo(w, gy);
+    }
+  }
+  ctx.stroke();
+
+  // Major grid lines
+  ctx.strokeStyle = "rgba(56, 189, 248, 0.48)";
+  ctx.lineWidth = Math.max(1, 1.5 / zoom);
+  ctx.beginPath();
+  for (let gx = 0; gx <= w; gx += gridSize * majorStep) {
+    ctx.moveTo(gx, 0);
+    ctx.lineTo(gx, h);
+  }
+  for (let gy = 0; gy <= h; gy += gridSize * majorStep) {
+    ctx.moveTo(0, gy);
+    ctx.lineTo(w, gy);
+  }
+  ctx.stroke();
+
+  ctx.restore();
+}
+
   // Quick Preview Generator (Ultra-Fast Client-Side Render in <15ms)
   const loadPreview = useCallback(() => {
     const img = loadedImageRef.current;
@@ -668,19 +839,38 @@ function renderPolygonPreview(
       try {
         let res: { canvas: HTMLCanvasElement; width: number; height: number };
         if (mode === "perspective") {
-          res = renderPerspectiveWarp(img, quad, 1400);
+          res = renderPerspectiveWarp(img, quad, 2048);
         } else if (mode === "crop") {
-          res = renderCropPreview(img, cropRect, 1400);
+          res = renderCropPreview(img, cropRect, 2048);
         } else if (mode === "circle") {
-          res = renderEllipsePreview(img, ellipseParams, 1400);
+          res = renderEllipsePreview(img, ellipseParams, 2048);
         } else {
-          res = renderPolygonPreview(img, polygonPoints, 1400);
+          res = renderPolygonPreview(img, polygonPoints, 2048);
         }
 
+        const comp = renderOriginalCompare(
+          img,
+          mode,
+          quad,
+          cropRect,
+          ellipseParams,
+          polygonPoints,
+          res.width,
+          res.height
+        );
+
         previewCanvasRef.current = res.canvas;
+        compareCanvasRef.current = comp;
         setPreviewDims({ width: res.width, height: res.height });
         setPreviewLoading(false);
-        fitToScreen(res.width, res.height);
+
+        // Viewport isolation: restore previous preview viewport if it exists, otherwise fit
+        if (previewViewportRef.current) {
+          setPan(previewViewportRef.current.pan);
+          setZoom(previewViewportRef.current.zoom);
+        } else {
+          fitToScreen(res.width, res.height);
+        }
       } catch (e: any) {
         console.error("Fast preview failed:", e);
         setErrorMsg("Ошибка предпросмотра: " + (e?.message || e));
@@ -689,18 +879,23 @@ function renderPolygonPreview(
     });
   }, [mode, quad, cropRect, ellipseParams, polygonPoints, fitToScreen]);
 
-  // Toggle Quick Preview
+  // Toggle Quick Preview with isolated viewport memory
   const togglePreview = useCallback(() => {
     if (isPreviewMode) {
+      previewViewportRef.current = { pan, zoom };
       setIsPreviewMode(false);
-      if (naturalDims.width > 0) {
+      if (editViewportRef.current) {
+        setPan(editViewportRef.current.pan);
+        setZoom(editViewportRef.current.zoom);
+      } else if (naturalDims.width > 0) {
         fitToScreen(naturalDims.width, naturalDims.height);
       }
     } else {
+      editViewportRef.current = { pan, zoom };
       setIsPreviewMode(true);
       loadPreview();
     }
-  }, [isPreviewMode, naturalDims, fitToScreen, loadPreview]);
+  }, [isPreviewMode, pan, zoom, naturalDims, fitToScreen, loadPreview]);
 
   // Bypass: insert original without transformations
   const handleBypass = async () => {
@@ -888,73 +1083,131 @@ function renderPolygonPreview(
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
-    const isPreviewActive = isPreviewMode && previewCanvasRef.current && !showOriginalCompare;
-    const activeImg: CanvasImageSource = isPreviewActive ? previewCanvasRef.current! : img;
-    const activeW = isPreviewActive
-      ? previewCanvasRef.current!.width || previewDims.width || naturalDims.width
-      : naturalDims.width;
-    const activeH = isPreviewActive
-      ? previewCanvasRef.current!.height || previewDims.height || naturalDims.height
-      : naturalDims.height;
+    if (isPreviewMode && previewCanvasRef.current) {
+      const activeW = previewCanvasRef.current.width;
+      const activeH = previewCanvasRef.current.height;
 
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = "high";
-
-    ctx.save();
-    ctx.translate(pan.x, pan.y);
-    ctx.scale(zoom, zoom);
-
-    // Center transform
-    const cx = activeW / 2;
-    const cy = activeH / 2;
-    ctx.translate(cx, cy);
-    if (rotationAngle !== 0) ctx.rotate((rotationAngle * Math.PI) / 180);
-    if (isFlippedH || isFlippedV) ctx.scale(isFlippedH ? -1 : 1, isFlippedV ? -1 : 1);
-    ctx.translate(-cx, -cy);
-
-    ctx.drawImage(activeImg, 0, 0, activeW, activeH);
-
-    // Draw CAD alignment grid over preview if active
-    if (isPreviewActive && showGridOverlay) {
       ctx.save();
-      const gridSize = 40;
-      const majorStep = 5;
-      ctx.lineWidth = 1 / zoom;
+      ctx.translate(pan.x, pan.y);
+      ctx.scale(zoom, zoom);
 
-      // Fine grid
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.16)";
-      ctx.beginPath();
-      for (let gx = 0; gx <= activeW; gx += gridSize) {
-        if (gx % (gridSize * majorStep) !== 0) {
-          ctx.moveTo(gx, 0);
-          ctx.lineTo(gx, activeH);
+      // Center transform
+      const cx = activeW / 2;
+      const cy = activeH / 2;
+      ctx.translate(cx, cy);
+      if (rotationAngle !== 0) ctx.rotate((rotationAngle * Math.PI) / 180);
+      if (isFlippedH || isFlippedV) ctx.scale(isFlippedH ? -1 : 1, isFlippedV ? -1 : 1);
+      ctx.translate(-cx, -cy);
+
+      if (isSplitCompare && compareCanvasRef.current) {
+        const splitX = Math.round(activeW * splitPos);
+
+        // 1. Left side: Original unwarped
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(0, 0, splitX, activeH);
+        ctx.clip();
+        ctx.drawImage(compareCanvasRef.current, 0, 0, activeW, activeH);
+        ctx.restore();
+
+        // 2. Right side: Straightened board
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(splitX, 0, activeW - splitX, activeH);
+        ctx.clip();
+        ctx.drawImage(previewCanvasRef.current, 0, 0, activeW, activeH);
+        if (showGridOverlay) {
+          drawAlignmentGrid(ctx, activeW, activeH, zoom);
+        }
+        ctx.restore();
+
+        // 3. Split line
+        ctx.save();
+        ctx.strokeStyle = "#38bdf8";
+        ctx.lineWidth = Math.max(1.5, 2 / zoom);
+        ctx.beginPath();
+        ctx.moveTo(splitX, 0);
+        ctx.lineTo(splitX, activeH);
+        ctx.stroke();
+
+        // Handle on divider
+        const handleR = Math.max(7, 9 / zoom);
+        ctx.fillStyle = "#0284c7";
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = Math.max(1.2, 1.8 / zoom);
+        ctx.beginPath();
+        ctx.arc(splitX, activeH / 2, handleR, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        // Inner arrow grips inside handle
+        ctx.fillStyle = "#ffffff";
+        const arrSize = Math.max(2.5, 3.5 / zoom);
+        ctx.beginPath();
+        ctx.moveTo(splitX - arrSize * 1.5, activeH / 2);
+        ctx.lineTo(splitX - arrSize * 0.5, activeH / 2 - arrSize);
+        ctx.lineTo(splitX - arrSize * 0.5, activeH / 2 + arrSize);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.moveTo(splitX + arrSize * 1.5, activeH / 2);
+        ctx.lineTo(splitX + arrSize * 0.5, activeH / 2 - arrSize);
+        ctx.lineTo(splitX + arrSize * 0.5, activeH / 2 + arrSize);
+        ctx.fill();
+
+        // Elegant "ДО" and "ПОСЛЕ" HUD indicators along divider
+        ctx.font = `bold ${Math.max(10, 12 / zoom)}px sans-serif`;
+        const pad = Math.max(4, 6 / zoom);
+        const barH = Math.max(16, 20 / zoom);
+        const textY = 12 / zoom + barH * 0.72;
+
+        if (splitX > 60 / zoom) {
+          const text = "ДО";
+          const tw = ctx.measureText(text).width;
+          ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
+          ctx.fillRect(splitX - tw - pad * 3, 12 / zoom, tw + pad * 2, barH);
+          ctx.fillStyle = "#94a3b8";
+          ctx.fillText(text, splitX - tw - pad * 2, textY);
+        }
+        if (activeW - splitX > 60 / zoom) {
+          const text = "ПОСЛЕ";
+          const tw = ctx.measureText(text).width;
+          ctx.fillStyle = "rgba(15, 23, 42, 0.82)";
+          ctx.fillRect(splitX + pad, 12 / zoom, tw + pad * 2, barH);
+          ctx.fillStyle = "#38bdf8";
+          ctx.fillText(text, splitX + pad * 2, textY);
+        }
+
+        ctx.restore();
+      } else if (showOriginalCompare && compareCanvasRef.current) {
+        // Seamless in-place switch to original
+        ctx.drawImage(compareCanvasRef.current, 0, 0, activeW, activeH);
+      } else {
+        // Straightened preview
+        ctx.drawImage(previewCanvasRef.current, 0, 0, activeW, activeH);
+        if (showGridOverlay) {
+          drawAlignmentGrid(ctx, activeW, activeH, zoom);
         }
       }
-      for (let gy = 0; gy <= activeH; gy += gridSize) {
-        if (gy % (gridSize * majorStep) !== 0) {
-          ctx.moveTo(0, gy);
-          ctx.lineTo(activeW, gy);
-        }
-      }
-      ctx.stroke();
 
-      // Major grid
-      ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
-      ctx.beginPath();
-      for (let gx = 0; gx <= activeW; gx += gridSize * majorStep) {
-        ctx.moveTo(gx, 0);
-        ctx.lineTo(gx, activeH);
-      }
-      for (let gy = 0; gy <= activeH; gy += gridSize * majorStep) {
-        ctx.moveTo(0, gy);
-        ctx.lineTo(activeW, gy);
-      }
-      ctx.stroke();
+      ctx.restore();
+    } else {
+      // Normal edit mode
+      const cx = naturalDims.width / 2;
+      const cy = naturalDims.height / 2;
 
+      ctx.save();
+      ctx.translate(pan.x, pan.y);
+      ctx.scale(zoom, zoom);
+
+      ctx.translate(cx, cy);
+      if (rotationAngle !== 0) ctx.rotate((rotationAngle * Math.PI) / 180);
+      if (isFlippedH || isFlippedV) ctx.scale(isFlippedH ? -1 : 1, isFlippedV ? -1 : 1);
+      ctx.translate(-cx, -cy);
+
+      ctx.drawImage(img, 0, 0, naturalDims.width, naturalDims.height);
       ctx.restore();
     }
 
-    ctx.restore();
     ctx.restore();
   }, [
     pan,
@@ -966,6 +1219,8 @@ function renderPolygonPreview(
     isFlippedV,
     viewportSize,
     isPreviewMode,
+    isSplitCompare,
+    splitPos,
     showGridOverlay,
     showOriginalCompare,
   ]);
@@ -1053,6 +1308,36 @@ function renderPolygonPreview(
 
   // Mouse Drag Handlers
   const handleMouseDown = (e: React.MouseEvent) => {
+    const rect = containerRef.current?.getBoundingClientRect();
+    const screenX = rect ? e.clientX - rect.left : e.clientX;
+    const screenY = rect ? e.clientY - rect.top : e.clientY;
+
+    if (e.button === 0 && isPreviewMode && isSplitCompare && previewCanvasRef.current) {
+      const activeW = previewCanvasRef.current.width;
+      const activeH = previewCanvasRef.current.height;
+      const splitX = activeW * splitPos;
+      const splitScreenTop = previewToScreen(splitX, 0);
+      const splitScreenBottom = previewToScreen(splitX, activeH);
+      const splitScreenMid = previewToScreen(splitX, activeH / 2);
+
+      const distToMid = Math.hypot(screenX - splitScreenMid.x, screenY - splitScreenMid.y);
+      const dx = splitScreenBottom.x - splitScreenTop.x;
+      const dy = splitScreenBottom.y - splitScreenTop.y;
+      const lenSq = dx * dx + dy * dy;
+      let distToLine = Infinity;
+      if (lenSq > 0) {
+        const t = Math.max(0, Math.min(1, ((screenX - splitScreenTop.x) * dx + (screenY - splitScreenTop.y) * dy) / lenSq));
+        const projX = splitScreenTop.x + t * dx;
+        const projY = splitScreenTop.y + t * dy;
+        distToLine = Math.hypot(screenX - projX, screenY - projY);
+      }
+
+      if (distToMid < 24 || distToLine < 18) {
+        setIsDraggingSplit(true);
+        return;
+      }
+    }
+
     if (e.button === 1 || e.altKey || (e.button === 0 && (!activeHandle || isPreviewMode))) {
       setIsPanning(true);
       setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
@@ -1071,6 +1356,14 @@ function renderPolygonPreview(
       x: Math.round(Math.max(0, Math.min(naturalDims.width, imgPt.x))),
       y: Math.round(Math.max(0, Math.min(naturalDims.height, imgPt.y))),
     });
+
+    if (isDraggingSplit && isPreviewMode && previewCanvasRef.current) {
+      const activeW = previewCanvasRef.current.width;
+      const pt = screenToPreview(screenX, screenY);
+      const newPos = Math.max(0.01, Math.min(0.99, pt.x / activeW));
+      setSplitPos(newPos);
+      return;
+    }
 
     if (isPanning) {
       setPan({
@@ -1156,6 +1449,7 @@ function renderPolygonPreview(
   };
 
   const handleMouseUp = () => {
+    setIsDraggingSplit(false);
     setIsPanning(false);
     setActiveHandle(null);
     setLoupeState((prev) => ({ ...prev, visible: false }));
@@ -1545,6 +1839,7 @@ function renderPolygonPreview(
         <div
           ref={containerRef}
           className="cad-preprocess-viewport"
+          style={{ cursor: isDraggingSplit ? "ew-resize" : undefined }}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -1587,24 +1882,50 @@ function renderPolygonPreview(
               <button
                 className={`cad-preview-btn ${showGridOverlay ? "active" : ""}`}
                 onClick={() => setShowGridOverlay((g) => !g)}
-                title="Отобразить проверочную сетку для контроля параллельности дорожек"
+                title="Отобразить проверочную координатную сетку для контроля параллельности дорожек"
               >
                 <Grid size={13} />
-                <span>Сетка выравнивания</span>
+                <span>Сетка</span>
               </button>
 
               <button
-                className={`cad-preview-btn ${showOriginalCompare ? "active" : ""}`}
-                onMouseDown={() => setShowOriginalCompare(true)}
-                onMouseUp={() => setShowOriginalCompare(false)}
-                onMouseLeave={() => setShowOriginalCompare(false)}
-                onClick={() => setShowOriginalCompare((c) => !c)}
-                title="Зажмите или кликните для сравнения с исходным изображением"
+                className={`cad-preview-btn ${isSplitCompare ? "active" : ""}`}
+                onClick={() => setIsSplitCompare((s) => !s)}
+                title="Включить интерактивную шторку До / После (можно двигать мышью прямо по изображению)"
               >
-                <span>{showOriginalCompare ? "Исходник" : "Сравнить (До/После)"}</span>
+                <SplitSquareVertical size={13} />
+                <span>Шторка До/После</span>
               </button>
 
-              <button className="cad-preview-btn" onClick={loadPreview} title="Обновить быстрый просмотр">
+              {isSplitCompare ? (
+                <div className="cad-split-slider-container">
+                  <span className="cad-split-label">До</span>
+                  <input
+                    type="range"
+                    min="1"
+                    max="99"
+                    value={Math.round(splitPos * 100)}
+                    onChange={(e) => setSplitPos(Number(e.target.value) / 100)}
+                    className="cad-split-range-input"
+                    title={`Позиция разделения: ${Math.round(splitPos * 100)}%`}
+                  />
+                  <span className="cad-split-label">После</span>
+                </div>
+              ) : (
+                <button
+                  className={`cad-preview-btn ${showOriginalCompare ? "active" : ""}`}
+                  onMouseDown={() => setShowOriginalCompare(true)}
+                  onMouseUp={() => setShowOriginalCompare(false)}
+                  onMouseLeave={() => setShowOriginalCompare(false)}
+                  onClick={() => setShowOriginalCompare((c) => !c)}
+                  title="Зажмите или кликните для мгновенного бесшовного сравнения с исходным участком"
+                >
+                  <Eye size={13} />
+                  <span>{showOriginalCompare ? "Исходник" : "Зажать: Исходник"}</span>
+                </button>
+              )}
+
+              <button className="cad-preview-btn" onClick={loadPreview} title="Перерисовать быстрый предпросмотр">
                 <RefreshCw size={12} className={previewLoading ? "animate-spin" : ""} />
                 <span>Обновить</span>
               </button>
