@@ -34,23 +34,37 @@ export const MagnifierLoupe: React.FC<MagnifierLoupeProps> = ({ sourceCanvasRef 
       container.style.left = `${e.clientX + 20}px`;
       container.style.top = `${e.clientY + 20}px`;
 
-      const ctx = loupeCanvas.getContext("2d");
-      if (!ctx) return;
-
+      const dpr = window.devicePixelRatio || 1;
       const size = 180;
       const mag = loupeMagnification;
       const sampleSize = size / mag;
 
-      ctx.clearRect(0, 0, size, size);
-      ctx.imageSmoothingEnabled = false; // Sharp pixelated zoom for inspecting traces
+      // Ensure crisp high-DPI rendering on loupe canvas
+      if (loupeCanvas.width !== size * dpr || loupeCanvas.height !== size * dpr) {
+        loupeCanvas.width = size * dpr;
+        loupeCanvas.height = size * dpr;
+      }
 
-      // Draw magnified region from main canvas
+      const ctx = loupeCanvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.save();
+      ctx.scale(dpr, dpr);
+      ctx.clearRect(0, 0, size, size);
+      ctx.imageSmoothingEnabled = false; // Sharp pixelated zoom for inspecting micro-traces
+
+      // Draw magnified region from main canvas buffer with exact DPR scaling
+      const sourceX = (mouseX - sampleSize / 2) * dpr;
+      const sourceY = (mouseY - sampleSize / 2) * dpr;
+      const sourceW = sampleSize * dpr;
+      const sourceH = sampleSize * dpr;
+
       ctx.drawImage(
         sourceCanvas,
-        mouseX - sampleSize / 2,
-        mouseY - sampleSize / 2,
-        sampleSize,
-        sampleSize,
+        sourceX,
+        sourceY,
+        sourceW,
+        sourceH,
         0,
         0,
         size,
@@ -58,21 +72,23 @@ export const MagnifierLoupe: React.FC<MagnifierLoupeProps> = ({ sourceCanvasRef 
       );
 
       // Draw crosshair reticle
-      ctx.strokeStyle = "rgba(59, 130, 246, 0.8)";
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.85)";
       ctx.lineWidth = 1;
 
       // Center crosshair
       ctx.beginPath();
-      ctx.moveTo(size / 2 - 12, size / 2);
-      ctx.lineTo(size / 2 + 12, size / 2);
-      ctx.moveTo(size / 2, size / 2 - 12);
-      ctx.lineTo(size / 2, size / 2 + 12);
+      ctx.moveTo(size / 2 - 14, size / 2);
+      ctx.lineTo(size / 2 + 14, size / 2);
+      ctx.moveTo(size / 2, size / 2 - 14);
+      ctx.lineTo(size / 2, size / 2 + 14);
       ctx.stroke();
 
-      // Inner circle
+      // Inner reticle circle
       ctx.beginPath();
-      ctx.arc(size / 2, size / 2, 8, 0, Math.PI * 2);
+      ctx.arc(size / 2, size / 2, 7, 0, Math.PI * 2);
       ctx.stroke();
+
+      ctx.restore();
     };
 
     window.addEventListener("mousemove", onMouseMove);

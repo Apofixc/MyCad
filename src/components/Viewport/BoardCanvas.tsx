@@ -6,9 +6,15 @@ import { CurtainSlider } from "./CurtainSlider";
 import { MagnifierLoupe } from "./MagnifierLoupe";
 import { CalibrationModal } from "../Modals/CalibrationModal";
 import { engineClient, resolveImageUrl } from "../../api/engineClient";
-import { distance, formatMetric } from "../../utils/alignmentMath";
+import {
+  distance,
+  formatMetric,
+  boardMmToLayerBitmapPx,
+  calculateHorizonLeveling,
+  calculateLayerRegistration,
+} from "../../utils/alignmentMath";
 import { notifySuccess, notifyWarning, reportError } from "../../utils/errorHandler";
-import { Target, X, Check, RotateCcw } from "lucide-react";
+import { Target, X, Check, RotateCcw, Zap, Play, Pause } from "lucide-react";
 import { BoardImageLayer } from "../../types/cad";
 
 export type TransformHandleType =
@@ -43,7 +49,9 @@ export const BoardCanvas: React.FC = () => {
     showGrid,
     gridStepMm,
     showTopLayer,
+    setShowTopLayer,
     showBottomLayer,
+    setShowBottomLayer,
     curtainPosition,
     curtainVertical,
     activeWorkLayer,
@@ -112,6 +120,30 @@ export const BoardCanvas: React.FC = () => {
     botPts: [],
   });
 
+  // Strobe tool state (alternating Top / Bottom layers)
+  const [strobePhase, setStrobePhase] = useState<"top" | "bottom">("top");
+  const [isStrobePaused, setIsStrobePaused] = useState(false);
+  const [strobeSpeedMs, setStrobeSpeedMs] = useState(350);
+
+  // Strobe interval timer effect
+  useEffect(() => {
+    if (activeTool !== "blink") return;
+
+    // Automatically ensure both layers are enabled so strobe can flip between them
+    const { showTopLayer, showBottomLayer } = useUiStore.getState();
+    if (!showTopLayer) setShowTopLayer(true);
+    if (!showBottomLayer) setShowBottomLayer(true);
+
+    if (isStrobePaused) return;
+
+    const interval = setInterval(() => {
+      setStrobePhase((prev) => (prev === "top" ? "bottom" : "top"));
+      dirtyRef.current = true;
+    }, strobeSpeedMs);
+
+    return () => clearInterval(interval);
+  }, [activeTool, isStrobePaused, strobeSpeedMs, setShowTopLayer, setShowBottomLayer]);
+
   // Reset tool points on tool change
   useEffect(() => {
     setMeasurePts([]);
@@ -121,7 +153,7 @@ export const BoardCanvas: React.FC = () => {
     }
   }, [activeTool]);
 
-  // Escape key cancels active tool and clears selection
+  // Escape key cancels active tool and clears selection; Spacebar pauses strobe
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
@@ -129,11 +161,14 @@ export const BoardCanvas: React.FC = () => {
         setRubberbandMm(null);
         setRegistrationState({ step: 1, topPts: [], botPts: [] });
         setActiveTool("select");
+      } else if (e.key === " " && activeTool === "blink") {
+        e.preventDefault();
+        setIsStrobePaused((p) => !p);
       }
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setActiveTool]);
+  }, [setActiveTool, activeTool]);
 
   // Cache loaded images and their source URLs
   const loadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -286,10 +321,11 @@ export const BoardCanvas: React.FC = () => {
 
       // 2. Draw Board Background Images (Scans)
       if (board) {
+        const isBlinkTool = activeTool === "blink";
         const curtainSplit = activeTool === "curtain" ? curtainPosition : null;
 
         // Draw Bottom Scan
-        if (showBottomLayer) {
+        if (showBottomLayer && (!isBlinkTool || strobePhase === "bottom")) {
           ctx.save();
           if (curtainSplit !== null) {
             ctx.beginPath();
@@ -319,7 +355,7 @@ export const BoardCanvas: React.FC = () => {
         }
 
         // Draw Top Scan
-        if (showTopLayer) {
+        if (showTopLayer && (!isBlinkTool || strobePhase === "top")) {
           ctx.save();
           if (curtainSplit !== null) {
             ctx.beginPath();
@@ -389,6 +425,7 @@ export const BoardCanvas: React.FC = () => {
     showTopLayer,
     showBottomLayer,
     activeTool,
+    strobePhase,
     curtainPosition,
     curtainVertical,
     measurePts,
@@ -448,15 +485,18 @@ export const BoardCanvas: React.FC = () => {
         const p2: [number, number] = [mouseMm.x, mouseMm.y];
         setMeasurePts([p1, p2]);
 
-        const dxMm = p2[0] - p1[0];
-        const dyMm = p2[1] - p1[1];
-        const distMm = Math.hypot(dxMm, dyMm);
+        const img = loadedImagesRef.current.get(activeLayer.id);
+        const naturalW = img?.naturalWidth || 1000;
+        const naturalH = img?.naturalHeight || 1000;
+
+        const bp1 = boardMmToLayerBitmapPx({ x: p1[0], y: p1[1] }, activeLayer, naturalW, naturalH);
+        const bp2 = boardMmToLayerBitmapPx({ x: p2[0], y: p2[1] }, activeLayer, naturalW, naturalH);
+        const measuredPx = Math.hypot(bp2.x - bp1.x, bp2.y - bp1.y);
         const pxPerMm = activeLayer.pxPerMm || 23.62;
-        const measuredPx = distMm * pxPerMm;
 
         setCalibrationModal({
           isOpen: true,
-          measuredPx,
+          measuredPx: Math.round(measuredPx * 10) / 10,
           currentPxPerMm: pxPerMm,
           layer: activeLayer,
         });
@@ -479,19 +519,32 @@ export const BoardCanvas: React.FC = () => {
         const p2: [number, number] = [mouseMm.x, mouseMm.y];
         setMeasurePts([p1, p2]);
 
-        // Call Rust engine to calculate angle
-        engineClient.calculateLevel(p1, p2)
-          .then((deltaAngle) => {
-            const currentRot = activeLayer.rotation || 0;
-            const newRotation = Math.round((currentRot - deltaAngle) * 100) / 100;
-            updateImageLayer({ ...activeLayer, rotation: newRotation });
-            notifySuccess(`Горизонт выровнен: доворот на ${(-deltaAngle).toFixed(1)}°`);
-            setMeasurePts([]);
-            setActiveTool("select");
-          })
-          .catch((err) => {
-            reportError(err, "Ошибка выравнивания горизонта");
-          });
+        const img = loadedImagesRef.current.get(activeLayer.id);
+        const naturalW = img?.naturalWidth || 1000;
+        const naturalH = img?.naturalHeight || 1000;
+
+        try {
+          const res = calculateHorizonLeveling(
+            { x: p1[0], y: p1[1] },
+            { x: p2[0], y: p2[1] },
+            activeLayer,
+            naturalW,
+            naturalH
+          );
+
+          const updatedLayer: BoardImageLayer = {
+            ...activeLayer,
+            rotation: res.newRotation,
+            offsetX: res.newOffsetX,
+            offsetY: res.newOffsetY,
+          };
+          updateImageLayer(updatedLayer);
+          notifySuccess(`Горизонт выровнен: доворот на ${res.deltaDeg > 0 ? "+" : ""}${res.deltaDeg.toFixed(1)}°`);
+          setMeasurePts([]);
+          setActiveTool("select");
+        } catch (err) {
+          reportError(err, "Ошибка выравнивания горизонта");
+        }
       }
       return;
     }
@@ -504,17 +557,19 @@ export const BoardCanvas: React.FC = () => {
           setRegistrationState((prev) => ({ ...prev, topPts: newTop }));
         } else {
           setRegistrationState({ step: 2, topPts: newTop.slice(0, 2), botPts: [] });
-          notifySuccess("Точки 1 и 2 на Top зафиксированы. Переключитесь на Bottom и укажите те же точки");
+          // Ensure Bottom scan is visible for step 2
+          setShowBottomLayer(true);
+          notifySuccess("Точки 1 и 2 на Top зафиксированы. Укажите те же 2 точки на стороне Bottom");
         }
       } else {
         const newBot = [...registrationState.botPts, [mouseMm.x, mouseMm.y] as [number, number]];
         if (newBot.length < 2) {
           setRegistrationState((prev) => ({ ...prev, botPts: newBot }));
         } else {
-          const top1 = registrationState.topPts[0];
-          const top2 = registrationState.topPts[1];
-          const bot1 = newBot[0];
-          const bot2 = newBot[1];
+          const top1 = { x: registrationState.topPts[0][0], y: registrationState.topPts[0][1] };
+          const top2 = { x: registrationState.topPts[1][0], y: registrationState.topPts[1][1] };
+          const bot1 = { x: newBot[0][0], y: newBot[0][1] };
+          const bot2 = { x: newBot[1][0], y: newBot[1][1] };
 
           const botLayer = board?.data?.bgBottom?.images[0];
           if (!botLayer) {
@@ -522,23 +577,28 @@ export const BoardCanvas: React.FC = () => {
             return;
           }
 
-          engineClient.calculateRegistration(top1, top2, bot1, bot2)
-            .then((res) => {
-              const updatedBot: BoardImageLayer = {
-                ...botLayer,
-                offsetX: Math.round(((botLayer.offsetX || 0) + res.offsetX) * 100) / 100,
-                offsetY: Math.round(((botLayer.offsetY || 0) + res.offsetY) * 100) / 100,
-                rotation: Math.round(((botLayer.rotation || 0) + res.rotationDeg) * 100) / 100,
-                scale: Math.round(((botLayer.scale || 1.0) * res.scaleFactor) * 1000) / 1000,
-              };
-              updateImageLayer(updatedBot);
-              notifySuccess("Слои Top и Bottom успешно совмещены");
-              setRegistrationState({ step: 1, topPts: [], botPts: [] });
-              setActiveTool("select");
-            })
-            .catch((err) => {
-              reportError(err, "Ошибка совмещения слоев");
-            });
+          const botImg = loadedImagesRef.current.get(botLayer.id);
+          const naturalW = botImg?.naturalWidth || 1000;
+          const naturalH = botImg?.naturalHeight || 1000;
+
+          try {
+            const res = calculateLayerRegistration(top1, top2, bot1, bot2, botLayer, naturalW, naturalH);
+            const updatedBot: BoardImageLayer = {
+              ...botLayer,
+              offsetX: res.newOffsetX,
+              offsetY: res.newOffsetY,
+              rotation: res.newRotation,
+              scale: res.newScale,
+            };
+            updateImageLayer(updatedBot);
+            setShowTopLayer(true);
+            setShowBottomLayer(true);
+            notifySuccess("Слои Top и Bottom успешно совмещены");
+            setRegistrationState({ step: 1, topPts: [], botPts: [] });
+            setActiveTool("select");
+          } catch (err: any) {
+            reportError(err, "Ошибка совмещения слоев");
+          }
         }
       }
       return;
@@ -674,34 +734,78 @@ export const BoardCanvas: React.FC = () => {
           text: `Угол: ${angle.toFixed(1)}°`,
         });
       } else {
-        // Resize handle dragging
-        const rad = (-(g.origRotation || 0) * Math.PI) / 180;
-        const localDx = (deltaScreenX * Math.cos(rad) - deltaScreenY * Math.sin(rad)) / zoomFactor;
-        const localDy = (deltaScreenX * Math.sin(rad) + deltaScreenY * Math.cos(rad)) / zoomFactor;
+        // Resize handle dragging with pinned opposite anchor
+        const rotRad = ((g.origRotation || 0) * Math.PI) / 180;
+        const localDx = (deltaScreenX * Math.cos(-rotRad) - deltaScreenY * Math.sin(-rotRad)) / zoomFactor;
+        const localDy = (deltaScreenX * Math.sin(-rotRad) + deltaScreenY * Math.cos(-rotRad)) / zoomFactor;
 
-        const baseW = (g.naturalW / (g.layer.pxPerMm || 23.62)) * MM_TO_PX * g.origScale;
-        const baseH = (g.naturalH / (g.layer.pxPerMm || 23.62)) * MM_TO_PX * g.origScale;
+        const pxPerMm = g.layer.pxPerMm || 23.62;
+        const origWMm = (g.naturalW / pxPerMm) * g.origScale;
+        const origHMm = (g.naturalH / pxPerMm) * g.origScale;
+        const baseW = origWMm * MM_TO_PX;
+        const baseH = origHMm * MM_TO_PX;
 
+        let anchorRelX = 0;
+        let anchorRelY = 0;
         let scaleMult = 1;
+
         if (g.handle === "se") {
-          scaleMult = Math.max(0.05, 1 + localDx / baseW);
+          scaleMult = Math.max(0.05, 1 + (localDx / baseW + localDy / baseH) / 2);
+          anchorRelX = -0.5;
+          anchorRelY = -0.5;
         } else if (g.handle === "nw") {
-          scaleMult = Math.max(0.05, 1 - localDx / baseW);
+          scaleMult = Math.max(0.05, 1 - (localDx / baseW + localDy / baseH) / 2);
+          anchorRelX = 0.5;
+          anchorRelY = 0.5;
         } else if (g.handle === "ne") {
-          scaleMult = Math.max(0.05, 1 + localDx / baseW);
+          scaleMult = Math.max(0.05, 1 + (localDx / baseW - localDy / baseH) / 2);
+          anchorRelX = -0.5;
+          anchorRelY = 0.5;
         } else if (g.handle === "sw") {
+          scaleMult = Math.max(0.05, 1 + (-localDx / baseW + localDy / baseH) / 2);
+          anchorRelX = 0.5;
+          anchorRelY = -0.5;
+        } else if (g.handle === "e") {
+          scaleMult = Math.max(0.05, 1 + localDx / baseW);
+          anchorRelX = -0.5;
+          anchorRelY = 0;
+        } else if (g.handle === "w") {
           scaleMult = Math.max(0.05, 1 - localDx / baseW);
-        } else if (g.handle === "e" || g.handle === "w") {
-          scaleMult = Math.max(0.05, 1 + (g.handle === "e" ? localDx : -localDx) / baseW);
-        } else if (g.handle === "n" || g.handle === "s") {
-          scaleMult = Math.max(0.05, 1 + (g.handle === "s" ? localDy : -localDy) / baseH);
+          anchorRelX = 0.5;
+          anchorRelY = 0;
+        } else if (g.handle === "s") {
+          scaleMult = Math.max(0.05, 1 + localDy / baseH);
+          anchorRelX = 0;
+          anchorRelY = -0.5;
+        } else if (g.handle === "n") {
+          scaleMult = Math.max(0.05, 1 - localDy / baseH);
+          anchorRelX = 0;
+          anchorRelY = 0.5;
         }
 
-        const newScale = Math.round(g.origScale * scaleMult * 1000) / 1000;
-        g.layer.scale = newScale;
+        const newScale = Math.max(0.01, Math.round(g.origScale * scaleMult * 1000) / 1000);
 
-        const curMmW = ((g.naturalW / (g.layer.pxPerMm || 23.62)) * newScale).toFixed(1);
-        const curMmH = ((g.naturalH / (g.layer.pxPerMm || 23.62)) * newScale).toFixed(1);
+        // Keep opposite anchor point pinned in board space
+        const origCx = g.origOffsetX + origWMm / 2;
+        const origCy = g.origOffsetY + origHMm / 2;
+        const cosR = Math.cos(rotRad);
+        const sinR = Math.sin(rotRad);
+
+        const anchorBoardX = origCx + (anchorRelX * origWMm) * cosR - (anchorRelY * origHMm) * sinR;
+        const anchorBoardY = origCy + (anchorRelX * origWMm) * sinR + (anchorRelY * origHMm) * cosR;
+
+        const newWMm = (g.naturalW / pxPerMm) * newScale;
+        const newHMm = (g.naturalH / pxPerMm) * newScale;
+
+        const newCx = anchorBoardX - ((anchorRelX * newWMm) * cosR - (anchorRelY * newHMm) * sinR);
+        const newCy = anchorBoardY - ((anchorRelX * newWMm) * sinR + (anchorRelY * newHMm) * cosR);
+
+        g.layer.scale = newScale;
+        g.layer.offsetX = Math.round((newCx - newWMm / 2) * 100) / 100;
+        g.layer.offsetY = Math.round((newCy - newHMm / 2) * 100) / 100;
+
+        const curMmW = newWMm.toFixed(1);
+        const curMmH = newHMm.toFixed(1);
 
         setLiveHud({
           x: e.clientX + 15,
@@ -881,6 +985,42 @@ export const BoardCanvas: React.FC = () => {
         </div>
       )}
 
+      {/* Strobe Tool HUD */}
+      {activeTool === "blink" && (
+        <div className="cad-strobe-hud">
+          <Zap size={15} color="#f59e0b" />
+          <span>Стробоскоп:</span>
+          <span
+            className={`cad-strobe-phase-badge ${
+              strobePhase === "top" ? "cad-strobe-phase-top" : "cad-strobe-phase-bot"
+            }`}
+          >
+            {strobePhase === "top" ? "TOP" : "BOTTOM"}
+          </span>
+          <button
+            type="button"
+            className="cad-tree-icon-btn"
+            style={{ marginLeft: "4px" }}
+            onClick={() => setIsStrobePaused((p) => !p)}
+            title={isStrobePaused ? "Возобновить (Пробел)" : "Пауза (Пробел)"}
+          >
+            {isStrobePaused ? <Play size={13} color="#22c55e" /> : <Pause size={13} color="#f59e0b" />}
+          </button>
+          <span style={{ fontSize: "11px", color: "var(--cad-text-dim)", marginLeft: "4px" }}>
+            Пробел: пауза | Esc: выход
+          </span>
+          <button
+            type="button"
+            className="cad-tree-icon-btn"
+            style={{ marginLeft: "6px" }}
+            onClick={() => setActiveTool("select")}
+            title="Выйти из стробоскопа"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       {/* Registration Tool Banner */}
       {activeTool === "register" && (
         <div className="cad-registration-banner">
@@ -892,9 +1032,19 @@ export const BoardCanvas: React.FC = () => {
                 : "Шаг 2: Укажите те же 2 отверстия на стороне Bottom"}
             </span>
             <span style={{ color: "var(--cad-text-dim)" }}>
-              (Выбрано точек: {registrationState.step === 1 ? registrationState.topPts.length : registrationState.botPts.length} / 2)
+              (Точек: {registrationState.step === 1 ? registrationState.topPts.length : registrationState.botPts.length} / 2)
             </span>
           </div>
+          {registrationState.step === 2 && (
+            <button
+              type="button"
+              className="cad-modern-btn cad-btn-ghost cad-btn-xs"
+              style={{ fontSize: "11px", padding: "2px 8px" }}
+              onClick={() => setShowTopLayer(!showTopLayer)}
+            >
+              {showTopLayer ? "Скрыть Top" : "Показать Top"}
+            </button>
+          )}
           <button
             type="button"
             className="cad-tree-icon-btn"
@@ -928,25 +1078,19 @@ export const BoardCanvas: React.FC = () => {
             setActiveTool("select");
           }}
           onApply={(realMm) => {
-            if (measurePts.length === 2) {
-              engineClient.calculateScale(measurePts[0], measurePts[1], realMm)
-                .then((newPxPerMm) => {
-                  const updated: BoardImageLayer = {
-                    ...calibrationModal.layer,
-                    pxPerMm: Math.round(newPxPerMm * 100) / 100,
-                    dpi: Math.round(newPxPerMm * 25.4),
-                  };
-                  updateImageLayer(updated);
-                  notifySuccess(`Калибровка выполнена: ${updated.pxPerMm} px/мм (${updated.dpi} DPI)`);
-                })
-                .catch((err) => {
-                  reportError(err, "Ошибка расчета калибровки");
-                })
-                .finally(() => {
-                  setCalibrationModal(null);
-                  setMeasurePts([]);
-                  setActiveTool("select");
-                });
+            if (calibrationModal && calibrationModal.measuredPx > 0 && realMm > 0) {
+              const newPxPerMm = Math.round((calibrationModal.measuredPx / realMm) * 100) / 100;
+              const dpi = Math.round(newPxPerMm * 25.4);
+              const updated: BoardImageLayer = {
+                ...calibrationModal.layer,
+                pxPerMm: newPxPerMm,
+                dpi: dpi,
+              };
+              updateImageLayer(updated);
+              notifySuccess(`Калибровка выполнена: ${updated.pxPerMm} px/мм (${updated.dpi} DPI)`);
+              setCalibrationModal(null);
+              setMeasurePts([]);
+              setActiveTool("select");
             }
           }}
         />

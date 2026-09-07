@@ -1,4 +1,4 @@
-import React, { useRef } from "react";
+import React, { useRef, useEffect } from "react";
 import { Repeat } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
 
@@ -9,9 +9,20 @@ export const CurtainSlider: React.FC = () => {
     setCurtainPosition,
     curtainVertical,
     toggleCurtainOrientation,
+    setShowTopLayer,
+    setShowBottomLayer,
   } = useUiStore();
 
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // When curtain tool is active, ensure both Top and Bottom scans are visible for comparison
+  useEffect(() => {
+    if (activeTool === "curtain") {
+      const { showTopLayer, showBottomLayer } = useUiStore.getState();
+      if (!showTopLayer) setShowTopLayer(true);
+      if (!showBottomLayer) setShowBottomLayer(true);
+    }
+  }, [activeTool, setShowTopLayer, setShowBottomLayer]);
 
   if (activeTool !== "curtain") return null;
 
