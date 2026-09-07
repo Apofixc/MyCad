@@ -7,11 +7,13 @@ import { StatusBar } from "./components/StatusBar";
 import { ProjectTree } from "./components/Sidebar/ProjectTree";
 import { InspectorSidebar } from "./components/Sidebar/InspectorSidebar";
 import { BoardCanvas } from "./components/Viewport/BoardCanvas";
+import { SchematicCanvas } from "./components/Viewport/SchematicCanvas";
+import { EmptyWorkspace } from "./components/Viewport/EmptyWorkspace";
 import { NewProjectModal } from "./components/Modals/NewProjectModal";
 import { ImagePreprocessModal } from "./components/Modals/ImagePreprocessModal";
 
 export const App: React.FC = () => {
-  const { manifest, saveProject } = useProjectStore();
+  const { manifest, saveProject, activeFileType, board, schematic } = useProjectStore();
   const {
     leftSidebarCollapsed,
     rightSidebarCollapsed,
@@ -94,8 +96,14 @@ export const App: React.FC = () => {
           <TopBar />
           <div className="cad-main-workspace">
             {!leftSidebarCollapsed && <ProjectTree />}
-            <BoardCanvas />
-            {!rightSidebarCollapsed && <InspectorSidebar />}
+            {activeFileType === "board" && board ? (
+              <BoardCanvas />
+            ) : activeFileType === "schematic" && schematic ? (
+              <SchematicCanvas />
+            ) : (
+              <EmptyWorkspace />
+            )}
+            {!rightSidebarCollapsed && activeFileType === "board" && <InspectorSidebar />}
           </div>
           <StatusBar />
         </>

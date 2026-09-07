@@ -5,10 +5,17 @@ import { useProjectStore } from "../stores/projectStore";
 
 export const StatusBar: React.FC = () => {
   const { cursorMm, viewportZoom, gridStepMm } = useUiStore();
-  const { board, isDirty } = useProjectStore();
+  const { manifest, activeFileType, board, schematic, isDirty } = useProjectStore();
 
   const topCount = board?.data.bgTop.images.length || 0;
   const botCount = board?.data.bgBottom.images.length || 0;
+
+  const activeDocName =
+    activeFileType === "board"
+      ? board?.name
+      : activeFileType === "schematic"
+      ? schematic?.name
+      : "Нет открытого документа";
 
   return (
     <footer className="cad-status-bar">
@@ -28,12 +35,20 @@ export const StatusBar: React.FC = () => {
         </div>
 
         <span>•</span>
-        <span>Проект: <strong>{board?.name || "board"}</strong></span>
+        <span>Проект: <strong>{manifest?.name || "Без названия"}</strong></span>
         <span>•</span>
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <Layers size={12} color="#60a5fa" />
-          <span>Сканов: <strong style={{ color: "var(--cad-top-layer)" }}>Top ({topCount})</strong> / <strong style={{ color: "var(--cad-bot-layer)" }}>Bottom ({botCount})</strong></span>
-        </div>
+        <span>Документ: <strong>{activeDocName}</strong></span>
+        {activeFileType === "board" && (
+          <>
+            <span>•</span>
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <Layers size={12} color="#60a5fa" />
+              <span>
+                Сканов: <strong style={{ color: "var(--cad-top-layer)" }}>Top ({topCount})</strong> / <strong style={{ color: "var(--cad-bot-layer)" }}>Bottom ({botCount})</strong>
+              </span>
+            </div>
+          </>
+        )}
       </div>
 
       <div className="cad-status-badge">

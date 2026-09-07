@@ -4,6 +4,7 @@ import {
   ProjectManifest,
   RecentProject,
   RegistrationResult,
+  SchematicDocument,
 } from "../types/cad";
 
 // Safe wrapper around window.__TAURI__
@@ -42,6 +43,26 @@ export const engineClient = {
 
   async getActiveBoard(): Promise<BoardDocument | null> {
     return invokeTauri<BoardDocument | null>("board_get_active");
+  },
+
+  async getActiveSchematic(): Promise<SchematicDocument | null> {
+    return invokeTauri<SchematicDocument | null>("schematic_get_active");
+  },
+
+  async addProjectFile(fileType: "board" | "schematic", name?: string): Promise<ProjectManifest> {
+    return invokeTauri<ProjectManifest>("project_add_file", { fileType, name });
+  },
+
+  async removeProjectFile(fileId: string): Promise<ProjectManifest> {
+    return invokeTauri<ProjectManifest>("project_remove_file", { fileId });
+  },
+
+  async renameProjectFile(fileId: string, newName: string): Promise<ProjectManifest> {
+    return invokeTauri<ProjectManifest>("project_rename_file", { fileId, newName });
+  },
+
+  async setActiveFile(fileId: string): Promise<void> {
+    return invokeTauri<void>("project_set_active_file", { fileId });
   },
 
   async updateImageLayer(layer: BoardImageLayer): Promise<BoardImageLayer> {
@@ -94,17 +115,35 @@ let mockRecents: RecentProject[] = [
   },
 ];
 
-function initCleanBoard(name: string): BoardDocument {
+let mockSchematic: SchematicDocument | null = null;
+let mockActiveFileId: string | null = null;
+
+function initCleanBoard(id: string, name: string): BoardDocument {
   return {
-    id: "board_1",
-    name: `${name}.board`,
+    id,
+    name,
     type: "board",
     orderIndex: 0,
     data: {
-      id: "board_1",
-      name: `${name}.board`,
+      id,
+      name,
       bgTop: { images: [] },
       bgBottom: { images: [] },
+    },
+  };
+}
+
+function initCleanSchematic(id: string, name: string): SchematicDocument {
+  return {
+    id,
+    name,
+    type: "schematic",
+    orderIndex: 0,
+    data: {
+      id,
+      name,
+      components: [],
+      nets: [],
     },
   };
 }
@@ -124,22 +163,17 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         formatVersion: 1,
-        files: [
-          {
-            id: `board_${Date.now()}`,
-            name: `${args.name}.board`,
-            fileType: "board",
-            path: `files/${args.name}.board.json`,
-            orderIndex: 0,
-          },
-        ],
+        files: [], // Чистый пустой проект
       };
-      mockBoard = initCleanBoard(args.name);
+      mockBoard = null;
+      mockSchematic = null;
+      mockActiveFileId = null;
       return mockManifest as unknown as T;
     }
 
     case "project_open": {
       const fileName = args.path.split("/").pop()?.replace(".mycad", "") || "Imported_Board";
+      const boardId = "board_opened";
       mockManifest = {
         id: `proj_opened`,
         name: fileName,
@@ -148,17 +182,73 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
         formatVersion: 1,
         files: [
           {
-            id: "board_opened",
+            id: boardId,
             name: `${fileName}.board`,
             fileType: "board",
-            path: `files/${fileName}.board.json`,
+            path: `files/${boardId}.board.json`,
             orderIndex: 0,
           },
         ],
       };
-      mockBoard = initCleanBoard(fileName);
+      mockActiveFileId = boardId;
+      mockBoard = initCleanBoard(boardId, `${fileName}.board`);
+      mockSchematic = null;
       return mockManifest as unknown as T;
     }
+
+    case "project_add_file": {
+      if (!mockManifest) throw new Error("Нет открытого проекта");
+      const { fileType, name } = args;
+      const id = `${fileType}_${Date.now()}`;
+      const defaultName = fileType === "board" ? "Схема платы" : "Принципиальная схема";
+      const finalName = name?.trim() || defaultName;
+
+      mockManifest.files.push({
+        id,
+        name: finalName,
+        fileType,
+        path: `files/${id}.${fileType}.json`,
+        orderIndex: mockManifest.files.length,
+      });
+      mockActiveFileId = id;
+
+      if (fileType === "board") {
+        mockBoard = initCleanBoard(id, finalName);
+      } else {
+        mockSchematic = initCleanSchematic(id, finalName);
+      }
+
+      return mockManifest as unknown as T;
+    }
+
+    case "project_remove_file": {
+      if (!mockManifest) throw new Error("Нет открытого проекта");
+      const { fileId } = args;
+      mockManifest.files = mockManifest.files.filter((f) => f.id !== fileId);
+      if (mockBoard?.id === fileId) mockBoard = null;
+      if (mockSchematic?.id === fileId) mockSchematic = null;
+      if (mockActiveFileId === fileId) {
+        mockActiveFileId = mockManifest.files[0]?.id || null;
+      }
+      return mockManifest as unknown as T;
+    }
+
+    case "project_rename_file": {
+      if (!mockManifest) throw new Error("Нет открытого проекта");
+      const { fileId, newName } = args;
+      const f = mockManifest.files.find((x) => x.id === fileId);
+      if (mockBoard && mockBoard.id === fileId) mockBoard.name = newName;
+      if (mockSchematic && mockSchematic.id === fileId) mockSchematic.name = newName;
+      return mockManifest as unknown as T;
+    }
+
+    case "project_set_active_file": {
+      mockActiveFileId = args.fileId;
+      return undefined as unknown as T;
+    }
+
+    case "schematic_get_active":
+      return mockSchematic as unknown as T;
 
     case "project_save":
       return undefined as unknown as T;

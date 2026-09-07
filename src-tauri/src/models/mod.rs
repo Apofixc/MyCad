@@ -34,6 +34,27 @@ pub struct BoardDocument {
     pub data: BoardData,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SchematicDocument {
+    pub id: String,
+    pub name: String,
+    pub r#type: String, // "schematic"
+    pub order_index: i32,
+    pub data: SchematicData,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct SchematicData {
+    pub id: String,
+    pub name: String,
+    #[serde(default)]
+    pub components: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub nets: Vec<serde_json::Value>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct BoardData {

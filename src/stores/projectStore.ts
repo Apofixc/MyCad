@@ -3,12 +3,16 @@ import {
   BoardDocument,
   BoardImageLayer,
   ProjectManifest,
+  SchematicDocument,
 } from "../types/cad";
 import { engineClient } from "../api/engineClient";
 
 interface ProjectStore {
   manifest: ProjectManifest | null;
+  activeFileId: string | null;
+  activeFileType: "board" | "schematic" | null;
   board: BoardDocument | null;
+  schematic: SchematicDocument | null;
   selectedImageId: string | null;
   isDirty: boolean;
   isLoading: boolean;
@@ -19,7 +23,13 @@ interface ProjectStore {
   openProject: (path: string) => Promise<void>;
   saveProject: () => Promise<void>;
   closeProject: () => void;
-  loadActiveBoard: () => Promise<void>;
+  loadActiveDocument: () => Promise<void>;
+
+  addBoard: (name?: string) => Promise<void>;
+  addSchematic: (name?: string) => Promise<void>;
+  removeFile: (fileId: string) => Promise<void>;
+  renameFile: (fileId: string, newName: string) => Promise<void>;
+  setActiveFile: (fileId: string) => Promise<void>;
 
   selectImage: (id: string | null) => void;
   updateImageLayer: (layer: BoardImageLayer) => Promise<void>;
@@ -28,7 +38,10 @@ interface ProjectStore {
 
 export const useProjectStore = create<ProjectStore>((set, get) => ({
   manifest: null,
+  activeFileId: null,
+  activeFileType: null,
   board: null,
+  schematic: null,
   selectedImageId: null,
   isDirty: false,
   isLoading: false,
@@ -38,10 +51,13 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const manifest = await engineClient.createProject(path, name, author, desc);
-      const board = await engineClient.getActiveBoard();
+      // Новый проект создается пустым
       set({
         manifest,
-        board,
+        activeFileId: null,
+        activeFileType: null,
+        board: null,
+        schematic: null,
         selectedImageId: null,
         isDirty: false,
         isLoading: false,
@@ -56,14 +72,30 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({ isLoading: true, error: null });
     try {
       const manifest = await engineClient.openProject(path);
-      const board = await engineClient.getActiveBoard();
-      set({
-        manifest,
-        board,
-        selectedImageId: null,
-        isDirty: false,
-        isLoading: false,
-      });
+      const firstFile = manifest.files[0];
+
+      if (firstFile) {
+        set({
+          manifest,
+          activeFileId: firstFile.id,
+          activeFileType: firstFile.fileType,
+          selectedImageId: null,
+          isDirty: false,
+          isLoading: false,
+        });
+        await get().loadActiveDocument();
+      } else {
+        set({
+          manifest,
+          activeFileId: null,
+          activeFileType: null,
+          board: null,
+          schematic: null,
+          selectedImageId: null,
+          isDirty: false,
+          isLoading: false,
+        });
+      }
     } catch (e: any) {
       set({ error: e?.toString() || "Ошибка открытия проекта", isLoading: false });
       throw e;
@@ -84,17 +116,141 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   closeProject: () => {
     set({
       manifest: null,
+      activeFileId: null,
+      activeFileType: null,
       board: null,
+      schematic: null,
       selectedImageId: null,
       isDirty: false,
       error: null,
     });
   },
 
-  loadActiveBoard: async () => {
+  loadActiveDocument: async () => {
+    const { manifest, activeFileId } = get();
+    if (!manifest || !activeFileId) {
+      set({ board: null, schematic: null, activeFileType: null });
+      return;
+    }
+
+    const fileRef = manifest.files.find((f) => f.id === activeFileId);
+    if (!fileRef) {
+      set({ board: null, schematic: null, activeFileType: null });
+      return;
+    }
+
+    if (fileRef.fileType === "board") {
+      try {
+        const board = await engineClient.getActiveBoard();
+        set({ board, schematic: null, activeFileType: "board" });
+      } catch (e) {
+        console.error("Ошибка загрузки платы", e);
+      }
+    } else if (fileRef.fileType === "schematic") {
+      try {
+        const schematic = await engineClient.getActiveSchematic();
+        set({ schematic, board: null, activeFileType: "schematic", selectedImageId: null });
+      } catch (e) {
+        console.error("Ошибка загрузки схемы", e);
+      }
+    }
+  },
+
+  addBoard: async (name?: string) => {
+    set({ isLoading: true });
     try {
-      const board = await engineClient.getActiveBoard();
-      set({ board });
+      const manifest = await engineClient.addProjectFile("board", name);
+      // Последний добавленный файл
+      const added = manifest.files[manifest.files.length - 1];
+      set({
+        manifest,
+        activeFileId: added ? added.id : null,
+        activeFileType: "board",
+        isDirty: true,
+        isLoading: false,
+      });
+      await get().loadActiveDocument();
+    } catch (e: any) {
+      set({ error: e?.toString() || "Ошибка добавления схемы платы", isLoading: false });
+      throw e;
+    }
+  },
+
+  addSchematic: async (name?: string) => {
+    set({ isLoading: true });
+    try {
+      const manifest = await engineClient.addProjectFile("schematic", name);
+      const added = manifest.files[manifest.files.length - 1];
+      set({
+        manifest,
+        activeFileId: added ? added.id : null,
+        activeFileType: "schematic",
+        isDirty: true,
+        isLoading: false,
+      });
+      await get().loadActiveDocument();
+    } catch (e: any) {
+      set({ error: e?.toString() || "Ошибка добавления принципиальной схемы", isLoading: false });
+      throw e;
+    }
+  },
+
+  removeFile: async (fileId: string) => {
+    set({ isLoading: true });
+    try {
+      const manifest = await engineClient.removeProjectFile(fileId);
+      const { activeFileId } = get();
+      let nextActiveId = activeFileId;
+      if (activeFileId === fileId) {
+        nextActiveId = manifest.files[0]?.id || null;
+      }
+
+      set({
+        manifest,
+        activeFileId: nextActiveId,
+        isDirty: true,
+        isLoading: false,
+      });
+
+      if (nextActiveId) {
+        await engineClient.setActiveFile(nextActiveId);
+        await get().loadActiveDocument();
+      } else {
+        set({ board: null, schematic: null, activeFileType: null });
+      }
+    } catch (e: any) {
+      set({ error: e?.toString() || "Ошибка удаления файла", isLoading: false });
+      throw e;
+    }
+  },
+
+  renameFile: async (fileId: string, newName: string) => {
+    try {
+      const manifest = await engineClient.renameProjectFile(fileId, newName);
+      set({ manifest, isDirty: true });
+      const { board, schematic } = get();
+      if (board && board.id === fileId) {
+        set({ board: { ...board, name: newName, data: { ...board.data, name: newName } } });
+      }
+      if (schematic && schematic.id === fileId) {
+        set({ schematic: { ...schematic, name: newName, data: { ...schematic.data, name: newName } } });
+      }
+    } catch (e: any) {
+      set({ error: e?.toString() || "Ошибка переименования", isLoading: false });
+      throw e;
+    }
+  },
+
+  setActiveFile: async (fileId: string) => {
+    const { manifest } = get();
+    if (!manifest) return;
+    const target = manifest.files.find((f) => f.id === fileId);
+    if (!target) return;
+
+    try {
+      await engineClient.setActiveFile(fileId);
+      set({ activeFileId: fileId, activeFileType: target.fileType });
+      await get().loadActiveDocument();
     } catch (e: any) {
       console.error(e);
     }

@@ -6,7 +6,7 @@ use crate::cad::math::{self, RegistrationResult};
 use crate::db::global::GlobalDb;
 use crate::image::pipeline;
 use crate::models::{
-    BoardDocument, BoardImageLayer, ProjectManifest, RecentProject,
+    BoardDocument, BoardImageLayer, ProjectManifest, RecentProject, SchematicDocument,
 };
 use crate::project::archive::{self, ProjectSession};
 
@@ -85,10 +85,61 @@ pub fn project_remove_recent(state: State<AppState>, path: String) -> Result<(),
 }
 
 #[tauri::command]
+pub fn project_add_file(
+    state: State<AppState>,
+    file_type: String,
+    name: Option<String>,
+) -> Result<ProjectManifest, String> {
+    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = guard.as_mut().ok_or("Нет открытого проекта")?;
+
+    match file_type.as_str() {
+        "board" => {
+            session.add_board(name.as_deref());
+        }
+        "schematic" => {
+            session.add_schematic(name.as_deref());
+        }
+        _ => return Err(format!("Неизвестный тип файла: {}", file_type)),
+    }
+
+    Ok(session.manifest.clone())
+}
+
+#[tauri::command]
+pub fn project_remove_file(state: State<AppState>, file_id: String) -> Result<ProjectManifest, String> {
+    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = guard.as_mut().ok_or("Нет открытого проекта")?;
+    session.remove_file(&file_id)?;
+    Ok(session.manifest.clone())
+}
+
+#[tauri::command]
+pub fn project_rename_file(state: State<AppState>, file_id: String, new_name: String) -> Result<ProjectManifest, String> {
+    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = guard.as_mut().ok_or("Нет открытого проекта")?;
+    session.rename_file(&file_id, &new_name)?;
+    Ok(session.manifest.clone())
+}
+
+#[tauri::command]
+pub fn project_set_active_file(state: State<AppState>, file_id: String) -> Result<(), String> {
+    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = guard.as_mut().ok_or("Нет открытого проекта")?;
+    session.set_active_file(&file_id)
+}
+
+#[tauri::command]
 pub fn board_get_active(state: State<AppState>) -> Result<Option<BoardDocument>, String> {
     let guard = state.session.lock().map_err(|e| e.to_string())?;
     if let Some(session) = guard.as_ref() {
-        if let Some(board) = session.boards.first() {
+        let board_opt = if let Some(ref aid) = session.active_file_id {
+            session.boards.iter().find(|b| b.id == *aid)
+        } else {
+            None
+        }.or_else(|| session.boards.first());
+
+        if let Some(board) = board_opt {
             let mut b = board.clone();
             // Resolve cached image URLs if present
             for img in b.data.bg_top.images.iter_mut().chain(b.data.bg_bottom.images.iter_mut()) {
@@ -106,10 +157,37 @@ pub fn board_get_active(state: State<AppState>) -> Result<Option<BoardDocument>,
 }
 
 #[tauri::command]
+pub fn schematic_get_active(state: State<AppState>) -> Result<Option<SchematicDocument>, String> {
+    let guard = state.session.lock().map_err(|e| e.to_string())?;
+    if let Some(session) = guard.as_ref() {
+        let sch_opt = if let Some(ref aid) = session.active_file_id {
+            session.schematics.iter().find(|s| s.id == *aid)
+        } else {
+            None
+        }.or_else(|| session.schematics.first());
+
+        if let Some(sch) = sch_opt {
+            return Ok(Some(sch.clone()));
+        }
+    }
+    Ok(None)
+}
+
+#[tauri::command]
 pub fn board_update_image_layer(state: State<AppState>, layer: BoardImageLayer) -> Result<BoardImageLayer, String> {
     let mut guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_mut().ok_or("Нет активного проекта")?;
-    let board = session.boards.first_mut().ok_or("Нет активной платы")?;
+
+    let active_id = session.active_file_id.clone();
+    let board = if let Some(ref aid) = active_id {
+        if let Some(pos) = session.boards.iter().position(|b| b.id == *aid) {
+            session.boards.get_mut(pos)
+        } else {
+            session.boards.first_mut()
+        }
+    } else {
+        session.boards.first_mut()
+    }.ok_or("В проекте нет схемы платы для добавления или редактирования слоя")?;
 
     let group = if layer.side == "top" {
         &mut board.data.bg_top.images

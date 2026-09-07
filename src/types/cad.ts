@@ -23,7 +23,7 @@ export interface ProjectManifest {
 export interface ProjectFileRef {
   id: string;
   name: string;
-  fileType: "board";
+  fileType: "board" | "schematic";
   path: string;
   orderIndex: number;
 }
@@ -34,6 +34,21 @@ export interface BoardDocument {
   type: "board";
   orderIndex: number;
   data: BoardData;
+}
+
+export interface SchematicDocument {
+  id: string;
+  name: string;
+  type: "schematic";
+  orderIndex: number;
+  data: SchematicData;
+}
+
+export interface SchematicData {
+  id: string;
+  name: string;
+  components: any[];
+  nets: any[];
 }
 
 export interface BoardData {
