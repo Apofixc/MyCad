@@ -2,15 +2,13 @@ import React from "react";
 import {
   PanelLeft,
   Save,
-  SlidersHorizontal,
   LogOut,
-  Image as ImageIcon,
 } from "lucide-react";
 import { useUiStore } from "../stores/uiStore";
 import { useProjectStore } from "../stores/projectStore";
 
 export const TopBar: React.FC = () => {
-  const { toggleLeftSidebar, openModal } = useUiStore();
+  const { toggleLeftSidebar } = useUiStore();
   const { manifest, isDirty, saveProject, closeProject } = useProjectStore();
 
   const handleSave = async () => {
@@ -59,14 +57,6 @@ export const TopBar: React.FC = () => {
           style={{ color: isDirty ? "#60a5fa" : undefined }}
         >
           <Save size={16} />
-        </button>
-
-        <button
-          className="cad-tool-btn"
-          onClick={() => openModal("preprocess")}
-          title="Импорт фото / Коррекция перспективы (Warp Perspective)"
-        >
-          <SlidersHorizontal size={16} />
         </button>
 
         <div className="cad-tool-sep" />

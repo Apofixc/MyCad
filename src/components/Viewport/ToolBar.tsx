@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   MousePointer,
   Move,
@@ -26,6 +26,13 @@ export const ToolBar: React.FC = () => {
   } = useUiStore();
 
   const [showImageMenu, setShowImageMenu] = useState(false);
+
+  useEffect(() => {
+    if (!showImageMenu) return;
+    const handleGlobalClick = () => setShowImageMenu(false);
+    window.addEventListener("click", handleGlobalClick);
+    return () => window.removeEventListener("click", handleGlobalClick);
+  }, [showImageMenu]);
 
   const handleAddImage = async (side: "top" | "bottom" = "top") => {
     if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
@@ -84,34 +91,8 @@ export const ToolBar: React.FC = () => {
 
   return (
     <div className="cad-floating-toolbar">
-      {tools.map((t) => (
-        <button
-          key={t.id}
-          className={`cad-tool-btn ${activeTool === t.id ? "active" : ""}`}
-          onClick={() => {
-            if (t.id === "magnifier") {
-              toggleLoupe();
-            }
-            setActiveTool(t.id);
-          }}
-          title={`${t.label} (${t.shortcut})`}
-        >
-          {t.icon}
-        </button>
-      ))}
-
-      <div className="cad-tool-sep" />
-
-      <button
-        className={`cad-tool-btn ${showGrid ? "active" : ""}`}
-        onClick={toggleGrid}
-        title="Координатная сетка платы (G)"
-      >
-        <Grid size={16} />
-      </button>
-
-      {/* Add Image Dropdown */}
-      <div style={{ position: "relative" }}>
+      {/* Add Image Dropdown - перед выбором и инспекцией */}
+      <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
         <button
           className="cad-tool-btn"
           onClick={() => setShowImageMenu((v) => !v)}
@@ -186,6 +167,34 @@ export const ToolBar: React.FC = () => {
           </div>
         )}
       </div>
+
+      <div className="cad-tool-sep" />
+
+      {tools.map((t) => (
+        <button
+          key={t.id}
+          className={`cad-tool-btn ${activeTool === t.id ? "active" : ""}`}
+          onClick={() => {
+            if (t.id === "magnifier") {
+              toggleLoupe();
+            }
+            setActiveTool(t.id);
+          }}
+          title={`${t.label} (${t.shortcut})`}
+        >
+          {t.icon}
+        </button>
+      ))}
+
+      <div className="cad-tool-sep" />
+
+      <button
+        className={`cad-tool-btn ${showGrid ? "active" : ""}`}
+        onClick={toggleGrid}
+        title="Координатная сетка платы (G)"
+      >
+        <Grid size={16} />
+      </button>
     </div>
   );
 };
