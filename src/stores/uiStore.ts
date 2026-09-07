@@ -12,6 +12,11 @@ interface UiStore {
   // Layer visibility & overlay settings
   showTopLayer: boolean;
   showBottomLayer: boolean;
+  showSchematicBg: boolean;
+  showSchematicWorking: boolean;
+  showTopCopper: boolean;
+  showBottomCopper: boolean;
+  showVias: boolean;
 
   // Curtain tool state
   curtainPosition: number; // 0.0 .. 1.0 (relative to canvas width/height)
@@ -45,6 +50,11 @@ interface UiStore {
 
   setShowTopLayer: (val: boolean) => void;
   setShowBottomLayer: (val: boolean) => void;
+  setShowSchematicBg: (val: boolean) => void;
+  setShowSchematicWorking: (val: boolean) => void;
+  setShowTopCopper: (val: boolean) => void;
+  setShowBottomCopper: (val: boolean) => void;
+  setShowVias: (val: boolean) => void;
 
   setCurtainPosition: (pos: number) => void;
   toggleCurtainOrientation: () => void;
@@ -70,6 +80,11 @@ export const useUiStore = create<UiStore>((set) => ({
 
   showTopLayer: true,
   showBottomLayer: true,
+  showSchematicBg: true,
+  showSchematicWorking: true,
+  showTopCopper: true,
+  showBottomCopper: true,
+  showVias: true,
 
   curtainPosition: 0.5,
   curtainVertical: true,
@@ -98,6 +113,11 @@ export const useUiStore = create<UiStore>((set) => ({
 
   setShowTopLayer: (val) => set({ showTopLayer: val }),
   setShowBottomLayer: (val) => set({ showBottomLayer: val }),
+  setShowSchematicBg: (val) => set({ showSchematicBg: val }),
+  setShowSchematicWorking: (val) => set({ showSchematicWorking: val }),
+  setShowTopCopper: (val) => set({ showTopCopper: val }),
+  setShowBottomCopper: (val) => set({ showBottomCopper: val }),
+  setShowVias: (val) => set({ showVias: val }),
 
   setCurtainPosition: (pos) => set({ curtainPosition: Math.max(0.02, Math.min(0.98, pos)) }),
   toggleCurtainOrientation: () => set((state) => ({ curtainVertical: !state.curtainVertical })),

@@ -54,6 +54,7 @@ export interface SchematicDocument {
 export interface SchematicData {
   id: string;
   name: string;
+  bg?: ImageLayerGroup;
   components: any[];
   nets: any[];
 }
@@ -63,6 +64,9 @@ export interface BoardData {
   name: string;
   bgTop: ImageLayerGroup;
   bgBottom: ImageLayerGroup;
+  components?: any[];
+  traces?: any[];
+  vias?: any[];
 }
 
 export interface ImageLayerGroup {

@@ -68,8 +68,7 @@ impl ProjectSession {
             data: BoardData {
                 id: board_id.clone(),
                 name: final_name,
-                bg_top: Default::default(),
-                bg_bottom: Default::default(),
+                ..Default::default()
             },
         };
 
@@ -111,8 +110,7 @@ impl ProjectSession {
             data: SchematicData {
                 id: sch_id.clone(),
                 name: final_name,
-                components: vec![],
-                nets: vec![],
+                ..Default::default()
             },
         };
 

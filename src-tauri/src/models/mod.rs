@@ -59,6 +59,8 @@ pub struct SchematicData {
     pub id: String,
     pub name: String,
     #[serde(default)]
+    pub bg: ImageLayerGroup,
+    #[serde(default)]
     pub components: Vec<serde_json::Value>,
     #[serde(default)]
     pub nets: Vec<serde_json::Value>,
@@ -73,6 +75,12 @@ pub struct BoardData {
     pub bg_top: ImageLayerGroup,
     #[serde(default)]
     pub bg_bottom: ImageLayerGroup,
+    #[serde(default)]
+    pub components: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub traces: Vec<serde_json::Value>,
+    #[serde(default)]
+    pub vias: Vec<serde_json::Value>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
