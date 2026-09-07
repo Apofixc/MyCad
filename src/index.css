@@ -1202,3 +1202,224 @@ body,
   margin: 3px 0;
 }
 
+/* ==========================================================================
+   Modernized InspectorSidebar & Transform Gizmo Styles
+   ========================================================================== */
+
+.cad-editable-name-input {
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--cad-text-main);
+  font-weight: 600;
+  font-size: 12.5px;
+  padding: 2px 5px;
+  border-radius: 4px;
+  width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.cad-editable-name-input:hover {
+  border-color: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.cad-editable-name-input:focus {
+  outline: none;
+  background: var(--cad-bg-input);
+  border-color: var(--cad-accent);
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+}
+
+.cad-side-toggle-group {
+  display: flex;
+  background: var(--cad-bg-input);
+  border: 1px solid var(--cad-border);
+  border-radius: 6px;
+  padding: 2px;
+  gap: 2px;
+}
+
+.cad-side-btn {
+  flex: 1;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 500;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.cad-side-btn:hover {
+  color: var(--cad-text-main);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.cad-side-btn.active {
+  background: var(--cad-accent);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.cad-badge-dim {
+  font-size: 10.5px;
+  font-family: var(--cad-font-mono);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 1px 6px;
+  border-radius: 4px;
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.cad-prop-group-header {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--cad-text-muted);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.cad-labeled-input label {
+  display: block;
+  font-size: 10.5px;
+  color: var(--cad-text-dim);
+  margin-bottom: 3px;
+}
+
+.cad-aspect-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  border: 1px solid var(--cad-border);
+  background: var(--cad-bg-input);
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  margin-bottom: 2px;
+}
+
+.cad-aspect-btn:hover {
+  color: var(--cad-text-main);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.cad-aspect-btn.active {
+  background: rgba(59, 130, 246, 0.18);
+  border-color: #3b82f6;
+  color: #60a5fa;
+}
+
+.cad-fine-angle-bar {
+  display: flex;
+  align-items: center;
+  background: var(--cad-bg-input);
+  border: 1px solid var(--cad-border);
+  border-radius: 6px;
+  overflow: hidden;
+}
+
+.cad-step-btn {
+  padding: 5px 7px;
+  background: transparent;
+  border: none;
+  color: var(--cad-text-muted);
+  font-size: 11px;
+  font-family: var(--cad-font-mono);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  flex-shrink: 0;
+}
+
+.cad-step-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--cad-text-main);
+}
+
+.cad-angle-input {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+  background: transparent;
+  border: none;
+  border-left: 1px solid var(--cad-border);
+  border-right: 1px solid var(--cad-border);
+  color: var(--cad-text-main);
+  font-family: var(--cad-font-mono);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px;
+}
+
+.cad-angle-input:focus {
+  outline: none;
+  background: rgba(59, 130, 246, 0.1);
+}
+
+.cad-btn-grid-2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.cad-prop-select {
+  background: var(--cad-bg-input);
+  border: 1px solid var(--cad-border);
+  color: var(--cad-text-main);
+  border-radius: 4px;
+  padding: 4px 8px;
+  font-size: 11px;
+  outline: none;
+  cursor: pointer;
+}
+
+.cad-prop-select:focus {
+  border-color: var(--cad-accent);
+}
+
+/* Floating Banner for Registration & Calibration */
+.cad-registration-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(15, 23, 42, 0.92);
+  backdrop-filter: blur(12px);
+  border: 1px solid #0284c7;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6), 0 0 16px rgba(56, 189, 248, 0.25);
+  border-radius: 8px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 25;
+  animation: slideDown 0.2s ease-out;
+}
+
+.cad-live-transform-hud {
+  position: absolute;
+  background: rgba(15, 23, 42, 0.88);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(56, 189, 248, 0.4);
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-family: var(--cad-font-mono);
+  font-size: 10px;
+  color: #38bdf8;
+  pointer-events: none;
+  z-index: 20;
+  white-space: nowrap;
+}
+
+

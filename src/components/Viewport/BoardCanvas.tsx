@@ -4,7 +4,23 @@ import { useUiStore } from "../../stores/uiStore";
 import { ToolBar } from "./ToolBar";
 import { CurtainSlider } from "./CurtainSlider";
 import { MagnifierLoupe } from "./MagnifierLoupe";
+import { CalibrationModal } from "../Modals/CalibrationModal";
 import { engineClient, resolveImageUrl } from "../../api/engineClient";
+import { distance, formatMetric } from "../../utils/alignmentMath";
+import { notifySuccess, notifyWarning, reportError } from "../../utils/errorHandler";
+import { Target, X, Check, RotateCcw } from "lucide-react";
+import { BoardImageLayer } from "../../types/cad";
+
+export type TransformHandleType =
+  | "nw"
+  | "n"
+  | "ne"
+  | "e"
+  | "se"
+  | "s"
+  | "sw"
+  | "w"
+  | "rotate";
 
 export const BoardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -12,15 +28,13 @@ export const BoardCanvas: React.FC = () => {
   const {
     board,
     selectedImageId,
-    selectedImageIds,
     selectImage,
-    toggleSelectImage,
-    clearSelectedImages,
-    updateImageLayers,
+    updateImageLayer,
   } = useProjectStore();
 
   const {
     activeTool,
+    setActiveTool,
     viewportZoom,
     setViewportZoom,
     viewportPan,
@@ -41,17 +55,34 @@ export const BoardCanvas: React.FC = () => {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-  // Image dragging ref for 60 FPS buttery smooth real-time dragging
+  // Single-image dragging ref
   const dragRef = useRef<{
     isDragging: boolean;
     hasMoved: boolean;
     startMouseMm: { x: number; y: number };
     startScreen: { x: number; y: number };
-    targetLayers: any[];
-    initialPositions: Map<string, { x: number; y: number }>;
+    targetLayer: BoardImageLayer;
+    initialOffset: { x: number; y: number };
   } | null>(null);
 
-  const dragOffsetsRef = useRef<Map<string, { x: number; y: number }>>(new Map());
+  const dragOffsetRef = useRef<{ x: number; y: number } | null>(null);
+
+  // Gizmo Dragging Ref (8 handles + rotate lollipop)
+  const gizmoDragRef = useRef<{
+    handle: TransformHandleType;
+    startX: number;
+    startY: number;
+    origScale: number;
+    origRotation: number;
+    origOffsetX: number;
+    origOffsetY: number;
+    centerScreen: { x: number; y: number };
+    naturalW: number;
+    naturalH: number;
+    layer: BoardImageLayer;
+  } | null>(null);
+
+  const [liveHud, setLiveHud] = useState<{ x: number; y: number; text: string } | null>(null);
 
   // Drag & drop file state
   const [isDragOver, setIsDragOver] = useState(false);
@@ -60,98 +91,49 @@ export const BoardCanvas: React.FC = () => {
   const targetUnderlaySide: "top" | "bottom" =
     activeWorkLayer.type === "underlay" ? activeWorkLayer.side : "top";
 
-  // Custom Event for preprocessing existing image
-  useEffect(() => {
-    const handleCustomPreprocess = (e: Event) => {
-      const ce = e as CustomEvent<{ layerId: string; side: "top" | "bottom" }>;
-      if (!ce.detail || !board) return;
-      const { layerId, side } = ce.detail;
-      const images = side === "top" ? board.data?.bgTop?.images : board.data?.bgBottom?.images;
-      const target = images?.find((img) => img.id === layerId);
-      if (target) {
-        setPendingPreprocess({
-          filePath: target.cachedUrl,
-          name: target.name,
-          side,
-          replaceLayerId: target.id,
-        });
-      }
-    };
-
-    window.addEventListener("mycad-preprocess-image", handleCustomPreprocess);
-    return () => window.removeEventListener("mycad-preprocess-image", handleCustomPreprocess);
-  }, [board, setPendingPreprocess]);
-
-  // Paste from clipboard (Ctrl+V)
-  useEffect(() => {
-    const handlePaste = (e: ClipboardEvent) => {
-      const items = e.clipboardData?.items;
-      if (!items) return;
-      for (let i = 0; i < items.length; i++) {
-        if (items[i].type.startsWith("image/")) {
-          const file = items[i].getAsFile();
-          if (file) {
-            setPendingPreprocess({
-              file,
-              name: `clipboard_${Date.now()}.png`,
-              side: targetUnderlaySide,
-            });
-            break;
-          }
-        }
-      }
-    };
-    window.addEventListener("paste", handlePaste);
-    return () => window.removeEventListener("paste", handlePaste);
-  }, [setPendingPreprocess, targetUnderlaySide]);
-
-  const handleDragOver = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(true);
-  };
-
-  const handleDragLeave = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-      setIsDragOver(false);
-    }
-  };
-
-  const handleDrop = (e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragOver(false);
-
-    const files = Array.from(e.dataTransfer.files).filter((f) =>
-      /\.(png|jpe?g|webp|bmp|tif|tiff)$/i.test(f.name)
-    );
-    if (files.length === 0) return;
-
-    if (files.length === 1) {
-      const filePath = (files[0] as any).path || (files[0] as any).filePath;
-      setPendingPreprocess({
-        file: files[0],
-        filePath,
-        name: files[0].name,
-        side: targetUnderlaySide,
-      });
-    } else {
-      const filePaths = files
-        .map((f) => (f as any).path || (f as any).filePath)
-        .filter(Boolean) as string[];
-      setPendingBatchImport({
-        files,
-        filePaths: filePaths.length === files.length ? filePaths : undefined,
-        side: targetUnderlaySide,
-      });
-    }
-  };
-
-
-  // Calibration / Measurement points
+  // Calibration points and modal state
   const [measurePts, setMeasurePts] = useState<[number, number][]>([]);
+  const [rubberbandMm, setRubberbandMm] = useState<{ x: number; y: number } | null>(null);
+  const [calibrationModal, setCalibrationModal] = useState<{
+    isOpen: boolean;
+    measuredPx: number;
+    currentPxPerMm: number;
+    layer: BoardImageLayer;
+  } | null>(null);
+
+  // Registration state
+  const [registrationState, setRegistrationState] = useState<{
+    step: 1 | 2;
+    topPts: [number, number][];
+    botPts: [number, number][];
+  }>({
+    step: 1,
+    topPts: [],
+    botPts: [],
+  });
+
+  // Reset tool points on tool change
+  useEffect(() => {
+    setMeasurePts([]);
+    setRubberbandMm(null);
+    if (activeTool !== "register") {
+      setRegistrationState({ step: 1, topPts: [], botPts: [] });
+    }
+  }, [activeTool]);
+
+  // Escape key cancels active tool and clears selection
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMeasurePts([]);
+        setRubberbandMm(null);
+        setRegistrationState({ step: 1, topPts: [], botPts: [] });
+        setActiveTool("select");
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [setActiveTool]);
 
   // Cache loaded images
   const loadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -203,7 +185,7 @@ export const BoardCanvas: React.FC = () => {
       };
 
       img.onerror = async (err) => {
-        console.warn(`[BoardCanvas] Failed to load image "${imgLayer.name}" via resolved URL, attempting raw bytes fallback:`, err);
+        console.warn(`[BoardCanvas] Failed to load image "${imgLayer.name}" via resolved URL:`, err);
         try {
           const bytes = await engineClient.readImageBytes(imgLayer.cachedUrl!);
           if (!isMounted || !bytes || bytes.length === 0) return;
@@ -234,7 +216,7 @@ export const BoardCanvas: React.FC = () => {
     };
   }, [board]);
 
-  // Track whether canvas is dirty and needs redraw (demand-driven rendering)
+  // Track canvas dirty state
   const dirtyRef = useRef(true);
   const cursorRafRef = useRef<number | null>(null);
 
@@ -249,7 +231,7 @@ export const BoardCanvas: React.FC = () => {
     let animId: number;
 
     const render = () => {
-      const isActivelyMoving = Boolean(dragRef.current?.isDragging || isPanning);
+      const isActivelyMoving = Boolean(dragRef.current?.isDragging || gizmoDragRef.current || isPanning);
       if (!dirtyRef.current && !isActivelyMoving) {
         animId = requestAnimationFrame(render);
         return;
@@ -292,10 +274,12 @@ export const BoardCanvas: React.FC = () => {
           }
           board.data.bgBottom.images.forEach((layer) => {
             if (layer.visible) {
+              const isSelected = selectedImageId === layer.id;
+              const effDrag = isSelected ? dragOffsetRef.current || undefined : undefined;
               drawImageLayer(
                 ctx,
                 layer,
-                dragOffsetsRef.current.get(layer.id),
+                effDrag,
                 boardMmToScreen,
                 MM_TO_PX,
                 zoomFactor,
@@ -320,10 +304,12 @@ export const BoardCanvas: React.FC = () => {
           }
           board.data.bgTop.images.forEach((layer) => {
             if (layer.visible) {
+              const isSelected = selectedImageId === layer.id;
+              const effDrag = isSelected ? dragOffsetRef.current || undefined : undefined;
               drawImageLayer(
                 ctx,
                 layer,
-                dragOffsetsRef.current.get(layer.id),
+                effDrag,
                 boardMmToScreen,
                 MM_TO_PX,
                 zoomFactor,
@@ -334,27 +320,30 @@ export const BoardCanvas: React.FC = () => {
           ctx.restore();
         }
 
-        // Draw Selection Bounding Boxes & Handles for all selected images
+        // 3. Draw Selection Box & Handles strictly for the single selected image
         const allBoardImages = [...board.data.bgBottom.images, ...board.data.bgTop.images];
-        allBoardImages.forEach((layer) => {
-          const isSelected = selectedImageIds.includes(layer.id) || selectedImageId === layer.id;
-          if (layer.visible && isSelected) {
-            drawSelectionBox(
-              ctx,
-              layer,
-              dragOffsetsRef.current.get(layer.id),
-              boardMmToScreen,
-              MM_TO_PX,
-              zoomFactor,
-              loadedImagesRef.current
-            );
-          }
-        });
+        const selectedLayer = allBoardImages.find((l) => l.id === selectedImageId);
+        if (selectedLayer && selectedLayer.visible) {
+          drawSelectionBox(
+            ctx,
+            selectedLayer,
+            dragOffsetRef.current || undefined,
+            boardMmToScreen,
+            MM_TO_PX,
+            zoomFactor,
+            loadedImagesRef.current
+          );
+        }
       }
 
-      // 3. Draw Active Tool Overlays (Measure / Calibration lines)
+      // 4. Draw Active Tool Overlays (Measure / Calibration lines)
       if (measurePts.length > 0) {
-        drawMeasurementOverlay(ctx, measurePts, boardMmToScreen);
+        drawMeasurementOverlay(ctx, measurePts, rubberbandMm, boardMmToScreen);
+      }
+
+      // 5. Draw Registration Targets
+      if (activeTool === "register") {
+        drawRegistrationTargets(ctx, registrationState, boardMmToScreen);
       }
 
       ctx.restore();
@@ -375,10 +364,21 @@ export const BoardCanvas: React.FC = () => {
     curtainPosition,
     curtainVertical,
     measurePts,
+    rubberbandMm,
+    registrationState,
     boardMmToScreen,
     selectedImageId,
-    selectedImageIds,
   ]);
+
+  // Helper: Find selected layer
+  const getSelectedLayer = useCallback((): BoardImageLayer | null => {
+    if (!board || !selectedImageId) return null;
+    return (
+      board.data.bgTop.images.find((i) => i.id === selectedImageId) ||
+      board.data.bgBottom.images.find((i) => i.id === selectedImageId) ||
+      null
+    );
+  }, [board, selectedImageId]);
 
   // Mouse Handlers
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -388,17 +388,6 @@ export const BoardCanvas: React.FC = () => {
     const mouseY = e.clientY - rect.top;
     const mouseMm = screenToBoardMm(mouseX, mouseY);
 
-    // Tool: Measure, Calibrate, Level, Register
-    if (activeTool === "measure" || activeTool === "calibrate" || activeTool === "level" || activeTool === "register") {
-      const next = [...measurePts, [mouseMm.x, mouseMm.y] as [number, number]];
-      if (next.length > 2) {
-        setMeasurePts([[mouseMm.x, mouseMm.y]]);
-      } else {
-        setMeasurePts(next);
-      }
-      return;
-    }
-
     // Middle click (wheel) or Alt + Left click: Always Pan
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
       setIsPanning(true);
@@ -406,19 +395,183 @@ export const BoardCanvas: React.FC = () => {
       return;
     }
 
-    // Left click: Image Selection & Moving
+    // Tool: Measure
+    if (activeTool === "measure") {
+      if (measurePts.length === 0 || measurePts.length >= 2) {
+        setMeasurePts([[mouseMm.x, mouseMm.y]]);
+      } else {
+        setMeasurePts([...measurePts, [mouseMm.x, mouseMm.y]]);
+      }
+      return;
+    }
+
+    // Tool: Calibrate
+    if (activeTool === "calibrate") {
+      const activeLayer = getSelectedLayer() || board?.data?.bgTop?.images[0] || board?.data?.bgBottom?.images[0];
+      if (!activeLayer) {
+        notifyWarning("Для калибровки выберите изображение на холсте");
+        return;
+      }
+
+      if (measurePts.length === 0) {
+        setMeasurePts([[mouseMm.x, mouseMm.y]]);
+      } else if (measurePts.length === 1) {
+        const p1 = measurePts[0];
+        const p2: [number, number] = [mouseMm.x, mouseMm.y];
+        setMeasurePts([p1, p2]);
+
+        const dxMm = p2[0] - p1[0];
+        const dyMm = p2[1] - p1[1];
+        const distMm = Math.hypot(dxMm, dyMm);
+        const pxPerMm = activeLayer.pxPerMm || 23.62;
+        const measuredPx = distMm * pxPerMm;
+
+        setCalibrationModal({
+          isOpen: true,
+          measuredPx,
+          currentPxPerMm: pxPerMm,
+          layer: activeLayer,
+        });
+      }
+      return;
+    }
+
+    // Tool: Level (Horizon alignment)
+    if (activeTool === "level") {
+      const activeLayer = getSelectedLayer() || board?.data?.bgTop?.images[0] || board?.data?.bgBottom?.images[0];
+      if (!activeLayer) {
+        notifyWarning("Для выравнивания выберите изображение на холсте");
+        return;
+      }
+
+      if (measurePts.length === 0) {
+        setMeasurePts([[mouseMm.x, mouseMm.y]]);
+      } else if (measurePts.length === 1) {
+        const p1 = measurePts[0];
+        const p2: [number, number] = [mouseMm.x, mouseMm.y];
+        setMeasurePts([p1, p2]);
+
+        // Call Rust engine to calculate angle
+        engineClient.calculateLevel(p1, p2)
+          .then((deltaAngle) => {
+            const currentRot = activeLayer.rotation || 0;
+            const newRotation = Math.round((currentRot - deltaAngle) * 100) / 100;
+            updateImageLayer({ ...activeLayer, rotation: newRotation });
+            notifySuccess(`Горизонт выровнен: доворот на ${(-deltaAngle).toFixed(1)}°`);
+            setMeasurePts([]);
+            setActiveTool("select");
+          })
+          .catch((err) => {
+            reportError(err, "Ошибка выравнивания горизонта");
+          });
+      }
+      return;
+    }
+
+    // Tool: Register (Top/Bottom alignment)
+    if (activeTool === "register") {
+      if (registrationState.step === 1) {
+        const newTop = [...registrationState.topPts, [mouseMm.x, mouseMm.y] as [number, number]];
+        if (newTop.length < 2) {
+          setRegistrationState((prev) => ({ ...prev, topPts: newTop }));
+        } else {
+          setRegistrationState({ step: 2, topPts: newTop.slice(0, 2), botPts: [] });
+          notifySuccess("Точки 1 и 2 на Top зафиксированы. Переключитесь на Bottom и укажите те же точки");
+        }
+      } else {
+        const newBot = [...registrationState.botPts, [mouseMm.x, mouseMm.y] as [number, number]];
+        if (newBot.length < 2) {
+          setRegistrationState((prev) => ({ ...prev, botPts: newBot }));
+        } else {
+          const top1 = registrationState.topPts[0];
+          const top2 = registrationState.topPts[1];
+          const bot1 = newBot[0];
+          const bot2 = newBot[1];
+
+          const botLayer = board?.data?.bgBottom?.images[0];
+          if (!botLayer) {
+            notifyWarning("На стороне Bottom не найден скан для совмещения");
+            return;
+          }
+
+          engineClient.calculateRegistration(top1, top2, bot1, bot2)
+            .then((res) => {
+              const updatedBot: BoardImageLayer = {
+                ...botLayer,
+                offsetX: Math.round(((botLayer.offsetX || 0) + res.offsetX) * 100) / 100,
+                offsetY: Math.round(((botLayer.offsetY || 0) + res.offsetY) * 100) / 100,
+                rotation: Math.round(((botLayer.rotation || 0) + res.rotationDeg) * 100) / 100,
+                scale: Math.round(((botLayer.scale || 1.0) * res.scaleFactor) * 1000) / 1000,
+              };
+              updateImageLayer(updatedBot);
+              notifySuccess("Слои Top и Bottom успешно совмещены");
+              setRegistrationState({ step: 1, topPts: [], botPts: [] });
+              setActiveTool("select");
+            })
+            .catch((err) => {
+              reportError(err, "Ошибка совмещения слоев");
+            });
+        }
+      }
+      return;
+    }
+
+    // Left click in Select or Transform mode
     if (e.button === 0) {
+      const selectedLayer = getSelectedLayer();
+
+      // Check if clicked on a transform handle of the currently selected image
+      if (selectedLayer && !selectedLayer.locked) {
+        const img = loadedImagesRef.current.get(selectedLayer.id);
+        if (img) {
+          const hitHandle = getHitHandle(
+            { x: mouseX, y: mouseY },
+            selectedLayer,
+            img,
+            boardMmToScreen,
+            MM_TO_PX,
+            zoomFactor
+          );
+
+          if (hitHandle) {
+            const effX = selectedLayer.offsetX || 0;
+            const effY = selectedLayer.offsetY || 0;
+            const pos = boardMmToScreen(effX, effY);
+            const pxPerMm = selectedLayer.pxPerMm || 23.62;
+            const wMm = (img.naturalWidth / pxPerMm) * (selectedLayer.scale || 1.0);
+            const hMm = (img.naturalHeight / pxPerMm) * (selectedLayer.scale || 1.0);
+            const wPx = wMm * MM_TO_PX * zoomFactor;
+            const hPx = hMm * MM_TO_PX * zoomFactor;
+
+            gizmoDragRef.current = {
+              handle: hitHandle,
+              startX: e.clientX,
+              startY: e.clientY,
+              origScale: selectedLayer.scale || 1.0,
+              origRotation: selectedLayer.rotation || 0,
+              origOffsetX: selectedLayer.offsetX || 0,
+              origOffsetY: selectedLayer.offsetY || 0,
+              centerScreen: { x: pos.x + wPx / 2, y: pos.y + hPx / 2 },
+              naturalW: img.naturalWidth,
+              naturalH: img.naturalHeight,
+              layer: selectedLayer,
+            };
+            return;
+          }
+        }
+      }
+
+      // Check if clicked on any image to select and drag
       const activeSide = activeWorkLayer.type === "underlay" ? activeWorkLayer.side : "top";
       const topImages = (showTopLayer ? board?.data?.bgTop?.images || [] : []).filter((l) => l.visible);
       const botImages = (showBottomLayer ? board?.data?.bgBottom?.images || [] : []).filter((l) => l.visible);
 
-      // Prioritize active layer side first, top-to-bottom in render order
       const orderedImages =
         activeSide === "bottom"
           ? [...botImages.slice().reverse(), ...topImages.slice().reverse()]
           : [...topImages.slice().reverse(), ...botImages.slice().reverse()];
 
-      let hitLayer: any = null;
+      let hitLayer: BoardImageLayer | null = null;
       for (const layer of orderedImages) {
         if (isPointInImage(mouseMm, layer, loadedImagesRef.current.get(layer.id))) {
           hitLayer = layer;
@@ -427,54 +580,23 @@ export const BoardCanvas: React.FC = () => {
       }
 
       if (hitLayer) {
-        if (hitLayer.locked) {
-          selectImage(hitLayer.id, e.shiftKey);
-          return;
+        selectImage(hitLayer.id);
+        if (!hitLayer.locked) {
+          dragRef.current = {
+            isDragging: true,
+            hasMoved: false,
+            startMouseMm: mouseMm,
+            startScreen: { x: e.clientX, y: e.clientY },
+            targetLayer: hitLayer,
+            initialOffset: { x: hitLayer.offsetX || 0, y: hitLayer.offsetY || 0 },
+          };
+          dragOffsetRef.current = null;
         }
-
-        const isAlreadySelected = selectedImageIds.includes(hitLayer.id) || selectedImageId === hitLayer.id;
-        if (!isAlreadySelected) {
-          if (e.shiftKey) {
-            toggleSelectImage(hitLayer.id);
-          } else {
-            selectImage(hitLayer.id);
-          }
-        }
-
-        const allImages = [...topImages, ...botImages];
-        const currentSelectedIds = isAlreadySelected
-          ? selectedImageIds.length > 0
-            ? selectedImageIds
-            : [hitLayer.id]
-          : e.shiftKey
-            ? [...selectedImageIds, hitLayer.id]
-            : [hitLayer.id];
-
-        const layersToMove = allImages.filter(
-          (img) => currentSelectedIds.includes(img.id) && !img.locked
-        );
-
-        const initialPositions = new Map<string, { x: number; y: number }>();
-        layersToMove.forEach((l) => {
-          initialPositions.set(l.id, { x: l.offsetX || 0, y: l.offsetY || 0 });
-        });
-
-        dragRef.current = {
-          isDragging: true,
-          hasMoved: false,
-          startMouseMm: mouseMm,
-          startScreen: { x: e.clientX, y: e.clientY },
-          targetLayers: layersToMove.length > 0 ? layersToMove : [hitLayer],
-          initialPositions,
-        };
-        dragOffsetsRef.current.clear();
         return;
       }
 
       // Clicked on empty canvas: Clear selection and start pan
-      if (!e.shiftKey) {
-        clearSelectedImages();
-      }
+      selectImage(null);
       setIsPanning(true);
       setPanStart({ x: e.clientX - viewportPan.x, y: e.clientY - viewportPan.y });
     }
@@ -485,8 +607,8 @@ export const BoardCanvas: React.FC = () => {
     if (!rect) return;
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-
     const mouseMm = screenToBoardMm(mouseX, mouseY);
+
     if (!cursorRafRef.current) {
       cursorRafRef.current = requestAnimationFrame(() => {
         setCursorMm(mouseMm);
@@ -494,7 +616,77 @@ export const BoardCanvas: React.FC = () => {
       });
     }
 
-    // 1. Dragging selected image(s)
+    // Live rubberband for measure / calibrate / level tools
+    if (measurePts.length === 1) {
+      setRubberbandMm(mouseMm);
+      dirtyRef.current = true;
+    }
+
+    // 1. Gizmo Handle Dragging (Scale or Rotate)
+    if (gizmoDragRef.current) {
+      const g = gizmoDragRef.current;
+      const deltaScreenX = e.clientX - g.startX;
+      const deltaScreenY = e.clientY - g.startY;
+
+      if (g.handle === "rotate") {
+        const dx = e.clientX - g.centerScreen.x;
+        const dy = e.clientY - g.centerScreen.y;
+        let angle = (Math.atan2(dy, dx) * 180) / Math.PI + 90;
+
+        if (e.shiftKey) {
+          angle = Math.round(angle / 15) * 15;
+        }
+        while (angle < 0) angle += 360;
+        angle = Math.round((angle % 360) * 10) / 10;
+
+        g.layer.rotation = angle;
+        setLiveHud({
+          x: e.clientX + 15,
+          y: e.clientY - 20,
+          text: `Угол: ${angle.toFixed(1)}°`,
+        });
+      } else {
+        // Resize handle dragging
+        const rad = (-(g.origRotation || 0) * Math.PI) / 180;
+        const localDx = (deltaScreenX * Math.cos(rad) - deltaScreenY * Math.sin(rad)) / zoomFactor;
+        const localDy = (deltaScreenX * Math.sin(rad) + deltaScreenY * Math.cos(rad)) / zoomFactor;
+
+        const baseW = (g.naturalW / (g.layer.pxPerMm || 23.62)) * MM_TO_PX * g.origScale;
+        const baseH = (g.naturalH / (g.layer.pxPerMm || 23.62)) * MM_TO_PX * g.origScale;
+
+        let scaleMult = 1;
+        if (g.handle === "se") {
+          scaleMult = Math.max(0.05, 1 + localDx / baseW);
+        } else if (g.handle === "nw") {
+          scaleMult = Math.max(0.05, 1 - localDx / baseW);
+        } else if (g.handle === "ne") {
+          scaleMult = Math.max(0.05, 1 + localDx / baseW);
+        } else if (g.handle === "sw") {
+          scaleMult = Math.max(0.05, 1 - localDx / baseW);
+        } else if (g.handle === "e" || g.handle === "w") {
+          scaleMult = Math.max(0.05, 1 + (g.handle === "e" ? localDx : -localDx) / baseW);
+        } else if (g.handle === "n" || g.handle === "s") {
+          scaleMult = Math.max(0.05, 1 + (g.handle === "s" ? localDy : -localDy) / baseH);
+        }
+
+        const newScale = Math.round(g.origScale * scaleMult * 1000) / 1000;
+        g.layer.scale = newScale;
+
+        const curMmW = ((g.naturalW / (g.layer.pxPerMm || 23.62)) * newScale).toFixed(1);
+        const curMmH = ((g.naturalH / (g.layer.pxPerMm || 23.62)) * newScale).toFixed(1);
+
+        setLiveHud({
+          x: e.clientX + 15,
+          y: e.clientY - 20,
+          text: `${curMmW} × ${curMmH} мм (${(newScale * 100).toFixed(0)}%)`,
+        });
+      }
+
+      dirtyRef.current = true;
+      return;
+    }
+
+    // 2. Dragging selected image
     if (dragRef.current?.isDragging) {
       const dist = Math.hypot(
         e.clientX - dragRef.current.startScreen.x,
@@ -505,9 +697,7 @@ export const BoardCanvas: React.FC = () => {
       const dxMm = mouseMm.x - dragRef.current.startMouseMm.x;
       const dyMm = mouseMm.y - dragRef.current.startMouseMm.y;
 
-      dragRef.current.targetLayers.forEach((layer) => {
-        dragOffsetsRef.current.set(layer.id, { x: dxMm, y: dyMm });
-      });
+      dragOffsetRef.current = { x: dxMm, y: dyMm };
       dirtyRef.current = true;
       if (canvasRef.current && canvasRef.current.style.cursor !== "move") {
         canvasRef.current.style.cursor = "move";
@@ -515,7 +705,7 @@ export const BoardCanvas: React.FC = () => {
       return;
     }
 
-    // 2. Panning canvas
+    // 3. Panning canvas
     if (isPanning) {
       setViewportPan({
         x: e.clientX - panStart.x,
@@ -528,7 +718,38 @@ export const BoardCanvas: React.FC = () => {
       return;
     }
 
-    // 3. Hovering over images
+    // 4. Hover over handles or image
+    const selectedLayer = getSelectedLayer();
+    if (selectedLayer && !selectedLayer.locked) {
+      const img = loadedImagesRef.current.get(selectedLayer.id);
+      if (img) {
+        const hitHandle = getHitHandle(
+          { x: mouseX, y: mouseY },
+          selectedLayer,
+          img,
+          boardMmToScreen,
+          MM_TO_PX,
+          zoomFactor
+        );
+        if (hitHandle) {
+          const cursors: Record<TransformHandleType, string> = {
+            nw: "nwse-resize",
+            se: "nwse-resize",
+            ne: "nesw-resize",
+            sw: "nesw-resize",
+            n: "ns-resize",
+            s: "ns-resize",
+            e: "ew-resize",
+            w: "ew-resize",
+            rotate: "grab",
+          };
+          if (canvasRef.current) canvasRef.current.style.cursor = cursors[hitHandle];
+          return;
+        }
+      }
+    }
+
+    // Hover over any visible image
     const activeSide = activeWorkLayer.type === "underlay" ? activeWorkLayer.side : "top";
     const topImages = (showTopLayer ? board?.data?.bgTop?.images || [] : []).filter((l) => l.visible);
     const botImages = (showBottomLayer ? board?.data?.bgBottom?.images || [] : []).filter((l) => l.visible);
@@ -554,27 +775,26 @@ export const BoardCanvas: React.FC = () => {
   };
 
   const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (dragRef.current?.isDragging) {
-      if (dragRef.current.hasMoved) {
-        const mouseMm = screenToBoardMm(
-          e.clientX - (canvasRef.current?.getBoundingClientRect().left || 0),
-          e.clientY - (canvasRef.current?.getBoundingClientRect().top || 0)
-        );
-        const dxMm = mouseMm.x - dragRef.current.startMouseMm.x;
-        const dyMm = mouseMm.y - dragRef.current.startMouseMm.y;
+    // 1. Finish gizmo drag
+    if (gizmoDragRef.current) {
+      updateImageLayer(gizmoDragRef.current.layer);
+      gizmoDragRef.current = null;
+      setLiveHud(null);
+    }
 
-        const updated = dragRef.current.targetLayers.map((layer) => {
-          const orig = dragRef.current!.initialPositions.get(layer.id) || { x: 0, y: 0 };
-          return {
-            ...layer,
-            offsetX: Math.round((orig.x + dxMm) * 100) / 100,
-            offsetY: Math.round((orig.y + dyMm) * 100) / 100,
-          };
-        });
-        updateImageLayers(updated);
+    // 2. Finish image move drag
+    if (dragRef.current?.isDragging) {
+      if (dragRef.current.hasMoved && dragOffsetRef.current) {
+        const target = dragRef.current.targetLayer;
+        const updated: BoardImageLayer = {
+          ...target,
+          offsetX: Math.round((dragRef.current.initialOffset.x + dragOffsetRef.current.x) * 100) / 100,
+          offsetY: Math.round((dragRef.current.initialOffset.y + dragOffsetRef.current.y) * 100) / 100,
+        };
+        updateImageLayer(updated);
       }
       dragRef.current = null;
-      dragOffsetsRef.current.clear();
+      dragOffsetRef.current = null;
     }
 
     setIsPanning(false);
@@ -593,7 +813,6 @@ export const BoardCanvas: React.FC = () => {
     const nextZoom = Math.max(10, Math.min(2000, Math.round(viewportZoom * zoomDelta)));
     const zoomFactorAfter = nextZoom / 100;
 
-    // Anchor zoom to cursor position
     const newPanX = mouseX - ((mouseX - viewportPan.x) * zoomFactorAfter) / zoomFactorBefore;
     const newPanY = mouseY - ((mouseY - viewportPan.y) * zoomFactorAfter) / zoomFactorBefore;
 
@@ -603,92 +822,211 @@ export const BoardCanvas: React.FC = () => {
 
   return (
     <div
-      className="cad-viewport"
-      onDragOver={handleDragOver}
-      onDragLeave={handleDragLeave}
-      onDrop={handleDrop}
+      className="cad-viewport-container"
+      style={{
+        position: "relative",
+        width: "100%",
+        height: "100%",
+        overflow: "hidden",
+        backgroundColor: "var(--cad-bg-viewport)",
+      }}
     >
       <canvas
         ref={canvasRef}
-        className="cad-canvas"
+        style={{ width: "100%", height: "100%", display: "block" }}
         onMouseDown={handleMouseDown}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onWheel={handleWheel}
       />
 
-      {/* Drag & Drop Visual Overlay */}
-      {isDragOver && (
+      {/* Floating Toolbar */}
+      <ToolBar />
+
+      {/* Live Gizmo HUD */}
+      {liveHud && (
         <div
-          style={{
-            position: "absolute",
-            inset: 0,
-            background: "rgba(12, 14, 18, 0.85)",
-            backdropFilter: "blur(6px)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-            zIndex: 100,
-            pointerEvents: "none",
-          }}
+          className="cad-live-transform-hud"
+          style={{ left: `${liveHud.x}px`, top: `${liveHud.y}px` }}
         >
-          <div
-            style={{
-              padding: "24px 44px",
-              background: targetUnderlaySide === "top" ? "rgba(245, 158, 11, 0.16)" : "rgba(6, 182, 212, 0.16)",
-              border: `2px dashed ${targetUnderlaySide === "top" ? "var(--cad-top-layer)" : "var(--cad-bottom-layer)"}`,
-              borderRadius: "12px",
-              textAlign: "center",
-              width: "380px",
-              boxShadow: "0 16px 40px rgba(0, 0, 0, 0.5)",
-            }}
-          >
-            <div style={{ fontWeight: 600, color: targetUnderlaySide === "top" ? "var(--cad-top-layer)" : "var(--cad-bottom-layer)", fontSize: "16px", marginBottom: "4px" }}>
-              Добавить в слой {targetUnderlaySide === "top" ? "Top (Лицевой)" : "Bottom (Оборотный)"}
-            </div>
-            <div style={{ fontSize: "12px", color: "var(--cad-text-muted)" }}>
-              Файлы будут привязаны к активному слою подложки
-            </div>
-          </div>
+          {liveHud.text}
         </div>
       )}
 
-      {/* Floating Glass Toolbars */}
-      <ToolBar />
-      <CurtainSlider />
+      {/* Registration Tool Banner */}
+      {activeTool === "register" && (
+        <div className="cad-registration-banner">
+          <Target size={16} color="#38bdf8" />
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "12px" }}>
+            <span style={{ fontWeight: 600 }}>
+              {registrationState.step === 1
+                ? "Шаг 1: Укажите 2 переходных отверстия на стороне Top"
+                : "Шаг 2: Укажите те же 2 отверстия на стороне Bottom"}
+            </span>
+            <span style={{ color: "var(--cad-text-dim)" }}>
+              (Выбрано точек: {registrationState.step === 1 ? registrationState.topPts.length : registrationState.botPts.length} / 2)
+            </span>
+          </div>
+          <button
+            type="button"
+            className="cad-tree-icon-btn"
+            style={{ marginLeft: "8px" }}
+            onClick={() => {
+              setRegistrationState({ step: 1, topPts: [], botPts: [] });
+              setActiveTool("select");
+            }}
+            title="Отмена совмещения"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Curtain Slider */}
+      {activeTool === "curtain" && <CurtainSlider />}
+
+      {/* Magnifier Loupe */}
       <MagnifierLoupe sourceCanvasRef={canvasRef} />
 
-      {/* Viewport Coordinate HUD */}
-      <div className="cad-hud-overlay">
-        <span>X: <span className="cad-hud-coord">{screenToBoardMm(0, 0).x.toFixed(2)}</span></span>
-        <span>Y: <span className="cad-hud-coord">{screenToBoardMm(0, 0).y.toFixed(2)}</span></span>
-        <span>Зум: {viewportZoom}%</span>
-        <button
-          className="cad-hud-btn"
-          style={{
-            background: "rgba(56, 189, 248, 0.15)",
-            border: "1px solid rgba(56, 189, 248, 0.3)",
-            color: "#38bdf8",
-            borderRadius: "4px",
-            padding: "2px 6px",
-            cursor: "pointer",
-            fontSize: "10px",
-            marginLeft: "6px",
+      {/* Calibration Modal */}
+      {calibrationModal && (
+        <CalibrationModal
+          isOpen={calibrationModal.isOpen}
+          measuredPx={calibrationModal.measuredPx}
+          currentPxPerMm={calibrationModal.currentPxPerMm}
+          onClose={() => {
+            setCalibrationModal(null);
+            setMeasurePts([]);
+            setActiveTool("select");
           }}
-          onClick={() => {
-            setViewportZoom(100);
-            setViewportPan({ x: 80, y: 80 });
+          onApply={(realMm) => {
+            if (measurePts.length === 2) {
+              engineClient.calculateScale(measurePts[0], measurePts[1], realMm)
+                .then((newPxPerMm) => {
+                  const updated: BoardImageLayer = {
+                    ...calibrationModal.layer,
+                    pxPerMm: Math.round(newPxPerMm * 100) / 100,
+                    dpi: Math.round(newPxPerMm * 25.4),
+                  };
+                  updateImageLayer(updated);
+                  notifySuccess(`Калибровка выполнена: ${updated.pxPerMm} px/мм (${updated.dpi} DPI)`);
+                })
+                .catch((err) => {
+                  reportError(err, "Ошибка расчета калибровки");
+                })
+                .finally(() => {
+                  setCalibrationModal(null);
+                  setMeasurePts([]);
+                  setActiveTool("select");
+                });
+            }
           }}
-          title="Сбросить масштаб и положение (80, 80)"
-        >
-          Сброс вида
-        </button>
-      </div>
+        />
+      )}
     </div>
   );
 };
 
-// ===================== DRAWING HELPERS =====================
+/* ==========================================================================
+   Helper Functions
+   ========================================================================== */
+
+function getGizmoHandles(
+  layer: BoardImageLayer,
+  img: HTMLImageElement,
+  boardMmToScreen: (x: number, y: number) => { x: number; y: number },
+  mmToPx: number,
+  zoom: number
+) {
+  const effX = layer.offsetX || 0;
+  const effY = layer.offsetY || 0;
+  const pos = boardMmToScreen(effX, effY);
+  const pxPerMm = layer.pxPerMm || 23.62;
+  const wMm = (img.naturalWidth / pxPerMm) * (layer.scale || 1.0);
+  const hMm = (img.naturalHeight / pxPerMm) * (layer.scale || 1.0);
+  const wPx = wMm * mmToPx * zoom;
+  const hPx = hMm * mmToPx * zoom;
+
+  const cx = pos.x + wPx / 2;
+  const cy = pos.y + hPx / 2;
+  const rot = ((layer.rotation || 0) * Math.PI) / 180;
+  const cos = Math.cos(rot);
+  const sin = Math.sin(rot);
+
+  const rotatePt = (lx: number, ly: number) => ({
+    x: cx + (lx * cos - ly * sin),
+    y: cy + (lx * sin + ly * cos),
+  });
+
+  const hw = wPx / 2;
+  const hh = hPx / 2;
+  const stemLen = 28;
+
+  return [
+    { handle: "nw" as TransformHandleType, ...rotatePt(-hw, -hh) },
+    { handle: "n" as TransformHandleType, ...rotatePt(0, -hh) },
+    { handle: "ne" as TransformHandleType, ...rotatePt(hw, -hh) },
+    { handle: "e" as TransformHandleType, ...rotatePt(hw, 0) },
+    { handle: "se" as TransformHandleType, ...rotatePt(hw, hh) },
+    { handle: "s" as TransformHandleType, ...rotatePt(0, hh) },
+    { handle: "sw" as TransformHandleType, ...rotatePt(-hw, hh) },
+    { handle: "w" as TransformHandleType, ...rotatePt(-hw, 0) },
+    { handle: "rotate" as TransformHandleType, ...rotatePt(0, -hh - stemLen) },
+  ];
+}
+
+function getHitHandle(
+  mouseScreen: { x: number; y: number },
+  layer: BoardImageLayer,
+  img: HTMLImageElement,
+  boardMmToScreen: (x: number, y: number) => { x: number; y: number },
+  mmToPx: number,
+  zoom: number
+): TransformHandleType | null {
+  const handles = getGizmoHandles(layer, img, boardMmToScreen, mmToPx, zoom);
+  const hitRadius = 8;
+  for (const h of handles) {
+    if (Math.hypot(mouseScreen.x - h.x, mouseScreen.y - h.y) <= hitRadius) {
+      return h.handle;
+    }
+  }
+  return null;
+}
+
+function isPointInImage(
+  ptMm: { x: number; y: number },
+  layer: any,
+  img: HTMLImageElement | undefined
+): boolean {
+  if (!img || !img.complete || img.naturalWidth === 0) return false;
+
+  const pxPerMm = layer.pxPerMm || 23.62;
+  const scale = layer.scale || 1.0;
+  const wMm = (img.naturalWidth / pxPerMm) * scale;
+  const hMm = (img.naturalHeight / pxPerMm) * scale;
+
+  const cx = (layer.offsetX || 0) + wMm / 2;
+  const cy = (layer.offsetY || 0) + hMm / 2;
+
+  let dx = ptMm.x - cx;
+  let dy = ptMm.y - cy;
+
+  const rot = layer.rotation || 0;
+  if (rot !== 0) {
+    const rad = (-rot * Math.PI) / 180;
+    const cos = Math.cos(rad);
+    const sin = Math.sin(rad);
+    const rx = dx * cos - dy * sin;
+    const ry = dx * sin + dy * cos;
+    dx = rx;
+    dy = ry;
+  }
+
+  const localX = dx + wMm / 2;
+  const localY = dy + hMm / 2;
+
+  return localX >= 0 && localX <= wMm && localY >= 0 && localY <= hMm;
+}
 
 function drawGrid(
   ctx: CanvasRenderingContext2D,
@@ -700,7 +1038,7 @@ function drawGrid(
   mmToPx: number
 ) {
   const stepPx = stepMm * mmToPx * zoom;
-  if (stepPx < 8) return; // Too dense to draw
+  if (stepPx < 8) return;
 
   ctx.save();
   ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
@@ -753,39 +1091,64 @@ function drawGrid(
   ctx.restore();
 }
 
-function isPointInImage(
-  ptMm: { x: number; y: number },
+function drawImageLayer(
+  ctx: CanvasRenderingContext2D,
   layer: any,
-  img: HTMLImageElement | undefined
-): boolean {
-  if (!img || !img.complete || img.naturalWidth === 0) return false;
+  dragOffset: { x: number; y: number } | undefined,
+  boardMmToScreen: (x: number, y: number) => { x: number; y: number },
+  mmToPx: number,
+  zoom: number,
+  cache: Map<string, HTMLImageElement>
+) {
+  const img = cache.get(layer.id);
+  if (!img || !img.complete || img.naturalWidth === 0) return;
 
+  const effX = (layer.offsetX || 0) + (dragOffset?.x || 0);
+  const effY = (layer.offsetY || 0) + (dragOffset?.y || 0);
+  const pos = boardMmToScreen(effX, effY);
   const pxPerMm = layer.pxPerMm || 23.62;
-  const scale = layer.scale || 1.0;
-  const wMm = (img.naturalWidth / pxPerMm) * scale;
-  const hMm = (img.naturalHeight / pxPerMm) * scale;
+  const wMm = img.naturalWidth / pxPerMm;
+  const hMm = img.naturalHeight / pxPerMm;
+  const wPx = wMm * mmToPx * zoom * (layer.scale || 1.0);
+  const hPx = hMm * mmToPx * zoom * (layer.scale || 1.0);
 
-  const cx = (layer.offsetX || 0) + wMm / 2;
-  const cy = (layer.offsetY || 0) + hMm / 2;
+  ctx.save();
+  ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 0.85;
 
-  let dx = ptMm.x - cx;
-  let dy = ptMm.y - cy;
+  ctx.translate(pos.x, pos.y);
 
-  const rot = layer.rotation || 0;
-  if (rot !== 0) {
-    const rad = (-rot * Math.PI) / 180;
-    const cos = Math.cos(rad);
-    const sin = Math.sin(rad);
-    const rx = dx * cos - dy * sin;
-    const ry = dx * sin + dy * cos;
-    dx = rx;
-    dy = ry;
+  if (layer.rotation) {
+    ctx.translate(wPx / 2, hPx / 2);
+    ctx.rotate((layer.rotation * Math.PI) / 180);
+    ctx.translate(-wPx / 2, -hPx / 2);
   }
 
-  const localX = dx + wMm / 2;
-  const localY = dy + hMm / 2;
+  if (layer.mirrored) {
+    ctx.translate(wPx, 0);
+    ctx.scale(-1, 1);
+  }
+  if (layer.flipV) {
+    ctx.translate(0, hPx);
+    ctx.scale(1, -1);
+  }
 
-  return localX >= 0 && localX <= wMm && localY >= 0 && localY <= hMm;
+  // Blend mode support
+  if (layer.blendMode && layer.blendMode !== "normal") {
+    ctx.globalCompositeOperation = layer.blendMode;
+  } else {
+    ctx.globalCompositeOperation = "source-over";
+  }
+
+  // Optical filters
+  let filterStr = "";
+  if (layer.brightness !== undefined && layer.brightness !== 100) filterStr += `brightness(${layer.brightness}%) `;
+  if (layer.contrast !== undefined && layer.contrast !== 100) filterStr += `contrast(${layer.contrast}%) `;
+  if (layer.invert) filterStr += "invert(100%) ";
+  if (layer.grayscale) filterStr += "grayscale(100%) ";
+  if (filterStr) ctx.filter = filterStr.trim();
+
+  ctx.drawImage(img, 0, 0, wPx, hPx);
+  ctx.restore();
 }
 
 function drawSelectionBox(
@@ -818,17 +1181,37 @@ function drawSelectionBox(
     ctx.translate(-wPx / 2, -hPx / 2);
   }
 
-  // Draw selection bounding box with neon glow
+  // Bounding box with glow
   ctx.shadowColor = "rgba(56, 189, 248, 0.75)";
   ctx.shadowBlur = 8;
   ctx.strokeStyle = "#38bdf8";
-  ctx.lineWidth = 2;
+  ctx.lineWidth = 1.5;
   ctx.setLineDash([6, 3]);
   ctx.strokeRect(-2, -2, wPx + 4, hPx + 4);
 
-  // 8 handles (4 corners + 4 sides)
+  // Rotation stem & lollipop
+  const stemLen = 28;
+  ctx.beginPath();
+  ctx.moveTo(wPx / 2, -2);
+  ctx.lineTo(wPx / 2, -2 - stemLen);
+  ctx.strokeStyle = "#38bdf8";
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([3, 2]);
+  ctx.stroke();
+
   ctx.setLineDash([]);
   ctx.shadowBlur = 0;
+
+  // Rotation handle circle
+  ctx.beginPath();
+  ctx.arc(wPx / 2, -2 - stemLen, 5, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+  ctx.strokeStyle = "#0284c7";
+  ctx.lineWidth = 1.5;
+  ctx.stroke();
+
+  // 8 resize handles
   ctx.fillStyle = "#ffffff";
   ctx.strokeStyle = "#0284c7";
   ctx.lineWidth = 1.5;
@@ -850,7 +1233,7 @@ function drawSelectionBox(
     ctx.strokeRect(h.x - hs / 2, h.y - hs / 2, hs, hs);
   });
 
-  // Name tag badge above top-left
+  // Name tag badge
   const sideLabel = layer.side === "top" ? "TOP" : "BOT";
   const badgeText = `${layer.name || "Скан"} (${sideLabel})`;
   ctx.font = "bold 11px JetBrains Mono, monospace";
@@ -864,116 +1247,113 @@ function drawSelectionBox(
   ctx.lineWidth = 1;
   ctx.strokeRect(-2, -badgeH - 6, badgeW, badgeH);
 
-  ctx.fillStyle = layer.side === "top" ? "var(--cad-top-layer)" : "var(--cad-bottom-layer)";
+  ctx.fillStyle = layer.side === "top" ? "#38bdf8" : "#f59e0b";
   ctx.textBaseline = "middle";
   ctx.fillText(badgeText, 6, -badgeH / 2 - 6);
 
   ctx.restore();
 }
 
-function drawImageLayer(
-  ctx: CanvasRenderingContext2D,
-  layer: any,
-  dragOffset: { x: number; y: number } | undefined,
-  boardMmToScreen: (x: number, y: number) => { x: number; y: number },
-  mmToPx: number,
-  zoom: number,
-  cache: Map<string, HTMLImageElement>
-) {
-  const img = cache.get(layer.id);
-  if (!img || !img.complete || img.naturalWidth === 0) return;
-
-  const effX = (layer.offsetX || 0) + (dragOffset?.x || 0);
-  const effY = (layer.offsetY || 0) + (dragOffset?.y || 0);
-  const pos = boardMmToScreen(effX, effY);
-  const pxPerMm = layer.pxPerMm || 23.62;
-  const wMm = img.naturalWidth / pxPerMm;
-  const hMm = img.naturalHeight / pxPerMm;
-  const wPx = wMm * mmToPx * zoom * (layer.scale || 1.0);
-  const hPx = hMm * mmToPx * zoom * (layer.scale || 1.0);
-
-  ctx.save();
-  ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 0.85;
-
-  // Apply position
-  ctx.translate(pos.x, pos.y);
-
-  // Rotate around center
-  if (layer.rotation) {
-    ctx.translate(wPx / 2, hPx / 2);
-    ctx.rotate((layer.rotation * Math.PI) / 180);
-    ctx.translate(-wPx / 2, -hPx / 2);
-  }
-
-  // Flip within bounding box
-  if (layer.mirrored) {
-    ctx.translate(wPx, 0);
-    ctx.scale(-1, 1);
-  }
-  if (layer.flipV) {
-    ctx.translate(0, hPx);
-    ctx.scale(1, -1);
-  }
-
-  // Blend mode
-  if (layer.blendMode && layer.blendMode !== "normal") {
-    ctx.globalCompositeOperation = layer.blendMode;
-  }
-
-  // Apply filters
-  let filterStr = "";
-  if (layer.brightness !== undefined && layer.brightness !== 100) filterStr += `brightness(${layer.brightness}%) `;
-  if (layer.contrast !== undefined && layer.contrast !== 100) filterStr += `contrast(${layer.contrast}%) `;
-  if (layer.invert) filterStr += "invert(100%) ";
-  if (layer.grayscale) filterStr += "grayscale(100%) ";
-  if (filterStr) ctx.filter = filterStr.trim();
-
-  ctx.drawImage(img, 0, 0, wPx, hPx);
-  ctx.restore();
-}
-
 function drawMeasurementOverlay(
   ctx: CanvasRenderingContext2D,
   pts: [number, number][],
+  rubberbandMm: { x: number; y: number } | null,
   boardMmToScreen: (x: number, y: number) => { x: number; y: number }
 ) {
-  if (pts.length < 2) return;
   const p1 = boardMmToScreen(pts[0][0], pts[0][1]);
-  const p2 = boardMmToScreen(pts[1][0], pts[1][1]);
+  let p2: { x: number; y: number };
+  let dxMm: number;
+  let dyMm: number;
 
-  const dxMm = pts[1][0] - pts[0][0];
-  const dyMm = pts[1][1] - pts[0][1];
-  const distMm = Math.sqrt(dxMm * dxMm + dyMm * dyMm);
+  if (pts.length >= 2) {
+    p2 = boardMmToScreen(pts[1][0], pts[1][1]);
+    dxMm = pts[1][0] - pts[0][0];
+    dyMm = pts[1][1] - pts[0][1];
+  } else if (rubberbandMm) {
+    p2 = boardMmToScreen(rubberbandMm.x, rubberbandMm.y);
+    dxMm = rubberbandMm.x - pts[0][0];
+    dyMm = rubberbandMm.y - pts[0][1];
+  } else {
+    // Single point
+    ctx.save();
+    ctx.fillStyle = "#38bdf8";
+    ctx.beginPath();
+    ctx.arc(p1.x, p1.y, 5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    return;
+  }
+
+  const distMm = Math.hypot(dxMm, dyMm);
+  const distMil = distMm * 39.3701;
 
   ctx.save();
   ctx.strokeStyle = "#38bdf8";
   ctx.lineWidth = 2;
-
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y);
   ctx.lineTo(p2.x, p2.y);
   ctx.stroke();
 
-  // Draw endpoints
+  // Endpoints
   ctx.fillStyle = "#38bdf8";
   ctx.beginPath();
   ctx.arc(p1.x, p1.y, 4, 0, Math.PI * 2);
   ctx.arc(p2.x, p2.y, 4, 0, Math.PI * 2);
   ctx.fill();
 
-  // Draw distance label
+  // Distance label
   const midX = (p1.x + p2.x) / 2;
   const midY = (p1.y + p2.y) / 2;
-  ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
-  ctx.fillRect(midX - 40, midY - 12, 80, 24);
-  ctx.strokeStyle = "#38bdf8";
-  ctx.strokeRect(midX - 40, midY - 12, 80, 24);
-
-  ctx.fillStyle = "#fff";
+  const text = `${distMm.toFixed(2)} мм (${distMil.toFixed(1)} mil)`;
   ctx.font = "bold 11px JetBrains Mono, monospace";
+  const tw = ctx.measureText(text).width + 16;
+
+  ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+  ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
+  ctx.strokeStyle = "#38bdf8";
+  ctx.lineWidth = 1;
+  ctx.strokeRect(midX - tw / 2, midY - 12, tw, 24);
+
+  ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(`${distMm.toFixed(2)} mm`, midX, midY);
+  ctx.fillText(text, midX, midY);
 
   ctx.restore();
+}
+
+function drawRegistrationTargets(
+  ctx: CanvasRenderingContext2D,
+  reg: { step: 1 | 2; topPts: [number, number][]; botPts: [number, number][] },
+  boardMmToScreen: (x: number, y: number) => { x: number; y: number }
+) {
+  const drawTarget = (pt: [number, number], label: string, color: string) => {
+    const p = boardMmToScreen(pt[0], pt[1]);
+    ctx.save();
+    ctx.strokeStyle = color;
+    ctx.fillStyle = color;
+    ctx.lineWidth = 2;
+
+    // Crosshairs
+    ctx.beginPath();
+    ctx.moveTo(p.x - 12, p.y);
+    ctx.lineTo(p.x + 12, p.y);
+    ctx.moveTo(p.x, p.y - 12);
+    ctx.lineTo(p.x, p.y + 12);
+    ctx.stroke();
+
+    // Circle
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, 7, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Label
+    ctx.font = "bold 10px sans-serif";
+    ctx.fillText(label, p.x + 10, p.y - 10);
+    ctx.restore();
+  };
+
+  reg.topPts.forEach((pt, idx) => drawTarget(pt, `Top-${idx + 1}`, "#38bdf8"));
+  reg.botPts.forEach((pt, idx) => drawTarget(pt, `Bot-${idx + 1}`, "#f59e0b"));
 }

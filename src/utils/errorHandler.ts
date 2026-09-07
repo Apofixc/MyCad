@@ -132,8 +132,19 @@ export function reportError(
 }
 
 /**
- * Заглушка уведомления об успехе
+ * Уведомление об успехе
  */
-export function notifySuccess(_message: string): void {
-  // Ничего лишнего
+export function notifySuccess(message: string): void {
+  // Вывод в консоль или интеграция с UI
+  console.log("[SUCCESS]", message);
+}
+
+/**
+ * Предупреждающее уведомление
+ */
+export function notifyWarning(message: string): void {
+  useErrorStore.getState().showError({
+    message,
+    suggestion: "Проверьте корректность выбранного элемента или действия.",
+  });
 }
