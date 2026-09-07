@@ -20,6 +20,13 @@ export interface ProjectManifest {
   files: ProjectFileRef[];
 }
 
+export interface ProjectFullState {
+  manifest: ProjectManifest;
+  boards: BoardDocument[];
+  schematics: SchematicDocument[];
+  activeFileId: string | null;
+}
+
 export interface ProjectFileRef {
   id: string;
   name: string;

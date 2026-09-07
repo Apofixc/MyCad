@@ -16,6 +16,15 @@ pub struct ProjectManifest {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct ProjectFullState {
+    pub manifest: ProjectManifest,
+    pub boards: Vec<BoardDocument>,
+    pub schematics: Vec<SchematicDocument>,
+    pub active_file_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct ProjectFileRef {
     pub id: String,
     pub name: String,

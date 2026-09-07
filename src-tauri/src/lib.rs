@@ -25,6 +25,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::project_create,
             commands::project_open,
+            commands::project_get_state,
             commands::project_save,
             commands::project_get_recents,
             commands::project_remove_recent,
@@ -35,6 +36,7 @@ pub fn run() {
             commands::board_get_active,
             commands::schematic_get_active,
             commands::board_update_image_layer,
+            commands::board_delete_image_layer,
             commands::cad_calculate_scale,
             commands::cad_calculate_level,
             commands::cad_calculate_registration,

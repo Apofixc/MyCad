@@ -244,10 +244,20 @@ body,
   color: var(--cad-text-main);
 }
 
-.cad-tree-item.active {
-  background: rgba(59, 130, 246, 0.2);
-  color: #93c5fd;
-  border-left: 2px solid var(--cad-accent);
+.cad-tree-item.active,
+.cad-tree-item.selected {
+  background: rgba(59, 130, 246, 0.18);
+  color: #f8fafc;
+  border-left: 2px solid #3b82f6;
+}
+
+.cad-tree-item-name {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  margin: 0 6px;
+  font-size: 11.5px;
 }
 
 .cad-tree-actions {

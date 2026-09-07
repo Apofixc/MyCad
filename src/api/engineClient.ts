@@ -1,6 +1,7 @@
 import {
   BoardDocument,
   BoardImageLayer,
+  ProjectFullState,
   ProjectManifest,
   RecentProject,
   RegistrationResult,
@@ -21,12 +22,16 @@ async function invokeTauri<T>(cmd: string, args?: Record<string, unknown>): Prom
 }
 
 export const engineClient = {
-  async createProject(path: string, name: string, author?: string, desc?: string): Promise<ProjectManifest> {
-    return invokeTauri<ProjectManifest>("project_create", { path, name, author, desc });
+  async createProject(path: string, name: string, author?: string, desc?: string): Promise<ProjectFullState> {
+    return invokeTauri<ProjectFullState>("project_create", { path, name, author, desc });
   },
 
-  async openProject(path: string): Promise<ProjectManifest> {
-    return invokeTauri<ProjectManifest>("project_open", { path });
+  async openProject(path: string): Promise<ProjectFullState> {
+    return invokeTauri<ProjectFullState>("project_open", { path });
+  },
+
+  async getProjectState(): Promise<ProjectFullState | null> {
+    return invokeTauri<ProjectFullState | null>("project_get_state");
   },
 
   async saveProject(): Promise<void> {
@@ -49,24 +54,28 @@ export const engineClient = {
     return invokeTauri<SchematicDocument | null>("schematic_get_active");
   },
 
-  async addProjectFile(fileType: "board" | "schematic", name?: string): Promise<ProjectManifest> {
-    return invokeTauri<ProjectManifest>("project_add_file", { fileType, name });
+  async addProjectFile(fileType: "board" | "schematic", name?: string): Promise<ProjectFullState> {
+    return invokeTauri<ProjectFullState>("project_add_file", { fileType, name });
   },
 
-  async removeProjectFile(fileId: string): Promise<ProjectManifest> {
-    return invokeTauri<ProjectManifest>("project_remove_file", { fileId });
+  async removeProjectFile(fileId: string): Promise<ProjectFullState> {
+    return invokeTauri<ProjectFullState>("project_remove_file", { fileId });
   },
 
-  async renameProjectFile(fileId: string, newName: string): Promise<ProjectManifest> {
-    return invokeTauri<ProjectManifest>("project_rename_file", { fileId, newName });
+  async renameProjectFile(fileId: string, newName: string): Promise<ProjectFullState> {
+    return invokeTauri<ProjectFullState>("project_rename_file", { fileId, newName });
   },
 
-  async setActiveFile(fileId: string): Promise<void> {
-    return invokeTauri<void>("project_set_active_file", { fileId });
+  async setActiveFile(fileId: string): Promise<ProjectFullState> {
+    return invokeTauri<ProjectFullState>("project_set_active_file", { fileId });
   },
 
   async updateImageLayer(layer: BoardImageLayer): Promise<BoardImageLayer> {
     return invokeTauri<BoardImageLayer>("board_update_image_layer", { layer });
+  },
+
+  async deleteImageLayer(layerId: string): Promise<void> {
+    return invokeTauri<void>("board_delete_image_layer", { layerId });
   },
 
   async calculateScale(p1: [number, number], p2: [number, number], realMm: number): Promise<number> {
@@ -148,6 +157,15 @@ function initCleanSchematic(id: string, name: string): SchematicDocument {
   };
 }
 
+function getMockFullState(): ProjectFullState {
+  return {
+    manifest: mockManifest!,
+    boards: mockBoard ? [mockBoard] : [],
+    schematics: mockSchematic ? [mockSchematic] : [],
+    activeFileId: mockActiveFileId,
+  };
+}
+
 async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
   console.log(`[MockIPC] Invoking: ${cmd}`, args);
   await new Promise((r) => setTimeout(r, 60));
@@ -163,12 +181,12 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         formatVersion: 1,
-        files: [], // Чистый пустой проект
+        files: [],
       };
       mockBoard = null;
       mockSchematic = null;
       mockActiveFileId = null;
-      return mockManifest as unknown as T;
+      return getMockFullState() as unknown as T;
     }
 
     case "project_open": {
@@ -193,7 +211,12 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
       mockActiveFileId = boardId;
       mockBoard = initCleanBoard(boardId, `${fileName}.board`);
       mockSchematic = null;
-      return mockManifest as unknown as T;
+      return getMockFullState() as unknown as T;
+    }
+
+    case "project_get_state": {
+      if (!mockManifest) return null as unknown as T;
+      return getMockFullState() as unknown as T;
     }
 
     case "project_add_file": {
@@ -218,7 +241,7 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
         mockSchematic = initCleanSchematic(id, finalName);
       }
 
-      return mockManifest as unknown as T;
+      return getMockFullState() as unknown as T;
     }
 
     case "project_remove_file": {
@@ -230,20 +253,29 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
       if (mockActiveFileId === fileId) {
         mockActiveFileId = mockManifest.files[0]?.id || null;
       }
-      return mockManifest as unknown as T;
+      return getMockFullState() as unknown as T;
     }
 
     case "project_rename_file": {
       if (!mockManifest) throw new Error("Нет открытого проекта");
       const { fileId, newName } = args;
       const f = mockManifest.files.find((x) => x.id === fileId);
+      if (f) f.name = newName;
       if (mockBoard && mockBoard.id === fileId) mockBoard.name = newName;
       if (mockSchematic && mockSchematic.id === fileId) mockSchematic.name = newName;
-      return mockManifest as unknown as T;
+      return getMockFullState() as unknown as T;
     }
 
     case "project_set_active_file": {
       mockActiveFileId = args.fileId;
+      return getMockFullState() as unknown as T;
+    }
+
+    case "board_delete_image_layer": {
+      if (mockBoard) {
+        mockBoard.data.bgTop.images = mockBoard.data.bgTop.images.filter((img) => img.id !== args.layerId);
+        mockBoard.data.bgBottom.images = mockBoard.data.bgBottom.images.filter((img) => img.id !== args.layerId);
+      }
       return undefined as unknown as T;
     }
 

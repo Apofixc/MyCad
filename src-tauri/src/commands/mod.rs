@@ -6,13 +6,34 @@ use crate::cad::math::{self, RegistrationResult};
 use crate::db::global::GlobalDb;
 use crate::image::pipeline;
 use crate::models::{
-    BoardDocument, BoardImageLayer, ProjectManifest, RecentProject, SchematicDocument,
+    BoardDocument, BoardImageLayer, ProjectFullState, RecentProject, SchematicDocument,
 };
 use crate::project::archive::{self, ProjectSession};
 
 pub struct AppState {
     pub session: Mutex<Option<ProjectSession>>,
     pub global_db: Mutex<GlobalDb>,
+}
+
+fn build_full_state(session: &ProjectSession) -> ProjectFullState {
+    let mut boards = session.boards.clone();
+    for board in &mut boards {
+        for img in board.data.bg_top.images.iter_mut().chain(board.data.bg_bottom.images.iter_mut()) {
+            if let Some(ref rel_file) = img.image_file {
+                let local_path = session.temp_image_dir.join("images").join(rel_file);
+                if local_path.exists() {
+                    img.cached_url = Some(local_path.to_string_lossy().to_string());
+                }
+            }
+        }
+    }
+
+    ProjectFullState {
+        manifest: session.manifest.clone(),
+        boards,
+        schematics: session.schematics.clone(),
+        active_file_id: session.active_file_id.clone(),
+    }
 }
 
 #[tauri::command]
@@ -22,7 +43,7 @@ pub fn project_create(
     name: String,
     author: Option<String>,
     desc: Option<String>,
-) -> Result<ProjectManifest, String> {
+) -> Result<ProjectFullState, String> {
     let p = Path::new(&path);
     let session = archive::create_default_project(p, &name, author.as_deref(), desc.as_deref())?;
     let manifest = session.manifest.clone();
@@ -39,12 +60,13 @@ pub fn project_create(
         let _ = gdb.add_recent_project(&recent);
     }
 
+    let full_state = build_full_state(&session);
     *state.session.lock().map_err(|e| e.to_string())? = Some(session);
-    Ok(manifest)
+    Ok(full_state)
 }
 
 #[tauri::command]
-pub fn project_open(state: State<AppState>, path: String) -> Result<ProjectManifest, String> {
+pub fn project_open(state: State<AppState>, path: String) -> Result<ProjectFullState, String> {
     let p = Path::new(&path);
     let session = archive::open_project_archive(p)?;
     let manifest = session.manifest.clone();
@@ -60,8 +82,15 @@ pub fn project_open(state: State<AppState>, path: String) -> Result<ProjectManif
         let _ = gdb.add_recent_project(&recent);
     }
 
+    let full_state = build_full_state(&session);
     *state.session.lock().map_err(|e| e.to_string())? = Some(session);
-    Ok(manifest)
+    Ok(full_state)
+}
+
+#[tauri::command]
+pub fn project_get_state(state: State<AppState>) -> Result<Option<ProjectFullState>, String> {
+    let guard = state.session.lock().map_err(|e| e.to_string())?;
+    Ok(guard.as_ref().map(build_full_state))
 }
 
 #[tauri::command]
@@ -89,7 +118,7 @@ pub fn project_add_file(
     state: State<AppState>,
     file_type: String,
     name: Option<String>,
-) -> Result<ProjectManifest, String> {
+) -> Result<ProjectFullState, String> {
     let mut guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_mut().ok_or("Нет открытого проекта")?;
 
@@ -103,30 +132,43 @@ pub fn project_add_file(
         _ => return Err(format!("Неизвестный тип файла: {}", file_type)),
     }
 
-    Ok(session.manifest.clone())
+    Ok(build_full_state(session))
 }
 
 #[tauri::command]
-pub fn project_remove_file(state: State<AppState>, file_id: String) -> Result<ProjectManifest, String> {
+pub fn project_remove_file(state: State<AppState>, file_id: String) -> Result<ProjectFullState, String> {
     let mut guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_mut().ok_or("Нет открытого проекта")?;
     session.remove_file(&file_id)?;
-    Ok(session.manifest.clone())
+    Ok(build_full_state(session))
 }
 
 #[tauri::command]
-pub fn project_rename_file(state: State<AppState>, file_id: String, new_name: String) -> Result<ProjectManifest, String> {
+pub fn project_rename_file(state: State<AppState>, file_id: String, new_name: String) -> Result<ProjectFullState, String> {
     let mut guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_mut().ok_or("Нет открытого проекта")?;
     session.rename_file(&file_id, &new_name)?;
-    Ok(session.manifest.clone())
+    Ok(build_full_state(session))
 }
 
 #[tauri::command]
-pub fn project_set_active_file(state: State<AppState>, file_id: String) -> Result<(), String> {
+pub fn project_set_active_file(state: State<AppState>, file_id: String) -> Result<ProjectFullState, String> {
     let mut guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_mut().ok_or("Нет открытого проекта")?;
-    session.set_active_file(&file_id)
+    session.set_active_file(&file_id)?;
+    Ok(build_full_state(session))
+}
+
+#[tauri::command]
+pub fn board_delete_image_layer(state: State<AppState>, layer_id: String) -> Result<(), String> {
+    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = guard.as_mut().ok_or("Нет активного проекта")?;
+
+    for board in &mut session.boards {
+        board.data.bg_top.images.retain(|img| img.id != layer_id);
+        board.data.bg_bottom.images.retain(|img| img.id != layer_id);
+    }
+    Ok(())
 }
 
 #[tauri::command]
