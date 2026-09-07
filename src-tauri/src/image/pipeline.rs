@@ -765,8 +765,7 @@ pub fn save_image_to_session_cache(
     let filename = format!("{}_{}.png", prefix, Uuid::new_v4().simple());
     let dest_path = images_dir.join(&filename);
 
-    img.save_with_format(&dest_path, image::ImageFormat::Png)
-        .map_err(|e| format!("Ошибка сохранения изображения {}: {}", dest_path.display(), e))?;
+    save_image_to_file(img, &dest_path, "image/png", 90)?;
 
     Ok((filename, dest_path))
 }

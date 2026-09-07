@@ -117,7 +117,7 @@ export const ProjectTree: React.FC = () => {
     } else {
       const input = document.createElement("input");
       input.type = "file";
-      input.accept = "image/*";
+      input.accept = "image/*,.png,.jpg,.jpeg,.tif,.tiff,.webp,.bmp";
       input.multiple = true;
       input.onchange = () => {
         const files = Array.from(input.files || []);

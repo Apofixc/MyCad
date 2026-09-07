@@ -54,12 +54,27 @@ const FileThumbnailCard: React.FC<{
     const loadMetaAndThumb = async () => {
       try {
         let blob: Blob | null = null;
-        if (item.file) {
-          blob = item.file;
-        } else if (item.path) {
-          const resolved = await resolveImageUrl(item.path);
+        const rawPath =
+          item.path ||
+          (item.file as any)?.path ||
+          (item.file as any)?.filePath;
+
+        if (rawPath) {
+          const resolved = await resolveImageUrl(rawPath);
           const resp = await fetch(resolved);
           blob = await resp.blob();
+        } else if (item.file) {
+          const isTif =
+            /\.(tiff?)$/i.test(item.file.name) ||
+            item.file.type.includes("tiff");
+          if (isTif && typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+            const arrayBuffer = await item.file.arrayBuffer();
+            const dataUrl = await engineClient.convertTiffBytes(new Uint8Array(arrayBuffer));
+            const resp = await fetch(dataUrl);
+            blob = await resp.blob();
+          } else {
+            blob = item.file;
+          }
         }
 
         if (!blob || !active) return;

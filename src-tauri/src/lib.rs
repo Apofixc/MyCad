@@ -47,6 +47,8 @@ pub fn run() {
             commands::image_process,
             commands::image_process_and_save,
             commands::image_read_bytes,
+            commands::image_prepare_display,
+            commands::image_convert_tiff_bytes,
         ])
         .run(tauri::generate_context!())
         .expect("Ошибка запуска приложения Tauri");
@@ -82,6 +84,31 @@ mod tests {
 
         let rem_res = gdb.remove_recent_project(&test_proj.file_path);
         assert!(rem_res.is_ok(), "remove_recent_project failed: {:?}", rem_res.err());
+    }
+
+    #[test]
+    fn test_tiff_and_webp_support() {
+        use ::image::{DynamicImage, ImageBuffer, ImageFormat, Rgba};
+        // Create an in-memory test image
+        let img: ImageBuffer<Rgba<u8>, Vec<u8>> = ImageBuffer::from_pixel(10, 10, Rgba([255, 0, 128, 255]));
+        let dyn_img = DynamicImage::ImageRgba8(img);
+
+        // Encode as TIFF
+        let mut tiff_bytes = Vec::new();
+        dyn_img.write_to(&mut std::io::Cursor::new(&mut tiff_bytes), ImageFormat::Tiff)
+            .expect("Should encode TIFF");
+
+        // Decode TIFF
+        let decoded = ::image::load_from_memory(&tiff_bytes).expect("Should decode TIFF");
+        assert_eq!(decoded.width(), 10);
+        assert_eq!(decoded.height(), 10);
+
+        // Test saving TIFF decoded image to PNG preview
+        let temp_png = std::env::temp_dir().join("test_tiff_preview.png");
+        crate::image::pipeline::save_image_to_file(&decoded, &temp_png, "image/png", 90)
+            .expect("Should save preview PNG");
+        assert!(temp_png.exists());
+        let _ = std::fs::remove_file(&temp_png);
     }
 }
 

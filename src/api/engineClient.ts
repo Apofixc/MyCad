@@ -130,6 +130,16 @@ export const engineClient = {
   async readImageBytes(filePath: string): Promise<number[]> {
     return invokeTauri<number[]>("image_read_bytes", { filePath });
   },
+
+  async prepareImageDisplay(filePath: string): Promise<string> {
+    return invokeTauri<string>("image_prepare_display", { filePath });
+  },
+
+  async convertTiffBytes(bytes: Uint8Array | number[]): Promise<string> {
+    return invokeTauri<string>("image_convert_tiff_bytes", {
+      bytes: Array.from(bytes),
+    });
+  },
 };
 
 export interface Point2D {
@@ -175,6 +185,7 @@ export interface ProcessImageResponse {
 
 /**
  * Resolves an image path or URL into a webview-loadable URL (asset:// or blob:).
+ * Automatically converts/caches TIFF images via backend so WebView2/Chromium can display them natively.
  */
 export async function resolveImageUrl(urlOrPath: string): Promise<string> {
   if (!urlOrPath) return "";
@@ -189,10 +200,15 @@ export async function resolveImageUrl(urlOrPath: string): Promise<string> {
 
   if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
     try {
+      let targetPath = urlOrPath;
+      if (/\.(tiff?)$/i.test(urlOrPath)) {
+        const { invoke } = await import("@tauri-apps/api/core");
+        targetPath = await invoke<string>("image_prepare_display", { filePath: urlOrPath });
+      }
       const { convertFileSrc } = await import("@tauri-apps/api/core");
-      return convertFileSrc(urlOrPath);
+      return convertFileSrc(targetPath);
     } catch (e) {
-      console.warn("convertFileSrc failed:", e);
+      console.warn("resolveImageUrl error:", e);
     }
   }
 
@@ -527,6 +543,14 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
         else mockBoard.data.bgBottom.images.push(layer);
       }
       return layer as unknown as T;
+    }
+
+    case "image_prepare_display": {
+      return (args.filePath || "") as unknown as T;
+    }
+
+    case "image_convert_tiff_bytes": {
+      return "" as unknown as T;
     }
 
     default:

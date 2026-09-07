@@ -226,10 +226,23 @@ export const ImagePreprocessModal: React.FC = () => {
       setLoading(true);
       try {
         let displayUrl = sourceUrl;
-        if (pendingPreprocess.filePath) {
-          displayUrl = await resolveImageUrl(pendingPreprocess.filePath);
-        } else if (pendingPreprocess.file && !sourceUrl) {
-          displayUrl = URL.createObjectURL(pendingPreprocess.file);
+        const filePath =
+          pendingPreprocess.filePath ||
+          (pendingPreprocess.file as any)?.path ||
+          (pendingPreprocess.file as any)?.filePath;
+
+        if (filePath) {
+          displayUrl = await resolveImageUrl(filePath);
+        } else if (pendingPreprocess.file) {
+          const isTif =
+            /\.(tiff?)$/i.test(pendingPreprocess.file.name) ||
+            pendingPreprocess.file.type.includes("tiff");
+          if (isTif && typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+            const buf = await pendingPreprocess.file.arrayBuffer();
+            displayUrl = await engineClient.convertTiffBytes(new Uint8Array(buf));
+          } else if (!sourceUrl) {
+            displayUrl = URL.createObjectURL(pendingPreprocess.file);
+          }
         }
         setCurrentSrc(displayUrl);
 
@@ -430,7 +443,10 @@ export const ImagePreprocessModal: React.FC = () => {
 
   // Auto-detect corners with Magic Wand
   const handleAutoDetect = async () => {
-    const rawPath = pendingPreprocess?.filePath;
+    const rawPath =
+      pendingPreprocess?.filePath ||
+      (pendingPreprocess?.file as any)?.path ||
+      (pendingPreprocess?.file as any)?.filePath;
     if (!rawPath) return;
 
     setIsDetecting(true);
@@ -904,7 +920,10 @@ function drawAlignmentGrid(
     setLoading(true);
     setErrorMsg(null);
     try {
-      const rawPath = pendingPreprocess.filePath;
+      const rawPath =
+        pendingPreprocess.filePath ||
+        (pendingPreprocess.file as any)?.path ||
+        (pendingPreprocess.file as any)?.filePath;
       if (rawPath) {
         const layer = await engineClient.importImage(rawPath, side);
         layer.mirrored = isFlippedH;
@@ -946,7 +965,11 @@ function drawAlignmentGrid(
     setLoading(true);
     setErrorMsg(null);
     try {
-      const source = pendingPreprocess.filePath || pendingPreprocess.dataUrl || currentSrc;
+      const rawPath =
+        pendingPreprocess.filePath ||
+        (pendingPreprocess.file as any)?.path ||
+        (pendingPreprocess.file as any)?.filePath;
+      const source = rawPath || pendingPreprocess.dataUrl || currentSrc;
       const op = getOperation(false);
 
       const layer = await engineClient.processAndSaveImage(

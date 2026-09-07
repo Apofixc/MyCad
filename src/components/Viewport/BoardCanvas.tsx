@@ -138,8 +138,12 @@ export const BoardCanvas: React.FC = () => {
         side: targetUnderlaySide,
       });
     } else {
+      const filePaths = files
+        .map((f) => (f as any).path || (f as any).filePath)
+        .filter(Boolean) as string[];
       setPendingBatchImport({
         files,
+        filePaths: filePaths.length === files.length ? filePaths : undefined,
         side: targetUnderlaySide,
       });
     }

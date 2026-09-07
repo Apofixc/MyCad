@@ -460,4 +460,68 @@ pub fn image_read_bytes(file_path: String) -> Result<Vec<u8>, String> {
     std::fs::read(&file_path).map_err(|e| format!("Не удалось прочитать файл {}: {}", file_path, e))
 }
 
+#[tauri::command]
+pub fn image_prepare_display(
+    state: State<AppState>,
+    file_path: String,
+) -> Result<String, String> {
+    let path = Path::new(&file_path);
+    let ext = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("")
+        .to_ascii_lowercase();
+
+    // If already web-compatible (png, jpg, jpeg, webp, bmp), no conversion needed
+    if ext != "tif" && ext != "tiff" {
+        return Ok(file_path);
+    }
+
+    let meta = std::fs::metadata(&file_path)
+        .map_err(|e| format!("Не удалось прочитать файл {}: {}", file_path, e))?;
+    let file_len = meta.len();
+    let mtime = meta
+        .modified()
+        .map(|t| t.duration_since(std::time::UNIX_EPOCH).unwrap_or_default().as_secs())
+        .unwrap_or(0);
+
+    let guard = state.session.lock().map_err(|e| e.to_string())?;
+    let cache_dir = if let Some(ref session) = *guard {
+        session.temp_image_dir.join("previews")
+    } else {
+        std::env::temp_dir().join("mycad_previews")
+    };
+    std::fs::create_dir_all(&cache_dir).map_err(|e| e.to_string())?;
+
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+    let mut hasher = DefaultHasher::new();
+    file_path.hash(&mut hasher);
+    file_len.hash(&mut hasher);
+    mtime.hash(&mut hasher);
+    let hash_val = hasher.finish();
+
+    let preview_filename = format!("tif_preview_{:016x}.png", hash_val);
+    let preview_path = cache_dir.join(preview_filename);
+
+    if preview_path.exists() && std::fs::metadata(&preview_path).map(|m| m.len() > 0).unwrap_or(false) {
+        return Ok(preview_path.to_string_lossy().to_string());
+    }
+
+    let img = image::open(&file_path)
+        .map_err(|e| format!("Не удалось открыть TIFF файл {}: {}", file_path, e))?;
+
+    pipeline::save_image_to_file(&img, &preview_path, "image/png", 90)?;
+
+    Ok(preview_path.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn image_convert_tiff_bytes(bytes: Vec<u8>) -> Result<String, String> {
+    let img = image::load_from_memory(&bytes)
+        .map_err(|e| format!("Не удалось декодировать TIFF: {}", e))?;
+    let data_url = pipeline::encode_to_data_url(&img, "image/png", 90)?;
+    Ok(data_url)
+}
+
 
