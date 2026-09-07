@@ -13,8 +13,7 @@ import { NewProjectModal } from "./components/Modals/NewProjectModal";
 import { NewDocumentModal } from "./components/Modals/NewDocumentModal";
 import { ImagePreprocessModal } from "./components/Modals/ImagePreprocessModal";
 import { BatchImageImportModal } from "./components/Modals/BatchImageImportModal";
-import { ErrorLogModal } from "./components/Modals/ErrorLogModal";
-import { ToastContainer } from "./components/Common/ToastContainer";
+import { ErrorDialog } from "./components/Common/ErrorDialog";
 import { ErrorBoundary } from "./components/Common/ErrorBoundary";
 
 export const App: React.FC = () => {
@@ -124,10 +123,9 @@ export const App: React.FC = () => {
       <NewDocumentModal />
       <ImagePreprocessModal />
       <BatchImageImportModal />
-      <ErrorLogModal />
 
-      {/* Global Toast Notifications */}
-      <ToastContainer />
+      {/* Error & Action Dialog */}
+      <ErrorDialog />
     </div>
   );
 };

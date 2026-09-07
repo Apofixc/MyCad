@@ -33,18 +33,11 @@ export class ErrorBoundary extends Component<Props, State> {
   public componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     this.setState({ errorInfo });
 
-    // Регистрируем ошибку рендеринга в глобальном хранилище ошибок
-    useErrorStore.getState().addError(
-      {
-        message: error.message || "Ошибка отрисовки компонента",
-        details: `${error.stack || ""}\n\nComponent Stack:\n${errorInfo.componentStack || ""}`,
-      },
-      {
-        level: "error",
-        source: "render",
-        toast: true,
-      }
-    );
+    // Отображаем ошибку с предложением действия
+    useErrorStore.getState().showError({
+      message: error.message || "Ошибка отрисовки компонента",
+      suggestion: "Нажмите 'Повторить попытку' или перезагрузите страницу, если сбой повторится.",
+    });
   }
 
   private handleReset = (): void => {
