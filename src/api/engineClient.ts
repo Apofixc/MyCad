@@ -486,6 +486,49 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
       return [] as unknown as T;
     }
 
+    case "image_process": {
+      return {
+        dataUrl: args.request?.source || "",
+        width: 1920,
+        height: 1080,
+      } as unknown as T;
+    }
+
+    case "image_process_and_save": {
+      const side = args.side || "top";
+      const layer: BoardImageLayer = {
+        id: `img_${side}_${Date.now()}`,
+        name: args.name || `${side}_processed.png`,
+        side,
+        cachedUrl: args.request?.source || "",
+        offsetX: 0,
+        offsetY: 0,
+        scale: 1,
+        lockAspectRatio: true,
+        rotation: 0,
+        opacity: 0.85,
+        brightness: 100,
+        contrast: 100,
+        invert: false,
+        grayscale: false,
+        blendMode: "normal",
+        tintColor: "none",
+        dpi: 600,
+        pxPerMm: 23.62,
+        mirrored: false,
+        flipV: false,
+        locked: false,
+        visible: true,
+        width: 1920,
+        height: 1080,
+      };
+      if (mockBoard) {
+        if (side === "top") mockBoard.data.bgTop.images.push(layer);
+        else mockBoard.data.bgBottom.images.push(layer);
+      }
+      return layer as unknown as T;
+    }
+
     default:
       throw new Error(`[MockIPC] Unknown command: ${cmd}`);
   }

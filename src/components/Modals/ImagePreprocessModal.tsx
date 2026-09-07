@@ -17,6 +17,11 @@ import {
   Shapes,
   CircleDot,
   Loader2,
+  Eye,
+  Grid,
+  HelpCircle,
+  ArrowLeft,
+  RefreshCw,
 } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
@@ -110,7 +115,7 @@ export const ImagePreprocessModal: React.FC = () => {
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [initialCropRect, setInitialCropRect] = useState<CropRect>({ x: 0, y: 0, width: 0, height: 0 });
 
-  // Loupe
+  // Magnifier Loupe
   const [loupeState, setLoupeState] = useState<{
     visible: boolean;
     screenX: number;
@@ -118,6 +123,15 @@ export const ImagePreprocessModal: React.FC = () => {
     imgX: number;
     imgY: number;
   }>({ visible: false, screenX: 0, screenY: 0, imgX: 0, imgY: 0 });
+
+  // Quick Preview State
+  const [isPreviewMode, setIsPreviewMode] = useState<boolean>(false);
+  const [previewLoading, setPreviewLoading] = useState<boolean>(false);
+  const [previewDims, setPreviewDims] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+  const [showGridOverlay, setShowGridOverlay] = useState<boolean>(true);
+  const [showOriginalCompare, setShowOriginalCompare] = useState<boolean>(false);
+  const [showShortcutsModal, setShowShortcutsModal] = useState<boolean>(false);
+  const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(null);
 
   const [loading, setLoading] = useState<boolean>(false);
   const [isDetecting, setIsDetecting] = useState<boolean>(false);
@@ -127,6 +141,7 @@ export const ImagePreprocessModal: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const loupeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const loadedImageRef = useRef<HTMLImageElement | null>(null);
+  const previewImgRef = useRef<HTMLImageElement | null>(null);
   const hasFittedRef = useRef<boolean>(false);
 
   const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
@@ -160,14 +175,12 @@ export const ImagePreprocessModal: React.FC = () => {
 
       if (!imgW || !imgH || vw <= 0 || vh <= 0) return;
 
-      // When rotated 90 or 270 degrees, effective width and height swap
       const isRotated90 = rotationAngle === 90 || rotationAngle === 270;
       const effW = isRotated90 ? imgH : imgW;
       const effH = isRotated90 ? imgW : imgH;
 
       const pad = 48;
       const scale = Math.min((vw - pad) / effW, (vh - pad) / effH, 1.5);
-      // Support massive scans (e.g. 15,000+ px) without artificial cutoffs
       const clampedScale = Math.max(scale, 0.001);
 
       setZoom(clampedScale);
@@ -188,6 +201,8 @@ export const ImagePreprocessModal: React.FC = () => {
     setIsFlippedH(side === "bottom"); // default flip H for bottom scan
     setIsFlippedV(false);
     setMode("perspective");
+    setIsPreviewMode(false);
+    previewImgRef.current = null;
     hasFittedRef.current = false;
 
     let sourceUrl = pendingPreprocess.filePath || pendingPreprocess.dataUrl || "";
@@ -262,7 +277,7 @@ export const ImagePreprocessModal: React.FC = () => {
     loadImg();
   }, [modals.preprocess, pendingPreprocess]);
 
-  // Once layout measurements are ready, fit if not yet fitted
+  // Layout measurements fit
   useEffect(() => {
     if (viewportSize.width > 50 && viewportSize.height > 50 && naturalDims.width > 0) {
       if (!hasFittedRef.current) {
@@ -320,7 +335,6 @@ export const ImagePreprocessModal: React.FC = () => {
           const rad = (rotationAngle * Math.PI) / 180;
           const cos = Math.cos(rad);
           const sin = Math.sin(rad);
-          // Inverse rotation by -rotationAngle
           const rx = dx * cos + dy * sin;
           const ry = -dx * sin + dy * cos;
           dx = rx;
@@ -354,10 +368,97 @@ export const ImagePreprocessModal: React.FC = () => {
   };
 
   // Close modal
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     setPendingPreprocess(null);
     closeModal("preprocess");
-  };
+  }, [closeModal, setPendingPreprocess]);
+
+  // Construct operation object
+  const getOperation = useCallback(
+    (forPreview: boolean = false) => {
+      const maxDim = forPreview ? 1400 : maxDimension > 0 ? maxDimension : undefined;
+      if (mode === "perspective") {
+        return {
+          type: "warpPerspective" as const,
+          quad,
+          maxDimension: maxDim,
+          quality: 88,
+          mimeType: "image/jpeg",
+        };
+      } else if (mode === "crop") {
+        return {
+          type: "crop" as const,
+          rect: cropRect,
+          maxDimension: maxDim,
+          quality: 88,
+          mimeType: "image/jpeg",
+        };
+      } else if (mode === "polygon") {
+        return {
+          type: "cropPolygon" as const,
+          points: polygonPoints,
+          maxDimension: maxDim,
+          quality: 88,
+        };
+      } else {
+        return {
+          type: "cropEllipse" as const,
+          cx: ellipseParams.cx,
+          cy: ellipseParams.cy,
+          rx: ellipseParams.rx,
+          ry: ellipseParams.ry,
+          maxDimension: maxDim,
+          quality: 88,
+        };
+      }
+    },
+    [mode, quad, cropRect, polygonPoints, ellipseParams, maxDimension]
+  );
+
+  // Quick Preview Generator
+  const loadPreview = useCallback(async () => {
+    if (!pendingPreprocess) return;
+    setPreviewLoading(true);
+    setErrorMsg(null);
+    try {
+      const source = pendingPreprocess.filePath || pendingPreprocess.dataUrl || currentSrc;
+      const op = getOperation(true);
+      const res = await engineClient.processImage({ source, operation: op as any });
+      if (res && res.dataUrl) {
+        setPreviewDims({ width: res.width, height: res.height });
+        const pImg = new Image();
+        pImg.crossOrigin = "anonymous";
+        pImg.onload = () => {
+          previewImgRef.current = pImg;
+          setPreviewLoading(false);
+          fitToScreen(res.width, res.height);
+        };
+        pImg.onerror = () => {
+          setPreviewLoading(false);
+        };
+        pImg.src = res.dataUrl;
+      } else {
+        setPreviewLoading(false);
+      }
+    } catch (e: any) {
+      console.error("Preview failed:", e);
+      setErrorMsg("Предпросмотр недоступен: " + (e?.message || e));
+      setPreviewLoading(false);
+    }
+  }, [pendingPreprocess, currentSrc, getOperation, fitToScreen]);
+
+  // Toggle Quick Preview
+  const togglePreview = useCallback(() => {
+    if (isPreviewMode) {
+      setIsPreviewMode(false);
+      if (naturalDims.width > 0) {
+        fitToScreen(naturalDims.width, naturalDims.height);
+      }
+    } else {
+      setIsPreviewMode(true);
+      loadPreview();
+    }
+  }, [isPreviewMode, naturalDims, fitToScreen, loadPreview]);
 
   // Bypass: insert original without transformations
   const handleBypass = async () => {
@@ -371,10 +472,11 @@ export const ImagePreprocessModal: React.FC = () => {
         layer.mirrored = isFlippedH;
         layer.flipV = isFlippedV;
         layer.rotation = rotationAngle;
-        // Position new image next to existing ones if not replacing
+
         const { boards, board } = useProjectStore.getState();
         const currentBoard = board || boards[0];
-        const existing = side === "top" ? currentBoard?.data?.bgTop?.images : currentBoard?.data?.bgBottom?.images;
+        const existing =
+          side === "top" ? currentBoard?.data?.bgTop?.images : currentBoard?.data?.bgBottom?.images;
         if (!pendingPreprocess.replaceLayerId && existing && existing.length > 0) {
           let maxRight = 0;
           for (const ex of existing) {
@@ -400,53 +502,16 @@ export const ImagePreprocessModal: React.FC = () => {
   };
 
   // Apply transformation
-  const handleApply = async () => {
+  const handleApply = useCallback(async () => {
     if (!pendingPreprocess) return;
     setLoading(true);
     setErrorMsg(null);
     try {
       const source = pendingPreprocess.filePath || pendingPreprocess.dataUrl || currentSrc;
-      let op: any;
-
-      const maxDim = maxDimension > 0 ? maxDimension : undefined;
-
-      if (mode === "perspective") {
-        op = {
-          type: "warpPerspective",
-          quad,
-          maxDimension: maxDim,
-          quality: 90,
-          mimeType: "image/png",
-        };
-      } else if (mode === "crop") {
-        op = {
-          type: "crop",
-          rect: cropRect,
-          maxDimension: maxDim,
-          quality: 90,
-          mimeType: "image/png",
-        };
-      } else if (mode === "polygon") {
-        op = {
-          type: "cropPolygon",
-          points: polygonPoints,
-          maxDimension: maxDim,
-          quality: 90,
-        };
-      } else {
-        op = {
-          type: "cropEllipse",
-          cx: ellipseParams.cx,
-          cy: ellipseParams.cy,
-          rx: ellipseParams.rx,
-          ry: ellipseParams.ry,
-          maxDimension: maxDim,
-          quality: 90,
-        };
-      }
+      const op = getOperation(false);
 
       const layer = await engineClient.processAndSaveImage(
-        { source, operation: op },
+        { source, operation: op as any },
         side,
         pendingPreprocess.name
       );
@@ -455,10 +520,10 @@ export const ImagePreprocessModal: React.FC = () => {
       layer.flipV = isFlippedV;
       layer.rotation = rotationAngle;
 
-      // Position new image next to existing ones if not replacing
       const { boards, board } = useProjectStore.getState();
       const currentBoard = board || boards[0];
-      const existing = side === "top" ? currentBoard?.data?.bgTop?.images : currentBoard?.data?.bgBottom?.images;
+      const existing =
+        side === "top" ? currentBoard?.data?.bgTop?.images : currentBoard?.data?.bgBottom?.images;
       if (!pendingPreprocess.replaceLayerId && existing && existing.length > 0) {
         let maxRight = 0;
         for (const ex of existing) {
@@ -480,7 +545,78 @@ export const ImagePreprocessModal: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [
+    pendingPreprocess,
+    currentSrc,
+    getOperation,
+    side,
+    isFlippedH,
+    isFlippedV,
+    rotationAngle,
+    updateImageLayer,
+    handleClose,
+  ]);
+
+  // Keyboard shortcuts listener
+  useEffect(() => {
+    if (!modals.preprocess) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLSelectElement) return;
+
+      if (e.key === "p" || e.key === "P" || e.key === "з" || e.key === "З") {
+        e.preventDefault();
+        togglePreview();
+      } else if (e.key === "r" || e.key === "R" || e.key === "к" || e.key === "К") {
+        e.preventDefault();
+        if (e.shiftKey) {
+          setRotationAngle((r) => (r - 90 + 360) % 360);
+        } else {
+          setRotationAngle((r) => (r + 90) % 360);
+        }
+      } else if (e.key === "f" || e.key === "F" || e.key === "а" || e.key === "А") {
+        e.preventDefault();
+        setIsFlippedH((f) => !f);
+      } else if (e.key === "0") {
+        e.preventDefault();
+        fitToScreen();
+      } else if (e.key === "1") {
+        e.preventDefault();
+        setZoom(1);
+      } else if (e.key === "+" || e.key === "=") {
+        e.preventDefault();
+        setZoom((z) => Math.min(30, z * 1.3));
+      } else if (e.key === "-") {
+        e.preventDefault();
+        setZoom((z) => Math.max(0.001, z / 1.3));
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        if (showShortcutsModal) {
+          setShowShortcutsModal(false);
+        } else if (isPreviewMode) {
+          setIsPreviewMode(false);
+          if (naturalDims.width > 0) fitToScreen(naturalDims.width, naturalDims.height);
+        } else {
+          handleClose();
+        }
+      } else if (e.key === "Enter") {
+        e.preventDefault();
+        handleApply();
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    modals.preprocess,
+    isPreviewMode,
+    showShortcutsModal,
+    naturalDims,
+    togglePreview,
+    fitToScreen,
+    handleClose,
+    handleApply,
+  ]);
 
   // Render Viewport Canvas & Overlays
   useEffect(() => {
@@ -510,28 +646,87 @@ export const ImagePreprocessModal: React.FC = () => {
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
 
-    // High quality downsampling for massive scans
+    const isPreviewActive = isPreviewMode && previewImgRef.current && !showOriginalCompare;
+    const activeImg = isPreviewActive ? previewImgRef.current! : img;
+    const activeW = isPreviewActive
+      ? activeImg.naturalWidth || previewDims.width || naturalDims.width
+      : naturalDims.width;
+    const activeH = isPreviewActive
+      ? activeImg.naturalHeight || previewDims.height || naturalDims.height
+      : naturalDims.height;
+
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
 
-    // Draw Transformed Image onto Canvas
     ctx.save();
     ctx.translate(pan.x, pan.y);
     ctx.scale(zoom, zoom);
 
     // Center transform
-    const cx = naturalDims.width / 2;
-    const cy = naturalDims.height / 2;
+    const cx = activeW / 2;
+    const cy = activeH / 2;
     ctx.translate(cx, cy);
     if (rotationAngle !== 0) ctx.rotate((rotationAngle * Math.PI) / 180);
     if (isFlippedH || isFlippedV) ctx.scale(isFlippedH ? -1 : 1, isFlippedV ? -1 : 1);
     ctx.translate(-cx, -cy);
 
-    ctx.drawImage(img, 0, 0, naturalDims.width, naturalDims.height);
-    ctx.restore();
+    ctx.drawImage(activeImg, 0, 0, activeW, activeH);
+
+    // Draw CAD alignment grid over preview if active
+    if (isPreviewActive && showGridOverlay) {
+      ctx.save();
+      const gridSize = 40;
+      const majorStep = 5;
+      ctx.lineWidth = 1 / zoom;
+
+      // Fine grid
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.16)";
+      ctx.beginPath();
+      for (let gx = 0; gx <= activeW; gx += gridSize) {
+        if (gx % (gridSize * majorStep) !== 0) {
+          ctx.moveTo(gx, 0);
+          ctx.lineTo(gx, activeH);
+        }
+      }
+      for (let gy = 0; gy <= activeH; gy += gridSize) {
+        if (gy % (gridSize * majorStep) !== 0) {
+          ctx.moveTo(0, gy);
+          ctx.lineTo(activeW, gy);
+        }
+      }
+      ctx.stroke();
+
+      // Major grid
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.45)";
+      ctx.beginPath();
+      for (let gx = 0; gx <= activeW; gx += gridSize * majorStep) {
+        ctx.moveTo(gx, 0);
+        ctx.lineTo(gx, activeH);
+      }
+      for (let gy = 0; gy <= activeH; gy += gridSize * majorStep) {
+        ctx.moveTo(0, gy);
+        ctx.lineTo(activeW, gy);
+      }
+      ctx.stroke();
+
+      ctx.restore();
+    }
 
     ctx.restore();
-  }, [pan, zoom, naturalDims, rotationAngle, isFlippedH, isFlippedV, viewportSize]);
+    ctx.restore();
+  }, [
+    pan,
+    zoom,
+    naturalDims,
+    previewDims,
+    rotationAngle,
+    isFlippedH,
+    isFlippedV,
+    viewportSize,
+    isPreviewMode,
+    showGridOverlay,
+    showOriginalCompare,
+  ]);
 
   // Update Magnifier Loupe
   const updateLoupe = useCallback(
@@ -551,14 +746,13 @@ export const ImagePreprocessModal: React.FC = () => {
 
       ctx.clearRect(0, 0, size, size);
 
-      // Loupe zoom factor
       const mag = 4;
 
       ctx.save();
       ctx.translate(size / 2, size / 2);
       if (rotationAngle !== 0) ctx.rotate((rotationAngle * Math.PI) / 180);
       if (isFlippedH || isFlippedV) ctx.scale(isFlippedH ? -1 : 1, isFlippedV ? -1 : 1);
-      ctx.imageSmoothingEnabled = false; // pixel-crisp magnification
+      ctx.imageSmoothingEnabled = false;
       ctx.drawImage(
         img,
         -imgPt.x * mag,
@@ -568,7 +762,6 @@ export const ImagePreprocessModal: React.FC = () => {
       );
       ctx.restore();
 
-      // Subpixel Crosshair
       ctx.save();
       ctx.strokeStyle = "#38bdf8";
       ctx.lineWidth = 1.5;
@@ -579,7 +772,6 @@ export const ImagePreprocessModal: React.FC = () => {
       ctx.lineTo(size, size / 2);
       ctx.stroke();
 
-      // Center ring
       ctx.strokeStyle = "#ffffff";
       ctx.lineWidth = 1;
       ctx.beginPath();
@@ -619,7 +811,7 @@ export const ImagePreprocessModal: React.FC = () => {
 
   // Mouse Drag Handlers
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button === 1 || e.altKey || (e.button === 0 && !activeHandle)) {
+    if (e.button === 1 || e.altKey || (e.button === 0 && (!activeHandle || isPreviewMode))) {
       setIsPanning(true);
       setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
     }
@@ -631,6 +823,13 @@ export const ImagePreprocessModal: React.FC = () => {
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
 
+    // Track real cursor coordinates for HUD
+    const imgPt = screenToImage(screenX, screenY);
+    setCursorPos({
+      x: Math.round(Math.max(0, Math.min(naturalDims.width, imgPt.x))),
+      y: Math.round(Math.max(0, Math.min(naturalDims.height, imgPt.y))),
+    });
+
     if (isPanning) {
       setPan({
         x: e.clientX - panStart.x,
@@ -639,9 +838,8 @@ export const ImagePreprocessModal: React.FC = () => {
       return;
     }
 
-    if (!activeHandle) return;
+    if (isPreviewMode || !activeHandle) return;
 
-    const imgPt = screenToImage(screenX, screenY);
     imgPt.x = Math.max(0, Math.min(naturalDims.width, imgPt.x));
     imgPt.y = Math.max(0, Math.min(naturalDims.height, imgPt.y));
 
@@ -723,7 +921,7 @@ export const ImagePreprocessModal: React.FC = () => {
 
   if (!modals.preprocess || !pendingPreprocess) return null;
 
-  // Convert points for SVG overlay
+  // Screen coordinates for overlay
   const tlScreen = imageToScreen(quad.topLeft.x, quad.topLeft.y);
   const trScreen = imageToScreen(quad.topRight.x, quad.topRight.y);
   const brScreen = imageToScreen(quad.bottomRight.x, quad.bottomRight.y);
@@ -738,6 +936,38 @@ export const ImagePreprocessModal: React.FC = () => {
     height: Math.abs(cropBr.y - cropTl.y),
   };
 
+  // Informative HUD calculations
+  const totalMegapixels =
+    naturalDims.width > 0 && naturalDims.height > 0
+      ? ((naturalDims.width * naturalDims.height) / 1000000).toFixed(1)
+      : "0";
+
+  let selectionDimensions = "";
+  let selectionAspect = "";
+
+  if (mode === "perspective") {
+    const dTop = Math.hypot(quad.topRight.x - quad.topLeft.x, quad.topRight.y - quad.topLeft.y);
+    const dBottom = Math.hypot(quad.bottomRight.x - quad.bottomLeft.x, quad.bottomRight.y - quad.bottomLeft.y);
+    const dLeft = Math.hypot(quad.bottomLeft.x - quad.topLeft.x, quad.bottomLeft.y - quad.topLeft.y);
+    const dRight = Math.hypot(quad.bottomRight.x - quad.topRight.x, quad.bottomRight.y - quad.topRight.y);
+    const estW = Math.round((dTop + dBottom) / 2);
+    const estH = Math.round((dLeft + dRight) / 2);
+    selectionDimensions = `~${estW} × ${estH} px`;
+    selectionAspect = estH > 0 ? `${(estW / estH).toFixed(2)}:1` : "1:1";
+  } else if (mode === "crop") {
+    const cW = Math.round(cropRect.width);
+    const cH = Math.round(cropRect.height);
+    selectionDimensions = `${cW} × ${cH} px`;
+    selectionAspect = cH > 0 ? `${(cW / cH).toFixed(2)}:1` : "1:1";
+  } else if (mode === "circle") {
+    const d1 = Math.round(ellipseParams.rx * 2);
+    const d2 = Math.round(ellipseParams.ry * 2);
+    selectionDimensions = `⌀ ${d1} × ${d2} px`;
+    selectionAspect = d2 > 0 ? `${(d1 / d2).toFixed(2)}:1` : "1:1";
+  } else {
+    selectionDimensions = `${polygonPoints.length} вершин`;
+  }
+
   return (
     <div className="cad-preprocess-backdrop" onClick={handleClose}>
       <div className="cad-preprocess-modal" onClick={(e) => e.stopPropagation()}>
@@ -745,158 +975,281 @@ export const ImagePreprocessModal: React.FC = () => {
         <div className="cad-preprocess-header">
           <div className="header-title-group">
             <div className="header-icon-badge">
-              <SlidersHorizontal size={18} />
+              <SlidersHorizontal size={17} />
             </div>
             <div>
               <div className="modal-title">
-                Предобработка фото платы ({naturalDims.width} × {naturalDims.height} px)
+                <span>Предобработка фото платы</span>
+                {naturalDims.width > 0 && (
+                  <span style={{ fontSize: "12px", color: "#64748b", fontWeight: 400 }}>
+                    ({naturalDims.width} × {naturalDims.height} px • {totalMegapixels} MP)
+                  </span>
+                )}
               </div>
               <div className="modal-subtitle">
-                Кадрирование, выравнивание перспективы и подготовка для PCB слоя{" "}
-                <strong style={{ color: side === "top" ? "var(--cad-top-layer)" : "var(--cad-bottom-layer)" }}>
-                  {side.toUpperCase()}
+                <span>Кадрирование и выравнивание перспективы для слоя</span>
+                <strong
+                  style={{
+                    color: side === "top" ? "var(--cad-top-layer, #f59e0b)" : "var(--cad-bottom-layer, #06b6d4)",
+                  }}
+                >
+                  {side.toUpperCase()} ({side === "top" ? "Лицевой" : "Оборотный"})
                 </strong>
               </div>
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {/* Active layer indicator (read-only, controlled by Project Tree) */}
+          <div className="cad-header-actions">
+            {/* Active layer badge */}
             <div
               style={{
-                fontSize: "12px",
+                fontSize: "11px",
                 fontWeight: 600,
-                padding: "5px 12px",
-                borderRadius: "6px",
+                padding: "4px 10px",
+                borderRadius: "5px",
                 background: side === "top" ? "rgba(245, 158, 11, 0.12)" : "rgba(6, 182, 212, 0.12)",
-                border: `1px solid ${side === "top" ? "rgba(245, 158, 11, 0.4)" : "rgba(6, 182, 212, 0.4)"}`,
-                color: side === "top" ? "var(--cad-top-layer)" : "var(--cad-bottom-layer)",
+                border: `1px solid ${
+                  side === "top" ? "rgba(245, 158, 11, 0.35)" : "rgba(6, 182, 212, 0.35)"
+                }`,
+                color: side === "top" ? "var(--cad-top-layer, #f59e0b)" : "var(--cad-bottom-layer, #06b6d4)",
                 display: "flex",
                 alignItems: "center",
-                gap: "6px",
+                gap: "5px",
               }}
             >
               <span>Слой:</span>
-              <span>{side === "top" ? "TOP (Лицевой)" : "BOTTOM (Оборотный)"}</span>
+              <span>{side.toUpperCase()}</span>
             </div>
 
-            <button className="header-close-btn" onClick={handleClose}>
-              <X size={18} />
+            {/* Shortcuts help button */}
+            <button
+              className="cad-header-btn"
+              onClick={() => setShowShortcutsModal((s) => !s)}
+              title="Горячие клавиши"
+            >
+              <HelpCircle size={16} />
+            </button>
+
+            {/* Close button */}
+            <button className="cad-header-btn close" onClick={handleClose} title="Закрыть [Esc]">
+              <X size={16} />
             </button>
           </div>
         </div>
 
-        {/* Toolbar */}
+        {/* Shortcuts Popover */}
+        {showShortcutsModal && (
+          <div className="cad-shortcuts-popover" onClick={(e) => e.stopPropagation()}>
+            <div className="popover-title">
+              <span>Горячие клавиши</span>
+              <X
+                size={14}
+                style={{ cursor: "pointer", color: "#94a3b8" }}
+                onClick={() => setShowShortcutsModal(false)}
+              />
+            </div>
+            <div className="cad-shortcut-row">
+              <span>Быстрый просмотр</span>
+              <kbd className="cad-kbd-badge">P</kbd>
+            </div>
+            <div className="cad-shortcut-row">
+              <span>Поворот на 90°</span>
+              <kbd className="cad-kbd-badge">R</kbd>
+            </div>
+            <div className="cad-shortcut-row">
+              <span>Отразить по горизонтали</span>
+              <kbd className="cad-kbd-badge">F</kbd>
+            </div>
+            <div className="cad-shortcut-row">
+              <span>По размеру окна</span>
+              <kbd className="cad-kbd-badge">0</kbd>
+            </div>
+            <div className="cad-shortcut-row">
+              <span>Масштаб 1:1</span>
+              <kbd className="cad-kbd-badge">1</kbd>
+            </div>
+            <div className="cad-shortcut-row">
+              <span>Приблизить / Отдалить</span>
+              <kbd className="cad-kbd-badge">+ / -</kbd>
+            </div>
+            <div className="cad-shortcut-row">
+              <span>Панорамирование</span>
+              <kbd className="cad-kbd-badge">Space + Drag</kbd>
+            </div>
+            <div className="cad-shortcut-row">
+              <span>Применить</span>
+              <kbd className="cad-kbd-badge">Enter</kbd>
+            </div>
+            <div className="cad-shortcut-row">
+              <span>Закрыть / Назад</span>
+              <kbd className="cad-kbd-badge">Esc</kbd>
+            </div>
+          </div>
+        )}
+
+        {/* Compact Modern Toolbar */}
         <div className="cad-preprocess-toolbar">
-          {/* Tool Modes */}
+          {/* Mode Selector Tabs */}
           <div className="tool-tabs">
             <button
-              className={`tool-tab-btn ${mode === "perspective" ? "active" : ""}`}
-              onClick={() => setMode("perspective")}
+              className={`tool-tab-btn ${mode === "perspective" && !isPreviewMode ? "active" : ""}`}
+              onClick={() => {
+                setMode("perspective");
+                if (isPreviewMode) setIsPreviewMode(false);
+              }}
               title="Выравнивание трапеции по 4 углам"
             >
-              <Shapes size={14} />
-              <span>4 Угла (Трапеция)</span>
+              <Shapes size={13} />
+              <span>Трапеция</span>
             </button>
             <button
-              className={`tool-tab-btn ${mode === "crop" ? "active" : ""}`}
-              onClick={() => setMode("crop")}
+              className={`tool-tab-btn ${mode === "crop" && !isPreviewMode ? "active" : ""}`}
+              onClick={() => {
+                setMode("crop");
+                if (isPreviewMode) setIsPreviewMode(false);
+              }}
               title="Прямоугольное кадрирование"
             >
-              <Crop size={14} />
-              <span>Прямоугольник</span>
+              <Crop size={13} />
+              <span>Рамка</span>
             </button>
             <button
-              className={`tool-tab-btn ${mode === "polygon" ? "active" : ""}`}
-              onClick={() => setMode("polygon")}
-              title="Многоугольник"
+              className={`tool-tab-btn ${mode === "polygon" && !isPreviewMode ? "active" : ""}`}
+              onClick={() => {
+                setMode("polygon");
+                if (isPreviewMode) setIsPreviewMode(false);
+              }}
+              title="Многоугольный контур"
             >
-              <Layers size={14} />
-              <span>Многоугольник</span>
+              <Layers size={13} />
+              <span>Контур</span>
             </button>
             <button
-              className={`tool-tab-btn ${mode === "circle" ? "active" : ""}`}
-              onClick={() => setMode("circle")}
+              className={`tool-tab-btn ${mode === "circle" && !isPreviewMode ? "active" : ""}`}
+              onClick={() => {
+                setMode("circle");
+                if (isPreviewMode) setIsPreviewMode(false);
+              }}
               title="Круг или эллипс"
             >
-              <CircleDot size={14} />
-              <span>Круг/Овал</span>
+              <CircleDot size={13} />
+              <span>Овал</span>
             </button>
           </div>
 
-          {mode === "perspective" && (
+          {/* Auto Detect Corners (shown only in perspective mode) */}
+          {mode === "perspective" && !isPreviewMode && (
             <button
-              className="cad-preprocess-tool-btn auto-detect-btn"
+              className="auto-detect-btn"
               onClick={handleAutoDetect}
               disabled={isDetecting || !pendingPreprocess.filePath}
-              title="Найти углы платы автоматически с помощью компьютерного зрения"
+              title="Автоопределение углов платы компьютерным зрением"
             >
               {isDetecting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-              <span>Магическая палочка</span>
+              <span>Авто-углы</span>
             </button>
           )}
 
           <div className="toolbar-divider" />
 
-          {/* Quick transforms */}
-          <div className="tool-actions-group">
+          {/* Quick orientation transforms */}
+          <div className="cad-preprocess-btn-group">
             <button
-              className="cad-preprocess-tool-btn"
+              className="cad-preprocess-icon-btn"
               onClick={() => setRotationAngle((r) => (r - 90 + 360) % 360)}
-              title="Повернуть на 90° против часовой стрелки"
+              title="Повернуть на 90° влево [Shift+R]"
             >
               <RotateCcw size={13} />
-              <span>90° влево</span>
             </button>
             <button
-              className="cad-preprocess-tool-btn"
+              className="cad-preprocess-icon-btn"
               onClick={() => setRotationAngle((r) => (r + 90) % 360)}
-              title="Повернуть на 90° по часовой стрелке"
+              title="Повернуть на 90° вправо [R]"
             >
               <RotateCw size={13} />
-              <span>90° вправо</span>
             </button>
             <button
-              className={`cad-preprocess-tool-btn ${isFlippedH ? "active" : ""}`}
+              className={`cad-preprocess-icon-btn ${isFlippedH ? "active" : ""}`}
               onClick={() => setIsFlippedH((f) => !f)}
-              title="Отзеркалить по горизонтали (рекомендуется для Bottom-сканов)"
+              title="Отразить по горизонтали [F]"
             >
               <FlipHorizontal size={13} />
-              <span>Отзеркалить</span>
             </button>
             <button
-              className={`cad-preprocess-tool-btn ${isFlippedV ? "active" : ""}`}
+              className={`cad-preprocess-icon-btn ${isFlippedV ? "active" : ""}`}
               onClick={() => setIsFlippedV((f) => !f)}
-              title="Отзеркалить по вертикали"
+              title="Отразить по вертикали"
             >
               <FlipVertical size={13} />
             </button>
+            {(rotationAngle !== 0 || isFlippedH || isFlippedV) && (
+              <span className="cad-preprocess-orientation-badge" title="Текущая трансформация">
+                {rotationAngle !== 0 ? `${rotationAngle}°` : ""}
+                {isFlippedH ? " ⇄" : ""}
+                {isFlippedV ? " ⇅" : ""}
+              </span>
+            )}
           </div>
+
+          <div className="toolbar-divider" />
+
+          {/* Quick Preview Toggle Button */}
+          <button
+            className={`cad-preview-toggle-btn ${isPreviewMode ? "active" : ""}`}
+            onClick={togglePreview}
+            disabled={loading || isDetecting}
+            title="Быстрый просмотр выровненной платы в реальном времени [P]"
+          >
+            {previewLoading ? (
+              <Loader2 size={13} className="animate-spin" />
+            ) : isPreviewMode ? (
+              <ArrowLeft size={13} />
+            ) : (
+              <Eye size={13} />
+            )}
+            <span>{isPreviewMode ? "К редактору" : "Быстрый просмотр"}</span>
+            <kbd className="cad-kbd-badge">P</kbd>
+          </button>
 
           <div className="toolbar-spacer" />
 
-          {/* Zoom & Fit */}
-          <div className="tool-actions-group">
-            <button className="cad-preprocess-tool-btn" onClick={() => fitToScreen()} title="По размеру окна">
+          {/* Zoom & Fit Navigation */}
+          <div className="cad-preprocess-btn-group">
+            <button className="cad-preprocess-icon-btn" onClick={() => fitToScreen()} title="По размеру окна [0]">
               <Maximize2 size={13} />
-              <span>По размеру</span>
             </button>
             <button
-              className="cad-preprocess-tool-btn"
-              onClick={() => setZoom((z) => Math.min(30, z * 1.3))}
-              title="Приблизить"
+              className="cad-preprocess-icon-btn"
+              onClick={() => {
+                setZoom(1);
+                const c = containerRef.current;
+                if (c && naturalDims.width > 0) {
+                  setPan({
+                    x: (c.clientWidth - naturalDims.width) / 2,
+                    y: (c.clientHeight - naturalDims.height) / 2,
+                  });
+                }
+              }}
+              title="Масштаб 1:1 (100%) [1]"
             >
-              <ZoomIn size={13} />
+              <span style={{ fontSize: "10px", fontWeight: 700 }}>1:1</span>
             </button>
-            <span style={{ fontSize: "11px", color: "var(--cad-text-muted)", minWidth: "38px", textAlign: "center" }}>
+            <button
+              className="cad-preprocess-icon-btn"
+              onClick={() => setZoom((z) => Math.max(0.001, z / 1.3))}
+              title="Отдалить [-]"
+            >
+              <ZoomOut size={13} />
+            </button>
+            <span className="cad-zoom-label" onClick={() => fitToScreen()} title="Кликните для сброса по окну">
               {zoom < 0.1 ? `${(zoom * 100).toFixed(1)}%` : `${Math.round(zoom * 100)}%`}
             </span>
             <button
-              className="cad-preprocess-tool-btn"
-              onClick={() => setZoom((z) => Math.max(0.001, z / 1.3))}
-              title="Отдалить"
+              className="cad-preprocess-icon-btn"
+              onClick={() => setZoom((z) => Math.min(30, z * 1.3))}
+              title="Приблизить [+]"
             >
-              <ZoomOut size={13} />
+              <ZoomIn size={13} />
             </button>
           </div>
         </div>
@@ -913,194 +1266,288 @@ export const ImagePreprocessModal: React.FC = () => {
           {/* Main Rendering Canvas */}
           <canvas ref={canvasRef} className="cad-preprocess-canvas-layer" />
 
-          {/* Interactive SVG Overlay */}
-          <svg className="cad-preprocess-svg-overlay">
-            {/* Mode 1: Perspective Quad Overlay */}
-            {mode === "perspective" && (
+          {/* Informative Floating CAD HUD */}
+          <div className="cad-preprocess-hud">
+            <div className="cad-hud-item">
+              <span className="cad-hud-label">Зона:</span>
+              <span className="cad-hud-value highlight">{selectionDimensions}</span>
+              {selectionAspect && <span style={{ color: "#64748b", fontSize: "10px" }}>({selectionAspect})</span>}
+            </div>
+
+            <div className="cad-hud-divider" />
+
+            {cursorPos && (
               <>
-                <polygon
-                  points={`${tlScreen.x},${tlScreen.y} ${trScreen.x},${trScreen.y} ${brScreen.x},${brScreen.y} ${blScreen.x},${blScreen.y}`}
-                  fill="rgba(56, 189, 248, 0.12)"
-                  stroke="#38bdf8"
-                  strokeWidth="2"
-                  strokeDasharray="6 3"
-                />
-                {/* 4 Corner Handles */}
-                {[
-                  { key: "topLeft", pt: tlScreen, label: "Top-Left" },
-                  { key: "topRight", pt: trScreen, label: "Top-Right" },
-                  { key: "bottomRight", pt: brScreen, label: "Bottom-Right" },
-                  { key: "bottomLeft", pt: blScreen, label: "Bottom-Left" },
-                ].map((item) => (
-                  <g key={item.key}>
+                <div className="cad-hud-item">
+                  <span className="cad-hud-label">Курсор:</span>
+                  <span className="cad-hud-value">
+                    X:{cursorPos.x} Y:{cursorPos.y}
+                  </span>
+                </div>
+                <div className="cad-hud-divider" />
+              </>
+            )}
+
+            <div className="cad-hud-item">
+              <span className="cad-hud-label">Зум:</span>
+              <span className="cad-hud-value">{Math.round(zoom * 100)}%</span>
+            </div>
+          </div>
+
+          {/* Quick Preview Floating Toolbar Overlay (Active when Preview is ON) */}
+          {isPreviewMode && (
+            <div className="cad-preview-toolbar-overlay" onClick={(e) => e.stopPropagation()}>
+              <button
+                className={`cad-preview-btn ${showGridOverlay ? "active" : ""}`}
+                onClick={() => setShowGridOverlay((g) => !g)}
+                title="Отобразить проверочную сетку для контроля параллельности дорожек"
+              >
+                <Grid size={13} />
+                <span>Сетка выравнивания</span>
+              </button>
+
+              <button
+                className={`cad-preview-btn ${showOriginalCompare ? "active" : ""}`}
+                onMouseDown={() => setShowOriginalCompare(true)}
+                onMouseUp={() => setShowOriginalCompare(false)}
+                onMouseLeave={() => setShowOriginalCompare(false)}
+                onClick={() => setShowOriginalCompare((c) => !c)}
+                title="Зажмите или кликните для сравнения с исходным изображением"
+              >
+                <span>{showOriginalCompare ? "Исходник" : "Сравнить (До/После)"}</span>
+              </button>
+
+              <button className="cad-preview-btn" onClick={loadPreview} title="Обновить быстрый просмотр">
+                <RefreshCw size={12} className={previewLoading ? "animate-spin" : ""} />
+                <span>Обновить</span>
+              </button>
+            </div>
+          )}
+
+          {/* Interactive SVG Overlay (Only in Edit Mode) */}
+          {!isPreviewMode && (
+            <svg className="cad-preprocess-svg-overlay">
+              {/* Mode 1: Perspective Quad Overlay */}
+              {mode === "perspective" && (
+                <>
+                  {/* Perspective optical center diagonals */}
+                  <line
+                    x1={tlScreen.x}
+                    y1={tlScreen.y}
+                    x2={brScreen.x}
+                    y2={brScreen.y}
+                    stroke="rgba(56, 189, 248, 0.35)"
+                    strokeWidth="1.2"
+                    strokeDasharray="4 4"
+                  />
+                  <line
+                    x1={trScreen.x}
+                    y1={trScreen.y}
+                    x2={blScreen.x}
+                    y2={blScreen.y}
+                    stroke="rgba(56, 189, 248, 0.35)"
+                    strokeWidth="1.2"
+                    strokeDasharray="4 4"
+                  />
+
+                  {/* Quad boundary polygon */}
+                  <polygon
+                    points={`${tlScreen.x},${tlScreen.y} ${trScreen.x},${trScreen.y} ${brScreen.x},${brScreen.y} ${blScreen.x},${blScreen.y}`}
+                    fill="rgba(56, 189, 248, 0.12)"
+                    stroke="#38bdf8"
+                    strokeWidth="2"
+                    strokeDasharray="6 3"
+                  />
+
+                  {/* 4 Corner Numbered Handles */}
+                  {[
+                    { key: "topLeft", pt: tlScreen, num: "1", label: "TL" },
+                    { key: "topRight", pt: trScreen, num: "2", label: "TR" },
+                    { key: "bottomRight", pt: brScreen, num: "3", label: "BR" },
+                    { key: "bottomLeft", pt: blScreen, num: "4", label: "BL" },
+                  ].map((item) => (
+                    <g key={item.key}>
+                      <circle
+                        cx={item.pt.x}
+                        cy={item.pt.y}
+                        r="10"
+                        fill="#0284c7"
+                        stroke="#ffffff"
+                        strokeWidth="2"
+                        className="cad-preprocess-handle"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          setActiveHandle(item.key as DragHandle);
+                        }}
+                      />
+                      <text x={item.pt.x} y={item.pt.y} className="cad-handle-num">
+                        {item.num}
+                      </text>
+                    </g>
+                  ))}
+                </>
+              )}
+
+              {/* Mode 2: Rectangular Crop Overlay */}
+              {mode === "crop" && (
+                <>
+                  <rect
+                    x={cropScreen.x}
+                    y={cropScreen.y}
+                    width={cropScreen.width}
+                    height={cropScreen.height}
+                    className="cad-preprocess-crop-rect"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      const rect = containerRef.current?.getBoundingClientRect();
+                      if (!rect) return;
+                      setActiveHandle("cropMove");
+                      setDragStartPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
+                      setInitialCropRect(cropRect);
+                    }}
+                    style={{ cursor: "move" }}
+                  />
+                  {/* 8 Resize Handles */}
+                  {[
+                    { handle: "cropNW", cx: cropScreen.x, cy: cropScreen.y },
+                    { handle: "cropNE", cx: cropScreen.x + cropScreen.width, cy: cropScreen.y },
+                    { handle: "cropSE", cx: cropScreen.x + cropScreen.width, cy: cropScreen.y + cropScreen.height },
+                    { handle: "cropSW", cx: cropScreen.x, cy: cropScreen.y + cropScreen.height },
+                    { handle: "cropN", cx: cropScreen.x + cropScreen.width / 2, cy: cropScreen.y },
+                    { handle: "cropS", cx: cropScreen.x + cropScreen.width / 2, cy: cropScreen.y + cropScreen.height },
+                    { handle: "cropE", cx: cropScreen.x + cropScreen.width, cy: cropScreen.y + cropScreen.height / 2 },
+                    { handle: "cropW", cx: cropScreen.x, cy: cropScreen.y + cropScreen.height / 2 },
+                  ].map((item) => (
                     <circle
-                      cx={item.pt.x}
-                      cy={item.pt.y}
-                      r="7"
+                      key={item.handle}
+                      cx={item.cx}
+                      cy={item.cy}
+                      r="6"
+                      className="cad-preprocess-crop-handle"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        setActiveHandle(item.handle as DragHandle);
+                      }}
+                    />
+                  ))}
+                </>
+              )}
+
+              {/* Mode 3: Polygon Overlay */}
+              {mode === "polygon" && polygonPoints.length > 0 && (
+                <>
+                  <polygon
+                    points={polygonPoints
+                      .map((p) => {
+                        const s = imageToScreen(p.x, p.y);
+                        return `${s.x},${s.y}`;
+                      })
+                      .join(" ")}
+                    fill="rgba(56, 189, 248, 0.15)"
+                    stroke="#38bdf8"
+                    strokeWidth="2"
+                  />
+                  {polygonPoints.map((p, idx) => {
+                    const sPt = imageToScreen(p.x, p.y);
+                    return (
+                      <circle
+                        key={idx}
+                        cx={sPt.x}
+                        cy={sPt.y}
+                        r="6.5"
+                        fill="#38bdf8"
+                        stroke="#ffffff"
+                        strokeWidth="1.5"
+                        className="cad-preprocess-handle"
+                        onMouseDown={(e) => {
+                          e.stopPropagation();
+                          setActiveHandle(`poly_${idx}` as DragHandle);
+                        }}
+                      />
+                    );
+                  })}
+                </>
+              )}
+
+              {/* Mode 4: Circle / Ellipse Overlay */}
+              {mode === "circle" && (() => {
+                const cPt = imageToScreen(ellipseParams.cx, ellipseParams.cy);
+                const rPt = imageToScreen(ellipseParams.cx + ellipseParams.rx, ellipseParams.cy);
+                const rxS = Math.abs(rPt.x - cPt.x) || ellipseParams.rx * zoom;
+                const ryS = ellipseParams.ry * zoom;
+                return (
+                  <>
+                    <ellipse
+                      cx={cPt.x}
+                      cy={cPt.y}
+                      rx={rxS}
+                      ry={ryS}
+                      fill="rgba(56, 189, 248, 0.15)"
+                      stroke="#38bdf8"
+                      strokeWidth="2"
+                      strokeDasharray="6 3"
+                    />
+                    <circle
+                      cx={cPt.x}
+                      cy={cPt.y}
+                      r="7.5"
                       fill="#0284c7"
                       stroke="#ffffff"
                       strokeWidth="2"
                       className="cad-preprocess-handle"
                       onMouseDown={(e) => {
                         e.stopPropagation();
-                        setActiveHandle(item.key as DragHandle);
+                        setActiveHandle("circleCenter");
                       }}
                     />
-                  </g>
-                ))}
-              </>
-            )}
-
-            {/* Mode 2: Rectangular Crop Overlay */}
-            {mode === "crop" && (
-              <>
-                <rect
-                  x={cropScreen.x}
-                  y={cropScreen.y}
-                  width={cropScreen.width}
-                  height={cropScreen.height}
-                  className="cad-preprocess-crop-rect"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    const rect = containerRef.current?.getBoundingClientRect();
-                    if (!rect) return;
-                    setActiveHandle("cropMove");
-                    setDragStartPos({ x: e.clientX - rect.left, y: e.clientY - rect.top });
-                    setInitialCropRect(cropRect);
-                  }}
-                  style={{ cursor: "move", fill: "rgba(56, 189, 248, 0.12)" }}
-                />
-                {/* 8 Resize Handles */}
-                {[
-                  { handle: "cropNW", cx: cropScreen.x, cy: cropScreen.y },
-                  { handle: "cropNE", cx: cropScreen.x + cropScreen.width, cy: cropScreen.y },
-                  { handle: "cropSE", cx: cropScreen.x + cropScreen.width, cy: cropScreen.y + cropScreen.height },
-                  { handle: "cropSW", cx: cropScreen.x, cy: cropScreen.y + cropScreen.height },
-                  { handle: "cropN", cx: cropScreen.x + cropScreen.width / 2, cy: cropScreen.y },
-                  { handle: "cropS", cx: cropScreen.x + cropScreen.width / 2, cy: cropScreen.y + cropScreen.height },
-                  { handle: "cropE", cx: cropScreen.x + cropScreen.width, cy: cropScreen.y + cropScreen.height / 2 },
-                  { handle: "cropW", cx: cropScreen.x, cy: cropScreen.y + cropScreen.height / 2 },
-                ].map((item) => (
-                  <circle
-                    key={item.handle}
-                    cx={item.cx}
-                    cy={item.cy}
-                    r="6"
-                    className="cad-preprocess-crop-handle"
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      setActiveHandle(item.handle as DragHandle);
-                    }}
-                  />
-                ))}
-              </>
-            )}
-
-            {/* Mode 3: Polygon Overlay */}
-            {mode === "polygon" && polygonPoints.length > 0 && (
-              <>
-                <polygon
-                  points={polygonPoints
-                    .map((p) => {
-                      const s = imageToScreen(p.x, p.y);
-                      return `${s.x},${s.y}`;
-                    })
-                    .join(" ")}
-                  fill="rgba(56, 189, 248, 0.15)"
-                  stroke="#38bdf8"
-                  strokeWidth="2"
-                />
-                {polygonPoints.map((p, idx) => {
-                  const sPt = imageToScreen(p.x, p.y);
-                  return (
                     <circle
-                      key={idx}
-                      cx={sPt.x}
-                      cy={sPt.y}
-                      r="6"
+                      cx={cPt.x + rxS}
+                      cy={cPt.y}
+                      r="6.5"
                       fill="#38bdf8"
                       stroke="#ffffff"
                       strokeWidth="1.5"
                       className="cad-preprocess-handle"
                       onMouseDown={(e) => {
                         e.stopPropagation();
-                        setActiveHandle(`poly_${idx}` as DragHandle);
+                        setActiveHandle("circleRadius");
                       }}
                     />
-                  );
-                })}
-              </>
-            )}
-
-            {/* Mode 4: Circle / Ellipse Overlay */}
-            {mode === "circle" && (() => {
-              const cPt = imageToScreen(ellipseParams.cx, ellipseParams.cy);
-              const rPt = imageToScreen(ellipseParams.cx + ellipseParams.rx, ellipseParams.cy);
-              const rxS = Math.abs(rPt.x - cPt.x) || (ellipseParams.rx * zoom);
-              const ryS = ellipseParams.ry * zoom;
-              return (
-                <>
-                  <ellipse
-                    cx={cPt.x}
-                    cy={cPt.y}
-                    rx={rxS}
-                    ry={ryS}
-                    fill="rgba(56, 189, 248, 0.15)"
-                    stroke="#38bdf8"
-                    strokeWidth="2"
-                    strokeDasharray="6 3"
-                  />
-                  <circle
-                    cx={cPt.x}
-                    cy={cPt.y}
-                    r="7"
-                    fill="#0284c7"
-                    stroke="#ffffff"
-                    strokeWidth="2"
-                    className="cad-preprocess-handle"
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      setActiveHandle("circleCenter");
-                    }}
-                  />
-                  <circle
-                    cx={cPt.x + rxS}
-                    cy={cPt.y}
-                    r="6"
-                    fill="#38bdf8"
-                    stroke="#ffffff"
-                    strokeWidth="1.5"
-                    className="cad-preprocess-handle"
-                    onMouseDown={(e) => {
-                      e.stopPropagation();
-                      setActiveHandle("circleRadius");
-                    }}
-                  />
-                </>
-              );
-            })()}
-          </svg>
+                  </>
+                );
+              })()}
+            </svg>
+          )}
 
           {/* Floating Magnifier Loupe */}
-          <div
-            className={`cad-preprocess-loupe ${loupeState.visible ? "visible" : ""}`}
-            style={{
-              left: `${Math.min(window.innerWidth - 180, Math.max(20, loupeState.screenX + 30))}px`,
-              top: `${Math.min(window.innerHeight - 180, Math.max(20, loupeState.screenY - 140))}px`,
-            }}
-          >
-            <canvas ref={loupeCanvasRef} />
-            <div className="loupe-label">
-              X:{loupeState.imgX} Y:{loupeState.imgY}
+          {!isPreviewMode && (
+            <div
+              className={`cad-preprocess-loupe ${loupeState.visible ? "visible" : ""}`}
+              style={{
+                left: `${Math.min(window.innerWidth - 180, Math.max(20, loupeState.screenX + 30))}px`,
+                top: `${Math.min(window.innerHeight - 180, Math.max(20, loupeState.screenY - 140))}px`,
+              }}
+            >
+              <canvas ref={loupeCanvasRef} />
+              <div className="loupe-label">
+                X:{loupeState.imgX} Y:{loupeState.imgY}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Bottom Hint */}
           <div className="cad-preprocess-hint">
-            {mode === "perspective" && "Перетащите 4 маркера на реальные углы платы для выравнивания трапеции."}
-            {mode === "crop" && "Потяните за края рамки или центр для кадрирования нужной области."}
-            {mode === "polygon" && "Перемещайте точки контура платы для произвольной обрезки."}
-            {mode === "circle" && "Настройте центр и радиус для круглых печатных плат."}
+            {isPreviewMode ? (
+              <span>👁️ Режим быстрого просмотра: оцените выравнивание платы по сетке перед применением.</span>
+            ) : mode === "perspective" ? (
+              <span>Перетащите 4 маркера на реальные углы платы для выравнивания трапеции. Нажмите P для предпросмотра.</span>
+            ) : mode === "crop" ? (
+              <span>Потяните за края рамки или центр для кадрирования. Нажмите P для предпросмотра.</span>
+            ) : mode === "polygon" ? (
+              <span>Перемещайте точки контура платы для произвольной обрезки.</span>
+            ) : (
+              <span>Настройте центр и радиус для круглых печатных плат.</span>
+            )}
           </div>
         </div>
 
@@ -1121,7 +1568,7 @@ export const ImagePreprocessModal: React.FC = () => {
             </div>
 
             {errorMsg && (
-              <span style={{ color: "#ef4444", fontSize: "12px" }}>
+              <span style={{ color: "#ef4444", fontSize: "11.5px" }}>
                 {errorMsg}
               </span>
             )}
