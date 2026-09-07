@@ -53,10 +53,33 @@ pub fn run() {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::RecentProject;
 
     #[test]
-    fn test_db_initialization() {
+    fn test_db_initialization_and_recents() {
         let global_res = GlobalDb::init();
         assert!(global_res.is_ok(), "GlobalDb init failed: {:?}", global_res.err());
+
+        let mut gdb = global_res.unwrap();
+        let recents = gdb.get_recent_projects();
+        assert!(recents.is_ok(), "get_recent_projects failed: {:?}", recents.err());
+
+        let test_proj = RecentProject {
+            id: "test_rec_id".into(),
+            name: "Test Project".into(),
+            file_path: "C:/fake/test_project.mycad".into(),
+            last_opened: chrono::Utc::now().to_rfc3339(),
+            created_at: chrono::Utc::now().to_rfc3339(),
+        };
+
+        let add_res = gdb.add_recent_project(&test_proj);
+        assert!(add_res.is_ok(), "add_recent_project failed: {:?}", add_res.err());
+
+        let list_after_add = gdb.get_recent_projects().unwrap();
+        assert!(list_after_add.iter().any(|p| p.file_path == test_proj.file_path));
+
+        let rem_res = gdb.remove_recent_project(&test_proj.file_path);
+        assert!(rem_res.is_ok(), "remove_recent_project failed: {:?}", rem_res.err());
     }
 }
+

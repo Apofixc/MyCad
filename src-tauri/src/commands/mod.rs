@@ -57,7 +57,9 @@ pub fn project_create(
         created_at: manifest.created_at.clone(),
     };
     if let Ok(mut gdb) = state.global_db.lock() {
-        let _ = gdb.add_recent_project(&recent);
+        if let Err(e) = gdb.add_recent_project(&recent) {
+            eprintln!("[WARN] Failed to add recent project: {}", e);
+        }
     }
 
     let full_state = build_full_state(&session);
@@ -79,7 +81,9 @@ pub fn project_open(state: State<AppState>, path: String) -> Result<ProjectFullS
         created_at: manifest.created_at.clone(),
     };
     if let Ok(mut gdb) = state.global_db.lock() {
-        let _ = gdb.add_recent_project(&recent);
+        if let Err(e) = gdb.add_recent_project(&recent) {
+            eprintln!("[WARN] Failed to add recent project: {}", e);
+        }
     }
 
     let full_state = build_full_state(&session);
@@ -98,6 +102,20 @@ pub fn project_save(state: State<AppState>) -> Result<(), String> {
     let guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_ref().ok_or("Нет открытого проекта для сохранения")?;
     archive::save_project_archive(session)?;
+
+    let recent = RecentProject {
+        id: session.manifest.id.clone(),
+        name: session.manifest.name.clone(),
+        file_path: session.file_path.to_string_lossy().to_string(),
+        last_opened: chrono::Utc::now().to_rfc3339(),
+        created_at: session.manifest.created_at.clone(),
+    };
+    if let Ok(mut gdb) = state.global_db.lock() {
+        if let Err(e) = gdb.add_recent_project(&recent) {
+            eprintln!("[WARN] Failed to update recent project on save: {}", e);
+        }
+    }
+
     Ok(())
 }
 

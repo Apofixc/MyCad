@@ -18,9 +18,9 @@ export const StartScreen: React.FC = () => {
   const loadRecents = async () => {
     try {
       const list = await engineClient.getRecentProjects();
-      setRecents(list);
+      setRecents(Array.isArray(list) ? list : []);
     } catch (e) {
-      console.error(e);
+      console.error("Ошибка при получении недавних проектов:", e);
     }
   };
 
@@ -41,8 +41,9 @@ export const StartScreen: React.FC = () => {
         // Fallback for browser preview
         await openProject("C:/Projects/Pirrs_1000_Lux.mycad");
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      alert(`Не удалось открыть проект:\n${e?.message || e || "Неизвестная ошибка"}`);
     } finally {
       setLoading(false);
     }
@@ -52,8 +53,9 @@ export const StartScreen: React.FC = () => {
     setLoading(true);
     try {
       await openProject(path);
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error("Ошибка открытия недавнего проекта:", e);
+      alert(`Не удалось открыть проект:\n${path}\n\nВозможно, файл был перемещен или удален.`);
     } finally {
       setLoading(false);
     }
@@ -71,9 +73,15 @@ export const StartScreen: React.FC = () => {
 
   const formatRelativeTime = (isoString: string) => {
     try {
-      const diffMs = Date.now() - new Date(isoString).getTime();
+      const date = new Date(isoString);
+      const time = date.getTime();
+      if (isNaN(time)) return "недавно";
+      const diffMs = Date.now() - time;
+      if (diffMs < 0) return "только что";
+      const diffMinutes = Math.floor(diffMs / (1000 * 60));
+      if (diffMinutes < 1) return "только что";
+      if (diffMinutes < 60) return `${diffMinutes} мин назад`;
       const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-      if (diffHours < 1) return "только что";
       if (diffHours < 24) return `${diffHours} ч назад`;
       const diffDays = Math.floor(diffHours / 24);
       return `${diffDays} дн назад`;

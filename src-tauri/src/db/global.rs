@@ -1,6 +1,6 @@
 use rusqlite::{params, Connection};
 use std::fs;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use crate::models::RecentProject;
 
 pub struct GlobalDb {
@@ -10,31 +10,98 @@ pub struct GlobalDb {
 impl GlobalDb {
     pub fn init() -> Result<Self, String> {
         let db_path = get_global_db_path()?;
+        Self::init_with_path(&db_path)
+    }
+
+    pub fn init_with_path(db_path: &Path) -> Result<Self, String> {
         if let Some(parent) = db_path.parent() {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
 
-        let conn = Connection::open(&db_path).map_err(|e| format!("Не удалось открыть global.db: {}", e))?;
+        let conn = Connection::open(db_path).map_err(|e| format!("Не удалось открыть global.db: {}", e))?;
         
         let _ = conn.pragma_update(None, "journal_mode", "WAL");
         let _ = conn.pragma_update(None, "foreign_keys", "ON");
 
-        conn.execute_batch(
-            "CREATE TABLE IF NOT EXISTS recent_projects (
-                 id TEXT PRIMARY KEY,
-                 name TEXT NOT NULL,
-                 file_path TEXT NOT NULL UNIQUE,
-                 last_opened DATETIME NOT NULL,
-                 created_at DATETIME NOT NULL
-             );
+        Self::migrate(&conn)?;
 
-             CREATE TABLE IF NOT EXISTS settings (
+        Ok(Self { conn })
+    }
+
+    fn migrate(conn: &Connection) -> Result<(), String> {
+        // Check if recent_projects table exists
+        let table_exists: bool = conn
+            .query_row(
+                "SELECT count(*) FROM sqlite_master WHERE type='table' AND name='recent_projects'",
+                [],
+                |row| row.get::<_, i64>(0),
+            )
+            .map(|cnt| cnt > 0)
+            .unwrap_or(false);
+
+        if table_exists {
+            let mut stmt = conn
+                .prepare("PRAGMA table_info(recent_projects)")
+                .map_err(|e| e.to_string())?;
+            let columns = stmt
+                .query_map([], |row| row.get::<_, String>(1))
+                .map_err(|e| e.to_string())?
+                .filter_map(|r| r.ok())
+                .collect::<Vec<String>>();
+
+            let has_file_path = columns.iter().any(|c| c == "file_path");
+            let has_path = columns.iter().any(|c| c == "path");
+
+            if !has_file_path {
+                conn.execute_batch(
+                    "CREATE TABLE recent_projects_v2 (
+                         id TEXT NOT NULL,
+                         name TEXT NOT NULL,
+                         file_path TEXT PRIMARY KEY,
+                         last_opened DATETIME NOT NULL,
+                         created_at DATETIME NOT NULL
+                     );"
+                ).map_err(|e| format!("Ошибка создания таблицы миграции: {}", e))?;
+
+                if has_path {
+                    let _ = conn.execute(
+                        "INSERT OR REPLACE INTO recent_projects_v2 (id, name, file_path, last_opened, created_at)
+                         SELECT 
+                             COALESCE(id, 'proj_' || hex(randomblob(8))),
+                             COALESCE(name, 'Project'),
+                             path,
+                             COALESCE(updated_at, datetime('now')),
+                             COALESCE(updated_at, datetime('now'))
+                         FROM recent_projects WHERE path IS NOT NULL AND length(path) > 0",
+                        [],
+                    );
+                }
+
+                conn.execute_batch(
+                    "DROP TABLE recent_projects;
+                     ALTER TABLE recent_projects_v2 RENAME TO recent_projects;"
+                ).map_err(|e| format!("Ошибка миграции recent_projects: {}", e))?;
+            }
+        } else {
+            conn.execute_batch(
+                "CREATE TABLE IF NOT EXISTS recent_projects (
+                     id TEXT NOT NULL,
+                     name TEXT NOT NULL,
+                     file_path TEXT PRIMARY KEY,
+                     last_opened DATETIME NOT NULL,
+                     created_at DATETIME NOT NULL
+                 );"
+            ).map_err(|e| format!("Ошибка создания recent_projects: {}", e))?;
+        }
+
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS settings (
                  key TEXT PRIMARY KEY,
                  value TEXT NOT NULL
              );"
-        ).map_err(|e| format!("Ошибка создания таблиц global.db: {}", e))?;
+        ).map_err(|e| format!("Ошибка создания settings: {}", e))?;
 
-        Ok(Self { conn })
+        Ok(())
     }
 
     pub fn add_recent_project(&mut self, proj: &RecentProject) -> Result<(), String> {
@@ -42,6 +109,7 @@ impl GlobalDb {
             "INSERT INTO recent_projects (id, name, file_path, last_opened, created_at)
              VALUES (?1, ?2, ?3, ?4, ?5)
              ON CONFLICT(file_path) DO UPDATE SET
+                 id = excluded.id,
                  name = excluded.name,
                  last_opened = excluded.last_opened",
             params![
