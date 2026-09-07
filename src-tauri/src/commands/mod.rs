@@ -4,18 +4,15 @@ use tauri::State;
 
 use crate::cad::math::{self, RegistrationResult};
 use crate::db::global::GlobalDb;
-use crate::db::library::LibraryDb;
 use crate::image::pipeline;
 use crate::models::{
-    BoardDocument, BoardImageLayer, ComponentItem, CrossProbingPin, CrossProbingResult,
-    LibraryDevice, PackageTemplate, ProjectManifest, RecentProject,
+    BoardDocument, BoardImageLayer, ProjectManifest, RecentProject,
 };
 use crate::project::archive::{self, ProjectSession};
 
 pub struct AppState {
     pub session: Mutex<Option<ProjectSession>>,
     pub global_db: Mutex<GlobalDb>,
-    pub library_db: Mutex<LibraryDb>,
 }
 
 #[tauri::command]
@@ -53,12 +50,11 @@ pub fn project_open(state: State<AppState>, path: String) -> Result<ProjectManif
     let session = archive::open_project_archive(p)?;
     let manifest = session.manifest.clone();
 
-    let comp_count = session.boards.first().map(|b| b.data.components.len()).unwrap_or(0);
     let recent = RecentProject {
         id: manifest.id.clone(),
         name: manifest.name.clone(),
         file_path: path,
-        component_count: comp_count,
+        component_count: 0,
         last_opened: chrono::Utc::now().to_rfc3339(),
         created_at: manifest.created_at.clone(),
     };
@@ -109,80 +105,6 @@ pub fn board_get_active(state: State<AppState>) -> Result<Option<BoardDocument>,
         }
     }
     Ok(None)
-}
-
-#[tauri::command]
-pub fn board_add_component(state: State<AppState>, component: ComponentItem) -> Result<ComponentItem, String> {
-    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
-    let session = guard.as_mut().ok_or("Нет активного проекта")?;
-    let board = session.boards.first_mut().ok_or("Нет активной платы")?;
-
-    board.data.components.push(component.clone());
-    Ok(component)
-}
-
-#[tauri::command]
-pub fn board_update_component(state: State<AppState>, component: ComponentItem) -> Result<ComponentItem, String> {
-    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
-    let session = guard.as_mut().ok_or("Нет активного проекта")?;
-    let board = session.boards.first_mut().ok_or("Нет активной платы")?;
-
-    if let Some(existing) = board.data.components.iter_mut().find(|c| c.id == component.id) {
-        *existing = component.clone();
-        Ok(component)
-    } else {
-        Err(format!("Компонент {} не найден", component.id))
-    }
-}
-
-#[tauri::command]
-pub fn board_delete_component(state: State<AppState>, component_id: String) -> Result<(), String> {
-    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
-    let session = guard.as_mut().ok_or("Нет активного проекта")?;
-    let board = session.boards.first_mut().ok_or("Нет активной платы")?;
-
-    board.data.components.retain(|c| c.id != component_id);
-    Ok(())
-}
-
-#[tauri::command]
-pub fn board_get_cross_probing(state: State<AppState>, net_id: String) -> Result<CrossProbingResult, String> {
-    let guard = state.session.lock().map_err(|e| e.to_string())?;
-    let session = guard.as_ref().ok_or("Нет активного проекта")?;
-    let board = session.boards.first().ok_or("Нет активной платы")?;
-
-    let mut result_pins = Vec::new();
-    let net_trimmed = net_id.trim();
-
-    for comp in &board.data.components {
-        let rad = comp.rotation.to_radians();
-        let cos_r = rad.cos();
-        let sin_r = rad.sin();
-
-        for pin in &comp.pins {
-            if let Some(ref pin_net) = pin.net_id {
-                if pin_net.eq_ignore_ascii_case(net_trimmed) {
-                    let rx = pin.rel_x * cos_r - pin.rel_y * sin_r;
-                    let ry = pin.rel_x * sin_r + pin.rel_y * cos_r;
-                    result_pins.push(CrossProbingPin {
-                        component_id: comp.id.clone(),
-                        ref_des: comp.ref_des.clone(),
-                        pin_number: pin.pin_number,
-                        pin_name: pin.name.clone(),
-                        layer: comp.layer.clone(),
-                        abs_x: comp.x + rx,
-                        abs_y: comp.y + ry,
-                    });
-                }
-            }
-        }
-    }
-
-    Ok(CrossProbingResult {
-        net_id: net_id.clone(),
-        net_name: net_id,
-        pins: result_pins,
-    })
 }
 
 #[tauri::command]
@@ -323,16 +245,4 @@ pub fn image_warp_perspective(
         width: target_w,
         height: target_h,
     })
-}
-
-#[tauri::command]
-pub fn library_search(state: State<AppState>, query: String) -> Result<Vec<LibraryDevice>, String> {
-    let ldb = state.library_db.lock().map_err(|e| e.to_string())?;
-    ldb.search(&query)
-}
-
-#[tauri::command]
-pub fn library_get_packages(state: State<AppState>) -> Result<Vec<PackageTemplate>, String> {
-    let ldb = state.library_db.lock().map_err(|e| e.to_string())?;
-    ldb.get_packages()
 }

@@ -61,8 +61,6 @@ pub fn create_default_project(path: &Path, name: &str, author: Option<&str>, des
             name: format!("{}.board", name),
             bg_top: Default::default(),
             bg_bottom: Default::default(),
-            components: vec![],
-            nets: vec![],
         },
     };
 

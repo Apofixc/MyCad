@@ -2,11 +2,9 @@ import React from "react";
 import {
   PanelLeft,
   Save,
-  Database,
   SlidersHorizontal,
-  Layers,
   LogOut,
-  Sparkles,
+  Image as ImageIcon,
 } from "lucide-react";
 import { useUiStore } from "../stores/uiStore";
 import { useProjectStore } from "../stores/projectStore";
@@ -36,7 +34,7 @@ export const TopBar: React.FC = () => {
 
         <div className="cad-brand">
           <span>MyCad</span>
-          <span className="cad-brand-badge">CAD Studio</span>
+          <span className="cad-brand-badge">Image Align & Inspection</span>
         </div>
 
         <span className="cad-title-sep">/</span>
@@ -65,26 +63,10 @@ export const TopBar: React.FC = () => {
 
         <button
           className="cad-tool-btn"
-          onClick={() => openModal("library")}
-          title="Библиотека радиодеталей FTS5"
-        >
-          <Database size={16} />
-        </button>
-
-        <button
-          className="cad-tool-btn"
           onClick={() => openModal("preprocess")}
-          title="Предобработка фото / Выравнивание (Warp Perspective)"
+          title="Импорт фото / Коррекция перспективы (Warp Perspective)"
         >
           <SlidersHorizontal size={16} />
-        </button>
-
-        <button
-          className="cad-tool-btn"
-          onClick={() => openModal("packageEditor")}
-          title="Мастер посадочных мест (Package Wizard)"
-        >
-          <Layers size={16} />
         </button>
 
         <div className="cad-tool-sep" />

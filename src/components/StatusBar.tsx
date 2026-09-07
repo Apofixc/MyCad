@@ -1,13 +1,14 @@
 import React from "react";
-import { CheckCircle2, AlertCircle, Zap, Crosshair } from "lucide-react";
+import { CheckCircle2, AlertCircle, Crosshair, Layers } from "lucide-react";
 import { useUiStore } from "../stores/uiStore";
 import { useProjectStore } from "../stores/projectStore";
 
 export const StatusBar: React.FC = () => {
   const { cursorMm, viewportZoom, gridStepMm } = useUiStore();
-  const { board, isDirty, activeNetId, crossProbingPins, selectNet } = useProjectStore();
+  const { board, isDirty } = useProjectStore();
 
-  const totalComps = board?.data.components.length || 0;
+  const topCount = board?.data.bgTop.images.length || 0;
+  const botCount = board?.data.bgBottom.images.length || 0;
 
   return (
     <footer className="cad-status-bar">
@@ -27,25 +28,12 @@ export const StatusBar: React.FC = () => {
         </div>
 
         <span>•</span>
-        <span>Документ: <strong>{board?.name || "board"}</strong></span>
+        <span>Проект: <strong>{board?.name || "board"}</strong></span>
         <span>•</span>
-        <span>Компонентов: <strong>{totalComps}</strong></span>
-
-        {activeNetId && (
-          <>
-            <span>•</span>
-            <div
-              className="cad-status-net-badge"
-              style={{ display: "flex", alignItems: "center", gap: "5px", cursor: "pointer" }}
-              onClick={() => selectNet(null)}
-              title="Нажмите, чтобы сбросить выделение цепи"
-            >
-              <Zap size={11} color="#34d399" />
-              <span>Цепь: {activeNetId} ({crossProbingPins.length} точек)</span>
-              <span style={{ fontSize: "9px", opacity: 0.7 }}>✕</span>
-            </div>
-          </>
-        )}
+        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+          <Layers size={12} color="#60a5fa" />
+          <span>Сканов: <strong style={{ color: "var(--cad-top-layer)" }}>Top ({topCount})</strong> / <strong style={{ color: "var(--cad-bot-layer)" }}>Bottom ({botCount})</strong></span>
+        </div>
       </div>
 
       <div className="cad-status-badge">
@@ -57,7 +45,7 @@ export const StatusBar: React.FC = () => {
         <span>•</span>
         <span>Сетка: {gridStepMm.toFixed(1)} мм</span>
         <span>•</span>
-        <span>Масштаб: {viewportZoom}%</span>
+        <span>Зум: {viewportZoom}%</span>
       </div>
     </footer>
   );

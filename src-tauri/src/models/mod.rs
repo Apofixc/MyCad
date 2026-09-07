@@ -19,7 +19,7 @@ pub struct ProjectManifest {
 pub struct ProjectFileRef {
     pub id: String,
     pub name: String,
-    pub file_type: String, // "board" or "sch"
+    pub file_type: String, // "board"
     pub path: String,      // "files/board_xxx.board.json"
     pub order_index: i32,
 }
@@ -43,10 +43,6 @@ pub struct BoardData {
     pub bg_top: ImageLayerGroup,
     #[serde(default)]
     pub bg_bottom: ImageLayerGroup,
-    #[serde(default)]
-    pub components: Vec<ComponentItem>,
-    #[serde(default)]
-    pub nets: Vec<NetInfo>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -119,63 +115,6 @@ fn default_px_per_mm() -> f64 { 23.62 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct ComponentItem {
-    pub id: String,
-    pub ref_des: String,           // "R1", "U2", "C5"
-    pub value: Option<String>,     // "10k", "STM32F103"
-    pub comp_type: String,         // "resistor", "ic", "soic8"
-    pub layer: String,             // "top" or "bottom"
-    pub x: f64,                    // mm on board
-    pub y: f64,
-    #[serde(default)]
-    pub rotation: f64,             // 0, 90, 180, 270
-    pub device_id: Option<String>,
-    pub package_id: Option<String>,
-    pub package_family: Option<String>,
-    #[serde(default = "default_rect")]
-    pub body_shape: String,        // "rect", "circle", "d_shape"
-    #[serde(default = "default_body_dim")]
-    pub body_width: f64,
-    #[serde(default = "default_body_dim")]
-    pub body_height: f64,
-    pub body_color: Option<String>,
-    #[serde(default)]
-    pub has_polarity_mark: bool,
-    #[serde(default)]
-    pub pins: Vec<PinItem>,
-}
-
-fn default_rect() -> String { "rect".into() }
-fn default_body_dim() -> f64 { 2.0 }
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PinItem {
-    pub id: String,
-    pub pin_number: i32,
-    pub name: Option<String>,        // "1", "VCC", "GND"
-    pub rel_x: f64,                  // offset from body center in mm
-    pub rel_y: f64,
-    #[serde(default = "default_rect")]
-    pub shape: String,               // "rect", "circle", "round_rect"
-    pub width: f64,
-    pub height: f64,
-    pub drill_diameter: Option<f64>, // for THT / vias
-    pub net_id: Option<String>,      // "GND", "VCC_3V3"
-    pub electrical_type: Option<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct NetInfo {
-    pub id: String,
-    pub name: String,
-    pub color: Option<String>,
-    pub pin_count: usize,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
 pub struct RecentProject {
     pub id: String,
     pub name: String,
@@ -183,61 +122,4 @@ pub struct RecentProject {
     pub component_count: usize,
     pub last_opened: String,
     pub created_at: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct LibraryDevice {
-    pub id: String,
-    pub name: String,
-    pub category_id: String,
-    pub prefix: String,
-    pub value: Option<String>,
-    pub description: Option<String>,
-    pub package_id: String,
-    pub tags: Vec<String>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PackageTemplate {
-    pub id: String,
-    pub name: String,
-    pub family: String, // "DIP", "SOIC", "QFP", "BGA", "CHIP_SMD"
-    pub pin_count: usize,
-    pub body_width: f64,
-    pub body_height: f64,
-    pub pins: Vec<PinTemplate>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PinTemplate {
-    pub number: i32,
-    pub name: String,
-    pub rel_x: f64,
-    pub rel_y: f64,
-    pub width: f64,
-    pub height: f64,
-    pub shape: String,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CrossProbingResult {
-    pub net_id: String,
-    pub net_name: String,
-    pub pins: Vec<CrossProbingPin>,
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct CrossProbingPin {
-    pub component_id: String,
-    pub ref_des: String,
-    pub pin_number: i32,
-    pub pin_name: Option<String>,
-    pub layer: String,
-    pub abs_x: f64,
-    pub abs_y: f64,
 }

@@ -12,9 +12,6 @@ interface UiStore {
   // Layer visibility & overlay settings
   showTopLayer: boolean;
   showBottomLayer: boolean;
-  showComponentsTop: boolean;
-  showComponentsBottom: boolean;
-  showNets: boolean;
 
   // Curtain tool state
   curtainPosition: number; // 0.0 .. 1.0 (relative to canvas width/height)
@@ -34,8 +31,6 @@ interface UiStore {
   modals: {
     newProject: boolean;
     preprocess: boolean;
-    packageEditor: boolean;
-    library: boolean;
     confirmClose: boolean;
   };
 
@@ -49,8 +44,6 @@ interface UiStore {
 
   setShowTopLayer: (val: boolean) => void;
   setShowBottomLayer: (val: boolean) => void;
-  setShowComponentsTop: (val: boolean) => void;
-  setShowComponentsBottom: (val: boolean) => void;
 
   setCurtainPosition: (pos: number) => void;
   toggleCurtainOrientation: () => void;
@@ -76,9 +69,6 @@ export const useUiStore = create<UiStore>((set) => ({
 
   showTopLayer: true,
   showBottomLayer: true,
-  showComponentsTop: true,
-  showComponentsBottom: true,
-  showNets: true,
 
   curtainPosition: 0.5,
   curtainVertical: true,
@@ -94,8 +84,6 @@ export const useUiStore = create<UiStore>((set) => ({
   modals: {
     newProject: false,
     preprocess: false,
-    packageEditor: false,
-    library: false,
     confirmClose: false,
   },
 
@@ -108,8 +96,6 @@ export const useUiStore = create<UiStore>((set) => ({
 
   setShowTopLayer: (val) => set({ showTopLayer: val }),
   setShowBottomLayer: (val) => set({ showBottomLayer: val }),
-  setShowComponentsTop: (val) => set({ showComponentsTop: val }),
-  setShowComponentsBottom: (val) => set({ showComponentsBottom: val }),
 
   setCurtainPosition: (pos) => set({ curtainPosition: Math.max(0.02, Math.min(0.98, pos)) }),
   toggleCurtainOrientation: () => set((state) => ({ curtainVertical: !state.curtainVertical })),

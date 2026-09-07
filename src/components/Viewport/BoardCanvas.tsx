@@ -2,7 +2,6 @@ import React, { useEffect, useRef, useState, useCallback } from "react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
 import { ToolBar } from "./ToolBar";
-import { QuickComponentBar } from "./QuickComponentBar";
 import { CurtainSlider } from "./CurtainSlider";
 import { MagnifierLoupe } from "./MagnifierLoupe";
 
@@ -11,12 +10,8 @@ export const BoardCanvas: React.FC = () => {
 
   const {
     board,
-    selectedComponentId,
-    activeNetId,
-    crossProbingPins,
-    selectComponent,
-    updateComponent,
-    selectNet,
+    selectedImageId,
+    selectImage,
   } = useProjectStore();
 
   const {
@@ -30,8 +25,6 @@ export const BoardCanvas: React.FC = () => {
     gridStepMm,
     showTopLayer,
     showBottomLayer,
-    showComponentsTop,
-    showComponentsBottom,
     curtainPosition,
     curtainVertical,
   } = useUiStore();
@@ -39,8 +32,6 @@ export const BoardCanvas: React.FC = () => {
   // Dragging / Panning state
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
-  const [draggingCompId, setDraggingCompId] = useState<string | null>(null);
-  const [dragOffsetMm, setDragOffsetMm] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
   // Calibration / Measurement points
   const [measurePts, setMeasurePts] = useState<[number, number][]>([]);
@@ -154,23 +145,9 @@ export const BoardCanvas: React.FC = () => {
           });
           ctx.restore();
         }
-
-        // 3. Draw Components & Pads
-        board.data.components.forEach((comp) => {
-          if (comp.layer === "top" && !showComponentsTop) return;
-          if (comp.layer === "bottom" && !showComponentsBottom) return;
-
-          const isSelected = comp.id === selectedComponentId;
-          drawComponent(ctx, comp, boardMmToScreen, MM_TO_PX, zoomFactor, isSelected, activeNetId);
-        });
-
-        // 4. Draw Cross-Probing Active Net glow
-        if (activeNetId && crossProbingPins.length > 0) {
-          drawCrossProbingGlow(ctx, crossProbingPins, boardMmToScreen);
-        }
       }
 
-      // 5. Draw Active Tool Overlays (Measure / Calibration lines)
+      // 3. Draw Active Tool Overlays (Measure / Calibration lines)
       if (measurePts.length > 0) {
         drawMeasurementOverlay(ctx, measurePts, boardMmToScreen);
       }
@@ -189,11 +166,6 @@ export const BoardCanvas: React.FC = () => {
     gridStepMm,
     showTopLayer,
     showBottomLayer,
-    showComponentsTop,
-    showComponentsBottom,
-    selectedComponentId,
-    activeNetId,
-    crossProbingPins,
     activeTool,
     curtainPosition,
     curtainVertical,
@@ -208,17 +180,9 @@ export const BoardCanvas: React.FC = () => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    // Middle click or Alt + Click -> Pan
-    if (e.button === 1 || (e.button === 0 && e.altKey)) {
-      setIsPanning(true);
-      setPanStart({ x: e.clientX - viewportPan.x, y: e.clientY - viewportPan.y });
-      return;
-    }
-
-    const mouseMm = screenToBoardMm(mouseX, mouseY);
-
-    // Tool: Measure or Calibrate
-    if (activeTool === "measure" || activeTool === "calibrate" || activeTool === "level") {
+    // Tool: Measure, Calibrate, Level, Register
+    if (activeTool === "measure" || activeTool === "calibrate" || activeTool === "level" || activeTool === "register") {
+      const mouseMm = screenToBoardMm(mouseX, mouseY);
       const next = [...measurePts, [mouseMm.x, mouseMm.y] as [number, number]];
       if (next.length > 2) {
         setMeasurePts([[mouseMm.x, mouseMm.y]]);
@@ -228,40 +192,9 @@ export const BoardCanvas: React.FC = () => {
       return;
     }
 
-    // Hit test components
-    if (board && activeTool === "select") {
-      let hitCompId: string | null = null;
-      for (let i = board.data.components.length - 1; i >= 0; i--) {
-        const comp = board.data.components[i];
-        const halfW = (comp.bodyWidth || 2.0) / 2;
-        const halfH = (comp.bodyHeight || 2.0) / 2;
-
-        if (
-          mouseMm.x >= comp.x - halfW &&
-          mouseMm.x <= comp.x + halfW &&
-          mouseMm.y >= comp.y - halfH &&
-          mouseMm.y <= comp.y + halfH
-        ) {
-          hitCompId = comp.id;
-          break;
-        }
-      }
-
-      if (hitCompId) {
-        selectComponent(hitCompId);
-        setDraggingCompId(hitCompId);
-        const comp = board.data.components.find((c) => c.id === hitCompId);
-        if (comp) {
-          setDragOffsetMm({ x: mouseMm.x - comp.x, y: mouseMm.y - comp.y });
-        }
-      } else {
-        selectComponent(null);
-        selectNet(null);
-        // Start panning canvas if clicked background
-        setIsPanning(true);
-        setPanStart({ x: e.clientX - viewportPan.x, y: e.clientY - viewportPan.y });
-      }
-    }
+    // Default: Pan canvas
+    setIsPanning(true);
+    setPanStart({ x: e.clientX - viewportPan.x, y: e.clientY - viewportPan.y });
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -278,22 +211,11 @@ export const BoardCanvas: React.FC = () => {
         x: e.clientX - panStart.x,
         y: e.clientY - panStart.y,
       });
-      return;
-    }
-
-    if (draggingCompId && board) {
-      const comp = board.data.components.find((c) => c.id === draggingCompId);
-      if (comp) {
-        const newX = Math.round((mouseMm.x - dragOffsetMm.x) * 10) / 10;
-        const newY = Math.round((mouseMm.y - dragOffsetMm.y) * 10) / 10;
-        updateComponent({ ...comp, x: newX, y: newY });
-      }
     }
   };
 
   const handleMouseUp = () => {
     setIsPanning(false);
-    setDraggingCompId(null);
   };
 
   // Cursor-anchored Zoom on Wheel
@@ -330,7 +252,6 @@ export const BoardCanvas: React.FC = () => {
 
       {/* Floating Glass Toolbars */}
       <ToolBar />
-      <QuickComponentBar />
       <CurtainSlider />
       <MagnifierLoupe sourceCanvasRef={canvasRef} />
 
@@ -446,144 +367,6 @@ function drawImageLayer(
   ctx.restore();
 }
 
-function drawComponent(
-  ctx: CanvasRenderingContext2D,
-  comp: any,
-  boardMmToScreen: (x: number, y: number) => { x: number; y: number },
-  mmToPx: number,
-  zoom: number,
-  isSelected: boolean,
-  activeNetId: string | null
-) {
-  const center = boardMmToScreen(comp.x, comp.y);
-  const rad = ((comp.rotation || 0) * Math.PI) / 180;
-  const bodyW = (comp.bodyWidth || 2.0) * mmToPx * zoom;
-  const bodyH = (comp.bodyHeight || 2.0) * mmToPx * zoom;
-
-  ctx.save();
-  ctx.translate(center.x, center.y);
-  ctx.rotate(rad);
-
-  // 1. Draw Component Body
-  ctx.strokeStyle = isSelected ? "#3b82f6" : "rgba(255, 255, 255, 0.4)";
-  ctx.lineWidth = isSelected ? 2 : 1;
-  ctx.fillStyle = isSelected ? "rgba(59, 130, 246, 0.15)" : "rgba(30, 36, 48, 0.6)";
-
-  if (comp.bodyShape === "circle") {
-    ctx.beginPath();
-    ctx.arc(0, 0, bodyW / 2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-  } else {
-    ctx.beginPath();
-    ctx.rect(-bodyW / 2, -bodyH / 2, bodyW, bodyH);
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  // Pin 1 dot / orientation mark
-  if (comp.hasPolarityMark) {
-    ctx.fillStyle = "#3b82f6";
-    ctx.beginPath();
-    ctx.arc(-bodyW / 2 + 4, -bodyH / 2 + 4, 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  // RefDes Label
-  if (zoom >= 0.4) {
-    ctx.fillStyle = isSelected ? "#93c5fd" : "rgba(255, 255, 255, 0.8)";
-    ctx.font = `bold ${Math.max(9, Math.min(13, 10 * zoom))}px Inter, sans-serif`;
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText(comp.refDes, 0, 0);
-  }
-
-  // 2. Draw Pins (Copper Pads)
-  comp.pins.forEach((pin: any) => {
-    const pinX = pin.relX * mmToPx * zoom;
-    const pinY = pin.relY * mmToPx * zoom;
-    const pinW = pin.width * mmToPx * zoom;
-    const pinH = pin.height * mmToPx * zoom;
-
-    const isNetActive = activeNetId && pin.netId?.toUpperCase() === activeNetId.toUpperCase();
-
-    ctx.save();
-    ctx.translate(pinX, pinY);
-
-    if (isNetActive) {
-      ctx.fillStyle = "#10b981";
-      ctx.strokeStyle = "#4ade80";
-      ctx.shadowColor = "rgba(74, 222, 128, 0.9)";
-      ctx.shadowBlur = 8;
-    } else if (comp.layer === "top") {
-      ctx.fillStyle = "#f59e0b"; // Warm gold / amber
-      ctx.strokeStyle = "#fbbf24";
-    } else {
-      ctx.fillStyle = "#06b6d4"; // Cyan
-      ctx.strokeStyle = "#22d3ee";
-    }
-
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    if (pin.shape === "circle") {
-      ctx.arc(0, 0, pinW / 2, 0, Math.PI * 2);
-    } else {
-      ctx.rect(-pinW / 2, -pinH / 2, pinW, pinH);
-    }
-    ctx.fill();
-    ctx.stroke();
-
-    // THT Hole
-    if (pin.drillDiameter) {
-      const drillPx = (pin.drillDiameter * mmToPx * zoom) / 2;
-      ctx.fillStyle = "#0c0e12";
-      ctx.beginPath();
-      ctx.arc(0, 0, drillPx, 0, Math.PI * 2);
-      ctx.fill();
-    }
-
-    ctx.restore();
-  });
-
-  ctx.restore();
-}
-
-function drawCrossProbingGlow(
-  ctx: CanvasRenderingContext2D,
-  pins: any[],
-  boardMmToScreen: (x: number, y: number) => { x: number; y: number }
-) {
-  ctx.save();
-  ctx.strokeStyle = "rgba(74, 222, 128, 0.7)";
-  ctx.lineWidth = 2;
-  ctx.setLineDash([4, 4]);
-
-  // Connect pins with a light ratline
-  if (pins.length > 1) {
-    ctx.beginPath();
-    const first = boardMmToScreen(pins[0].absX, pins[0].absY);
-    ctx.moveTo(first.x, first.y);
-    for (let i = 1; i < pins.length; i++) {
-      const p = boardMmToScreen(pins[i].absX, pins[i].absY);
-      ctx.lineTo(p.x, p.y);
-    }
-    ctx.stroke();
-  }
-
-  // Draw pulse rings on each pin
-  pins.forEach((p) => {
-    const pos = boardMmToScreen(p.absX, p.absY);
-    ctx.strokeStyle = "#4ade80";
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([]);
-    ctx.beginPath();
-    ctx.arc(pos.x, pos.y, 8, 0, Math.PI * 2);
-    ctx.stroke();
-  });
-
-  ctx.restore();
-}
-
 function drawMeasurementOverlay(
   ctx: CanvasRenderingContext2D,
   pts: [number, number][],
@@ -617,9 +400,9 @@ function drawMeasurementOverlay(
   const midX = (p1.x + p2.x) / 2;
   const midY = (p1.y + p2.y) / 2;
   ctx.fillStyle = "rgba(15, 23, 42, 0.9)";
-  ctx.fillRect(midX - 35, midY - 12, 70, 24);
+  ctx.fillRect(midX - 40, midY - 12, 80, 24);
   ctx.strokeStyle = "#38bdf8";
-  ctx.strokeRect(midX - 35, midY - 12, 70, 24);
+  ctx.strokeRect(midX - 40, midY - 12, 80, 24);
 
   ctx.fillStyle = "#fff";
   ctx.font = "bold 11px JetBrains Mono, monospace";

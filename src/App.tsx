@@ -9,8 +9,6 @@ import { InspectorSidebar } from "./components/Sidebar/InspectorSidebar";
 import { BoardCanvas } from "./components/Viewport/BoardCanvas";
 import { NewProjectModal } from "./components/Modals/NewProjectModal";
 import { ImagePreprocessModal } from "./components/Modals/ImagePreprocessModal";
-import { PackageEditorModal } from "./components/Modals/PackageEditorModal";
-import { ComponentLibraryModal } from "./components/Modals/ComponentLibraryModal";
 
 export const App: React.FC = () => {
   const { manifest, saveProject } = useProjectStore();
@@ -38,9 +36,6 @@ export const App: React.FC = () => {
         if (e.key === "s" || e.key === "ы") {
           e.preventDefault();
           saveProject().catch(console.error);
-        } else if (e.key === "o" || e.key === "щ") {
-          e.preventDefault();
-          // Open
         } else if (e.key === "n" || e.key === "т") {
           e.preventDefault();
           openModal("newProject");
@@ -109,8 +104,6 @@ export const App: React.FC = () => {
       {/* Modals */}
       <NewProjectModal />
       <ImagePreprocessModal />
-      <PackageEditorModal />
-      <ComponentLibraryModal />
     </div>
   );
 };
