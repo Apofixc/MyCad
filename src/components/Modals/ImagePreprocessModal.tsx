@@ -51,12 +51,15 @@ type DragHandle =
   | null;
 
 export const ImagePreprocessModal: React.FC = () => {
-  const { modals, closeModal, pendingPreprocess, setPendingPreprocess, preprocessSide } =
+  const { modals, closeModal, pendingPreprocess, setPendingPreprocess, activeWorkLayer } =
     useUiStore();
   const { updateImageLayer } = useProjectStore();
 
+  const side: "top" | "bottom" =
+    pendingPreprocess?.side ||
+    (activeWorkLayer.type === "underlay" ? activeWorkLayer.side : "top");
+
   const [mode, setMode] = useState<ToolMode>("perspective");
-  const [side, setSide] = useState<"top" | "bottom">("top");
   const [currentSrc, setCurrentSrc] = useState<string>("");
   const [naturalDims, setNaturalDims] = useState<{ width: number; height: number }>({
     width: 0,
@@ -180,11 +183,9 @@ export const ImagePreprocessModal: React.FC = () => {
   useEffect(() => {
     if (!modals.preprocess || !pendingPreprocess) return;
 
-    const s = pendingPreprocess.side || preprocessSide || "top";
-    setSide(s);
     setErrorMsg(null);
     setRotationAngle(0);
-    setIsFlippedH(s === "bottom"); // default flip H for bottom scan
+    setIsFlippedH(side === "bottom"); // default flip H for bottom scan
     setIsFlippedV(false);
     setMode("perspective");
     hasFittedRef.current = false;
@@ -726,23 +727,23 @@ export const ImagePreprocessModal: React.FC = () => {
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            {/* Side selector */}
-            <div className="cad-preprocess-side-select">
-              <button
-                className={`cad-preprocess-side-btn ${side === "top" ? "active top" : ""}`}
-                onClick={() => setSide("top")}
-              >
-                Top (Верхний)
-              </button>
-              <button
-                className={`cad-preprocess-side-btn ${side === "bottom" ? "active bottom" : ""}`}
-                onClick={() => {
-                  setSide("bottom");
-                  setIsFlippedH(true);
-                }}
-              >
-                Bottom (Нижний)
-              </button>
+            {/* Active layer indicator (read-only, controlled by Project Tree) */}
+            <div
+              style={{
+                fontSize: "12px",
+                fontWeight: 600,
+                padding: "5px 12px",
+                borderRadius: "6px",
+                background: side === "top" ? "rgba(245, 158, 11, 0.12)" : "rgba(6, 182, 212, 0.12)",
+                border: `1px solid ${side === "top" ? "rgba(245, 158, 11, 0.4)" : "rgba(6, 182, 212, 0.4)"}`,
+                color: side === "top" ? "var(--cad-top-layer)" : "var(--cad-bottom-layer)",
+                display: "flex",
+                alignItems: "center",
+                gap: "6px",
+              }}
+            >
+              <span>Слой:</span>
+              <span>{side === "top" ? "TOP (Лицевой)" : "BOTTOM (Оборотный)"}</span>
             </div>
 
             <button className="header-close-btn" onClick={handleClose}>

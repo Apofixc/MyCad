@@ -28,6 +28,7 @@ export const BoardCanvas: React.FC = () => {
     showBottomLayer,
     curtainPosition,
     curtainVertical,
+    activeWorkLayer,
     setPendingPreprocess,
     setPendingBatchImport,
   } = useUiStore();
@@ -38,7 +39,10 @@ export const BoardCanvas: React.FC = () => {
 
   // Drag & drop file state
   const [isDragOver, setIsDragOver] = useState(false);
-  const [dragSide, setDragSide] = useState<"top" | "bottom">("top");
+
+  // Target underlay side strictly follows active working layer from Project Tree
+  const targetUnderlaySide: "top" | "bottom" =
+    activeWorkLayer.type === "underlay" ? activeWorkLayer.side : "top";
 
   // Custom Event for preprocessing existing image
   useEffect(() => {
@@ -74,7 +78,7 @@ export const BoardCanvas: React.FC = () => {
             setPendingPreprocess({
               file,
               name: `clipboard_${Date.now()}.png`,
-              side: "top",
+              side: targetUnderlaySide,
             });
             break;
           }
@@ -83,17 +87,12 @@ export const BoardCanvas: React.FC = () => {
     };
     window.addEventListener("paste", handlePaste);
     return () => window.removeEventListener("paste", handlePaste);
-  }, [setPendingPreprocess]);
+  }, [setPendingPreprocess, targetUnderlaySide]);
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragOver(true);
-    const rect = canvasRef.current?.getBoundingClientRect();
-    if (rect) {
-      const yRatio = (e.clientY - rect.top) / rect.height;
-      setDragSide(yRatio < 0.5 ? "top" : "bottom");
-    }
   };
 
   const handleDragLeave = (e: React.DragEvent) => {
@@ -120,12 +119,12 @@ export const BoardCanvas: React.FC = () => {
         file: files[0],
         filePath,
         name: files[0].name,
-        side: dragSide,
+        side: targetUnderlaySide,
       });
     } else {
       setPendingBatchImport({
         files,
-        side: dragSide,
+        side: targetUnderlaySide,
       });
     }
   };
@@ -401,49 +400,28 @@ export const BoardCanvas: React.FC = () => {
             background: "rgba(12, 14, 18, 0.85)",
             backdropFilter: "blur(6px)",
             display: "flex",
-            flexDirection: "column",
             alignItems: "center",
             justifyContent: "center",
             zIndex: 100,
             pointerEvents: "none",
-            gap: "24px",
           }}
         >
           <div
             style={{
-              padding: "20px 40px",
-              background: dragSide === "top" ? "rgba(245, 158, 11, 0.2)" : "rgba(255, 255, 255, 0.05)",
-              border: `2px dashed ${dragSide === "top" ? "var(--cad-top-layer)" : "var(--cad-border)"}`,
+              padding: "24px 44px",
+              background: targetUnderlaySide === "top" ? "rgba(245, 158, 11, 0.16)" : "rgba(6, 182, 212, 0.16)",
+              border: `2px dashed ${targetUnderlaySide === "top" ? "var(--cad-top-layer)" : "var(--cad-bottom-layer)"}`,
               borderRadius: "12px",
               textAlign: "center",
-              width: "360px",
-              transition: "all 0.15s ease",
+              width: "380px",
+              boxShadow: "0 16px 40px rgba(0, 0, 0, 0.5)",
             }}
           >
-            <div style={{ fontWeight: 600, color: "var(--cad-top-layer)", fontSize: "16px", marginBottom: "4px" }}>
-              Слой Top (Лицевой)
+            <div style={{ fontWeight: 600, color: targetUnderlaySide === "top" ? "var(--cad-top-layer)" : "var(--cad-bottom-layer)", fontSize: "16px", marginBottom: "4px" }}>
+              Добавить в слой {targetUnderlaySide === "top" ? "Top (Лицевой)" : "Bottom (Оборотный)"}
             </div>
             <div style={{ fontSize: "12px", color: "var(--cad-text-muted)" }}>
-              Бросьте в верхнюю половину
-            </div>
-          </div>
-
-          <div
-            style={{
-              padding: "20px 40px",
-              background: dragSide === "bottom" ? "rgba(6, 182, 212, 0.2)" : "rgba(255, 255, 255, 0.05)",
-              border: `2px dashed ${dragSide === "bottom" ? "var(--cad-bottom-layer)" : "var(--cad-border)"}`,
-              borderRadius: "12px",
-              textAlign: "center",
-              width: "360px",
-              transition: "all 0.15s ease",
-            }}
-          >
-            <div style={{ fontWeight: 600, color: "var(--cad-bottom-layer)", fontSize: "16px", marginBottom: "4px" }}>
-              Слой Bottom (Оборотный)
-            </div>
-            <div style={{ fontSize: "12px", color: "var(--cad-text-muted)" }}>
-              Бросьте в нижнюю половину
+              Файлы будут привязаны к активному слою подложки
             </div>
           </div>
         </div>

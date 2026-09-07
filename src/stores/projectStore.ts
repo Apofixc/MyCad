@@ -254,7 +254,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const { boards, board, schematics, schematic } = get();
       const targetBoardId = board?.id || boards[0]?.id;
 
-      const updateGroup = (images: BoardImageLayer[]) => {
+      const updateGroupForSide = (images: BoardImageLayer[], targetSide: "top" | "bottom") => {
         const next = [...images];
         for (let i = 0; i < next.length; i++) {
           const updated = savedMap.get(next[i].id);
@@ -262,12 +262,20 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
             next[i] = updated;
           }
         }
+        // Filter to keep only layers that match targetSide
+        const filtered = next.filter((img) => {
+          const updated = savedMap.get(img.id);
+          const currentSide = (updated?.side || img.side || "top").toLowerCase();
+          return currentSide === targetSide;
+        });
+        // Add new saved layers that belong strictly to targetSide
         for (const saved of savedLayers) {
-          if (!next.some((img) => img.id === saved.id)) {
-            next.push(saved);
+          const sSide = (saved.side || "top").toLowerCase();
+          if (sSide === targetSide && !filtered.some((img) => img.id === saved.id)) {
+            filtered.push(saved);
           }
         }
-        return next;
+        return filtered;
       };
 
       const updatedBoards = boards.map((b) => {
@@ -282,13 +290,24 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
             ...b,
             data: {
               ...b.data,
-              bgTop: { images: updateGroup(currentTopImages) },
-              bgBottom: { images: updateGroup(currentBotImages) },
+              bgTop: { images: updateGroupForSide(currentTopImages, "top") },
+              bgBottom: { images: updateGroupForSide(currentBotImages, "bottom") },
             },
           };
         }
         return b;
       });
+
+      const updateSchematicGroup = (images: BoardImageLayer[]) => {
+        const next = [...images];
+        for (let i = 0; i < next.length; i++) {
+          const updated = savedMap.get(next[i].id);
+          if (updated) {
+            next[i] = updated;
+          }
+        }
+        return next;
+      };
 
       const updatedSchematics = schematics.map((s) => {
         const currentImages = s.data?.bg?.images || [];
@@ -298,7 +317,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
             ...s,
             data: {
               ...s.data,
-              bg: { images: updateGroup(currentImages) },
+              bg: { images: updateSchematicGroup(currentImages) },
             },
           };
         }
