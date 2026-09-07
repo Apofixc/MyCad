@@ -33,6 +33,7 @@ import {
   QuadPoints,
   CropRect,
 } from "../../api/engineClient";
+import { reportError } from "../../utils/errorHandler";
 import "./ImagePreprocessModal.css";
 
 type ToolMode = "perspective" | "crop" | "polygon" | "circle";
@@ -933,6 +934,7 @@ function drawAlignmentGrid(
     } catch (e: any) {
       console.error(e);
       setErrorMsg(e?.message || "Ошибка импорта исходного файла");
+      reportError(e, "Ошибка импорта исходного файла", { source: "canvas" });
     } finally {
       setLoading(false);
     }
@@ -979,6 +981,7 @@ function drawAlignmentGrid(
     } catch (e: any) {
       console.error(e);
       setErrorMsg(e?.message || "Ошибка применения трансформации");
+      reportError(e, "Ошибка применения трансформации изображения", { source: "canvas" });
     } finally {
       setLoading(false);
     }

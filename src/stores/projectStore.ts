@@ -7,6 +7,7 @@ import {
   SchematicDocument,
 } from "../types/cad";
 import { engineClient } from "../api/engineClient";
+import { reportError, notifySuccess } from "../utils/errorHandler";
 
 interface ProjectStore {
   manifest: ProjectManifest | null;
@@ -100,7 +101,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const fullState = await engineClient.createProject(path, name, author, desc);
       get().applyFullState(fullState);
       set({ isDirty: false, selectedImageId: null });
+      notifySuccess(`Проект "${name}" успешно создан`);
     } catch (e: any) {
+      reportError(e, "Ошибка создания проекта", { source: "tauri" });
       set({ error: e?.toString() || "Ошибка создания проекта", isLoading: false });
       throw e;
     }
@@ -112,7 +115,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const fullState = await engineClient.openProject(path);
       get().applyFullState(fullState);
       set({ isDirty: false, selectedImageId: null });
+      notifySuccess("Проект успешно открыт");
     } catch (e: any) {
+      reportError(e, "Ошибка открытия проекта", { source: "tauri" });
       set({ error: e?.toString() || "Ошибка открытия проекта", isLoading: false });
       throw e;
     }
@@ -123,7 +128,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     try {
       await engineClient.saveProject();
       set({ isDirty: false, isLoading: false });
+      notifySuccess("Проект успешно сохранен");
     } catch (e: any) {
+      reportError(e, "Ошибка сохранения проекта", { source: "tauri" });
       set({ error: e?.toString() || "Ошибка сохранения", isLoading: false });
       throw e;
     }
@@ -150,7 +157,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const fullState = await engineClient.addProjectFile("board", name);
       get().applyFullState(fullState);
       set({ isDirty: true });
+      notifySuccess(`Добавлен документ платы: ${name || "Board"}`);
     } catch (e: any) {
+      reportError(e, "Ошибка добавления схемы платы", { source: "tauri" });
       set({ error: e?.toString() || "Ошибка добавления схемы платы", isLoading: false });
       throw e;
     }
@@ -162,7 +171,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const fullState = await engineClient.addProjectFile("schematic", name);
       get().applyFullState(fullState);
       set({ isDirty: true });
+      notifySuccess(`Добавлена принципиальная схема: ${name || "Schematic"}`);
     } catch (e: any) {
+      reportError(e, "Ошибка добавления принципиальной схемы", { source: "tauri" });
       set({ error: e?.toString() || "Ошибка добавления принципиальной схемы", isLoading: false });
       throw e;
     }
@@ -174,7 +185,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const fullState = await engineClient.removeProjectFile(fileId);
       get().applyFullState(fullState);
       set({ isDirty: true });
+      notifySuccess("Файл удален из проекта");
     } catch (e: any) {
+      reportError(e, "Ошибка удаления файла", { source: "tauri" });
       set({ error: e?.toString() || "Ошибка удаления файла", isLoading: false });
       throw e;
     }
@@ -185,7 +198,9 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const fullState = await engineClient.renameProjectFile(fileId, newName);
       get().applyFullState(fullState);
       set({ isDirty: true });
+      notifySuccess("Файл переименован");
     } catch (e: any) {
+      reportError(e, "Ошибка переименования файла", { source: "tauri" });
       set({ error: e?.toString() || "Ошибка переименования", isLoading: false });
       throw e;
     }
@@ -196,7 +211,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       const fullState = await engineClient.setActiveFile(fileId);
       get().applyFullState(fullState);
     } catch (e: any) {
-      console.error(e);
+      reportError(e, "Ошибка переключения активного документа", { source: "tauri" });
     }
   },
 
@@ -337,6 +352,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         isDirty: true,
       });
     } catch (e: any) {
+      reportError(e, "Ошибка обновления слоя изображения", { source: "tauri" });
       set({ error: e?.toString() });
     }
   },
@@ -376,7 +392,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       try {
         await engineClient.deleteImageLayer(id);
       } catch (e) {
-        console.error("Error deleting image layer", id, e);
+        reportError(e, `Ошибка удаления слоя скана ${id}`, { source: "tauri" });
       }
     }
     const { boards, board, schematics, schematic, selectedImageId, selectedImageIds } = get();

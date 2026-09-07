@@ -13,6 +13,9 @@ import { NewProjectModal } from "./components/Modals/NewProjectModal";
 import { NewDocumentModal } from "./components/Modals/NewDocumentModal";
 import { ImagePreprocessModal } from "./components/Modals/ImagePreprocessModal";
 import { BatchImageImportModal } from "./components/Modals/BatchImageImportModal";
+import { ErrorLogModal } from "./components/Modals/ErrorLogModal";
+import { ToastContainer } from "./components/Common/ToastContainer";
+import { ErrorBoundary } from "./components/Common/ErrorBoundary";
 
 export const App: React.FC = () => {
   const { manifest, saveProject, activeFileType, board, schematic } = useProjectStore();
@@ -98,24 +101,33 @@ export const App: React.FC = () => {
           <TopBar />
           <div className="cad-main-workspace">
             {!leftSidebarCollapsed && <ProjectTree />}
-            {activeFileType === "board" && board ? (
-              <BoardCanvas />
-            ) : activeFileType === "schematic" && schematic ? (
-              <SchematicCanvas />
-            ) : (
-              <EmptyWorkspace />
-            )}
+            <ErrorBoundary
+              fallbackTitle="Ошибка отображения холста"
+              fallbackMessage="Произошел сбой при отрисовке рабочего пространства CAD. Данные проекта не потеряны."
+            >
+              {activeFileType === "board" && board ? (
+                <BoardCanvas />
+              ) : activeFileType === "schematic" && schematic ? (
+                <SchematicCanvas />
+              ) : (
+                <EmptyWorkspace />
+              )}
+            </ErrorBoundary>
             {!rightSidebarCollapsed && activeFileType === "board" && <InspectorSidebar />}
           </div>
           <StatusBar />
         </>
       )}
 
-      {/* Modals */}
+      {/* Modals & Overlays */}
       <NewProjectModal />
       <NewDocumentModal />
       <ImagePreprocessModal />
       <BatchImageImportModal />
+      <ErrorLogModal />
+
+      {/* Global Toast Notifications */}
+      <ToastContainer />
     </div>
   );
 };

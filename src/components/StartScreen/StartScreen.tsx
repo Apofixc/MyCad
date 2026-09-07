@@ -4,6 +4,7 @@ import { useUiStore } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
 import { engineClient } from "../../api/engineClient";
 import { RecentProject } from "../../types/cad";
+import { reportError } from "../../utils/errorHandler";
 
 export const StartScreen: React.FC = () => {
   const { openModal } = useUiStore();
@@ -20,7 +21,7 @@ export const StartScreen: React.FC = () => {
       const list = await engineClient.getRecentProjects();
       setRecents(Array.isArray(list) ? list : []);
     } catch (e) {
-      console.error("Ошибка при получении недавних проектов:", e);
+      reportError(e, "Ошибка при получении недавних проектов", { source: "tauri", toast: false });
     }
   };
 
@@ -42,8 +43,7 @@ export const StartScreen: React.FC = () => {
         await openProject("C:/Projects/Pirrs_1000_Lux.mycad");
       }
     } catch (e: any) {
-      console.error(e);
-      alert(`Не удалось открыть проект:\n${e?.message || e || "Неизвестная ошибка"}`);
+      reportError(e, "Не удалось открыть проект", { source: "tauri" });
     } finally {
       setLoading(false);
     }
@@ -54,8 +54,7 @@ export const StartScreen: React.FC = () => {
     try {
       await openProject(path);
     } catch (e: any) {
-      console.error("Ошибка открытия недавнего проекта:", e);
-      alert(`Не удалось открыть проект:\n${path}\n\nВозможно, файл был перемещен или удален.`);
+      reportError(e, `Не удалось открыть проект "${path}" (возможно, файл перемещен или удален)`, { source: "tauri" });
     } finally {
       setLoading(false);
     }
@@ -67,7 +66,7 @@ export const StartScreen: React.FC = () => {
       await engineClient.removeRecentProject(path);
       setRecents((prev) => prev.filter((r) => r.filePath !== path));
     } catch (err) {
-      console.error(err);
+      reportError(err, "Ошибка удаления проекта из списка недавних", { source: "tauri" });
     }
   };
 

@@ -15,6 +15,7 @@ import {
 import { useUiStore } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
 import { engineClient, resolveImageUrl } from "../../api/engineClient";
+import { reportError } from "../../utils/errorHandler";
 import "./BatchImageImportModal.css";
 
 interface BatchItem {
@@ -348,6 +349,7 @@ export const BatchImageImportModal: React.FC = () => {
     } catch (err: any) {
       console.error(err);
       setErrorMsg(err?.message || err?.toString() || "Ошибка пакетного импорта");
+      reportError(err, "Ошибка пакетного импорта", { source: "canvas" });
     } finally {
       setLoading(false);
     }

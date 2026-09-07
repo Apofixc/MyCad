@@ -1,0 +1,232 @@
+/* ========================================================================= */
+/* Toast Notification System Styles                                         */
+/* ========================================================================= */
+
+.cad-toast-container {
+  position: fixed;
+  bottom: 38px;
+  right: 18px;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column-reverse;
+  gap: 10px;
+  max-width: 420px;
+  width: calc(100vw - 36px);
+  pointer-events: none;
+}
+
+.cad-toast-item {
+  pointer-events: auto;
+  position: relative;
+  background: rgba(18, 24, 34, 0.94);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: toastSlideIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toastSlideIn {
+  from {
+    opacity: 0;
+    transform: translateX(30px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+}
+
+.cad-toast-item.cad-toast-exit {
+  animation: toastSlideOut 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes toastSlideOut {
+  from {
+    opacity: 1;
+    transform: translateX(0) scale(1);
+  }
+  to {
+    opacity: 0;
+    transform: translateX(30px) scale(0.96);
+  }
+}
+
+/* Level Specific Accent Borders & Glows */
+.cad-toast-item.level-error {
+  border-left: 4px solid #ef4444;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 16px rgba(239, 68, 68, 0.15);
+}
+
+.cad-toast-item.level-warning {
+  border-left: 4px solid #f59e0b;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 16px rgba(245, 158, 11, 0.15);
+}
+
+.cad-toast-item.level-info {
+  border-left: 4px solid #3b82f6;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 16px rgba(59, 130, 246, 0.15);
+}
+
+.cad-toast-item.level-success {
+  border-left: 4px solid #10b981;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.65), 0 0 16px rgba(16, 185, 129, 0.15);
+}
+
+.cad-toast-header {
+  display: flex;
+  align-items: flex-start;
+  padding: 10px 12px;
+  gap: 10px;
+}
+
+.cad-toast-icon {
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.cad-toast-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.cad-toast-title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 2px;
+}
+
+.cad-toast-badge {
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+
+.cad-toast-badge.level-error {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.cad-toast-badge.level-warning {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fde68a;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.cad-toast-badge.level-info {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.cad-toast-badge.level-success {
+  background: rgba(16, 185, 129, 0.2);
+  color: #86efac;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.cad-toast-time {
+  font-size: 10px;
+  color: var(--cad-text-dim);
+  font-family: var(--cad-font-mono);
+}
+
+.cad-toast-msg {
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: #f1f5f9;
+  word-break: break-word;
+}
+
+.cad-toast-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.cad-toast-btn-link {
+  font-size: 11px;
+  color: #60a5fa;
+  cursor: pointer;
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-decoration: underline;
+  transition: color 0.12s;
+}
+
+.cad-toast-btn-link:hover {
+  color: #93c5fd;
+}
+
+.cad-toast-close-btn {
+  background: transparent;
+  border: none;
+  color: var(--cad-text-dim);
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.12s;
+  flex-shrink: 0;
+}
+
+.cad-toast-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.cad-toast-details-box {
+  margin: 0 12px 10px 12px;
+  padding: 8px 10px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  font-family: var(--cad-font-mono);
+  font-size: 11px;
+  color: #cbd5e1;
+  max-height: 120px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.cad-toast-progress-track {
+  width: 100%;
+  height: 2px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.cad-toast-progress-bar {
+  height: 100%;
+  transition: width 0.1s linear;
+}
+
+.cad-toast-progress-bar.level-error {
+  background: #ef4444;
+}
+
+.cad-toast-progress-bar.level-warning {
+  background: #f59e0b;
+}
+
+.cad-toast-progress-bar.level-info {
+  background: #3b82f6;
+}
+
+.cad-toast-progress-bar.level-success {
+  background: #10b981;
+}
