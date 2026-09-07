@@ -30,6 +30,7 @@ interface UiStore {
   // Modals state
   modals: {
     newProject: boolean;
+    newDocument: boolean;
     preprocess: boolean;
     confirmClose: boolean;
   };
@@ -83,6 +84,7 @@ export const useUiStore = create<UiStore>((set) => ({
 
   modals: {
     newProject: false,
+    newDocument: false,
     preprocess: false,
     confirmClose: false,
   },

@@ -10,6 +10,7 @@ import { BoardCanvas } from "./components/Viewport/BoardCanvas";
 import { SchematicCanvas } from "./components/Viewport/SchematicCanvas";
 import { EmptyWorkspace } from "./components/Viewport/EmptyWorkspace";
 import { NewProjectModal } from "./components/Modals/NewProjectModal";
+import { NewDocumentModal } from "./components/Modals/NewDocumentModal";
 import { ImagePreprocessModal } from "./components/Modals/ImagePreprocessModal";
 
 export const App: React.FC = () => {
@@ -111,6 +112,7 @@ export const App: React.FC = () => {
 
       {/* Modals */}
       <NewProjectModal />
+      <NewDocumentModal />
       <ImagePreprocessModal />
     </div>
   );
