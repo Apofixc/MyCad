@@ -210,32 +210,37 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         return [...images, saved];
       };
 
-      const updatedBoards = boards.map((b) => {
-        const hasTop = b.data.bgTop.images.some((img) => img.id === saved.id);
-        const hasBot = b.data.bgBottom.images.some((img) => img.id === saved.id);
+      const targetBoardId = board?.id || boards[0]?.id;
 
-        if (hasTop || (saved.side === "top" && b.id === board?.id)) {
+      const updatedBoards = boards.map((b) => {
+        const currentTopImages = b.data?.bgTop?.images || [];
+        const currentBotImages = b.data?.bgBottom?.images || [];
+        const hasTop = currentTopImages.some((img) => img.id === saved.id);
+        const hasBot = currentBotImages.some((img) => img.id === saved.id);
+
+        if (hasTop || (saved.side === "top" && b.id === targetBoardId)) {
           return {
             ...b,
             data: {
               ...b.data,
-              bgTop: { images: updateGroup(b.data.bgTop.images) },
+              bgTop: { images: updateGroup(currentTopImages) },
             },
           };
         }
-        if (hasBot || (saved.side === "bottom" && b.id === board?.id)) {
+        if (hasBot || (saved.side === "bottom" && b.id === targetBoardId)) {
           return {
             ...b,
             data: {
               ...b.data,
-              bgBottom: { images: updateGroup(b.data.bgBottom.images) },
+              bgBottom: { images: updateGroup(currentBotImages) },
             },
           };
         }
         return b;
       });
 
-      const updatedActiveBoard = updatedBoards.find((b) => b.id === board?.id) || board;
+      const updatedActiveBoard =
+        updatedBoards.find((b) => b.id === targetBoardId) || board || updatedBoards[0] || null;
 
       set({
         boards: updatedBoards,

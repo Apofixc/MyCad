@@ -41,6 +41,7 @@ interface UiStore {
     preprocess: boolean;
     confirmClose: boolean;
   };
+  preprocessSide: "top" | "bottom";
 
   // Actions
   setActiveTool: (tool: ToolMode) => void;
@@ -70,6 +71,7 @@ interface UiStore {
   setRightSidebarWidth: (width: number) => void;
   toggleRightSidebar: () => void;
 
+  setPreprocessSide: (side: "top" | "bottom") => void;
   openModal: (modal: keyof UiStore["modals"]) => void;
   closeModal: (modal: keyof UiStore["modals"]) => void;
 }
@@ -109,7 +111,9 @@ export const useUiStore = create<UiStore>((set) => ({
     preprocess: false,
     confirmClose: false,
   },
+  preprocessSide: "top",
 
+  setPreprocessSide: (side) => set({ preprocessSide: side }),
   setActiveTool: (tool) => set({ activeTool: tool }),
   setCursorMm: (pos) => set({ cursorMm: pos }),
   setViewportZoom: (zoom) => set({ viewportZoom: Math.max(10, Math.min(2000, zoom)) }),

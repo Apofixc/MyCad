@@ -102,7 +102,38 @@ export const engineClient = {
   async detectCorners(filePath: string): Promise<[[number, number], [number, number], [number, number], [number, number]]> {
     return invokeTauri<[[number, number], [number, number], [number, number], [number, number]]>("image_detect_corners", { filePath });
   },
+
+  async readImageBytes(filePath: string): Promise<number[]> {
+    return invokeTauri<number[]>("image_read_bytes", { filePath });
+  },
 };
+
+/**
+ * Resolves an image path or URL into a webview-loadable URL (asset:// or blob:).
+ */
+export async function resolveImageUrl(urlOrPath: string): Promise<string> {
+  if (!urlOrPath) return "";
+  if (
+    urlOrPath.startsWith("data:") ||
+    urlOrPath.startsWith("blob:") ||
+    urlOrPath.startsWith("http://") ||
+    urlOrPath.startsWith("https://")
+  ) {
+    return urlOrPath;
+  }
+
+  if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+    try {
+      const { convertFileSrc } = await import("@tauri-apps/api/core");
+      return convertFileSrc(urlOrPath);
+    } catch (e) {
+      console.warn("convertFileSrc failed:", e);
+    }
+  }
+
+  return urlOrPath;
+}
+
 
 // ===================== MOCK IMPLEMENTATION FOR BROWSER PREVIEWS =====================
 let mockManifest: ProjectManifest | null = null;
@@ -371,6 +402,10 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
         [1870, 1030],
         [50, 1030],
       ] as unknown as T;
+    }
+
+    case "image_read_bytes": {
+      return [] as unknown as T;
     }
 
     default:

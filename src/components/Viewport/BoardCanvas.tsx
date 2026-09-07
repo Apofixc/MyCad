@@ -4,6 +4,7 @@ import { useUiStore } from "../../stores/uiStore";
 import { ToolBar } from "./ToolBar";
 import { CurtainSlider } from "./CurtainSlider";
 import { MagnifierLoupe } from "./MagnifierLoupe";
+import { engineClient, resolveImageUrl } from "../../api/engineClient";
 
 export const BoardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -38,6 +39,7 @@ export const BoardCanvas: React.FC = () => {
 
   // Cache loaded images
   const loadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const [, setImagesLoadedTick] = useState(0);
 
   // Base scale: 1 mm = 10 pixels at 100% zoom
   const MM_TO_PX = 10;
@@ -66,16 +68,54 @@ export const BoardCanvas: React.FC = () => {
   // Preload images
   useEffect(() => {
     if (!board) return;
-    const allImages = [...board.data.bgTop.images, ...board.data.bgBottom.images];
-    allImages.forEach((imgLayer) => {
-      if (imgLayer.cachedUrl && !loadedImagesRef.current.has(imgLayer.id)) {
-        const img = new window.Image();
+    const allImages = [...(board.data?.bgTop?.images || []), ...(board.data?.bgBottom?.images || [])];
+    let isMounted = true;
+
+    allImages.forEach(async (imgLayer) => {
+      if (!imgLayer.cachedUrl) return;
+
+      const existing = loadedImagesRef.current.get(imgLayer.id);
+      if (existing && existing.complete && existing.naturalWidth > 0) return;
+
+      const img = new window.Image();
+      img.crossOrigin = "anonymous";
+
+      img.onload = () => {
+        if (!isMounted) return;
+        loadedImagesRef.current.set(imgLayer.id, img);
+        setImagesLoadedTick((t) => t + 1);
+      };
+
+      img.onerror = async (err) => {
+        console.warn(`[BoardCanvas] Failed to load image "${imgLayer.name}" via resolved URL, attempting raw bytes fallback:`, err);
+        try {
+          const bytes = await engineClient.readImageBytes(imgLayer.cachedUrl!);
+          if (!isMounted || !bytes || bytes.length === 0) return;
+          const blob = new Blob([new Uint8Array(bytes)], { type: "image/png" });
+          const blobUrl = URL.createObjectURL(blob);
+          const fallbackImg = new window.Image();
+          fallbackImg.onload = () => {
+            if (!isMounted) return;
+            loadedImagesRef.current.set(imgLayer.id, fallbackImg);
+            setImagesLoadedTick((t) => t + 1);
+          };
+          fallbackImg.src = blobUrl;
+        } catch (readErr) {
+          console.error(`[BoardCanvas] Image load completely failed for layer "${imgLayer.name}":`, readErr);
+        }
+      };
+
+      try {
+        const resolvedUrl = await resolveImageUrl(imgLayer.cachedUrl);
+        img.src = resolvedUrl;
+      } catch {
         img.src = imgLayer.cachedUrl;
-        img.onload = () => {
-          loadedImagesRef.current.set(imgLayer.id, img);
-        };
       }
     });
+
+    return () => {
+      isMounted = false;
+    };
   }, [board]);
 
   // Main Render Loop
@@ -260,6 +300,26 @@ export const BoardCanvas: React.FC = () => {
         <span>X: <span className="cad-hud-coord">{screenToBoardMm(0, 0).x.toFixed(2)}</span></span>
         <span>Y: <span className="cad-hud-coord">{screenToBoardMm(0, 0).y.toFixed(2)}</span></span>
         <span>Зум: {viewportZoom}%</span>
+        <button
+          className="cad-hud-btn"
+          style={{
+            background: "rgba(56, 189, 248, 0.15)",
+            border: "1px solid rgba(56, 189, 248, 0.3)",
+            color: "#38bdf8",
+            borderRadius: "4px",
+            padding: "2px 6px",
+            cursor: "pointer",
+            fontSize: "10px",
+            marginLeft: "6px",
+          }}
+          onClick={() => {
+            setViewportZoom(100);
+            setViewportPan({ x: 80, y: 80 });
+          }}
+          title="Сбросить масштаб и положение (80, 80)"
+        >
+          Сброс вида
+        </button>
       </div>
     </div>
   );
@@ -339,26 +399,47 @@ function drawImageLayer(
   cache: Map<string, HTMLImageElement>
 ) {
   const img = cache.get(layer.id);
-  if (!img || !img.complete) return;
+  if (!img || !img.complete || img.naturalWidth === 0) return;
 
-  const pos = boardMmToScreen(layer.offsetX, layer.offsetY);
+  const pos = boardMmToScreen(layer.offsetX || 0, layer.offsetY || 0);
   const pxPerMm = layer.pxPerMm || 23.62;
-  const wMm = img.width / pxPerMm;
-  const hMm = img.height / pxPerMm;
+  const wMm = img.naturalWidth / pxPerMm;
+  const hMm = img.naturalHeight / pxPerMm;
   const wPx = wMm * mmToPx * zoom * (layer.scale || 1.0);
   const hPx = hMm * mmToPx * zoom * (layer.scale || 1.0);
 
   ctx.save();
-  ctx.globalAlpha = layer.opacity || 0.85;
+  ctx.globalAlpha = layer.opacity !== undefined ? layer.opacity : 0.85;
+
+  // Apply position
   ctx.translate(pos.x, pos.y);
-  if (layer.rotation) ctx.rotate((layer.rotation * Math.PI) / 180);
-  if (layer.mirrored) ctx.scale(-1, 1);
-  if (layer.flipV) ctx.scale(1, -1);
+
+  // Rotate around center
+  if (layer.rotation) {
+    ctx.translate(wPx / 2, hPx / 2);
+    ctx.rotate((layer.rotation * Math.PI) / 180);
+    ctx.translate(-wPx / 2, -hPx / 2);
+  }
+
+  // Flip within bounding box
+  if (layer.mirrored) {
+    ctx.translate(wPx, 0);
+    ctx.scale(-1, 1);
+  }
+  if (layer.flipV) {
+    ctx.translate(0, hPx);
+    ctx.scale(1, -1);
+  }
+
+  // Blend mode
+  if (layer.blendMode && layer.blendMode !== "normal") {
+    ctx.globalCompositeOperation = layer.blendMode;
+  }
 
   // Apply filters
   let filterStr = "";
-  if (layer.brightness !== 100) filterStr += `brightness(${layer.brightness}%) `;
-  if (layer.contrast !== 100) filterStr += `contrast(${layer.contrast}%) `;
+  if (layer.brightness !== undefined && layer.brightness !== 100) filterStr += `brightness(${layer.brightness}%) `;
+  if (layer.contrast !== undefined && layer.contrast !== 100) filterStr += `contrast(${layer.contrast}%) `;
   if (layer.invert) filterStr += "invert(100%) ";
   if (layer.grayscale) filterStr += "grayscale(100%) ";
   if (filterStr) ctx.filter = filterStr.trim();

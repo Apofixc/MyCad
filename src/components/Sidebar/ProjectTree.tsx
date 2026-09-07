@@ -60,6 +60,7 @@ export const ProjectTree: React.FC = () => {
     showVias,
     setShowVias,
     openModal,
+    setPreprocessSide,
   } = useUiStore();
 
   // Collapsible groups
@@ -686,6 +687,7 @@ export const ProjectTree: React.FC = () => {
                                         className="cad-tree-icon-btn"
                                         onClick={() => {
                                           if (!isActive) setActiveFile(file.id);
+                                          setPreprocessSide("top");
                                           openModal("preprocess");
                                         }}
                                         title="Импортировать скан Top"
@@ -702,6 +704,7 @@ export const ProjectTree: React.FC = () => {
                                           className="cad-tree-ghost-btn"
                                           onClick={() => {
                                             if (!isActive) setActiveFile(file.id);
+                                            setPreprocessSide("top");
                                             openModal("preprocess");
                                           }}
                                         >
@@ -787,6 +790,7 @@ export const ProjectTree: React.FC = () => {
                                         className="cad-tree-icon-btn"
                                         onClick={() => {
                                           if (!isActive) setActiveFile(file.id);
+                                          setPreprocessSide("bottom");
                                           openModal("preprocess");
                                         }}
                                         title="Импортировать скан Bottom"
@@ -803,6 +807,7 @@ export const ProjectTree: React.FC = () => {
                                           className="cad-tree-ghost-btn"
                                           onClick={() => {
                                             if (!isActive) setActiveFile(file.id);
+                                            setPreprocessSide("bottom");
                                             openModal("preprocess");
                                           }}
                                         >

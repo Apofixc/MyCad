@@ -1,15 +1,16 @@
-import React, { useState } from "react";
-import { X, SlidersHorizontal, Sparkles, Upload, Image as ImageIcon } from "lucide-react";
+import React, { useState, useEffect } from "react";
+import { X, SlidersHorizontal, Sparkles, Upload, Image as ImageIcon, AlertCircle } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
-import { engineClient } from "../../api/engineClient";
+import { engineClient, resolveImageUrl } from "../../api/engineClient";
 
 export const ImagePreprocessModal: React.FC = () => {
-  const { modals, closeModal } = useUiStore();
+  const { modals, closeModal, preprocessSide } = useUiStore();
   const { updateImageLayer } = useProjectStore();
 
   const [side, setSide] = useState<"top" | "bottom">("top");
   const [filePath, setFilePath] = useState<string>("");
+  const [previewUrl, setPreviewUrl] = useState<string>("");
   const [corners, setCorners] = useState<[number, number][]>([
     [50, 50],
     [950, 50],
@@ -17,25 +18,57 @@ export const ImagePreprocessModal: React.FC = () => {
     [50, 950],
   ]);
   const [loading, setLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (modals.preprocess) {
+      setSide(preprocessSide || "top");
+      setErrorMsg(null);
+    }
+  }, [modals.preprocess, preprocessSide]);
+
+  // Load preview when filePath changes
+  useEffect(() => {
+    if (!filePath) {
+      setPreviewUrl("");
+      return;
+    }
+    let active = true;
+    (async () => {
+      try {
+        const url = await resolveImageUrl(filePath);
+        if (active) setPreviewUrl(url);
+      } catch {
+        if (active) setPreviewUrl("");
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [filePath]);
 
   if (!modals.preprocess) return null;
 
   const handlePickFile = async () => {
+    setErrorMsg(null);
     if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
-      const { open } = await import("@tauri-apps/plugin-dialog");
-      const sel = await open({
-        multiple: false,
-        filters: [{ name: "Изображения плат", extensions: ["png", "jpg", "jpeg", "tif", "bmp"] }],
-      });
-      if (sel && typeof sel === "string") {
-        setFilePath(sel);
-        // Try auto detecting corners
-        try {
-          const autoCorners = await engineClient.detectCorners(sel);
-          setCorners(autoCorners);
-        } catch (e) {
-          console.error(e);
+      try {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const sel = await open({
+          multiple: false,
+          filters: [{ name: "Изображения плат", extensions: ["png", "jpg", "jpeg", "tif", "bmp"] }],
+        });
+        if (sel && typeof sel === "string") {
+          setFilePath(sel);
+          try {
+            const autoCorners = await engineClient.detectCorners(sel);
+            setCorners(autoCorners);
+          } catch (e) {
+            console.error(e);
+          }
         }
+      } catch (e: any) {
+        setErrorMsg(`Ошибка выбора файла: ${e?.message || e}`);
       }
     } else {
       setFilePath("C:/Images/board_scan.jpg");
@@ -45,12 +78,14 @@ export const ImagePreprocessModal: React.FC = () => {
   const handleApply = async () => {
     if (!filePath) return;
     setLoading(true);
+    setErrorMsg(null);
     try {
       const layer = await engineClient.importImage(filePath, side);
       await updateImageLayer(layer);
       closeModal("preprocess");
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
+      setErrorMsg(`Ошибка импорта: ${e?.toString() || e?.message || "Не удалось загрузить изображение"}`);
     } finally {
       setLoading(false);
     }
@@ -88,6 +123,55 @@ export const ImagePreprocessModal: React.FC = () => {
                 <Upload size={14} /> Выбрать...
               </button>
             </div>
+            {errorMsg && (
+              <div
+                style={{
+                  marginTop: "8px",
+                  padding: "8px 12px",
+                  borderRadius: "6px",
+                  background: "rgba(239, 68, 68, 0.15)",
+                  border: "1px solid rgba(239, 68, 68, 0.4)",
+                  color: "#fca5a5",
+                  fontSize: "12px",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "6px",
+                }}
+              >
+                <AlertCircle size={14} />
+                <span>{errorMsg}</span>
+              </div>
+            )}
+            {previewUrl && (
+              <div
+                style={{
+                  marginTop: "10px",
+                  padding: "8px",
+                  borderRadius: "6px",
+                  background: "var(--cad-bg-deep)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                }}
+              >
+                <img
+                  src={previewUrl}
+                  alt="Предпросмотр"
+                  style={{
+                    width: "80px",
+                    height: "60px",
+                    objectFit: "contain",
+                    borderRadius: "4px",
+                    background: "#000",
+                    border: "1px solid rgba(255, 255, 255, 0.1)",
+                  }}
+                />
+                <div style={{ fontSize: "11px", color: "var(--cad-text-dim)" }}>
+                  <div style={{ color: "#38bdf8", fontWeight: 600 }}>Файл успешно выбран</div>
+                  <div>Готов к импорту в CAD-холст</div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Layer side */}

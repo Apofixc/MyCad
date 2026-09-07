@@ -364,3 +364,9 @@ pub fn image_warp_perspective(
         height: target_h,
     })
 }
+
+#[tauri::command]
+pub fn image_read_bytes(file_path: String) -> Result<Vec<u8>, String> {
+    std::fs::read(&file_path).map_err(|e| format!("Не удалось прочитать файл {}: {}", file_path, e))
+}
+
