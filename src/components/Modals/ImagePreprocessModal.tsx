@@ -934,7 +934,28 @@ function drawAlignmentGrid(
         const currentBoard = board || boards[0];
         const existing =
           side === "top" ? currentBoard?.data?.bgTop?.images : currentBoard?.data?.bgBottom?.images;
-        if (!pendingPreprocess.replaceLayerId && existing && existing.length > 0) {
+
+        const replaceId = pendingPreprocess.replaceLayerId;
+        const targetOldLayer = replaceId ? existing?.find((l) => l.id === replaceId) : null;
+
+        if (targetOldLayer) {
+          layer.id = targetOldLayer.id;
+          layer.offsetX = targetOldLayer.offsetX;
+          layer.offsetY = targetOldLayer.offsetY;
+          layer.scale = targetOldLayer.scale;
+          layer.rotation = targetOldLayer.rotation !== undefined ? targetOldLayer.rotation : rotationAngle;
+          layer.mirrored = isFlippedH;
+          layer.flipV = isFlippedV;
+          layer.opacity = targetOldLayer.opacity;
+          layer.brightness = targetOldLayer.brightness;
+          layer.contrast = targetOldLayer.contrast;
+          layer.invert = targetOldLayer.invert;
+          layer.grayscale = targetOldLayer.grayscale;
+          layer.blendMode = targetOldLayer.blendMode;
+          layer.tintColor = targetOldLayer.tintColor;
+          layer.pxPerMm = targetOldLayer.pxPerMm;
+          layer.dpi = targetOldLayer.dpi;
+        } else if (existing && existing.length > 0) {
           let maxRight = 0;
           for (const ex of existing) {
             const exW = ((ex.width || 2000) / (ex.pxPerMm || 23.62)) * (ex.scale || 1);
@@ -986,7 +1007,28 @@ function drawAlignmentGrid(
       const currentBoard = board || boards[0];
       const existing =
         side === "top" ? currentBoard?.data?.bgTop?.images : currentBoard?.data?.bgBottom?.images;
-      if (!pendingPreprocess.replaceLayerId && existing && existing.length > 0) {
+
+      const replaceId = pendingPreprocess.replaceLayerId;
+      const targetOldLayer = replaceId ? existing?.find((l) => l.id === replaceId) : null;
+
+      if (targetOldLayer) {
+        layer.id = targetOldLayer.id;
+        layer.offsetX = targetOldLayer.offsetX;
+        layer.offsetY = targetOldLayer.offsetY;
+        layer.scale = targetOldLayer.scale;
+        layer.rotation = targetOldLayer.rotation !== undefined ? targetOldLayer.rotation : rotationAngle;
+        layer.mirrored = isFlippedH;
+        layer.flipV = isFlippedV;
+        layer.opacity = targetOldLayer.opacity;
+        layer.brightness = targetOldLayer.brightness;
+        layer.contrast = targetOldLayer.contrast;
+        layer.invert = targetOldLayer.invert;
+        layer.grayscale = targetOldLayer.grayscale;
+        layer.blendMode = targetOldLayer.blendMode;
+        layer.tintColor = targetOldLayer.tintColor;
+        layer.pxPerMm = targetOldLayer.pxPerMm;
+        layer.dpi = targetOldLayer.dpi;
+      } else if (existing && existing.length > 0) {
         let maxRight = 0;
         for (const ex of existing) {
           const exW = ((ex.width || 2000) / (ex.pxPerMm || 23.62)) * (ex.scale || 1);

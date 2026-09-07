@@ -113,9 +113,12 @@ export const InspectorSidebar: React.FC = () => {
     notifySuccess(`Скан перемещен на сторону ${targetSide === "top" ? "Top (Лицевая)" : "Bottom (Обратная)"}`);
   };
 
-  // Replace file
+  // Replace file directly (fast swap keeping coordinates, scale, and filters)
   const handleReplaceFile = async () => {
     try {
+      let selectedPath: string | null = null;
+      let selectedFile: File | null = null;
+
       if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
         const { open } = await import("@tauri-apps/plugin-dialog");
         const sel = await open({
@@ -127,23 +130,50 @@ export const InspectorSidebar: React.FC = () => {
             },
           ],
         });
-        if (sel && typeof sel === "string") {
-          const imported = await engineClient.importImage(sel, imgLayer.side);
-          await handleUpdate({
-            imageFile: imported.imageFile,
-            cachedUrl: imported.cachedUrl,
-            width: imported.width,
-            height: imported.height,
-          });
-          notifySuccess("Файл изображения успешно заменен с сохранением калибровки");
-        }
+        if (!sel) return;
+        selectedPath = Array.isArray(sel) ? sel[0] : typeof sel === "string" ? sel : null;
       } else {
-        notifyWarning("Замена файла доступна в desktop-режиме приложения");
+        // Browser file picker fallback
+        const file = await new Promise<File | null>((resolve) => {
+          const input = document.createElement("input");
+          input.type = "file";
+          input.accept = "image/*,.png,.jpg,.jpeg,.tif,.tiff,.webp,.bmp";
+          input.onchange = () => resolve(input.files?.[0] || null);
+          input.click();
+        });
+        if (!file) return;
+        selectedFile = file;
+      }
+
+      if (selectedPath) {
+        const imported = await engineClient.importImage(selectedPath, imgLayer.side);
+        await handleUpdate({
+          name: imported.name || imgLayer.name,
+          imageFile: imported.imageFile,
+          cachedUrl: imported.cachedUrl,
+          width: imported.width,
+          height: imported.height,
+        });
+        notifySuccess("Файл изображения успешно заменен с сохранением калибровки");
+      } else if (selectedFile) {
+        const url = URL.createObjectURL(selectedFile);
+        const img = new Image();
+        img.onload = async () => {
+          await handleUpdate({
+            name: selectedFile!.name,
+            cachedUrl: url,
+            width: img.naturalWidth,
+            height: img.naturalHeight,
+          });
+          notifySuccess("Файл изображения успешно заменен");
+        };
+        img.src = url;
       }
     } catch (err: any) {
       reportError(err, "Ошибка замены файла изображения");
     }
   };
+
 
   // Duplicate image
   const handleDuplicate = async () => {

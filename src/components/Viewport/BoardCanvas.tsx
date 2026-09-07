@@ -135,8 +135,9 @@ export const BoardCanvas: React.FC = () => {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [setActiveTool]);
 
-  // Cache loaded images
+  // Cache loaded images and their source URLs
   const loadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
+  const loadedUrlsRef = useRef<Map<string, string>>(new Map());
   const [, setImagesLoadedTick] = useState(0);
 
   // Base scale: 1 mm = 10 pixels at 100% zoom
@@ -169,11 +170,34 @@ export const BoardCanvas: React.FC = () => {
     const allImages = [...(board.data?.bgTop?.images || []), ...(board.data?.bgBottom?.images || [])];
     let isMounted = true;
 
+    // Prune removed layers
+    const activeIds = new Set(allImages.map((l) => l.id));
+    for (const cachedId of Array.from(loadedImagesRef.current.keys())) {
+      if (!activeIds.has(cachedId)) {
+        loadedImagesRef.current.delete(cachedId);
+        loadedUrlsRef.current.delete(cachedId);
+      }
+    }
+
     allImages.forEach(async (imgLayer) => {
       if (!imgLayer.cachedUrl) return;
 
-      const existing = loadedImagesRef.current.get(imgLayer.id);
-      if (existing && existing.complete && existing.naturalWidth > 0) return;
+      const existingImg = loadedImagesRef.current.get(imgLayer.id);
+      const existingUrl = loadedUrlsRef.current.get(imgLayer.id);
+
+      // Only skip if image is complete and loaded from the exact same URL
+      if (
+        existingUrl === imgLayer.cachedUrl &&
+        existingImg &&
+        existingImg.complete &&
+        existingImg.naturalWidth > 0
+      ) {
+        return;
+      }
+
+      // Evict outdated cache entry
+      loadedImagesRef.current.delete(imgLayer.id);
+      loadedUrlsRef.current.delete(imgLayer.id);
 
       const img = new window.Image();
       img.crossOrigin = "anonymous";
@@ -181,7 +205,9 @@ export const BoardCanvas: React.FC = () => {
       img.onload = () => {
         if (!isMounted) return;
         loadedImagesRef.current.set(imgLayer.id, img);
+        loadedUrlsRef.current.set(imgLayer.id, imgLayer.cachedUrl!);
         setImagesLoadedTick((t) => t + 1);
+        dirtyRef.current = true;
       };
 
       img.onerror = async (err) => {
@@ -195,7 +221,9 @@ export const BoardCanvas: React.FC = () => {
           fallbackImg.onload = () => {
             if (!isMounted) return;
             loadedImagesRef.current.set(imgLayer.id, fallbackImg);
+            loadedUrlsRef.current.set(imgLayer.id, imgLayer.cachedUrl!);
             setImagesLoadedTick((t) => t + 1);
+            dirtyRef.current = true;
           };
           fallbackImg.src = blobUrl;
         } catch (readErr) {
