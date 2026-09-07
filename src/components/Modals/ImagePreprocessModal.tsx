@@ -124,6 +124,57 @@ export const ImagePreprocessModal: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const loupeCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const loadedImageRef = useRef<HTMLImageElement | null>(null);
+  const hasFittedRef = useRef<boolean>(false);
+
+  const [viewportSize, setViewportSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
+
+  // Attach ResizeObserver to viewport container for responsive resizing
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const { width, height } = entry.contentRect;
+        if (width > 50 && height > 50) {
+          setViewportSize({ width, height });
+        }
+      }
+    });
+
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  // Fit image inside viewport
+  const fitToScreen = useCallback(
+    (w?: number, h?: number, vpW?: number, vpH?: number) => {
+      const container = containerRef.current;
+      const vw = vpW || container?.clientWidth || viewportSize.width || 800;
+      const vh = vpH || container?.clientHeight || viewportSize.height || 600;
+      const imgW = w || naturalDims.width;
+      const imgH = h || naturalDims.height;
+
+      if (!imgW || !imgH || vw <= 0 || vh <= 0) return;
+
+      // When rotated 90 or 270 degrees, effective width and height swap
+      const isRotated90 = rotationAngle === 90 || rotationAngle === 270;
+      const effW = isRotated90 ? imgH : imgW;
+      const effH = isRotated90 ? imgW : imgH;
+
+      const pad = 48;
+      const scale = Math.min((vw - pad) / effW, (vh - pad) / effH, 1.5);
+      // Support massive scans (e.g. 15,000+ px) without artificial cutoffs
+      const clampedScale = Math.max(scale, 0.001);
+
+      setZoom(clampedScale);
+      setPan({
+        x: (vw - imgW * clampedScale) / 2,
+        y: (vh - imgH * clampedScale) / 2,
+      });
+    },
+    [naturalDims, viewportSize, rotationAngle]
+  );
 
   // Initialize on open
   useEffect(() => {
@@ -136,6 +187,7 @@ export const ImagePreprocessModal: React.FC = () => {
     setIsFlippedH(s === "bottom"); // default flip H for bottom scan
     setIsFlippedV(false);
     setMode("perspective");
+    hasFittedRef.current = false;
 
     let sourceUrl = pendingPreprocess.filePath || pendingPreprocess.dataUrl || "";
 
@@ -191,9 +243,9 @@ export const ImagePreprocessModal: React.FC = () => {
             ry: (h * 0.45) / 2,
           });
 
-          // Auto-fit to viewport
-          fitToScreen(w, h);
           setLoading(false);
+          hasFittedRef.current = true;
+          fitToScreen(w, h);
         };
         img.onerror = () => {
           setErrorMsg("Не удалось загрузить изображение");
@@ -209,45 +261,76 @@ export const ImagePreprocessModal: React.FC = () => {
     loadImg();
   }, [modals.preprocess, pendingPreprocess]);
 
-  // Fit image inside viewport
-  const fitToScreen = useCallback((w?: number, h?: number) => {
-    if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
-    const vw = rect.width || 800;
-    const vh = rect.height || 600;
-    const imgW = w || naturalDims.width || 800;
-    const imgH = h || naturalDims.height || 600;
+  // Once layout measurements are ready, fit if not yet fitted
+  useEffect(() => {
+    if (viewportSize.width > 50 && viewportSize.height > 50 && naturalDims.width > 0) {
+      if (!hasFittedRef.current) {
+        hasFittedRef.current = true;
+        fitToScreen(naturalDims.width, naturalDims.height, viewportSize.width, viewportSize.height);
+      }
+    }
+  }, [viewportSize, naturalDims, fitToScreen]);
 
-    const scale = Math.min((vw - 60) / imgW, (vh - 60) / imgH, 2.0);
-    const clampedScale = Math.max(scale, 0.05);
-
-    setZoom(clampedScale);
-    setPan({
-      x: (vw - imgW * clampedScale) / 2,
-      y: (vh - imgH * clampedScale) / 2,
-    });
-  }, [naturalDims]);
-
-  // Screen to Image Coordinates
-  const screenToImage = useCallback(
-    (sx: number, sy: number): Point2D => {
-      return {
-        x: (sx - pan.x) / zoom,
-        y: (sy - pan.y) / zoom,
-      };
-    },
-    [pan, zoom]
-  );
-
-  // Image to Screen Coordinates
+  // Image to Screen Coordinates (synchronously applying center-based rotation and flipping)
   const imageToScreen = useCallback(
     (ix: number, iy: number): Point2D => {
+      let x = ix;
+      let y = iy;
+      if (rotationAngle !== 0 || isFlippedH || isFlippedV) {
+        const cx = (naturalDims.width || 800) / 2;
+        const cy = (naturalDims.height || 600) / 2;
+        let dx = x - cx;
+        let dy = y - cy;
+        if (rotationAngle !== 0) {
+          const rad = (rotationAngle * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+          const rx = dx * cos - dy * sin;
+          const ry = dx * sin + dy * cos;
+          dx = rx;
+          dy = ry;
+        }
+        if (isFlippedH) dx = -dx;
+        if (isFlippedV) dy = -dy;
+        x = dx + cx;
+        y = dy + cy;
+      }
       return {
-        x: ix * zoom + pan.x,
-        y: iy * zoom + pan.y,
+        x: x * zoom + pan.x,
+        y: y * zoom + pan.y,
       };
     },
-    [pan, zoom]
+    [pan, zoom, naturalDims, rotationAngle, isFlippedH, isFlippedV]
+  );
+
+  // Screen to Image Coordinates (exact inverse of imageToScreen)
+  const screenToImage = useCallback(
+    (sx: number, sy: number): Point2D => {
+      let x = (sx - pan.x) / zoom;
+      let y = (sy - pan.y) / zoom;
+      if (rotationAngle !== 0 || isFlippedH || isFlippedV) {
+        const cx = (naturalDims.width || 800) / 2;
+        const cy = (naturalDims.height || 600) / 2;
+        let dx = x - cx;
+        let dy = y - cy;
+        if (isFlippedH) dx = -dx;
+        if (isFlippedV) dy = -dy;
+        if (rotationAngle !== 0) {
+          const rad = (rotationAngle * Math.PI) / 180;
+          const cos = Math.cos(rad);
+          const sin = Math.sin(rad);
+          // Inverse rotation by -rotationAngle
+          const rx = dx * cos + dy * sin;
+          const ry = -dx * sin + dy * cos;
+          dx = rx;
+          dy = ry;
+        }
+        x = dx + cx;
+        y = dy + cy;
+      }
+      return { x, y };
+    },
+    [pan, zoom, naturalDims, rotationAngle, isFlippedH, isFlippedV]
   );
 
   // Auto-detect corners with Magic Wand
@@ -368,23 +451,33 @@ export const ImagePreprocessModal: React.FC = () => {
   useEffect(() => {
     const canvas = canvasRef.current;
     const img = loadedImageRef.current;
-    if (!canvas || !img || naturalDims.width === 0) return;
+    const container = containerRef.current;
+    if (!canvas || !img || naturalDims.width === 0 || !container) return;
 
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
+    const w = container.clientWidth || 800;
+    const h = container.clientHeight || 600;
 
-    if (canvas.width !== w * dpr || canvas.height !== h * dpr) {
-      canvas.width = w * dpr;
-      canvas.height = h * dpr;
+    const targetW = Math.round(w * dpr);
+    const targetH = Math.round(h * dpr);
+
+    if (canvas.width !== targetW || canvas.height !== targetH) {
+      canvas.width = targetW;
+      canvas.height = targetH;
     }
+    canvas.style.width = `${w}px`;
+    canvas.style.height = `${h}px`;
 
     ctx.save();
     ctx.scale(dpr, dpr);
     ctx.clearRect(0, 0, w, h);
+
+    // High quality downsampling for massive scans
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
 
     // Draw Transformed Image onto Canvas
     ctx.save();
@@ -403,7 +496,7 @@ export const ImagePreprocessModal: React.FC = () => {
     ctx.restore();
 
     ctx.restore();
-  }, [pan, zoom, naturalDims, rotationAngle, isFlippedH, isFlippedV]);
+  }, [pan, zoom, naturalDims, rotationAngle, isFlippedH, isFlippedV, viewportSize]);
 
   // Update Magnifier Loupe
   const updateLoupe = useCallback(
@@ -416,22 +509,32 @@ export const ImagePreprocessModal: React.FC = () => {
       if (!ctx) return;
 
       const size = 128;
-      loupeCanvas.width = size;
-      loupeCanvas.height = size;
+      if (loupeCanvas.width !== size || loupeCanvas.height !== size) {
+        loupeCanvas.width = size;
+        loupeCanvas.height = size;
+      }
 
       ctx.clearRect(0, 0, size, size);
 
       // Loupe zoom factor
       const mag = 4;
-      const srcW = size / mag;
-      const srcH = size / mag;
-      const srcX = imgPt.x - srcW / 2;
-      const srcY = imgPt.y - srcH / 2;
 
       ctx.save();
-      ctx.drawImage(img, srcX, srcY, srcW, srcH, 0, 0, size, size);
+      ctx.translate(size / 2, size / 2);
+      if (rotationAngle !== 0) ctx.rotate((rotationAngle * Math.PI) / 180);
+      if (isFlippedH || isFlippedV) ctx.scale(isFlippedH ? -1 : 1, isFlippedV ? -1 : 1);
+      ctx.imageSmoothingEnabled = false; // pixel-crisp magnification
+      ctx.drawImage(
+        img,
+        -imgPt.x * mag,
+        -imgPt.y * mag,
+        (img.naturalWidth || naturalDims.width) * mag,
+        (img.naturalHeight || naturalDims.height) * mag
+      );
+      ctx.restore();
 
       // Subpixel Crosshair
+      ctx.save();
       ctx.strokeStyle = "#38bdf8";
       ctx.lineWidth = 1.5;
       ctx.beginPath();
@@ -447,7 +550,6 @@ export const ImagePreprocessModal: React.FC = () => {
       ctx.beginPath();
       ctx.arc(size / 2, size / 2, 6, 0, Math.PI * 2);
       ctx.stroke();
-
       ctx.restore();
 
       setLoupeState({
@@ -458,7 +560,7 @@ export const ImagePreprocessModal: React.FC = () => {
         imgY: Math.round(imgPt.y),
       });
     },
-    []
+    [rotationAngle, isFlippedH, isFlippedV, naturalDims]
   );
 
   // Mouse Wheel Zoom
@@ -471,7 +573,7 @@ export const ImagePreprocessModal: React.FC = () => {
     const mouseY = e.clientY - rect.top;
 
     const factor = e.deltaY < 0 ? 1.15 : 0.87;
-    const newZoom = Math.max(0.04, Math.min(25, zoom * factor));
+    const newZoom = Math.max(0.001, Math.min(30, zoom * factor));
 
     const newPanX = mouseX - (mouseX - pan.x) * (newZoom / zoom);
     const newPanY = mouseY - (mouseY - pan.y) * (newZoom / zoom);
@@ -592,11 +694,13 @@ export const ImagePreprocessModal: React.FC = () => {
   const brScreen = imageToScreen(quad.bottomRight.x, quad.bottomRight.y);
   const blScreen = imageToScreen(quad.bottomLeft.x, quad.bottomLeft.y);
 
+  const cropTl = imageToScreen(cropRect.x, cropRect.y);
+  const cropBr = imageToScreen(cropRect.x + cropRect.width, cropRect.y + cropRect.height);
   const cropScreen = {
-    x: cropRect.x * zoom + pan.x,
-    y: cropRect.y * zoom + pan.y,
-    width: cropRect.width * zoom,
-    height: cropRect.height * zoom,
+    x: Math.min(cropTl.x, cropBr.x),
+    y: Math.min(cropTl.y, cropBr.y),
+    width: Math.abs(cropBr.x - cropTl.x),
+    height: Math.abs(cropBr.y - cropTl.y),
   };
 
   return (
@@ -744,17 +848,17 @@ export const ImagePreprocessModal: React.FC = () => {
             </button>
             <button
               className="cad-preprocess-tool-btn"
-              onClick={() => setZoom((z) => Math.min(25, z * 1.3))}
+              onClick={() => setZoom((z) => Math.min(30, z * 1.3))}
               title="Приблизить"
             >
               <ZoomIn size={13} />
             </button>
             <span style={{ fontSize: "11px", color: "var(--cad-text-muted)", minWidth: "38px", textAlign: "center" }}>
-              {Math.round(zoom * 100)}%
+              {zoom < 0.1 ? `${(zoom * 100).toFixed(1)}%` : `${Math.round(zoom * 100)}%`}
             </span>
             <button
               className="cad-preprocess-tool-btn"
-              onClick={() => setZoom((z) => Math.max(0.04, z / 1.3))}
+              onClick={() => setZoom((z) => Math.max(0.001, z / 1.3))}
               title="Отдалить"
             >
               <ZoomOut size={13} />
@@ -861,7 +965,12 @@ export const ImagePreprocessModal: React.FC = () => {
             {mode === "polygon" && polygonPoints.length > 0 && (
               <>
                 <polygon
-                  points={polygonPoints.map((p) => `${p.x * zoom + pan.x},${p.y * zoom + pan.y}`).join(" ")}
+                  points={polygonPoints
+                    .map((p) => {
+                      const s = imageToScreen(p.x, p.y);
+                      return `${s.x},${s.y}`;
+                    })
+                    .join(" ")}
                   fill="rgba(56, 189, 248, 0.15)"
                   stroke="#38bdf8"
                   strokeWidth="2"
@@ -889,46 +998,52 @@ export const ImagePreprocessModal: React.FC = () => {
             )}
 
             {/* Mode 4: Circle / Ellipse Overlay */}
-            {mode === "circle" && (
-              <>
-                <ellipse
-                  cx={ellipseParams.cx * zoom + pan.x}
-                  cy={ellipseParams.cy * zoom + pan.y}
-                  rx={ellipseParams.rx * zoom}
-                  ry={ellipseParams.ry * zoom}
-                  fill="rgba(56, 189, 248, 0.15)"
-                  stroke="#38bdf8"
-                  strokeWidth="2"
-                  strokeDasharray="6 3"
-                />
-                <circle
-                  cx={ellipseParams.cx * zoom + pan.x}
-                  cy={ellipseParams.cy * zoom + pan.y}
-                  r="7"
-                  fill="#0284c7"
-                  stroke="#ffffff"
-                  strokeWidth="2"
-                  className="cad-preprocess-handle"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    setActiveHandle("circleCenter");
-                  }}
-                />
-                <circle
-                  cx={(ellipseParams.cx + ellipseParams.rx) * zoom + pan.x}
-                  cy={ellipseParams.cy * zoom + pan.y}
-                  r="6"
-                  fill="#38bdf8"
-                  stroke="#ffffff"
-                  strokeWidth="1.5"
-                  className="cad-preprocess-handle"
-                  onMouseDown={(e) => {
-                    e.stopPropagation();
-                    setActiveHandle("circleRadius");
-                  }}
-                />
-              </>
-            )}
+            {mode === "circle" && (() => {
+              const cPt = imageToScreen(ellipseParams.cx, ellipseParams.cy);
+              const rPt = imageToScreen(ellipseParams.cx + ellipseParams.rx, ellipseParams.cy);
+              const rxS = Math.abs(rPt.x - cPt.x) || (ellipseParams.rx * zoom);
+              const ryS = ellipseParams.ry * zoom;
+              return (
+                <>
+                  <ellipse
+                    cx={cPt.x}
+                    cy={cPt.y}
+                    rx={rxS}
+                    ry={ryS}
+                    fill="rgba(56, 189, 248, 0.15)"
+                    stroke="#38bdf8"
+                    strokeWidth="2"
+                    strokeDasharray="6 3"
+                  />
+                  <circle
+                    cx={cPt.x}
+                    cy={cPt.y}
+                    r="7"
+                    fill="#0284c7"
+                    stroke="#ffffff"
+                    strokeWidth="2"
+                    className="cad-preprocess-handle"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setActiveHandle("circleCenter");
+                    }}
+                  />
+                  <circle
+                    cx={cPt.x + rxS}
+                    cy={cPt.y}
+                    r="6"
+                    fill="#38bdf8"
+                    stroke="#ffffff"
+                    strokeWidth="1.5"
+                    className="cad-preprocess-handle"
+                    onMouseDown={(e) => {
+                      e.stopPropagation();
+                      setActiveHandle("circleRadius");
+                    }}
+                  />
+                </>
+              );
+            })()}
           </svg>
 
           {/* Floating Magnifier Loupe */}
