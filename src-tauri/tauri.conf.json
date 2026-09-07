@@ -35,8 +35,5 @@
       "icons/icon.png"
     ]
   },
-  "plugins": {
-    "dialog": {},
-    "fs": {}
-  }
+  "plugins": {}
 }
