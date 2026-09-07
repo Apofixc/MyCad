@@ -39,9 +39,25 @@ interface UiStore {
     newProject: boolean;
     newDocument: boolean;
     preprocess: boolean;
+    batchImport: boolean;
     confirmClose: boolean;
   };
   preprocessSide: "top" | "bottom";
+
+  pendingPreprocess: {
+    file?: File;
+    filePath?: string;
+    dataUrl?: string;
+    name?: string;
+    side: "top" | "bottom";
+    replaceLayerId?: string;
+  } | null;
+
+  pendingBatchImport: {
+    files: File[];
+    filePaths?: string[];
+    side: "top" | "bottom";
+  } | null;
 
   // Actions
   setActiveTool: (tool: ToolMode) => void;
@@ -74,6 +90,8 @@ interface UiStore {
   toggleRightSidebar: () => void;
 
   setPreprocessSide: (side: "top" | "bottom") => void;
+  setPendingPreprocess: (item: UiStore["pendingPreprocess"]) => void;
+  setPendingBatchImport: (item: UiStore["pendingBatchImport"]) => void;
   openModal: (modal: keyof UiStore["modals"]) => void;
   closeModal: (modal: keyof UiStore["modals"]) => void;
 }
@@ -111,9 +129,25 @@ export const useUiStore = create<UiStore>((set) => ({
     newProject: false,
     newDocument: false,
     preprocess: false,
+    batchImport: false,
     confirmClose: false,
   },
   preprocessSide: "top",
+  pendingPreprocess: null,
+  pendingBatchImport: null,
+
+  setPendingPreprocess: (item) =>
+    set({
+      pendingPreprocess: item,
+      modals: { ...useUiStore.getState().modals, preprocess: Boolean(item) },
+      preprocessSide: item?.side || useUiStore.getState().preprocessSide,
+    }),
+  setPendingBatchImport: (item) =>
+    set({
+      pendingBatchImport: item,
+      modals: { ...useUiStore.getState().modals, batchImport: Boolean(item) },
+      preprocessSide: item?.side || useUiStore.getState().preprocessSide,
+    }),
 
   setPreprocessSide: (side) => set({ preprocessSide: side }),
   setActiveTool: (tool) => set({ activeTool: tool }),

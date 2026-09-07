@@ -10,6 +10,7 @@ import {
   Unlock,
   Plus,
   Trash2,
+  Crop,
   ChevronDown,
   ChevronRight,
   Edit2,
@@ -81,7 +82,52 @@ export const ProjectTree: React.FC = () => {
     toggleAllComponents,
     openModal,
     setPreprocessSide,
+    setPendingPreprocess,
+    setPendingBatchImport,
   } = useUiStore();
+
+  const handlePickAndAddImages = async (side: "top" | "bottom") => {
+    if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
+      try {
+        const { open } = await import("@tauri-apps/plugin-dialog");
+        const sel = await open({
+          multiple: true,
+          filters: [
+            {
+              name: "Изображения плат",
+              extensions: ["png", "jpg", "jpeg", "tif", "tiff", "webp", "bmp"],
+            },
+          ],
+        });
+        if (sel) {
+          const paths: string[] = Array.isArray(sel) ? (sel as string[]) : [sel as any];
+          if (paths.length === 1) {
+            const path = paths[0];
+            const name = path.split(/[\\/]/).pop() || "scan";
+            setPendingPreprocess({ filePath: path, name, side });
+          } else if (paths.length > 1) {
+            setPendingBatchImport({ filePaths: paths, files: [], side });
+          }
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    } else {
+      const input = document.createElement("input");
+      input.type = "file";
+      input.accept = "image/*";
+      input.multiple = true;
+      input.onchange = () => {
+        const files = Array.from(input.files || []);
+        if (files.length === 1) {
+          setPendingPreprocess({ file: files[0], name: files[0].name, side });
+        } else if (files.length > 1) {
+          setPendingBatchImport({ files, side });
+        }
+      };
+      input.click();
+    }
+  };
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
@@ -850,8 +896,7 @@ export const ProjectTree: React.FC = () => {
                                               className="cad-tree-icon-btn"
                                               onClick={() => {
                                                 if (!isActive) setActiveFile(file.id);
-                                                setPreprocessSide("top");
-                                                openModal("preprocess");
+                                                handlePickAndAddImages("top");
                                               }}
                                               title="Импортировать скан Top"
                                             >
@@ -867,8 +912,7 @@ export const ProjectTree: React.FC = () => {
                                                 className="cad-tree-ghost-btn"
                                                 onClick={() => {
                                                   if (!isActive) setActiveFile(file.id);
-                                                  setPreprocessSide("top");
-                                                  openModal("preprocess");
+                                                  handlePickAndAddImages("top");
                                                 }}
                                               >
                                                 <Plus size={11} />
@@ -935,6 +979,20 @@ export const ProjectTree: React.FC = () => {
                                                       {img.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
                                                     </div>
                                                     <div className="cad-tree-actions" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                                                      <button
+                                                        className="cad-tree-icon-btn"
+                                                        onClick={() => {
+                                                          setPendingPreprocess({
+                                                            filePath: img.cachedUrl,
+                                                            name: img.name,
+                                                            side: "top",
+                                                            replaceLayerId: img.id,
+                                                          });
+                                                        }}
+                                                        title="Предобработка / Кадрировать..."
+                                                      >
+                                                        <Crop size={11} color="#38bdf8" />
+                                                      </button>
                                                       <button
                                                         className="cad-tree-icon-btn"
                                                         onClick={() => updateImageLayer({ ...img, visible: !img.visible })}
@@ -1012,8 +1070,7 @@ export const ProjectTree: React.FC = () => {
                                               className="cad-tree-icon-btn"
                                               onClick={() => {
                                                 if (!isActive) setActiveFile(file.id);
-                                                setPreprocessSide("bottom");
-                                                openModal("preprocess");
+                                                handlePickAndAddImages("bottom");
                                               }}
                                               title="Импортировать скан Bottom"
                                             >
@@ -1029,8 +1086,7 @@ export const ProjectTree: React.FC = () => {
                                                 className="cad-tree-ghost-btn"
                                                 onClick={() => {
                                                   if (!isActive) setActiveFile(file.id);
-                                                  setPreprocessSide("bottom");
-                                                  openModal("preprocess");
+                                                  handlePickAndAddImages("bottom");
                                                 }}
                                               >
                                                 <Plus size={11} />
@@ -1097,6 +1153,20 @@ export const ProjectTree: React.FC = () => {
                                                       {img.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
                                                     </div>
                                                     <div className="cad-tree-actions" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                                                      <button
+                                                        className="cad-tree-icon-btn"
+                                                        onClick={() => {
+                                                          setPendingPreprocess({
+                                                            filePath: img.cachedUrl,
+                                                            name: img.name,
+                                                            side: "bottom",
+                                                            replaceLayerId: img.id,
+                                                          });
+                                                        }}
+                                                        title="Предобработка / Кадрировать..."
+                                                      >
+                                                        <Crop size={11} color="#38bdf8" />
+                                                      </button>
                                                       <button
                                                         className="cad-tree-icon-btn"
                                                         onClick={() => updateImageLayer({ ...img, visible: !img.visible })}
@@ -1467,20 +1537,39 @@ export const ProjectTree: React.FC = () => {
           onClick={(e) => e.stopPropagation()}
         >
           {contextMenu.targetImage && (
-            <div
-              className="cad-context-item"
-              onClick={async () => {
-                const others = contextMenu.allSideImages.filter((i) => i.id !== contextMenu.targetImage!.id);
-                if (others.length > 0) {
-                  await batchSetVisibility(others.map((i) => i.id), false);
-                }
-                await updateImageLayer({ ...contextMenu.targetImage!, visible: true });
-                setContextMenu(null);
-              }}
-            >
-              <Eye size={12} color="#38bdf8" />
-              <span>Изолировать (скрыть остальные)</span>
-            </div>
+            <>
+              <div
+                className="cad-context-item"
+                onClick={() => {
+                  const img = contextMenu.targetImage!;
+                  const side = contextMenu.groupTitle.toLowerCase().includes("top") ? "top" : "bottom";
+                  setPendingPreprocess({
+                    filePath: img.cachedUrl,
+                    name: img.name,
+                    side,
+                    replaceLayerId: img.id,
+                  });
+                  setContextMenu(null);
+                }}
+              >
+                <Crop size={12} color="#38bdf8" />
+                <span>Кадрировать / Выровнять скан...</span>
+              </div>
+              <div
+                className="cad-context-item"
+                onClick={async () => {
+                  const others = contextMenu.allSideImages.filter((i) => i.id !== contextMenu.targetImage!.id);
+                  if (others.length > 0) {
+                    await batchSetVisibility(others.map((i) => i.id), false);
+                  }
+                  await updateImageLayer({ ...contextMenu.targetImage!, visible: true });
+                  setContextMenu(null);
+                }}
+              >
+                <Eye size={12} color="#38bdf8" />
+                <span>Изолировать (скрыть остальные)</span>
+              </div>
+            </>
           )}
           <div
             className="cad-context-item"

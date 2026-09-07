@@ -28,11 +28,108 @@ export const BoardCanvas: React.FC = () => {
     showBottomLayer,
     curtainPosition,
     curtainVertical,
+    setPendingPreprocess,
+    setPendingBatchImport,
   } = useUiStore();
 
   // Dragging / Panning state
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
+  // Drag & drop file state
+  const [isDragOver, setIsDragOver] = useState(false);
+  const [dragSide, setDragSide] = useState<"top" | "bottom">("top");
+
+  // Custom Event for preprocessing existing image
+  useEffect(() => {
+    const handleCustomPreprocess = (e: Event) => {
+      const ce = e as CustomEvent<{ layerId: string; side: "top" | "bottom" }>;
+      if (!ce.detail || !board) return;
+      const { layerId, side } = ce.detail;
+      const images = side === "top" ? board.data?.bgTop?.images : board.data?.bgBottom?.images;
+      const target = images?.find((img) => img.id === layerId);
+      if (target) {
+        setPendingPreprocess({
+          filePath: target.cachedUrl,
+          name: target.name,
+          side,
+          replaceLayerId: target.id,
+        });
+      }
+    };
+
+    window.addEventListener("mycad-preprocess-image", handleCustomPreprocess);
+    return () => window.removeEventListener("mycad-preprocess-image", handleCustomPreprocess);
+  }, [board, setPendingPreprocess]);
+
+  // Paste from clipboard (Ctrl+V)
+  useEffect(() => {
+    const handlePaste = (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].type.startsWith("image/")) {
+          const file = items[i].getAsFile();
+          if (file) {
+            setPendingPreprocess({
+              file,
+              name: `clipboard_${Date.now()}.png`,
+              side: "top",
+            });
+            break;
+          }
+        }
+      }
+    };
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [setPendingPreprocess]);
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(true);
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (rect) {
+      const yRatio = (e.clientY - rect.top) / rect.height;
+      setDragSide(yRatio < 0.5 ? "top" : "bottom");
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+      setIsDragOver(false);
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragOver(false);
+
+    const files = Array.from(e.dataTransfer.files).filter((f) =>
+      /\.(png|jpe?g|webp|bmp|tif|tiff)$/i.test(f.name)
+    );
+    if (files.length === 0) return;
+
+    if (files.length === 1) {
+      const filePath = (files[0] as any).path || (files[0] as any).filePath;
+      setPendingPreprocess({
+        file: files[0],
+        filePath,
+        name: files[0].name,
+        side: dragSide,
+      });
+    } else {
+      setPendingBatchImport({
+        files,
+        side: dragSide,
+      });
+    }
+  };
+
 
   // Calibration / Measurement points
   const [measurePts, setMeasurePts] = useState<[number, number][]>([]);
@@ -280,7 +377,12 @@ export const BoardCanvas: React.FC = () => {
   };
 
   return (
-    <div className="cad-viewport">
+    <div
+      className="cad-viewport"
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
       <canvas
         ref={canvasRef}
         className="cad-canvas"
@@ -289,6 +391,63 @@ export const BoardCanvas: React.FC = () => {
         onMouseUp={handleMouseUp}
         onWheel={handleWheel}
       />
+
+      {/* Drag & Drop Visual Overlay */}
+      {isDragOver && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            background: "rgba(12, 14, 18, 0.85)",
+            backdropFilter: "blur(6px)",
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 100,
+            pointerEvents: "none",
+            gap: "24px",
+          }}
+        >
+          <div
+            style={{
+              padding: "20px 40px",
+              background: dragSide === "top" ? "rgba(245, 158, 11, 0.2)" : "rgba(255, 255, 255, 0.05)",
+              border: `2px dashed ${dragSide === "top" ? "var(--cad-top-layer)" : "var(--cad-border)"}`,
+              borderRadius: "12px",
+              textAlign: "center",
+              width: "360px",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <div style={{ fontWeight: 600, color: "var(--cad-top-layer)", fontSize: "16px", marginBottom: "4px" }}>
+              Слой Top (Лицевой)
+            </div>
+            <div style={{ fontSize: "12px", color: "var(--cad-text-muted)" }}>
+              Бросьте в верхнюю половину
+            </div>
+          </div>
+
+          <div
+            style={{
+              padding: "20px 40px",
+              background: dragSide === "bottom" ? "rgba(6, 182, 212, 0.2)" : "rgba(255, 255, 255, 0.05)",
+              border: `2px dashed ${dragSide === "bottom" ? "var(--cad-bottom-layer)" : "var(--cad-border)"}`,
+              borderRadius: "12px",
+              textAlign: "center",
+              width: "360px",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <div style={{ fontWeight: 600, color: "var(--cad-bottom-layer)", fontSize: "16px", marginBottom: "4px" }}>
+              Слой Bottom (Оборотный)
+            </div>
+            <div style={{ fontSize: "12px", color: "var(--cad-text-muted)" }}>
+              Бросьте в нижнюю половину
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Floating Glass Toolbars */}
       <ToolBar />

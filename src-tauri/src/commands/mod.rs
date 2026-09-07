@@ -365,31 +365,53 @@ pub fn image_import(state: State<AppState>, file_path: String, side: String) -> 
 }
 
 #[tauri::command]
-pub fn image_detect_corners(file_path: String) -> Result<[(f64, f64); 4], String> {
-    let img = image::open(&file_path).map_err(|e| e.to_string())?;
-    Ok(pipeline::detect_board_corners(&img))
+pub fn image_detect_corners(file_path: String) -> Result<pipeline::QuadPoints, String> {
+    pipeline::detect_board_corners(&file_path)
 }
 
 #[tauri::command]
-pub fn image_warp_perspective(
+pub fn image_process(
     state: State<AppState>,
-    file_path: String,
-    corners: [(f64, f64); 4],
-    target_w: u32,
-    target_h: u32,
+    request: pipeline::ProcessImageRequest,
+) -> Result<pipeline::ProcessImageResponse, String> {
+    let guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = guard.as_ref().ok_or("Нет активного проекта")?;
+    pipeline::process_image(request, &session.temp_image_dir)
+}
+
+#[tauri::command]
+pub fn image_process_and_save(
+    state: State<AppState>,
+    mut request: pipeline::ProcessImageRequest,
     side: String,
+    name: Option<String>,
 ) -> Result<BoardImageLayer, String> {
     let guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_ref().ok_or("Нет активного проекта")?;
 
-    let img = image::open(&file_path).map_err(|e| e.to_string())?;
-    let warped = pipeline::warp_perspective(&img, &corners, target_w, target_h)?;
+    let is_png = match &request.operation {
+        pipeline::ImageProcessOperation::CropPolygon { .. }
+        | pipeline::ImageProcessOperation::CropEllipse { .. } => true,
+        pipeline::ImageProcessOperation::WarpPerspective { mime_type, .. }
+        | pipeline::ImageProcessOperation::Crop { mime_type, .. }
+        | pipeline::ImageProcessOperation::Rotate { mime_type, .. }
+        | pipeline::ImageProcessOperation::Flip { mime_type, .. }
+        | pipeline::ImageProcessOperation::Resize { mime_type, .. } => {
+            mime_type.as_deref().map(|m| m.contains("png")).unwrap_or(true)
+        }
+    };
+    let ext = if is_png { "png" } else { "jpg" };
+    let filename = format!("{}_{}.{}", side, uuid::Uuid::new_v4().simple(), ext);
+    let dest_path = session.temp_image_dir.join("images").join(&filename);
 
-    let (filename, dest_path) = pipeline::save_image_to_session_cache(&warped, &session.temp_image_dir, &format!("{}_warped", side))?;
+    request.output_path = Some(dest_path.to_string_lossy().to_string());
+    let res = pipeline::process_image(request, &session.temp_image_dir)?;
+
+    let layer_name = name.unwrap_or_else(|| format!("{}_{}", side, filename));
 
     Ok(BoardImageLayer {
         id: format!("img_{}_{}", side, uuid::Uuid::new_v4().simple()),
-        name: format!("{}_warped.png", side),
+        name: layer_name,
         side,
         image_file: Some(filename),
         cached_url: Some(dest_path.to_string_lossy().to_string()),
@@ -411,13 +433,30 @@ pub fn image_warp_perspective(
         flip_v: false,
         locked: false,
         visible: true,
-        width: target_w,
-        height: target_h,
+        width: res.width,
+        height: res.height,
     })
+}
+
+#[tauri::command]
+pub fn image_import_batch(
+    state: State<AppState>,
+    file_paths: Vec<String>,
+    side: String,
+) -> Result<Vec<BoardImageLayer>, String> {
+    let mut layers = Vec::with_capacity(file_paths.len());
+    for (idx, path) in file_paths.into_iter().enumerate() {
+        let mut layer = image_import(state.clone(), path, side.clone())?;
+        layer.offset_x = (idx as f64) * 20.0;
+        layer.offset_y = (idx as f64) * 20.0;
+        layers.push(layer);
+    }
+    Ok(layers)
 }
 
 #[tauri::command]
 pub fn image_read_bytes(file_path: String) -> Result<Vec<u8>, String> {
     std::fs::read(&file_path).map_err(|e| format!("Не удалось прочитать файл {}: {}", file_path, e))
 }
+
 

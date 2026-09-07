@@ -1,0 +1,146 @@
+/* ==========================================================================
+   BATCH IMAGE IMPORT MODAL
+   Scoped for MyCad CAD Interface
+   ========================================================================== */
+
+.cad-batch-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 7, 12, 0.78);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+}
+
+.cad-batch-modal {
+  width: 580px;
+  max-width: 90vw;
+  background: linear-gradient(180deg, var(--cad-bg-panel) 0%, var(--cad-bg-surface) 100%);
+  border: 1px solid var(--cad-border);
+  border-radius: 12px;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.75);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--cad-font-ui);
+}
+
+.cad-batch-header {
+  padding: 14px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-bottom: 1px solid var(--cad-border);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.cad-batch-header .title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.cad-batch-header .icon-badge {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cad-batch-header .title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--cad-text-main);
+}
+
+.cad-batch-header .subtitle {
+  font-size: 12px;
+  color: var(--cad-text-muted);
+}
+
+.cad-batch-content {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.cad-batch-file-list {
+  background: var(--cad-bg-deep);
+  border: 1px solid var(--cad-border);
+  border-radius: 8px;
+  padding: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 180px;
+  overflow-y: auto;
+}
+
+.cad-batch-file-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: var(--cad-bg-panel);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--cad-text-main);
+}
+
+.cad-batch-file-item .file-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cad-batch-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cad-batch-option-card {
+  padding: 12px;
+  background: var(--cad-bg-panel);
+  border: 1px solid var(--cad-border);
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+.cad-batch-option-card:hover {
+  background: var(--cad-bg-hover);
+  border-color: rgba(56, 189, 248, 0.4);
+}
+
+.cad-batch-option-card.active {
+  border-color: var(--cad-accent);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.cad-batch-footer {
+  padding: 14px 20px;
+  background: var(--cad-bg-panel);
+  border-top: 1px solid var(--cad-border);
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}

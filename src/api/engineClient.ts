@@ -107,14 +107,71 @@ export const engineClient = {
     return invokeTauri<BoardImageLayer>("image_import", { filePath, side });
   },
 
-  async detectCorners(filePath: string): Promise<[[number, number], [number, number], [number, number], [number, number]]> {
-    return invokeTauri<[[number, number], [number, number], [number, number], [number, number]]>("image_detect_corners", { filePath });
+  async importBatchImages(filePaths: string[], side: "top" | "bottom"): Promise<BoardImageLayer[]> {
+    return invokeTauri<BoardImageLayer[]>("image_import_batch", { filePaths, side });
+  },
+
+  async detectCorners(filePath: string): Promise<QuadPoints> {
+    return invokeTauri<QuadPoints>("image_detect_corners", { filePath });
+  },
+
+  async processImage(request: ProcessImageRequest): Promise<ProcessImageResponse> {
+    return invokeTauri<ProcessImageResponse>("image_process", { request });
+  },
+
+  async processAndSaveImage(
+    request: ProcessImageRequest,
+    side: "top" | "bottom",
+    name?: string
+  ): Promise<BoardImageLayer> {
+    return invokeTauri<BoardImageLayer>("image_process_and_save", { request, side, name });
   },
 
   async readImageBytes(filePath: string): Promise<number[]> {
     return invokeTauri<number[]>("image_read_bytes", { filePath });
   },
 };
+
+export interface Point2D {
+  x: number;
+  y: number;
+}
+
+export interface QuadPoints {
+  topLeft: Point2D;
+  topRight: Point2D;
+  bottomRight: Point2D;
+  bottomLeft: Point2D;
+}
+
+export interface CropRect {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+export type ImageProcessOperation =
+  | { type: "warpPerspective"; quad: QuadPoints; maxDimension?: number; quality?: number; mimeType?: string }
+  | { type: "crop"; rect: CropRect; maxDimension?: number; quality?: number; mimeType?: string }
+  | { type: "rotate"; angleDeg: number; quality?: number; mimeType?: string }
+  | { type: "flip"; horizontal: boolean; vertical: boolean; quality?: number; mimeType?: string }
+  | { type: "cropPolygon"; points: Point2D[]; maxDimension?: number; quality?: number; mimeType?: string }
+  | { type: "cropEllipse"; cx: number; cy: number; rx: number; ry: number; maxDimension?: number; quality?: number; mimeType?: string }
+  | { type: "resize"; maxDimension: number; quality?: number; mimeType?: string };
+
+export interface ProcessImageRequest {
+  source: string;
+  operation: ImageProcessOperation;
+  outputPath?: string;
+}
+
+export interface ProcessImageResponse {
+  dataUrl: string;
+  filePath?: string;
+  width: number;
+  height: number;
+}
 
 /**
  * Resolves an image path or URL into a webview-loadable URL (asset:// or blob:).

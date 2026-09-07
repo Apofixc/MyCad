@@ -12,6 +12,7 @@ import { EmptyWorkspace } from "./components/Viewport/EmptyWorkspace";
 import { NewProjectModal } from "./components/Modals/NewProjectModal";
 import { NewDocumentModal } from "./components/Modals/NewDocumentModal";
 import { ImagePreprocessModal } from "./components/Modals/ImagePreprocessModal";
+import { BatchImageImportModal } from "./components/Modals/BatchImageImportModal";
 
 export const App: React.FC = () => {
   const { manifest, saveProject, activeFileType, board, schematic } = useProjectStore();
@@ -114,6 +115,7 @@ export const App: React.FC = () => {
       <NewProjectModal />
       <NewDocumentModal />
       <ImagePreprocessModal />
+      <BatchImageImportModal />
     </div>
   );
 };

@@ -42,8 +42,10 @@ pub fn run() {
             commands::cad_calculate_level,
             commands::cad_calculate_registration,
             commands::image_import,
+            commands::image_import_batch,
             commands::image_detect_corners,
-            commands::image_warp_perspective,
+            commands::image_process,
+            commands::image_process_and_save,
             commands::image_read_bytes,
         ])
         .run(tauri::generate_context!())
