@@ -223,7 +223,7 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
       if (!mockManifest) throw new Error("Нет открытого проекта");
       const { fileType, name } = args;
       const id = `${fileType}_${Date.now()}`;
-      const defaultName = fileType === "board" ? "Схема платы" : "Принципиальная схема";
+      const defaultName = fileType === "board" ? "Печатная плата" : "Принципиальная схема";
       const finalName = name?.trim() || defaultName;
 
       mockManifest.files.push({

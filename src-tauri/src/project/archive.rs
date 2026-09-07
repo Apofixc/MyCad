@@ -45,9 +45,9 @@ impl ProjectSession {
             Some(n) if !n.trim().is_empty() => n.trim().to_string(),
             _ => {
                 if count == 1 {
-                    "Схема платы".to_string()
+                    "Печатная плата".to_string()
                 } else {
-                    format!("Схема платы {}", count)
+                    format!("Печатная плата {}", count)
                 }
             }
         };

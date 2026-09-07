@@ -22,7 +22,7 @@ export const NewDocumentModal: React.FC = () => {
   if (!modals.newDocument) return null;
 
   const defaultBoardName =
-    boards.length === 0 ? "Схема платы" : `Схема платы ${boards.length + 1}`;
+    boards.length === 0 ? "Печатная плата" : `Печатная плата ${boards.length + 1}`;
   const defaultSchematicName =
     schematics.length === 0
       ? "Принципиальная схема"
@@ -249,7 +249,7 @@ export const NewDocumentModal: React.FC = () => {
                         marginBottom: "4px",
                       }}
                     >
-                      Схема платы
+                      Печатная плата
                     </div>
                     <div
                       style={{
