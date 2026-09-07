@@ -60,6 +60,8 @@ interface UiStore {
   setShowTopCopper: (val: boolean) => void;
   setShowBottomCopper: (val: boolean) => void;
   setShowVias: (val: boolean) => void;
+  toggleAllCopper: (val?: boolean) => void;
+  toggleAllComponents: (val?: boolean) => void;
 
   setCurtainPosition: (pos: number) => void;
   toggleCurtainOrientation: () => void;
@@ -130,6 +132,16 @@ export const useUiStore = create<UiStore>((set) => ({
   setShowTopCopper: (val) => set({ showTopCopper: val }),
   setShowBottomCopper: (val) => set({ showBottomCopper: val }),
   setShowVias: (val) => set({ showVias: val }),
+  toggleAllCopper: (val) =>
+    set((state) => {
+      const next = val !== undefined ? val : !(state.showTopCopper && state.showBottomCopper && state.showVias);
+      return { showTopCopper: next, showBottomCopper: next, showVias: next };
+    }),
+  toggleAllComponents: (val) =>
+    set((state) => {
+      const next = val !== undefined ? val : !(state.showTopComponents && state.showBottomComponents);
+      return { showTopComponents: next, showBottomComponents: next };
+    }),
 
   setCurtainPosition: (pos) => set({ curtainPosition: Math.max(0.02, Math.min(0.98, pos)) }),
   toggleCurtainOrientation: () => set((state) => ({ curtainVertical: !state.curtainVertical })),

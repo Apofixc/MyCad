@@ -10,6 +10,10 @@ import {
   Compass,
   Ruler,
   Layers,
+  Lock,
+  Unlock,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
@@ -87,16 +91,69 @@ export const InspectorSidebar: React.FC = () => {
         }}
       />
 
-      <div className="cad-sidebar-header">
-        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-          <ImageIcon size={14} color={isTop ? "var(--cad-top-layer)" : "var(--cad-bot-layer)"} />
-          <span>
-            {isTop ? "Top скан" : "Bottom скан"}: <strong>{imgLayer.name}</strong>
+      <div className="cad-sidebar-header" style={{ justifyContent: "space-between" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", flex: 1 }}>
+          <ImageIcon size={14} color={isTop ? "var(--cad-top-layer)" : "var(--cad-bot-layer)"} style={{ flexShrink: 0 }} />
+          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {isTop ? "Top" : "Bottom"}: <strong>{imgLayer.name}</strong>
           </span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: "3px" }}>
+          <button
+            className="cad-tree-icon-btn"
+            onClick={() => updateImageLayer({ ...imgLayer, visible: !imgLayer.visible })}
+            title={imgLayer.visible ? "Скрыть слой" : "Показать слой"}
+          >
+            {imgLayer.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+          </button>
+          <button
+            className="cad-tree-icon-btn"
+            onClick={() => updateImageLayer({ ...imgLayer, locked: !imgLayer.locked })}
+            title={imgLayer.locked ? "Разблокировать слой" : "Заблокировать слой"}
+          >
+            {imgLayer.locked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
+          </button>
         </div>
       </div>
 
       <div className="cad-sidebar-content">
+        {imgLayer.locked && (
+          <div
+            style={{
+              background: "rgba(245, 158, 11, 0.12)",
+              border: "1px solid rgba(245, 158, 11, 0.3)",
+              borderRadius: "6px",
+              padding: "7px 10px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+              color: "#fbbf24",
+              fontSize: "11px",
+              marginBottom: "8px",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+              <Lock size={13} color="#f59e0b" />
+              <span>Слой заблокирован</span>
+            </div>
+            <button
+              className="cad-btn cad-btn-secondary"
+              style={{
+                padding: "2px 8px",
+                fontSize: "10px",
+                background: "rgba(245, 158, 11, 0.2)",
+                borderColor: "rgba(245, 158, 11, 0.4)",
+                color: "#fef3c7",
+              }}
+              onClick={() => updateImageLayer({ ...imgLayer, locked: false })}
+              title="Разблокировать слой"
+            >
+              Разблокировать
+            </button>
+          </div>
+        )}
+
+        <div style={{ opacity: imgLayer.locked ? 0.5 : 1, pointerEvents: imgLayer.locked ? "none" : "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
         {/* Alignment & Scale */}
         <div className="cad-prop-group">
           <div style={{ fontSize: "11px", fontWeight: 600, color: "var(--cad-text-muted)", marginBottom: "6px", display: "flex", alignItems: "center", gap: "4px" }}>
@@ -281,6 +338,7 @@ export const InspectorSidebar: React.FC = () => {
           </div>
         </div>
       </div>
+    </div>
     </aside>
   );
 };

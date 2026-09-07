@@ -74,6 +74,14 @@ export const engineClient = {
     return invokeTauri<BoardImageLayer>("board_update_image_layer", { layer });
   },
 
+  async updateImageLayers(layers: BoardImageLayer[]): Promise<BoardImageLayer[]> {
+    try {
+      return await invokeTauri<BoardImageLayer[]>("board_update_image_layers", { layers });
+    } catch {
+      return await Promise.all(layers.map((l) => invokeTauri<BoardImageLayer>("board_update_image_layer", { layer: l })));
+    }
+  },
+
   async deleteImageLayer(layerId: string): Promise<void> {
     return invokeTauri<void>("board_delete_image_layer", { layerId });
   },
@@ -335,6 +343,19 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
         else target.push(layer);
       }
       return args.layer as T;
+    }
+
+    case "board_update_image_layers": {
+      if (mockBoard) {
+        const layers: BoardImageLayer[] = args.layers;
+        for (const layer of layers) {
+          const target = layer.side === "top" ? mockBoard.data.bgTop.images : mockBoard.data.bgBottom.images;
+          const idx = target.findIndex((img) => img.id === layer.id);
+          if (idx >= 0) target[idx] = layer;
+          else target.push(layer);
+        }
+      }
+      return args.layers as T;
     }
 
     case "cad_calculate_scale": {

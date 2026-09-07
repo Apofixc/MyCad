@@ -1041,3 +1041,156 @@ body,
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
   background: rgba(10, 13, 18, 0.9);
 }
+
+/* ========================================================================= */
+/* Batch Selection Bar in Sidebar                                            */
+/* ========================================================================= */
+.cad-batch-bar {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(12px);
+  border-top: 1px solid rgba(59, 130, 246, 0.35);
+  padding: 6px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  z-index: 25;
+  box-shadow: 0 -4px 16px rgba(0, 0, 0, 0.5);
+  border-radius: 6px 6px 0 0;
+  animation: slideUp 0.15s ease-out;
+}
+
+@keyframes slideUp {
+  from { transform: translateY(100%); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.cad-batch-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.cad-batch-count {
+  font-weight: 600;
+  color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.cad-batch-buttons {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+}
+
+.cad-batch-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  height: 24px;
+  font-size: 10.5px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  color: #e2e8f0;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  padding: 0 4px;
+  white-space: nowrap;
+}
+
+.cad-batch-btn:hover {
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: #ffffff;
+}
+
+.cad-batch-btn.danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.4);
+  color: #f87171;
+}
+
+/* Layer Selection Checkbox */
+.cad-tree-checkbox {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  background: rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: all 0.12s ease;
+  margin-right: 3px;
+}
+
+.cad-tree-checkbox:hover {
+  border-color: #38bdf8;
+  background: rgba(56, 189, 248, 0.15);
+}
+
+.cad-tree-checkbox.checked {
+  background: #2563eb;
+  border-color: #3b82f6;
+  color: #ffffff;
+}
+
+.cad-tree-item.multi-selected {
+  background: rgba(59, 130, 246, 0.18) !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+}
+
+/* Right Click Context Menu */
+.cad-context-menu {
+  position: fixed;
+  z-index: 9999;
+  background: #0f172a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 6px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
+  padding: 4px;
+  min-width: 190px;
+  user-select: none;
+  font-size: 11.5px;
+  animation: fadeIn 0.1s ease-out;
+}
+
+.cad-context-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 9px;
+  border-radius: 4px;
+  color: #cbd5e1;
+  cursor: pointer;
+  transition: background 0.1s ease, color 0.1s ease;
+}
+
+.cad-context-item:hover {
+  background: rgba(59, 130, 246, 0.25);
+  color: #ffffff;
+}
+
+.cad-context-item.danger:hover {
+  background: rgba(239, 68, 68, 0.25);
+  color: #f87171;
+}
+
+.cad-context-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 3px 0;
+}
+

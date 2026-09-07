@@ -247,6 +247,39 @@ pub fn board_update_image_layer(state: State<AppState>, layer: BoardImageLayer) 
 }
 
 #[tauri::command]
+pub fn board_update_image_layers(state: State<AppState>, layers: Vec<BoardImageLayer>) -> Result<Vec<BoardImageLayer>, String> {
+    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = guard.as_mut().ok_or("Нет активного проекта")?;
+
+    let active_id = session.active_file_id.clone();
+    let board = if let Some(ref aid) = active_id {
+        if let Some(pos) = session.boards.iter().position(|b| b.id == *aid) {
+            session.boards.get_mut(pos)
+        } else {
+            session.boards.first_mut()
+        }
+    } else {
+        session.boards.first_mut()
+    }.ok_or("В проекте нет схемы платы для добавления или редактирования слоя")?;
+
+    for layer in &layers {
+        let group = if layer.side == "top" {
+            &mut board.data.bg_top.images
+        } else {
+            &mut board.data.bg_bottom.images
+        };
+
+        if let Some(existing) = group.iter_mut().find(|img| img.id == layer.id) {
+            *existing = layer.clone();
+        } else {
+            group.push(layer.clone());
+        }
+    }
+
+    Ok(layers)
+}
+
+#[tauri::command]
 pub fn cad_calculate_scale(p1: (f64, f64), p2: (f64, f64), real_mm: f64) -> Result<f64, String> {
     math::calculate_scale_px_per_mm(p1, p2, real_mm)
 }

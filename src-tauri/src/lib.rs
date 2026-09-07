@@ -36,6 +36,7 @@ pub fn run() {
             commands::board_get_active,
             commands::schematic_get_active,
             commands::board_update_image_layer,
+            commands::board_update_image_layers,
             commands::board_delete_image_layer,
             commands::cad_calculate_scale,
             commands::cad_calculate_level,
