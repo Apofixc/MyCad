@@ -21,6 +21,7 @@ import {
   Grid,
   HelpCircle,
   ArrowLeft,
+  AlertTriangle,
   RefreshCw,
 } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
@@ -210,77 +211,113 @@ export const ImagePreprocessModal: React.FC = () => {
     previewCanvasRef.current = null;
     hasFittedRef.current = false;
 
-    let sourceUrl = pendingPreprocess.filePath || pendingPreprocess.dataUrl || "";
-
     const loadImg = async () => {
       setLoading(true);
+      setErrorMsg(null);
       try {
-        let displayUrl = sourceUrl;
+        let finalUrl = "";
+
+        // 1. Try reading raw bytes directly via Tauri Rust backend.
+        // This is 100% reliable on desktop and bypasses Chromium CORS and custom protocol restrictions.
         if (pendingPreprocess.filePath) {
-          displayUrl = await resolveImageUrl(pendingPreprocess.filePath);
-        } else if (pendingPreprocess.file && !sourceUrl) {
-          displayUrl = URL.createObjectURL(pendingPreprocess.file);
+          try {
+            const bytes = await engineClient.readImageBytes(pendingPreprocess.filePath);
+            if (bytes && bytes.length > 0) {
+              const lower = pendingPreprocess.filePath.toLowerCase();
+              const mime = lower.endsWith(".png")
+                ? "image/png"
+                : lower.endsWith(".webp")
+                ? "image/webp"
+                : "image/jpeg";
+              const blob = new Blob([new Uint8Array(bytes)], { type: mime });
+              finalUrl = URL.createObjectURL(blob);
+            }
+          } catch (bytesErr) {
+            console.warn("[ImagePreprocessModal] readImageBytes initial load failed, trying resolveImageUrl:", bytesErr);
+          }
         }
-        setCurrentSrc(displayUrl);
+
+        // 2. Fallbacks: file object, resolveImageUrl, or dataUrl
+        if (!finalUrl) {
+          if (pendingPreprocess.file) {
+            finalUrl = URL.createObjectURL(pendingPreprocess.file);
+          } else if (pendingPreprocess.filePath) {
+            finalUrl = await resolveImageUrl(pendingPreprocess.filePath);
+          } else if (pendingPreprocess.dataUrl) {
+            finalUrl = pendingPreprocess.dataUrl;
+          }
+        }
+
+        if (!finalUrl) {
+          throw new Error("Не указан файл изображения платы");
+        }
+
+        setCurrentSrc(finalUrl);
 
         const img = new Image();
-        img.crossOrigin = "anonymous";
-        img.onload = () => {
-          loadedImageRef.current = img;
-          const w = img.naturalWidth || img.width;
-          const h = img.naturalHeight || img.height;
+        // NOTE: Never set img.crossOrigin = "anonymous" for local Tauri URLs or Blobs,
+        // as Chromium blocks asset:// protocols under CORS policy, causing a black screen!
+        const onImageSuccess = (loadedImg: HTMLImageElement) => {
+          loadedImageRef.current = loadedImg;
+          const w = loadedImg.naturalWidth || loadedImg.width;
+          const h = loadedImg.naturalHeight || loadedImg.height;
           setNaturalDims({ width: w, height: h });
 
           // Default 4-corners with 4% margin
           const q: QuadPoints = {
-            topLeft: { x: w * 0.04, y: h * 0.04 },
-            topRight: { x: w * 0.96, y: h * 0.04 },
-            bottomRight: { x: w * 0.96, y: h * 0.96 },
-            bottomLeft: { x: w * 0.04, y: h * 0.96 },
+            topLeft: { x: Math.round(w * 0.04), y: Math.round(h * 0.04) },
+            topRight: { x: Math.round(w * 0.96), y: Math.round(h * 0.04) },
+            bottomRight: { x: Math.round(w * 0.96), y: Math.round(h * 0.96) },
+            bottomLeft: { x: Math.round(w * 0.04), y: Math.round(h * 0.96) },
           };
           setQuad(q);
 
           // Default crop rect
           setCropRect({
-            x: w * 0.05,
-            y: h * 0.05,
-            width: w * 0.9,
-            height: h * 0.9,
+            x: Math.round(w * 0.05),
+            y: Math.round(h * 0.05),
+            width: Math.round(w * 0.9),
+            height: Math.round(h * 0.9),
           });
 
           // Default polygon
           setPolygonPoints([
-            { x: w * 0.1, y: h * 0.1 },
-            { x: w * 0.9, y: h * 0.1 },
-            { x: w * 0.9, y: h * 0.9 },
-            { x: w * 0.1, y: h * 0.9 },
+            { x: Math.round(w * 0.1), y: Math.round(h * 0.1) },
+            { x: Math.round(w * 0.9), y: Math.round(h * 0.1) },
+            { x: Math.round(w * 0.9), y: Math.round(h * 0.9) },
+            { x: Math.round(w * 0.1), y: Math.round(h * 0.9) },
           ]);
 
           // Default ellipse
           setEllipseParams({
-            cx: w / 2,
-            cy: h / 2,
-            rx: (w * 0.45) / 2,
-            ry: (h * 0.45) / 2,
+            cx: Math.round(w / 2),
+            cy: Math.round(h / 2),
+            rx: Math.round((w * 0.45) / 2),
+            ry: Math.round((h * 0.45) / 2),
           });
 
-          // Create downscaled thumbnail cache for ultra-smooth perspective warping (<2ms)
-          const maxDim = 2048;
-          if (w > maxDim || h > maxDim) {
-            const sc = Math.min(maxDim / w, maxDim / h);
-            const sw = Math.round(w * sc);
-            const sh = Math.round(h * sc);
-            const tc = document.createElement("canvas");
-            tc.width = sw;
-            tc.height = sh;
-            const tctx = tc.getContext("2d");
-            if (tctx) {
-              tctx.imageSmoothingEnabled = true;
-              tctx.imageSmoothingQuality = "high";
-              tctx.drawImage(img, 0, 0, sw, sh);
-              sourceThumbnailRef.current = { canvas: tc, scale: sc };
+          // Create downscaled thumbnail cache for ultra-smooth perspective warping
+          try {
+            const maxDim = 2048;
+            if (w > maxDim || h > maxDim) {
+              const sc = Math.min(maxDim / w, maxDim / h);
+              const sw = Math.round(w * sc);
+              const sh = Math.round(h * sc);
+              const tc = document.createElement("canvas");
+              tc.width = sw;
+              tc.height = sh;
+              const tctx = tc.getContext("2d");
+              if (tctx) {
+                tctx.imageSmoothingEnabled = true;
+                tctx.imageSmoothingQuality = "high";
+                tctx.drawImage(loadedImg, 0, 0, sw, sh);
+                sourceThumbnailRef.current = { canvas: tc, scale: sc };
+              }
+            } else {
+              sourceThumbnailRef.current = null;
             }
-          } else {
+          } catch (thumbErr) {
+            console.warn("Failed to create thumbnail cache:", thumbErr);
             sourceThumbnailRef.current = null;
           }
 
@@ -288,12 +325,38 @@ export const ImagePreprocessModal: React.FC = () => {
           hasFittedRef.current = true;
           fitToScreen(w, h);
         };
-        img.onerror = () => {
-          setErrorMsg("Не удалось загрузить изображение");
+
+        img.onload = () => onImageSuccess(img);
+
+        img.onerror = async (err) => {
+          console.error("[ImagePreprocessModal] img.onerror:", err, "url:", finalUrl);
+          // Secondary fallback: if resolveImageUrl was used and failed, read bytes directly
+          if (pendingPreprocess.filePath && !finalUrl.startsWith("blob:")) {
+            try {
+              const bytes = await engineClient.readImageBytes(pendingPreprocess.filePath);
+              if (bytes && bytes.length > 0) {
+                const blob = new Blob([new Uint8Array(bytes)], { type: "image/png" });
+                const blobUrl = URL.createObjectURL(blob);
+                const fbImg = new Image();
+                fbImg.onload = () => onImageSuccess(fbImg);
+                fbImg.onerror = () => {
+                  setErrorMsg("Не удалось загрузить изображение платы");
+                  setLoading(false);
+                };
+                fbImg.src = blobUrl;
+                return;
+              }
+            } catch (err2) {
+              console.error("[ImagePreprocessModal] Secondary readImageBytes failed:", err2);
+            }
+          }
+          setErrorMsg("Не удалось загрузить изображение платы");
           setLoading(false);
         };
-        img.src = displayUrl;
+
+        img.src = finalUrl;
       } catch (err: any) {
+        console.error("[ImagePreprocessModal] loadImg caught:", err);
         setErrorMsg(err?.message || "Ошибка загрузки изображения");
         setLoading(false);
       }
@@ -473,8 +536,9 @@ function renderPerspectiveWarp(
   ctx.imageSmoothingQuality = "high";
 
   // Use fast cached thumbnail if available for 100x less GPU bandwidth
-  const srcSource: CanvasImageSource = srcThumb ? srcThumb.canvas : img;
-  const srcScale = srcThumb ? srcThumb.scale : 1.0;
+  const hasValidThumb = srcThumb && srcThumb.canvas && srcThumb.canvas.width > 0 && srcThumb.canvas.height > 0;
+  const srcSource: CanvasImageSource = hasValidThumb ? srcThumb.canvas : img;
+  const srcScale = hasValidThumb ? srcThumb.scale : 1.0;
 
   const x0 = quad.topLeft.x * srcScale;
   const y0 = quad.topLeft.y * srcScale;
@@ -555,31 +619,40 @@ function renderPerspectiveWarp(
       const tdy = d0.y - m12 * s0.x - m22 * s0.y;
 
       ctx.transform(m11, m12, m21, m22, tdx, tdy);
-      ctx.drawImage(srcSource, 0, 0);
+      try {
+        ctx.drawImage(srcSource, 0, 0);
+      } catch (drawErr) {
+        console.warn("Warp drawImage failed:", drawErr);
+      }
     }
     ctx.restore();
   };
 
-  for (let cIdx = 0; cIdx < cols; cIdx++) {
-    const u0 = cIdx / cols;
-    const u1 = (cIdx + 1) / cols;
-    for (let rIdx = 0; rIdx < rows; rIdx++) {
-      const v0 = rIdx / rows;
-      const v1 = (rIdx + 1) / rows;
+  try {
+    for (let cIdx = 0; cIdx < cols; cIdx++) {
+      const u0 = cIdx / cols;
+      const u1 = (cIdx + 1) / cols;
+      for (let rIdx = 0; rIdx < rows; rIdx++) {
+        const v0 = rIdx / rows;
+        const v1 = (rIdx + 1) / rows;
 
-      const d00 = { x: u0 * dstW, y: v0 * dstH };
-      const d10 = { x: u1 * dstW, y: v0 * dstH };
-      const d11 = { x: u1 * dstW, y: v1 * dstH };
-      const d01 = { x: u0 * dstW, y: v1 * dstH };
+        const d00 = { x: u0 * dstW, y: v0 * dstH };
+        const d10 = { x: u1 * dstW, y: v0 * dstH };
+        const d11 = { x: u1 * dstW, y: v1 * dstH };
+        const d01 = { x: u0 * dstW, y: v1 * dstH };
 
-      const s00 = mapUV(u0, v0);
-      const s10 = mapUV(u1, v0);
-      const s11 = mapUV(u1, v1);
-      const s01 = mapUV(u0, v1);
+        const s00 = mapUV(u0, v0);
+        const s10 = mapUV(u1, v0);
+        const s11 = mapUV(u1, v1);
+        const s01 = mapUV(u0, v1);
 
-      drawTriangle(d00, d10, d01, s00, s10, s01);
-      drawTriangle(d10, d11, d01, s10, s11, s01);
+        drawTriangle(d00, d10, d01, s00, s10, s01);
+        drawTriangle(d10, d11, d01, s10, s11, s01);
+      }
     }
+  } catch (warpErr) {
+    console.warn("Perspective warp failed, falling back to crop preview:", warpErr);
+    return renderCropPreview(img, { x: 0, y: 0, width: img.naturalWidth || 1000, height: img.naturalHeight || 1000 }, maxPreviewDim);
   }
 
   return { canvas, width: dstW, height: dstH };
@@ -590,12 +663,18 @@ function renderCropPreview(
   rect: CropRect,
   maxPreviewDim = 1400
 ): { canvas: HTMLCanvasElement; width: number; height: number } {
-  const w = Math.max(10, Math.round(rect.width));
-  const h = Math.max(10, Math.round(rect.height));
-  const maxSide = Math.max(w, h);
+  const imgW = img.naturalWidth || img.width || 1000;
+  const imgH = img.naturalHeight || img.height || 1000;
+
+  const sx = Math.max(0, Math.min(imgW - 1, rect.x));
+  const sy = Math.max(0, Math.min(imgH - 1, rect.y));
+  const sw = Math.max(1, Math.min(imgW - sx, rect.width));
+  const sh = Math.max(1, Math.min(imgH - sy, rect.height));
+
+  const maxSide = Math.max(sw, sh);
   const scale = maxSide > maxPreviewDim ? maxPreviewDim / maxSide : 1.0;
-  const dstW = Math.max(10, Math.round(w * scale));
-  const dstH = Math.max(10, Math.round(h * scale));
+  const dstW = Math.max(10, Math.round(sw * scale));
+  const dstH = Math.max(10, Math.round(sh * scale));
 
   const canvas = document.createElement("canvas");
   canvas.width = dstW;
@@ -604,7 +683,11 @@ function renderCropPreview(
   if (ctx) {
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = "high";
-    ctx.drawImage(img, rect.x, rect.y, rect.width, rect.height, 0, 0, dstW, dstH);
+    try {
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dstW, dstH);
+    } catch (e) {
+      console.warn("renderCropPreview drawImage failed:", e);
+    }
   }
   return { canvas, width: dstW, height: dstH };
 }
@@ -614,8 +697,13 @@ function renderEllipsePreview(
   params: { cx: number; cy: number; rx: number; ry: number },
   maxPreviewDim = 1400
 ): { canvas: HTMLCanvasElement; width: number; height: number } {
-  const w = Math.max(10, Math.round(params.rx * 2));
-  const h = Math.max(10, Math.round(params.ry * 2));
+  const imgW = img.naturalWidth || img.width || 1000;
+  const imgH = img.naturalHeight || img.height || 1000;
+
+  const rx = Math.max(5, params.rx);
+  const ry = Math.max(5, params.ry);
+  const w = Math.round(rx * 2);
+  const h = Math.round(ry * 2);
   const maxSide = Math.max(w, h);
   const scale = maxSide > maxPreviewDim ? maxPreviewDim / maxSide : 1.0;
   const dstW = Math.max(10, Math.round(w * scale));
@@ -631,9 +719,15 @@ function renderEllipsePreview(
     ctx.beginPath();
     ctx.ellipse(dstW / 2, dstH / 2, dstW / 2, dstH / 2, 0, 0, Math.PI * 2);
     ctx.clip();
-    const sx = params.cx - params.rx;
-    const sy = params.cy - params.ry;
-    ctx.drawImage(img, sx, sy, params.rx * 2, params.ry * 2, 0, 0, dstW, dstH);
+    const sx = Math.max(0, Math.min(imgW - 1, params.cx - rx));
+    const sy = Math.max(0, Math.min(imgH - 1, params.cy - ry));
+    const sw = Math.max(1, Math.min(imgW - sx, rx * 2));
+    const sh = Math.max(1, Math.min(imgH - sy, ry * 2));
+    try {
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dstW, dstH);
+    } catch (e) {
+      console.warn("renderEllipsePreview drawImage failed:", e);
+    }
   }
   return { canvas, width: dstW, height: dstH };
 }
@@ -643,10 +737,13 @@ function renderPolygonPreview(
   points: Point2D[],
   maxPreviewDim = 1400
 ): { canvas: HTMLCanvasElement; width: number; height: number } {
+  const imgW = img.naturalWidth || img.width || 1000;
+  const imgH = img.naturalHeight || img.height || 1000;
+
   if (points.length < 3) {
     return renderCropPreview(
       img,
-      { x: 0, y: 0, width: img.naturalWidth || 1000, height: img.naturalHeight || 1000 },
+      { x: 0, y: 0, width: imgW, height: imgH },
       maxPreviewDim
     );
   }
@@ -657,12 +754,15 @@ function renderPolygonPreview(
     if (p.x > maxX) maxX = p.x;
     if (p.y > maxY) maxY = p.y;
   }
-  const w = Math.max(10, Math.round(maxX - minX));
-  const h = Math.max(10, Math.round(maxY - minY));
-  const maxSide = Math.max(w, h);
+  const sx = Math.max(0, Math.min(imgW - 1, minX));
+  const sy = Math.max(0, Math.min(imgH - 1, minY));
+  const sw = Math.max(1, Math.min(imgW - sx, maxX - minX));
+  const sh = Math.max(1, Math.min(imgH - sy, maxY - minY));
+
+  const maxSide = Math.max(sw, sh);
   const scale = maxSide > maxPreviewDim ? maxPreviewDim / maxSide : 1.0;
-  const dstW = Math.max(10, Math.round(w * scale));
-  const dstH = Math.max(10, Math.round(h * scale));
+  const dstW = Math.max(10, Math.round(sw * scale));
+  const dstH = Math.max(10, Math.round(sh * scale));
 
   const canvas = document.createElement("canvas");
   canvas.width = dstW;
@@ -673,14 +773,18 @@ function renderPolygonPreview(
     ctx.imageSmoothingQuality = "high";
     ctx.beginPath();
     points.forEach((p, idx) => {
-      const x = (p.x - minX) * scale;
-      const y = (p.y - minY) * scale;
-      if (idx === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
+      const px = (p.x - sx) * scale;
+      const py = (p.y - sy) * scale;
+      if (idx === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     });
     ctx.closePath();
     ctx.clip();
-    ctx.drawImage(img, minX, minY, w, h, 0, 0, dstW, dstH);
+    try {
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, dstW, dstH);
+    } catch (e) {
+      console.warn("renderPolygonPreview drawImage failed:", e);
+    }
   }
   return { canvas, width: dstW, height: dstH };
 }
@@ -699,10 +803,10 @@ function renderPolygonPreview(
 
         if (mode === "perspective") {
           res = renderPerspectiveWarp(img, quad, sourceThumbnailRef.current, 1400);
-          const minX = Math.max(0, Math.min(quad.topLeft.x, quad.bottomLeft.x));
-          const maxX = Math.min(naturalDims.width, Math.max(quad.topRight.x, quad.bottomRight.x));
-          const minY = Math.max(0, Math.min(quad.topLeft.y, quad.topRight.y));
-          const maxY = Math.min(naturalDims.height, Math.max(quad.bottomLeft.y, quad.bottomRight.y));
+          const minX = Math.max(0, Math.min(quad.topLeft.x, quad.topRight.x, quad.bottomLeft.x, quad.bottomRight.x));
+          const maxX = Math.min(naturalDims.width, Math.max(quad.topLeft.x, quad.topRight.x, quad.bottomLeft.x, quad.bottomRight.x));
+          const minY = Math.max(0, Math.min(quad.topLeft.y, quad.topRight.y, quad.bottomLeft.y, quad.bottomRight.y));
+          const maxY = Math.min(naturalDims.height, Math.max(quad.topLeft.y, quad.topRight.y, quad.bottomLeft.y, quad.bottomRight.y));
           orig = renderCropPreview(
             img,
             { x: minX, y: minY, width: Math.max(10, maxX - minX), height: Math.max(10, maxY - minY) },
@@ -976,7 +1080,13 @@ function renderPolygonPreview(
     if (isFlippedH || isFlippedV) ctx.scale(isFlippedH ? -1 : 1, isFlippedV ? -1 : 1);
     ctx.translate(-cx, -cy);
 
-    ctx.drawImage(activeDrawable, 0, 0, activeW, activeH);
+    if (activeW > 0 && activeH > 0 && activeDrawable) {
+      try {
+        ctx.drawImage(activeDrawable, 0, 0, activeW, activeH);
+      } catch (drawErr) {
+        console.warn("[Viewport] ctx.drawImage failed:", drawErr);
+      }
+    }
     ctx.restore();
 
     // Draw CAD alignment grid over preview in SCREEN SPACE (always crisp 1px lines, no thick stripes)
@@ -1615,6 +1725,35 @@ function renderPolygonPreview(
         >
           {/* Main Rendering Canvas */}
           <canvas ref={canvasRef} className="cad-preprocess-canvas-layer" />
+
+          {/* Loading Indicator inside Viewport */}
+          {loading && (
+            <div className="cad-preprocess-viewport-overlay-message">
+              <Loader2 size={36} className="animate-spin text-sky-400" />
+              <span>Загрузка фото платы...</span>
+            </div>
+          )}
+
+          {/* Error Message with Retry */}
+          {!loading && errorMsg && !loadedImageRef.current && (
+            <div className="cad-preprocess-viewport-overlay-message error">
+              <AlertTriangle size={36} color="#f87171" />
+              <span style={{ maxWidth: "420px", textAlign: "center" }}>{errorMsg}</span>
+              <button
+                className="cad-btn-secondary"
+                style={{ marginTop: "10px" }}
+                onClick={() => {
+                  setErrorMsg(null);
+                  hasFittedRef.current = false;
+                  setLoading(true);
+                  // Trigger re-mount of image load
+                  setPendingPreprocess({ ...pendingPreprocess });
+                }}
+              >
+                Повторить загрузку
+              </button>
+            </div>
+          )}
 
           {/* Informative Floating CAD HUD */}
           <div className="cad-preprocess-hud">
