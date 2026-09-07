@@ -351,6 +351,11 @@ body,
   border-radius: 50%;
 }
 
+.cad-tree-swatch.swatch-components {
+  background-color: #a855f7;
+  box-shadow: 0 0 6px rgba(168, 85, 247, 0.4);
+}
+
 /* Tree actions and icons */
 .cad-tree-actions {
   display: flex;

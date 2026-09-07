@@ -45,6 +45,10 @@ export const ProjectTree: React.FC = () => {
     setShowTopLayer,
     showBottomLayer,
     setShowBottomLayer,
+    showTopComponents,
+    setShowTopComponents,
+    showBottomComponents,
+    setShowBottomComponents,
     showSchematicBg,
     setShowSchematicBg,
     showSchematicWorking,
@@ -85,10 +89,10 @@ export const ProjectTree: React.FC = () => {
     setExpandedSchematics((prev) => ({ ...prev, [id]: !isSchematicOpen(id) }));
   };
 
-  const isSideOpen = (sideKey: string) => expandedSides[sideKey] ?? true;
-  const toggleSide = (sideKey: string, e: React.MouseEvent) => {
+  const isSideOpen = (sideKey: string, defaultOpen = true) => expandedSides[sideKey] ?? defaultOpen;
+  const toggleSide = (sideKey: string, e: React.MouseEvent, defaultOpen = true) => {
     e.stopPropagation();
-    setExpandedSides((prev) => ({ ...prev, [sideKey]: !isSideOpen(sideKey) }));
+    setExpandedSides((prev) => ({ ...prev, [sideKey]: !isSideOpen(sideKey, defaultOpen) }));
   };
 
   const startRename = (id: string, currentName: string, e: React.MouseEvent) => {
@@ -513,13 +517,29 @@ export const ProjectTree: React.FC = () => {
                   const bgBottomImages = boardData?.data?.bgBottom?.images || [];
                   const viasCount = boardData?.data?.vias?.length || 0;
 
-                  const topSideKey = `${file.id}_top`;
-                  const botSideKey = `${file.id}_bot`;
+                  const boardComponents = boardData?.data?.components || [];
+                  const topComponents = boardComponents.filter((c) => c.side === "top");
+                  const botComponents = boardComponents.filter((c) => c.side === "bottom");
+                  const totalComponentsCount = boardComponents.length;
+                  const totalBgCount = bgTopImages.length + bgBottomImages.length;
+
+                  const bgGroupKey = `${file.id}_bg_group`;
+                  const compGroupKey = `${file.id}_comp_group`;
                   const copperKey = `${file.id}_copper`;
 
-                  const isTopOpen = isSideOpen(topSideKey);
-                  const isBotOpen = isSideOpen(botSideKey);
-                  const isCopperOpen = isSideOpen(copperKey);
+                  const topBgKey = `${file.id}_top_bg`;
+                  const botBgKey = `${file.id}_bot_bg`;
+                  const topCompKey = `${file.id}_top_comp`;
+                  const botCompKey = `${file.id}_bot_comp`;
+
+                  const isBgGroupOpen = isSideOpen(bgGroupKey, true);
+                  const isCompGroupOpen = isSideOpen(compGroupKey, true);
+                  const isCopperOpen = isSideOpen(copperKey, false);
+
+                  const isTopBgOpen = isSideOpen(topBgKey, true);
+                  const isBotBgOpen = isSideOpen(botBgKey, true);
+                  const isTopCompOpen = isSideOpen(topCompKey, true);
+                  const isBotCompOpen = isSideOpen(botCompKey, true);
 
                   return (
                     <div key={file.id}>
@@ -615,228 +635,375 @@ export const ProjectTree: React.FC = () => {
                       {/* Board Layers Branch */}
                       {isOpen && (
                         <div className="cad-tree-branch">
-                          {/* 1. ПОДЛОЖКА TOP */}
+                          {/* ========================================================================= */}
+                          {/* 1. ПОДЛОЖКА (СКАНИ / ФОТО)                                                */}
+                          {/* ========================================================================= */}
                           <div>
                             <div
                               className="cad-tree-item"
-                              onClick={(e) => toggleSide(topSideKey, e)}
+                              onClick={(e) => toggleSide(bgGroupKey, e, true)}
+                              style={{ fontWeight: 600 }}
                             >
                               <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                <span>
-                                  {isTopOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                                </span>
-                                <div className="cad-tree-swatch swatch-top" />
+                                <span>{isBgGroupOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                <ImageIcon size={12} color="#818cf8" style={{ flexShrink: 0 }} />
                                 <span className="cad-tree-item-name" style={{ color: "#e2e8f0" }}>
-                                  Подложка Top (Лицевая)
+                                  Подложка
                                 </span>
-                                {bgTopImages.length > 0 && (
-                                  <span className="cad-tree-badge">{bgTopImages.length}</span>
-                                )}
-                              </div>
-
-                              <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  className={`cad-tree-icon-btn ${showTopLayer ? "active" : ""}`}
-                                  onClick={() => {
-                                    if (!isActive) setActiveFile(file.id);
-                                    setShowTopLayer(!showTopLayer);
-                                  }}
-                                  title={showTopLayer ? "Скрыть слой Top" : "Показать слой Top"}
-                                >
-                                  {showTopLayer ? <Eye size={12} /> : <EyeOff size={12} />}
-                                </button>
-                                <button
-                                  className="cad-tree-icon-btn"
-                                  onClick={() => {
-                                    if (!isActive) setActiveFile(file.id);
-                                    openModal("preprocess");
-                                  }}
-                                  title="Импортировать скан Top"
-                                >
-                                  <Plus size={12} />
-                                </button>
+                                {totalBgCount > 0 && <span className="cad-tree-badge">{totalBgCount}</span>}
                               </div>
                             </div>
 
-                            {isTopOpen && (
+                            {isBgGroupOpen && (
                               <div className="cad-tree-subbranch">
-                                {bgTopImages.length === 0 ? (
-                                  <button
-                                    className="cad-tree-ghost-btn"
-                                    onClick={() => {
-                                      if (!isActive) setActiveFile(file.id);
-                                      openModal("preprocess");
-                                    }}
+                                {/* 1.1 Top (Лицевая) */}
+                                <div>
+                                  <div
+                                    className="cad-tree-item"
+                                    onClick={(e) => toggleSide(topBgKey, e, true)}
                                   >
-                                    <Plus size={11} />
-                                    <span>Загрузить скан Top</span>
-                                  </button>
-                                ) : (
-                                  bgTopImages.map((img) => {
-                                    const isSelected = selectedImageId === img.id && isActive;
-                                    return (
-                                      <div
-                                        key={img.id}
-                                        className={`cad-tree-item ${isSelected ? "selected" : ""}`}
+                                    <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                      <span>{isTopBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                      <div className="cad-tree-swatch swatch-top" />
+                                      <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
+                                        Top (Лицевая)
+                                      </span>
+                                      {bgTopImages.length > 0 && <span className="cad-tree-badge">{bgTopImages.length}</span>}
+                                    </div>
+
+                                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        className={`cad-tree-icon-btn ${showTopLayer ? "active" : ""}`}
                                         onClick={() => {
                                           if (!isActive) setActiveFile(file.id);
-                                          selectImage(img.id);
+                                          setShowTopLayer(!showTopLayer);
                                         }}
+                                        title={showTopLayer ? "Скрыть слой Top" : "Показать слой Top"}
                                       >
-                                        <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                          <ImageIcon size={11} color="#f87171" style={{ flexShrink: 0 }} />
-                                          <span className="cad-tree-item-name" style={{ fontSize: "11px" }}>
-                                            {img.name}
-                                          </span>
-                                        </div>
-                                        <div className="cad-tree-actions" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
-                                          <button
-                                            className="cad-tree-icon-btn"
-                                            onClick={() => updateImageLayer({ ...img, visible: !img.visible })}
-                                            title={img.visible ? "Скрыть" : "Показать"}
-                                          >
-                                            {img.visible ? <Eye size={11} /> : <EyeOff size={11} />}
-                                          </button>
-                                          <button
-                                            className="cad-tree-icon-btn"
-                                            onClick={() => updateImageLayer({ ...img, locked: !img.locked })}
-                                            title={img.locked ? "Разблокировать" : "Заблокировать"}
-                                          >
-                                            {img.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
-                                          </button>
-                                          <button
-                                            className="cad-tree-icon-btn"
-                                            onClick={() => deleteImageLayer(img.id)}
-                                            title="Удалить скан"
-                                          >
-                                            <Trash2 size={11} color="#ef4444" />
-                                          </button>
-                                        </div>
-                                      </div>
-                                    );
-                                  })
-                                )}
+                                        {showTopLayer ? <Eye size={12} /> : <EyeOff size={12} />}
+                                      </button>
+                                      <button
+                                        className="cad-tree-icon-btn"
+                                        onClick={() => {
+                                          if (!isActive) setActiveFile(file.id);
+                                          openModal("preprocess");
+                                        }}
+                                        title="Импортировать скан Top"
+                                      >
+                                        <Plus size={12} />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {isTopBgOpen && (
+                                    <div className="cad-tree-subbranch">
+                                      {bgTopImages.length === 0 ? (
+                                        <button
+                                          className="cad-tree-ghost-btn"
+                                          onClick={() => {
+                                            if (!isActive) setActiveFile(file.id);
+                                            openModal("preprocess");
+                                          }}
+                                        >
+                                          <Plus size={11} />
+                                          <span>Загрузить скан Top</span>
+                                        </button>
+                                      ) : (
+                                        bgTopImages.map((img) => {
+                                          const isSelected = selectedImageId === img.id && isActive;
+                                          return (
+                                            <div
+                                              key={img.id}
+                                              className={`cad-tree-item ${isSelected ? "selected" : ""}`}
+                                              onClick={() => {
+                                                if (!isActive) setActiveFile(file.id);
+                                                selectImage(img.id);
+                                              }}
+                                            >
+                                              <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                                <ImageIcon size={11} color="#f87171" style={{ flexShrink: 0 }} />
+                                                <span className="cad-tree-item-name" style={{ fontSize: "11px" }}>
+                                                  {img.name}
+                                                </span>
+                                              </div>
+                                              <div className="cad-tree-actions" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={() => updateImageLayer({ ...img, visible: !img.visible })}
+                                                  title={img.visible ? "Скрыть" : "Показать"}
+                                                >
+                                                  {img.visible ? <Eye size={11} /> : <EyeOff size={11} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={() => updateImageLayer({ ...img, locked: !img.locked })}
+                                                  title={img.locked ? "Разблокировать" : "Заблокировать"}
+                                                >
+                                                  {img.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={() => deleteImageLayer(img.id)}
+                                                  title="Удалить скан"
+                                                >
+                                                  <Trash2 size={11} color="#ef4444" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* 1.2 Bottom (Оборотная) */}
+                                <div>
+                                  <div
+                                    className="cad-tree-item"
+                                    onClick={(e) => toggleSide(botBgKey, e, true)}
+                                  >
+                                    <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                      <span>{isBotBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                      <div className="cad-tree-swatch swatch-bottom" />
+                                      <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
+                                        Bottom (Оборотная)
+                                      </span>
+                                      {bgBottomImages.length > 0 && <span className="cad-tree-badge">{bgBottomImages.length}</span>}
+                                    </div>
+
+                                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        className={`cad-tree-icon-btn ${showBottomLayer ? "active" : ""}`}
+                                        onClick={() => {
+                                          if (!isActive) setActiveFile(file.id);
+                                          setShowBottomLayer(!showBottomLayer);
+                                        }}
+                                        title={showBottomLayer ? "Скрыть слой Bottom" : "Показать слой Bottom"}
+                                      >
+                                        {showBottomLayer ? <Eye size={12} /> : <EyeOff size={12} />}
+                                      </button>
+                                      <button
+                                        className="cad-tree-icon-btn"
+                                        onClick={() => {
+                                          if (!isActive) setActiveFile(file.id);
+                                          openModal("preprocess");
+                                        }}
+                                        title="Импортировать скан Bottom"
+                                      >
+                                        <Plus size={12} />
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {isBotBgOpen && (
+                                    <div className="cad-tree-subbranch">
+                                      {bgBottomImages.length === 0 ? (
+                                        <button
+                                          className="cad-tree-ghost-btn"
+                                          onClick={() => {
+                                            if (!isActive) setActiveFile(file.id);
+                                            openModal("preprocess");
+                                          }}
+                                        >
+                                          <Plus size={11} />
+                                          <span>Загрузить скан Bottom</span>
+                                        </button>
+                                      ) : (
+                                        bgBottomImages.map((img) => {
+                                          const isSelected = selectedImageId === img.id && isActive;
+                                          return (
+                                            <div
+                                              key={img.id}
+                                              className={`cad-tree-item ${isSelected ? "selected" : ""}`}
+                                              onClick={() => {
+                                                if (!isActive) setActiveFile(file.id);
+                                                selectImage(img.id);
+                                              }}
+                                            >
+                                              <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                                <ImageIcon size={11} color="#38bdf8" style={{ flexShrink: 0 }} />
+                                                <span className="cad-tree-item-name" style={{ fontSize: "11px" }}>
+                                                  {img.name}
+                                                </span>
+                                              </div>
+                                              <div className="cad-tree-actions" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={() => updateImageLayer({ ...img, visible: !img.visible })}
+                                                  title={img.visible ? "Скрыть" : "Показать"}
+                                                >
+                                                  {img.visible ? <Eye size={11} /> : <EyeOff size={11} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={() => updateImageLayer({ ...img, locked: !img.locked })}
+                                                  title={img.locked ? "Разблокировать" : "Заблокировать"}
+                                                >
+                                                  {img.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={() => deleteImageLayer(img.id)}
+                                                  title="Удалить скан"
+                                                >
+                                                  <Trash2 size={11} color="#ef4444" />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
 
-                          {/* 2. ПОДЛОЖКА BOTTOM */}
+                          {/* ========================================================================= */}
+                          {/* 2. КОМПОНЕНТЫ (СХЕМА РАСПОЛОЖЕНИЯ)                                       */}
+                          {/* ========================================================================= */}
                           <div>
                             <div
                               className="cad-tree-item"
-                              onClick={(e) => toggleSide(botSideKey, e)}
+                              onClick={(e) => toggleSide(compGroupKey, e, true)}
+                              style={{ fontWeight: 600 }}
                             >
                               <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                <span>
-                                  {isBotOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                                </span>
-                                <div className="cad-tree-swatch swatch-bottom" />
+                                <span>{isCompGroupOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                <Cpu size={12} color="#a855f7" style={{ flexShrink: 0 }} />
                                 <span className="cad-tree-item-name" style={{ color: "#e2e8f0" }}>
-                                  Подложка Bottom (Оборотная)
+                                  Компоненты
                                 </span>
-                                {bgBottomImages.length > 0 && (
-                                  <span className="cad-tree-badge">{bgBottomImages.length}</span>
+                                {totalComponentsCount > 0 && (
+                                  <span className="cad-tree-badge">{totalComponentsCount}</span>
                                 )}
-                              </div>
-
-                              <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  className={`cad-tree-icon-btn ${showBottomLayer ? "active" : ""}`}
-                                  onClick={() => {
-                                    if (!isActive) setActiveFile(file.id);
-                                    setShowBottomLayer(!showBottomLayer);
-                                  }}
-                                  title={showBottomLayer ? "Скрыть слой Bottom" : "Показать слой Bottom"}
-                                >
-                                  {showBottomLayer ? <Eye size={12} /> : <EyeOff size={12} />}
-                                </button>
-                                <button
-                                  className="cad-tree-icon-btn"
-                                  onClick={() => {
-                                    if (!isActive) setActiveFile(file.id);
-                                    openModal("preprocess");
-                                  }}
-                                  title="Импортировать скан Bottom"
-                                >
-                                  <Plus size={12} />
-                                </button>
                               </div>
                             </div>
 
-                            {isBotOpen && (
+                            {isCompGroupOpen && (
                               <div className="cad-tree-subbranch">
-                                {bgBottomImages.length === 0 ? (
-                                  <button
-                                    className="cad-tree-ghost-btn"
-                                    onClick={() => {
-                                      if (!isActive) setActiveFile(file.id);
-                                      openModal("preprocess");
-                                    }}
+                                {/* 2.1 Top Components */}
+                                <div>
+                                  <div
+                                    className="cad-tree-item"
+                                    onClick={(e) => toggleSide(topCompKey, e, true)}
                                   >
-                                    <Plus size={11} />
-                                    <span>Загрузить скан Bottom</span>
-                                  </button>
-                                ) : (
-                                  bgBottomImages.map((img) => {
-                                    const isSelected = selectedImageId === img.id && isActive;
-                                    return (
-                                      <div
-                                        key={img.id}
-                                        className={`cad-tree-item ${isSelected ? "selected" : ""}`}
+                                    <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                      <span>{isTopCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                      <div className="cad-tree-swatch swatch-top" />
+                                      <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
+                                        Top (Лицевой монтаж)
+                                      </span>
+                                      {topComponents.length > 0 && <span className="cad-tree-badge">{topComponents.length}</span>}
+                                    </div>
+
+                                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        className={`cad-tree-icon-btn ${showTopComponents ? "active" : ""}`}
                                         onClick={() => {
                                           if (!isActive) setActiveFile(file.id);
-                                          selectImage(img.id);
+                                          setShowTopComponents(!showTopComponents);
                                         }}
+                                        title={showTopComponents ? "Скрыть компоненты Top" : "Показать компоненты Top"}
                                       >
-                                        <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                          <ImageIcon size={11} color="#38bdf8" style={{ flexShrink: 0 }} />
-                                          <span className="cad-tree-item-name" style={{ fontSize: "11px" }}>
-                                            {img.name}
-                                          </span>
+                                        {showTopComponents ? <Eye size={12} /> : <EyeOff size={12} />}
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {isTopCompOpen && (
+                                    <div className="cad-tree-subbranch">
+                                      {topComponents.length === 0 ? (
+                                        <div style={{ padding: "3px 12px", fontSize: "10.5px", color: "#64748b", fontStyle: "italic" }}>
+                                          (нет компонентов)
                                         </div>
-                                        <div className="cad-tree-actions" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
-                                          <button
-                                            className="cad-tree-icon-btn"
-                                            onClick={() => updateImageLayer({ ...img, visible: !img.visible })}
-                                            title={img.visible ? "Скрыть" : "Показать"}
-                                          >
-                                            {img.visible ? <Eye size={11} /> : <EyeOff size={11} />}
-                                          </button>
-                                          <button
-                                            className="cad-tree-icon-btn"
-                                            onClick={() => updateImageLayer({ ...img, locked: !img.locked })}
-                                            title={img.locked ? "Разблокировать" : "Заблокировать"}
-                                          >
-                                            {img.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
-                                          </button>
-                                          <button
-                                            className="cad-tree-icon-btn"
-                                            onClick={() => deleteImageLayer(img.id)}
-                                            title="Удалить скан"
-                                          >
-                                            <Trash2 size={11} color="#ef4444" />
-                                          </button>
+                                      ) : (
+                                        topComponents.map((comp) => (
+                                          <div key={comp.id} className="cad-tree-item" style={{ fontSize: "11px" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                              <CircleDot size={10} color="#f87171" style={{ flexShrink: 0 }} />
+                                              <span style={{ fontWeight: 600, color: "#f1f5f9" }}>{comp.refDes}</span>
+                                              {comp.name && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis" }}>{comp.name}</span>}
+                                              {comp.package && <span style={{ color: "#64748b", fontSize: "10px" }}>({comp.package})</span>}
+                                            </div>
+                                          </div>
+                                        ))
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* 2.2 Bottom Components */}
+                                <div>
+                                  <div
+                                    className="cad-tree-item"
+                                    onClick={(e) => toggleSide(botCompKey, e, true)}
+                                  >
+                                    <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                      <span>{isBotCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                      <div className="cad-tree-swatch swatch-bottom" />
+                                      <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
+                                        Bottom (Оборотный монтаж)
+                                      </span>
+                                      {botComponents.length > 0 && <span className="cad-tree-badge">{botComponents.length}</span>}
+                                    </div>
+
+                                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                      <button
+                                        className={`cad-tree-icon-btn ${showBottomComponents ? "active" : ""}`}
+                                        onClick={() => {
+                                          if (!isActive) setActiveFile(file.id);
+                                          setShowBottomComponents(!showBottomComponents);
+                                        }}
+                                        title={showBottomComponents ? "Скрыть компоненты Bottom" : "Показать компоненты Bottom"}
+                                      >
+                                        {showBottomComponents ? <Eye size={12} /> : <EyeOff size={12} />}
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {isBotCompOpen && (
+                                    <div className="cad-tree-subbranch">
+                                      {botComponents.length === 0 ? (
+                                        <div style={{ padding: "3px 12px", fontSize: "10.5px", color: "#64748b", fontStyle: "italic" }}>
+                                          (нет компонентов)
                                         </div>
-                                      </div>
-                                    );
-                                  })
-                                )}
+                                      ) : (
+                                        botComponents.map((comp) => (
+                                          <div key={comp.id} className="cad-tree-item" style={{ fontSize: "11px" }}>
+                                            <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                              <CircleDot size={10} color="#38bdf8" style={{ flexShrink: 0 }} />
+                                              <span style={{ fontWeight: 600, color: "#f1f5f9" }}>{comp.refDes}</span>
+                                              {comp.name && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis" }}>{comp.name}</span>}
+                                              {comp.package && <span style={{ color: "#64748b", fontSize: "10px" }}>({comp.package})</span>}
+                                            </div>
+                                          </div>
+                                        ))
+                                      )}
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             )}
                           </div>
 
-                          {/* 3. СЛОИ ТОПОЛОГИИ (МЕДЬ) */}
+                          {/* ========================================================================= */}
+                          {/* 3. СЛОИ ТОПОЛОГИИ (МЕДЬ) — Сворачиваемый блок                            */}
+                          {/* ========================================================================= */}
                           <div>
                             <div
                               className="cad-tree-item"
-                              onClick={(e) => toggleSide(copperKey, e)}
+                              onClick={(e) => toggleSide(copperKey, e, false)}
+                              style={{ opacity: 0.9 }}
                             >
                               <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
                                 <span>
                                   {isCopperOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                 </span>
                                 <div className="cad-tree-swatch swatch-copper" />
-                                <span className="cad-tree-item-name" style={{ color: "#e2e8f0" }}>
+                                <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
                                   Слои топологии (медь)
                                 </span>
                               </div>

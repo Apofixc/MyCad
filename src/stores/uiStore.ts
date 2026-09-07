@@ -12,6 +12,8 @@ interface UiStore {
   // Layer visibility & overlay settings
   showTopLayer: boolean;
   showBottomLayer: boolean;
+  showTopComponents: boolean;
+  showBottomComponents: boolean;
   showSchematicBg: boolean;
   showSchematicWorking: boolean;
   showTopCopper: boolean;
@@ -50,6 +52,8 @@ interface UiStore {
 
   setShowTopLayer: (val: boolean) => void;
   setShowBottomLayer: (val: boolean) => void;
+  setShowTopComponents: (val: boolean) => void;
+  setShowBottomComponents: (val: boolean) => void;
   setShowSchematicBg: (val: boolean) => void;
   setShowSchematicWorking: (val: boolean) => void;
   setShowTopCopper: (val: boolean) => void;
@@ -80,6 +84,8 @@ export const useUiStore = create<UiStore>((set) => ({
 
   showTopLayer: true,
   showBottomLayer: true,
+  showTopComponents: true,
+  showBottomComponents: true,
   showSchematicBg: true,
   showSchematicWorking: true,
   showTopCopper: true,
@@ -113,6 +119,8 @@ export const useUiStore = create<UiStore>((set) => ({
 
   setShowTopLayer: (val) => set({ showTopLayer: val }),
   setShowBottomLayer: (val) => set({ showBottomLayer: val }),
+  setShowTopComponents: (val) => set({ showTopComponents: val }),
+  setShowBottomComponents: (val) => set({ showBottomComponents: val }),
   setShowSchematicBg: (val) => set({ showSchematicBg: val }),
   setShowSchematicWorking: (val) => set({ showSchematicWorking: val }),
   setShowTopCopper: (val) => set({ showTopCopper: val }),

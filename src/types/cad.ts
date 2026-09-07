@@ -59,12 +59,24 @@ export interface SchematicData {
   nets: any[];
 }
 
+export interface BoardComponent {
+  id: string;
+  refDes: string; // e.g. "R1", "C2", "DD1"
+  name?: string; // e.g. "10k", "0.1uF", "K155LA3"
+  side: "top" | "bottom";
+  package?: string; // e.g. "0805", "DIP-14", "SOIC-8"
+  x?: number;
+  y?: number;
+  rotation?: number;
+  pinned?: boolean;
+}
+
 export interface BoardData {
   id: string;
   name: string;
   bgTop: ImageLayerGroup;
   bgBottom: ImageLayerGroup;
-  components?: any[];
+  components?: BoardComponent[];
   traces?: any[];
   vias?: any[];
 }
