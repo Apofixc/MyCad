@@ -230,8 +230,13 @@ export const BoardCanvas: React.FC = () => {
     };
   }, [board]);
 
+  // Track whether canvas is dirty and needs redraw (demand-driven rendering)
+  const dirtyRef = useRef(true);
+  const cursorRafRef = useRef<number | null>(null);
+
   // Main Render Loop
   useEffect(() => {
+    dirtyRef.current = true;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
@@ -240,6 +245,13 @@ export const BoardCanvas: React.FC = () => {
     let animId: number;
 
     const render = () => {
+      const isActivelyMoving = Boolean(dragRef.current?.isDragging || isPanning);
+      if (!dirtyRef.current && !isActivelyMoving) {
+        animId = requestAnimationFrame(render);
+        return;
+      }
+      dirtyRef.current = false;
+
       const dpr = window.devicePixelRatio || 1;
       const width = canvas.clientWidth;
       const height = canvas.clientHeight;
@@ -360,6 +372,8 @@ export const BoardCanvas: React.FC = () => {
     curtainVertical,
     measurePts,
     boardMmToScreen,
+    selectedImageId,
+    selectedImageIds,
   ]);
 
   // Mouse Handlers
@@ -469,7 +483,12 @@ export const BoardCanvas: React.FC = () => {
     const mouseY = e.clientY - rect.top;
 
     const mouseMm = screenToBoardMm(mouseX, mouseY);
-    setCursorMm(mouseMm);
+    if (!cursorRafRef.current) {
+      cursorRafRef.current = requestAnimationFrame(() => {
+        setCursorMm(mouseMm);
+        cursorRafRef.current = null;
+      });
+    }
 
     // 1. Dragging selected image(s)
     if (dragRef.current?.isDragging) {
@@ -485,7 +504,10 @@ export const BoardCanvas: React.FC = () => {
       dragRef.current.targetLayers.forEach((layer) => {
         dragOffsetsRef.current.set(layer.id, { x: dxMm, y: dyMm });
       });
-      if (canvasRef.current) canvasRef.current.style.cursor = "move";
+      dirtyRef.current = true;
+      if (canvasRef.current && canvasRef.current.style.cursor !== "move") {
+        canvasRef.current.style.cursor = "move";
+      }
       return;
     }
 
@@ -495,7 +517,10 @@ export const BoardCanvas: React.FC = () => {
         x: e.clientX - panStart.x,
         y: e.clientY - panStart.y,
       });
-      if (canvasRef.current) canvasRef.current.style.cursor = "grabbing";
+      dirtyRef.current = true;
+      if (canvasRef.current && canvasRef.current.style.cursor !== "grabbing") {
+        canvasRef.current.style.cursor = "grabbing";
+      }
       return;
     }
 
@@ -517,7 +542,10 @@ export const BoardCanvas: React.FC = () => {
     }
 
     if (canvasRef.current) {
-      canvasRef.current.style.cursor = isOverAnyImage ? "move" : "default";
+      const nextCursor = isOverAnyImage ? "move" : "default";
+      if (canvasRef.current.style.cursor !== nextCursor) {
+        canvasRef.current.style.cursor = nextCursor;
+      }
     }
   };
 
