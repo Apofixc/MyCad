@@ -206,24 +206,6 @@ export const ProjectTree: React.FC = () => {
                 ({schematicFiles.length})
               </span>
             </div>
-            <button
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#38bdf8",
-                cursor: "pointer",
-                padding: "2px",
-                display: "flex",
-                alignItems: "center",
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                addSchematic();
-              }}
-              title="Создать принципиальную схему"
-            >
-              <Plus size={12} />
-            </button>
           </div>
 
           {schematicsGroupOpen && (
@@ -365,24 +347,6 @@ export const ProjectTree: React.FC = () => {
                 ({boardFiles.length})
               </span>
             </div>
-            <button
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#60a5fa",
-                cursor: "pointer",
-                padding: "2px",
-                display: "flex",
-                alignItems: "center",
-              }}
-              onClick={(e) => {
-                e.stopPropagation();
-                addBoard();
-              }}
-              title="Создать схему платы"
-            >
-              <Plus size={12} />
-            </button>
           </div>
 
           {boardsGroupOpen && (
