@@ -99,8 +99,9 @@ pub fn project_get_state(state: State<AppState>) -> Result<Option<ProjectFullSta
 
 #[tauri::command]
 pub fn project_save(state: State<AppState>) -> Result<(), String> {
-    let guard = state.session.lock().map_err(|e| e.to_string())?;
-    let session = guard.as_ref().ok_or("Нет открытого проекта для сохранения")?;
+    let mut guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = guard.as_mut().ok_or("Нет открытого проекта для сохранения")?;
+    session.manifest.updated_at = chrono::Utc::now().to_rfc3339();
     archive::save_project_archive(session)?;
 
     let recent = RecentProject {

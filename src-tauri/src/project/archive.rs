@@ -1,6 +1,7 @@
 use std::fs::{self, File};
-use std::io::{Read, Write};
+use std::io::{BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
+use std::collections::HashSet;
 use chrono::Utc;
 use uuid::Uuid;
 use zip::write::SimpleFileOptions;
@@ -257,10 +258,9 @@ pub fn open_project_archive(path: &Path) -> Result<ProjectSession, String> {
             if let Some(parent) = out_file_path.parent() {
                 let _ = fs::create_dir_all(parent);
             }
-            if let Ok(mut out_file) = File::create(&out_file_path) {
-                let mut buffer = Vec::new();
-                let _ = entry.read_to_end(&mut buffer);
-                let _ = out_file.write_all(&buffer);
+            if let Ok(out_file) = File::create(&out_file_path) {
+                let mut writer = BufWriter::new(out_file);
+                let _ = std::io::copy(&mut entry, &mut writer);
             }
         }
     }
@@ -275,20 +275,27 @@ pub fn save_project_archive(session: &ProjectSession) -> Result<(), String> {
         fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
 
-    let file = File::create(&session.file_path)
-        .map_err(|e| format!("Не удалось создать файл проекта {}: {}", session.file_path.display(), e))?;
-    let mut zip = ZipWriter::new(file);
-    let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    // Write to a temporary file first for atomic and safe saving
+    let temp_save_path = session.file_path.with_extension("mycad.tmp");
+    let file = File::create(&temp_save_path)
+        .map_err(|e| format!("Не удалось создать временный файл проекта {}: {}", temp_save_path.display(), e))?;
+    let buffered = BufWriter::with_capacity(256 * 1024, file);
+    let mut zip = ZipWriter::new(buffered);
+
+    // Deflated compression for JSON (fast and high compression ratio on text)
+    let json_options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
+    // Stored (no compression) for images: PNG/JPEG/WEBP are already compressed; Deflating them wastes 10-40s of CPU for 0% gain
+    let img_options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Stored);
 
     // 1. Write project.json
-    zip.start_file("project.json", options).map_err(|e| e.to_string())?;
+    zip.start_file("project.json", json_options).map_err(|e| e.to_string())?;
     let manifest_bytes = serde_json::to_vec_pretty(&session.manifest).map_err(|e| e.to_string())?;
     zip.write_all(&manifest_bytes).map_err(|e| e.to_string())?;
 
     // 2. Write board files
     for board in &session.boards {
         let file_path = format!("files/{}.board.json", board.id);
-        zip.start_file(&file_path, options).map_err(|e| e.to_string())?;
+        zip.start_file(&file_path, json_options).map_err(|e| e.to_string())?;
         let board_bytes = serde_json::to_vec_pretty(&board).map_err(|e| e.to_string())?;
         zip.write_all(&board_bytes).map_err(|e| e.to_string())?;
     }
@@ -296,25 +303,63 @@ pub fn save_project_archive(session: &ProjectSession) -> Result<(), String> {
     // 3. Write schematic files
     for sch in &session.schematics {
         let file_path = format!("files/{}.schematic.json", sch.id);
-        zip.start_file(&file_path, options).map_err(|e| e.to_string())?;
+        zip.start_file(&file_path, json_options).map_err(|e| e.to_string())?;
         let sch_bytes = serde_json::to_vec_pretty(&sch).map_err(|e| e.to_string())?;
         zip.write_all(&sch_bytes).map_err(|e| e.to_string())?;
     }
 
-    // 4. Write images from temp_image_dir/images if exists
+    // 4. Collect referenced image files from boards and schematics (exclude unreferenced/preview garbage)
+    let mut referenced_images = HashSet::new();
+    for board in &session.boards {
+        for img in board.data.bg_top.images.iter().chain(board.data.bg_bottom.images.iter()) {
+            if let Some(ref rel_file) = img.image_file {
+                let clean_name = Path::new(rel_file)
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| rel_file.clone());
+                if !clean_name.is_empty() {
+                    referenced_images.insert(clean_name);
+                }
+            }
+        }
+    }
+    for sch in &session.schematics {
+        for img in &sch.data.bg.images {
+            if let Some(ref rel_file) = img.image_file {
+                let clean_name = Path::new(rel_file)
+                    .file_name()
+                    .map(|n| n.to_string_lossy().to_string())
+                    .unwrap_or_else(|| rel_file.clone());
+                if !clean_name.is_empty() {
+                    referenced_images.insert(clean_name);
+                }
+            }
+        }
+    }
+
+    // 5. Write only referenced images from temp_image_dir/images using Stored compression and streaming
     let img_dir = session.temp_image_dir.join("images");
     if img_dir.exists() {
+        for file_name in &referenced_images {
+            let src_path = img_dir.join(file_name);
+            if src_path.is_file() {
+                let zip_img_path = format!("images/{}", file_name);
+                if let Ok(mut f) = File::open(&src_path) {
+                    zip.start_file(&zip_img_path, img_options)
+                        .map_err(|e| format!("Ошибка добавления файла в архив {}: {}", zip_img_path, e))?;
+                    std::io::copy(&mut f, &mut zip)
+                        .map_err(|e| format!("Ошибка потоковой записи изображения {}: {}", file_name, e))?;
+                }
+            }
+        }
+
+        // Clean up unreferenced/orphaned files from disk cache to reclaim disk space
         if let Ok(entries) = fs::read_dir(&img_dir) {
             for entry in entries.flatten() {
                 if entry.file_type().map(|t| t.is_file()).unwrap_or(false) {
-                    let file_name = entry.file_name();
-                    let zip_img_path = format!("images/{}", file_name.to_string_lossy());
-                    if let Ok(mut f) = File::open(entry.path()) {
-                        let mut buf = Vec::new();
-                        if f.read_to_end(&mut buf).is_ok() {
-                            let _ = zip.start_file(&zip_img_path, options);
-                            let _ = zip.write_all(&buf);
-                        }
+                    let entry_name = entry.file_name().to_string_lossy().to_string();
+                    if !referenced_images.contains(&entry_name) {
+                        let _ = fs::remove_file(entry.path());
                     }
                 }
             }
@@ -322,6 +367,26 @@ pub fn save_project_archive(session: &ProjectSession) -> Result<(), String> {
     }
 
     zip.finish().map_err(|e| format!("Ошибка финализации ZIP архива: {}", e))?;
+
+    // Atomic replace target project file
+    if session.file_path.exists() {
+        let backup_path = session.file_path.with_extension("mycad.bak");
+        let _ = fs::remove_file(&backup_path);
+        if fs::rename(&session.file_path, &backup_path).is_ok() {
+            if let Err(e) = fs::rename(&temp_save_path, &session.file_path) {
+                let _ = fs::rename(&backup_path, &session.file_path);
+                return Err(format!("Не удалось обновить файл проекта: {}", e));
+            }
+            let _ = fs::remove_file(&backup_path);
+        } else {
+            let _ = fs::remove_file(&session.file_path);
+            fs::rename(&temp_save_path, &session.file_path)
+                .map_err(|e| format!("Не удалось переименовать файл проекта: {}", e))?;
+        }
+    } else {
+        fs::rename(&temp_save_path, &session.file_path)
+            .map_err(|e| format!("Не удалось переместить временный файл проекта: {}", e))?;
+    }
     Ok(())
 }
 
