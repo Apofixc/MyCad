@@ -1,8 +1,10 @@
 import { create } from "zustand";
-import { ToolMode } from "../types/cad";
+import { ToolMode, ActiveWorkLayer } from "../types/cad";
 
 interface UiStore {
   activeTool: ToolMode;
+  activeWorkLayer: ActiveWorkLayer;
+  setActiveWorkLayer: (layer: ActiveWorkLayer) => void;
   cursorMm: { x: number; y: number };
   viewportZoom: number; // in %
   viewportPan: { x: number; y: number };
@@ -98,6 +100,8 @@ interface UiStore {
 
 export const useUiStore = create<UiStore>((set) => ({
   activeTool: "select",
+  activeWorkLayer: { type: "underlay", side: "top" },
+  setActiveWorkLayer: (layer) => set({ activeWorkLayer: layer }),
   cursorMm: { x: 0, y: 0 },
   viewportZoom: 100,
   viewportPan: { x: 0, y: 0 },

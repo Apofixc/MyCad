@@ -308,6 +308,14 @@ body,
   border: 1px solid rgba(59, 130, 246, 0.28);
 }
 
+.cad-tree-item.work-layer-active {
+  background: rgba(56, 189, 248, 0.18);
+  color: #ffffff;
+  border-left: 3px solid #38bdf8;
+  padding-left: 3px;
+  font-weight: 500;
+}
+
 .cad-tree-item-name {
   flex: 1;
   overflow: hidden;

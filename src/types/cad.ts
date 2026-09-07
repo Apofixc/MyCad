@@ -9,6 +9,12 @@ export type ToolMode =
   | "magnifier"
   | "blink";
 
+export type ActiveWorkLayer =
+  | { type: "underlay"; side: "top" | "bottom" }
+  | { type: "components"; side: "top" | "bottom" }
+  | { type: "copper"; side: "top" | "bottom" }
+  | { type: "vias" };
+
 export interface ProjectManifest {
   id: string;
   name: string;

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useEffect } from "react";
 import {
   MousePointer,
   Move,
@@ -18,6 +18,7 @@ export const ToolBar: React.FC = () => {
   const {
     activeTool,
     setActiveTool,
+    activeWorkLayer,
     showGrid,
     toggleGrid,
     toggleLoupe,
@@ -25,16 +26,25 @@ export const ToolBar: React.FC = () => {
     setPendingBatchImport,
   } = useUiStore();
 
-  const [showImageMenu, setShowImageMenu] = useState(false);
+  const isUnderlay = activeWorkLayer?.type === "underlay";
+  const underlaySide = isUnderlay ? (activeWorkLayer.side || "top") : null;
 
+  // Fallback to "select" tool if current tool is an image-only tool and underlay is not active
   useEffect(() => {
-    if (!showImageMenu) return;
-    const handleGlobalClick = () => setShowImageMenu(false);
-    window.addEventListener("click", handleGlobalClick);
-    return () => window.removeEventListener("click", handleGlobalClick);
-  }, [showImageMenu]);
+    const imageTools: ToolMode[] = [
+      "transform",
+      "calibrate",
+      "level",
+      "register",
+      "curtain",
+      "blink",
+    ];
+    if (!isUnderlay && imageTools.includes(activeTool)) {
+      setActiveTool("select");
+    }
+  }, [isUnderlay, activeTool, setActiveTool]);
 
-  const handleAddImage = async (side: "top" | "bottom" = "top") => {
+  const handleAddImage = async (side: "top" | "bottom") => {
     if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
       try {
         const { open } = await import("@tauri-apps/plugin-dialog");
@@ -77,100 +87,66 @@ export const ToolBar: React.FC = () => {
     }
   };
 
-  const tools: { id: ToolMode; label: string; icon: React.ReactNode; shortcut: string }[] = [
-    { id: "select", label: "Выбор и инспекция", icon: <MousePointer size={16} />, shortcut: "V" },
+  const imageTools: { id: ToolMode; label: string; icon: React.ReactNode; shortcut: string }[] = [
     { id: "transform", label: "Трансформация скана", icon: <Move size={16} />, shortcut: "T" },
     { id: "calibrate", label: "Калибровка масштаба (мм)", icon: <Ruler size={16} />, shortcut: "C" },
     { id: "level", label: "Выравнивание горизонта", icon: <Compass size={16} />, shortcut: "L" },
     { id: "register", label: "Совмещение Top/Bottom", icon: <Layers size={16} />, shortcut: "R" },
     { id: "curtain", label: "Шторка просвета слоёв", icon: <SplitSquareVertical size={16} />, shortcut: "S" },
+    { id: "blink", label: "Стробоскоп слоёв", icon: <Zap size={16} />, shortcut: "B" },
+  ];
+
+  const inspectTools: { id: ToolMode; label: string; icon: React.ReactNode; shortcut: string }[] = [
     { id: "measure", label: "Линейка измерений", icon: <Ruler size={16} />, shortcut: "M" },
     { id: "magnifier", label: "Экранная лупа", icon: <Search size={16} />, shortcut: "Z" },
-    { id: "blink", label: "Стробоскоп слоёв", icon: <Zap size={16} />, shortcut: "B" },
   ];
 
   return (
     <div className="cad-floating-toolbar">
-      {/* Add Image Dropdown - перед выбором и инспекцией */}
-      <div style={{ position: "relative" }} onClick={(e) => e.stopPropagation()}>
-        <button
-          className="cad-tool-btn"
-          onClick={() => setShowImageMenu((v) => !v)}
-          title="Добавить фото платы (Top / Bottom)"
-          style={{ color: "#38bdf8" }}
-        >
-          <ImagePlus size={16} />
-        </button>
-
-        {showImageMenu && (
-          <div
-            style={{
-              position: "absolute",
-              top: "100%",
-              left: 0,
-              marginTop: "6px",
-              background: "var(--cad-bg-panel)",
-              border: "1px solid var(--cad-border)",
-              borderRadius: "6px",
-              boxShadow: "0 8px 24px rgba(0,0,0,0.6)",
-              display: "flex",
-              flexDirection: "column",
-              padding: "4px",
-              minWidth: "160px",
-              zIndex: 100,
-            }}
+      {/* Кнопка добавления изображения — отображается ТОЛЬКО если активен слой подложки */}
+      {isUnderlay && underlaySide && (
+        <>
+          <button
+            className="cad-tool-btn"
+            onClick={() => handleAddImage(underlaySide)}
+            title={`Добавить скан в активный слой: ${underlaySide === "top" ? "Top (Лицевой)" : "Bottom (Оборотный)"}`}
+            style={{ color: "#38bdf8" }}
           >
+            <ImagePlus size={16} />
+          </button>
+          <div className="cad-tool-sep" />
+        </>
+      )}
+
+      {/* Основной инструмент выбора */}
+      <button
+        className={`cad-tool-btn ${activeTool === "select" ? "active" : ""}`}
+        onClick={() => setActiveTool("select")}
+        title="Выбор и инспекция (V)"
+      >
+        <MousePointer size={16} />
+      </button>
+
+      {/* Инструменты работы с изображениями — ТОЛЬКО когда активен слой подложки */}
+      {isUnderlay && (
+        <>
+          {imageTools.map((t) => (
             <button
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "6px 10px",
-                fontSize: "12px",
-                color: "var(--cad-text-main)",
-                borderRadius: "4px",
-                textAlign: "left",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--cad-bg-hover)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-              onClick={() => {
-                setShowImageMenu(false);
-                handleAddImage("top");
-              }}
+              key={t.id}
+              className={`cad-tool-btn ${activeTool === t.id ? "active" : ""}`}
+              onClick={() => setActiveTool(t.id)}
+              title={`${t.label} (${t.shortcut})`}
             >
-              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--cad-top-layer)" }} />
-              <span>Слой Top (Лицевой)...</span>
+              {t.icon}
             </button>
-            <button
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "8px",
-                padding: "6px 10px",
-                fontSize: "12px",
-                color: "var(--cad-text-main)",
-                borderRadius: "4px",
-                textAlign: "left",
-                cursor: "pointer",
-              }}
-              onMouseEnter={(e) => (e.currentTarget.style.background = "var(--cad-bg-hover)")}
-              onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-              onClick={() => {
-                setShowImageMenu(false);
-                handleAddImage("bottom");
-              }}
-            >
-              <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: "var(--cad-bottom-layer)" }} />
-              <span>Слой Bottom (Оборот)...</span>
-            </button>
-          </div>
-        )}
-      </div>
+          ))}
+        </>
+      )}
 
       <div className="cad-tool-sep" />
 
-      {tools.map((t) => (
+      {/* Общие инструменты инспекции */}
+      {inspectTools.map((t) => (
         <button
           key={t.id}
           className={`cad-tool-btn ${activeTool === t.id ? "active" : ""}`}
@@ -188,6 +164,7 @@ export const ToolBar: React.FC = () => {
 
       <div className="cad-tool-sep" />
 
+      {/* Сетка */}
       <button
         className={`cad-tool-btn ${showGrid ? "active" : ""}`}
         onClick={toggleGrid}

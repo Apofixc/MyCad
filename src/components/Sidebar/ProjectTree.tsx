@@ -84,6 +84,8 @@ export const ProjectTree: React.FC = () => {
     setPreprocessSide,
     setPendingPreprocess,
     setPendingBatchImport,
+    activeWorkLayer,
+    setActiveWorkLayer,
   } = useUiStore();
 
   const handlePickAndAddImages = async (side: "top" | "bottom") => {
@@ -852,11 +854,17 @@ export const ProjectTree: React.FC = () => {
                                       {/* 1.1 Top (Лицевая) */}
                                       <div>
                                         <div
-                                          className="cad-tree-item"
-                                          onClick={(e) => toggleSide(topBgKey, e, true)}
+                                          className={`cad-tree-item ${activeWorkLayer?.type === "underlay" && activeWorkLayer.side === "top" ? "work-layer-active" : ""}`}
+                                          onClick={() => {
+                                            if (!isActive) setActiveFile(file.id);
+                                            setActiveWorkLayer({ type: "underlay", side: "top" });
+                                          }}
+                                          title="Нажмите для выбора активного слоя Top подложки"
                                         >
                                           <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                            <span>{isTopBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                            <span onClick={(e) => { e.stopPropagation(); toggleSide(topBgKey, e, true); }}>
+                                              {isTopBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                            </span>
                                             <div className="cad-tree-swatch swatch-top" />
                                             <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
                                               Top (Лицевая)
@@ -928,6 +936,7 @@ export const ProjectTree: React.FC = () => {
                                                     className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""}`}
                                                     onClick={(e) => {
                                                       if (!isActive) setActiveFile(file.id);
+                                                      setActiveWorkLayer({ type: "underlay", side: "top" });
                                                       if (e.ctrlKey || e.metaKey) {
                                                         toggleSelectImage(img.id);
                                                       } else if (e.shiftKey && selectedImageIds.length > 0) {
@@ -1026,11 +1035,17 @@ export const ProjectTree: React.FC = () => {
                                       {/* 1.2 Bottom (Оборотная) */}
                                       <div>
                                         <div
-                                          className="cad-tree-item"
-                                          onClick={(e) => toggleSide(botBgKey, e, true)}
+                                          className={`cad-tree-item ${activeWorkLayer?.type === "underlay" && activeWorkLayer.side === "bottom" ? "work-layer-active" : ""}`}
+                                          onClick={() => {
+                                            if (!isActive) setActiveFile(file.id);
+                                            setActiveWorkLayer({ type: "underlay", side: "bottom" });
+                                          }}
+                                          title="Нажмите для выбора активного слоя Bottom подложки"
                                         >
                                           <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                            <span>{isBotBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                            <span onClick={(e) => { e.stopPropagation(); toggleSide(botBgKey, e, true); }}>
+                                              {isBotBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                            </span>
                                             <div className="cad-tree-swatch swatch-bottom" />
                                             <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
                                               Bottom (Оборотная)
@@ -1102,6 +1117,7 @@ export const ProjectTree: React.FC = () => {
                                                     className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""}`}
                                                     onClick={(e) => {
                                                       if (!isActive) setActiveFile(file.id);
+                                                      setActiveWorkLayer({ type: "underlay", side: "bottom" });
                                                       if (e.ctrlKey || e.metaKey) {
                                                         toggleSelectImage(img.id);
                                                       } else if (e.shiftKey && selectedImageIds.length > 0) {
@@ -1247,11 +1263,17 @@ export const ProjectTree: React.FC = () => {
                                 {/* 2.1 Top Components */}
                                 <div>
                                   <div
-                                    className="cad-tree-item"
-                                    onClick={(e) => toggleSide(topCompKey, e, true)}
+                                    className={`cad-tree-item ${activeWorkLayer?.type === "components" && activeWorkLayer.side === "top" ? "work-layer-active" : ""}`}
+                                    onClick={() => {
+                                      if (!isActive) setActiveFile(file.id);
+                                      setActiveWorkLayer({ type: "components", side: "top" });
+                                    }}
+                                    title="Нажмите для выбора активного слоя Top компонентов"
                                   >
                                     <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                      <span>{isTopCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                      <span onClick={(e) => { e.stopPropagation(); toggleSide(topCompKey, e, true); }}>
+                                        {isTopCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                      </span>
                                       <div className="cad-tree-swatch swatch-top" />
                                       <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
                                         Top (Лицевой монтаж)
@@ -1298,11 +1320,17 @@ export const ProjectTree: React.FC = () => {
                                 {/* 2.2 Bottom Components */}
                                 <div>
                                   <div
-                                    className="cad-tree-item"
-                                    onClick={(e) => toggleSide(botCompKey, e, true)}
+                                    className={`cad-tree-item ${activeWorkLayer?.type === "components" && activeWorkLayer.side === "bottom" ? "work-layer-active" : ""}`}
+                                    onClick={() => {
+                                      if (!isActive) setActiveFile(file.id);
+                                      setActiveWorkLayer({ type: "components", side: "bottom" });
+                                    }}
+                                    title="Нажмите для выбора активного слоя Bottom компонентов"
                                   >
                                     <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                      <span>{isBotCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                      <span onClick={(e) => { e.stopPropagation(); toggleSide(botCompKey, e, true); }}>
+                                        {isBotCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                      </span>
                                       <div className="cad-tree-swatch swatch-bottom" />
                                       <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
                                         Bottom (Оборотный монтаж)
@@ -1390,14 +1418,22 @@ export const ProjectTree: React.FC = () => {
                             {isCopperOpen && (
                               <div className="cad-tree-subbranch">
                                 {/* Top Copper */}
-                                <div className="cad-tree-item">
+                                <div
+                                  className={`cad-tree-item ${activeWorkLayer?.type === "copper" && activeWorkLayer.side === "top" ? "work-layer-active" : ""}`}
+                                  onClick={() => {
+                                    if (!isActive) setActiveFile(file.id);
+                                    setActiveWorkLayer({ type: "copper", side: "top" });
+                                  }}
+                                  title="Нажмите для выбора активного слоя Top Copper"
+                                >
                                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                     <div className="cad-tree-swatch swatch-top" />
                                     <span style={{ fontSize: "11px", color: "#cbd5e1" }}>Top Copper (Лицевой)</span>
                                   </div>
                                   <button
                                     className={`cad-tree-icon-btn ${showTopCopper ? "active" : ""}`}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       if (!isActive) setActiveFile(file.id);
                                       setShowTopCopper(!showTopCopper);
                                     }}
@@ -1408,14 +1444,22 @@ export const ProjectTree: React.FC = () => {
                                 </div>
 
                                 {/* Bottom Copper */}
-                                <div className="cad-tree-item">
+                                <div
+                                  className={`cad-tree-item ${activeWorkLayer?.type === "copper" && activeWorkLayer.side === "bottom" ? "work-layer-active" : ""}`}
+                                  onClick={() => {
+                                    if (!isActive) setActiveFile(file.id);
+                                    setActiveWorkLayer({ type: "copper", side: "bottom" });
+                                  }}
+                                  title="Нажмите для выбора активного слоя Bottom Copper"
+                                >
                                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                     <div className="cad-tree-swatch swatch-bottom" />
                                     <span style={{ fontSize: "11px", color: "#cbd5e1" }}>Bottom Copper (Оборотный)</span>
                                   </div>
                                   <button
                                     className={`cad-tree-icon-btn ${showBottomCopper ? "active" : ""}`}
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
                                       if (!isActive) setActiveFile(file.id);
                                       setShowBottomCopper(!showBottomCopper);
                                     }}
@@ -1426,7 +1470,14 @@ export const ProjectTree: React.FC = () => {
                                 </div>
 
                                 {/* Vias */}
-                                <div className="cad-tree-item">
+                                <div
+                                   className={`cad-tree-item ${activeWorkLayer?.type === "vias" ? "work-layer-active" : ""}`}
+                                   onClick={() => {
+                                     if (!isActive) setActiveFile(file.id);
+                                     setActiveWorkLayer({ type: "vias" });
+                                   }}
+                                   title="Нажмите для выбора активного слоя Vias"
+                                 >
                                   <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                                     <div className="cad-tree-swatch swatch-vias" />
                                     <span style={{ fontSize: "11px", color: "#cbd5e1" }}>Переходные отв. (Vias)</span>
