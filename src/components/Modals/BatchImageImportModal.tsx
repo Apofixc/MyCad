@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { X, Sparkles, Zap, Image as ImageIcon, AlertTriangle, Check } from "lucide-react";
 import { getImageDimensions } from "../../utils/imageLoader";
 import { resolveImageSrc } from "../../utils/imageUrl";
+import "../../preprocess.css";
 
 export interface BatchImageImportModalProps {
   isOpen: boolean;

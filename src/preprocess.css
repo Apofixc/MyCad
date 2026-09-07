@@ -589,3 +589,369 @@
   color: #ffffff;
   border-color: rgba(255, 255, 255, 0.25);
 }
+
+
+/* ==========================================================================
+   Batch Image Import Modal Styles
+   ========================================================================== */
+.batch-import-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(4, 8, 16, 0.78);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  animation: fadeInModal 0.2s ease-out;
+}
+
+.batch-import-modal-container {
+  width: 580px;
+  max-width: 92vw;
+  background: #0f172a;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.08);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: scaleUpModal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fadeInModal {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes scaleUpModal {
+  from { opacity: 0; transform: scale(0.95); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.batch-import-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.batch-import-title-group {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.batch-import-title-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  background: rgba(56, 189, 248, 0.12);
+  color: #38bdf8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(56, 189, 248, 0.25);
+}
+
+.batch-import-modal-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #f1f5f9;
+}
+
+.batch-import-subtitle {
+  margin: 2px 0 0 0;
+  font-size: 12px;
+  color: #94a3b8;
+}
+
+.batch-import-close-btn {
+  background: transparent;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.batch-import-close-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #f8fafc;
+}
+
+.batch-import-modal-body {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.batch-import-options-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.batch-import-card {
+  position: relative;
+  background: rgba(15, 23, 42, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 14px;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+}
+
+.batch-import-card:hover {
+  background: rgba(30, 41, 59, 0.5);
+  border-color: rgba(56, 189, 248, 0.4);
+  transform: translateY(-2px);
+}
+
+.batch-import-card.selected {
+  background: rgba(2, 132, 199, 0.14);
+  border-color: #38bdf8;
+  box-shadow: 0 0 16px rgba(56, 189, 248, 0.18);
+}
+
+.batch-import-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.batch-import-icon-box {
+  width: 34px;
+  height: 34px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.original-icon-box {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.optimize-icon-box {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.batch-import-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.batch-badge {
+  font-size: 11px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 4px;
+}
+
+.badge-cyan {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.badge-amber {
+  background: rgba(245, 158, 11, 0.15);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.badge-amber-sm {
+  font-size: 10px;
+  padding: 1px 5px;
+  background: rgba(245, 158, 11, 0.2);
+  color: #fbbf24;
+  border-radius: 3px;
+  font-weight: 600;
+}
+
+.batch-check-indicator {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #38bdf8;
+  color: #0f172a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+}
+
+.batch-import-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #f8fafc;
+}
+
+.batch-import-card-desc {
+  font-size: 11.5px;
+  color: #94a3b8;
+  line-height: 1.45;
+}
+
+.batch-import-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  background: rgba(245, 158, 11, 0.08);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  padding: 10px 12px;
+  border-radius: 8px;
+}
+
+.batch-alert-icon {
+  color: #fbbf24;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.batch-alert-text {
+  font-size: 11.5px;
+  color: #fcd34d;
+  line-height: 1.4;
+}
+
+.batch-import-files-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.batch-import-files-heading {
+  font-size: 12px;
+  font-weight: 600;
+  color: #94a3b8;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.batch-loading-text {
+  font-size: 11px;
+  color: #38bdf8;
+}
+
+.batch-import-files-list {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  max-height: 140px;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.batch-file-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border-radius: 4px;
+  font-size: 12px;
+}
+
+.batch-file-row:hover {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.batch-file-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.batch-file-name {
+  color: #e2e8f0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 260px;
+}
+
+.batch-file-size {
+  color: #64748b;
+  font-size: 11px;
+}
+
+.batch-file-details {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.batch-file-dims {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.batch-file-dims.highlight {
+  color: #fbbf24;
+}
+
+.batch-import-modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 14px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.07);
+  background: rgba(15, 23, 42, 0.95);
+}
+
+.batch-btn {
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: none;
+}
+
+.batch-btn-secondary {
+  background: rgba(255, 255, 255, 0.07);
+  color: #cbd5e1;
+}
+
+.batch-btn-secondary:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+}
+
+.batch-btn-primary {
+  background: #0284c7;
+  color: #ffffff;
+  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+}
+
+.batch-btn-primary:hover {
+  background: #0369a1;
+  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+}
+
+
