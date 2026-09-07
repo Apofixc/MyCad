@@ -1,110 +1,108 @@
-/* Drag & Drop Visual Overlay for Canvas */
+/* ==========================================================================
+   MyCad - Image Preprocessing & Batch Import Styles
+   Полная интеграция с дизайн-системой MyCad (токены, цвета, шрифты, отступы)
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   1. Drag & Drop Visual Overlay for Canvas
+   -------------------------------------------------------------------------- */
 .cad-canvas-dragover-overlay {
   position: absolute;
   inset: 0;
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(4px);
-  border: 2px dashed var(--cad-accent-blue, #3b82f6);
+  background: rgba(12, 14, 18, 0.88);
+  backdrop-filter: blur(6px);
+  border: 2px dashed var(--cad-accent, #3b82f6);
   z-index: 50;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 10px;
   pointer-events: none;
+  animation: cadFadeIn 0.15s ease-out;
 }
 
 .cad-canvas-dragover-overlay .dragover-icon {
-  color: var(--cad-accent-blue, #3b82f6);
+  color: var(--cad-accent, #3b82f6);
+  filter: drop-shadow(0 0 12px rgba(59, 130, 246, 0.5));
 }
 
 .cad-canvas-dragover-overlay h3 {
   font-size: 16px;
-  color: #f8fafc;
+  font-weight: 600;
+  color: var(--cad-text-main, #f1f5f9);
   margin: 0;
 }
 
 .cad-canvas-dragover-overlay p {
-  font-size: 12px;
+  font-size: 12.5px;
   color: var(--cad-text-muted, #94a3b8);
   margin: 0;
 }
 
-/* Modal Backdrop */
-.cad-modal-backdrop {
+/* --------------------------------------------------------------------------
+   2. Shared Modal Backdrop & Dialog Animations
+   -------------------------------------------------------------------------- */
+.cad-modal-backdrop,
+.batch-import-modal-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
+  background: rgba(4, 7, 13, 0.82);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
+  animation: cadFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.cad-dialog-close {
-  background: transparent;
-  border: none;
-  color: var(--cad-text-muted, #94a3b8);
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-  border-radius: 4px;
-  transition: color 0.12s, background 0.12s;
+@keyframes cadFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
-.cad-dialog-close:hover {
-  color: #ffffff;
-  background: rgba(255, 255, 255, 0.08);
+@keyframes cadModalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.97) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.btn-preview {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-}
-
-.btn-active-highlight {
-  background: #0284c7 !important;
-  border-color: #38bdf8 !important;
-  color: #ffffff !important;
-  box-shadow: 0 0 10px rgba(2, 132, 199, 0.4) !important;
-}
-
+/* --------------------------------------------------------------------------
+   3. Single Image Preprocessing Modal (Warp, Crop, Loupe Wizard)
+   -------------------------------------------------------------------------- */
 .cad-preprocess-modal {
-  width: 92vw;
-  max-width: 1160px;
-  height: 86vh;
-  max-height: 820px;
-  background: linear-gradient(180deg, #161b26 0%, #10141d 100%);
-  border: 1px solid rgba(56, 189, 248, 0.35);
-  border-radius: 12px;
-  box-shadow:
-    0 24px 70px rgba(0, 0, 0, 0.85),
-    0 0 35px rgba(2, 132, 199, 0.18);
+  width: 94vw;
+  max-width: 1240px;
+  height: 88vh;
+  max-height: 860px;
+  background: linear-gradient(180deg, var(--cad-bg-panel, #181d26) 0%, var(--cad-bg-surface, #141820) 100%);
+  border: 1px solid var(--cad-border, #283344);
+  border-radius: 14px;
+  box-shadow: 0 25px 60px rgba(0, 0, 0, 0.85),
+              0 0 0 1px rgba(255, 255, 255, 0.06),
+              0 0 35px rgba(59, 130, 246, 0.12);
   display: flex;
   flex-direction: column;
   overflow: hidden;
   user-select: none;
+  animation: cadModalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 /* Modal Header */
 .cad-preprocess-header {
-  padding: 12px 20px;
-  background: rgba(255, 255, 255, 0.02);
-  border-bottom: 1px solid var(--cad-border);
+  padding: 14px 20px;
+  background: var(--cad-bg-surface, #141820);
+  border-bottom: 1px solid var(--cad-border, #283344);
   display: flex;
   justify-content: space-between;
   align-items: center;
+  flex-shrink: 0;
 }
 
 .cad-preprocess-header .header-title-group {
@@ -114,19 +112,19 @@
 }
 
 .cad-preprocess-header .header-icon-badge {
-  width: 32px;
-  height: 32px;
+  width: 34px;
+  height: 34px;
   border-radius: 8px;
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.28);
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .cad-preprocess-header .modal-title {
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
   color: #f8fafc;
   line-height: 1.2;
@@ -134,80 +132,114 @@
 
 .cad-preprocess-header .modal-subtitle {
   font-size: 11.5px;
-  color: var(--cad-text-muted);
+  color: var(--cad-text-muted, #94a3b8);
   margin-top: 2px;
+  font-family: var(--cad-font-mono, monospace);
 }
 
-/* Modal Toolbar */
-.cad-preprocess-toolbar {
-  padding: 8px 16px;
-  background: rgba(15, 23, 42, 0.85);
-  border-bottom: 1px solid var(--cad-border);
+.header-actions {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+.cad-dialog-close,
+.batch-import-close-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: var(--cad-text-muted, #94a3b8);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  outline: none;
+}
+
+.cad-dialog-close:hover,
+.batch-import-close-btn:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8fafc;
+}
+
+/* Modal Toolbar (Fixed layout, NO overlapping) */
+.cad-preprocess-toolbar {
+  padding: 8px 16px;
+  background: #10141c;
+  border-bottom: 1px solid var(--cad-border, #283344);
+  display: flex;
+  align-items: center;
+  gap: 10px;
   flex-wrap: nowrap;
   overflow-x: auto;
   scrollbar-width: none;
+  flex-shrink: 0;
 }
 
 .cad-preprocess-toolbar::-webkit-scrollbar {
   display: none;
 }
 
+/* Tool Selector Tabs */
 .cad-preprocess-toolbar .tool-tabs {
   display: flex;
-  background: rgba(30, 41, 59, 0.8);
+  align-items: center;
+  background: rgba(14, 18, 26, 0.9);
   padding: 3px;
-  border-radius: 6px;
+  border-radius: 8px;
   gap: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--cad-border, #283344);
   flex-shrink: 0;
 }
 
 .cad-preprocess-toolbar .tool-tab-btn {
   background: transparent;
   border: none;
-  color: var(--cad-text-muted);
+  color: var(--cad-text-muted, #94a3b8);
   font-size: 12px;
   font-weight: 500;
   padding: 5px 10px;
-  border-radius: 4px;
+  border-radius: 6px;
   cursor: pointer;
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
   white-space: nowrap;
   transition: all 0.15s ease;
+  font-family: inherit;
 }
 
 .cad-preprocess-toolbar .tool-tab-btn:hover {
-  color: #f8fafc;
+  color: var(--cad-text-main, #f1f5f9);
   background: rgba(255, 255, 255, 0.06);
 }
 
 .cad-preprocess-toolbar .tool-tab-btn.active {
-  background: #0284c7;
+  background: var(--cad-accent, #3b82f6);
   color: #ffffff;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+  font-weight: 600;
+  box-shadow: 0 1px 6px rgba(59, 130, 246, 0.35);
 }
 
 .cad-preprocess-toolbar .auto-detect-btn {
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.08);
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.1);
+  border: 1px solid rgba(59, 130, 246, 0.28);
 }
 
 .cad-preprocess-toolbar .auto-detect-btn:hover:not(:disabled) {
-  background: rgba(56, 189, 248, 0.16);
-  border-color: rgba(56, 189, 248, 0.45);
-  color: #7dd3fc;
+  background: rgba(59, 130, 246, 0.2);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: #93c5fd;
 }
 
 .cad-preprocess-toolbar .toolbar-divider {
   width: 1px;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.12);
+  height: 22px;
+  background: var(--cad-border, #283344);
   margin: 0 4px;
   flex-shrink: 0;
 }
@@ -215,65 +247,68 @@
 .cad-preprocess-toolbar .tool-actions-group {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   flex-shrink: 0;
 }
 
-/* Standalone CAD Tool Buttons in Toolbar */
-.cad-tool-btn {
-  background: rgba(30, 41, 59, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  color: #cbd5e1;
-  font-size: 11.5px;
-  font-weight: 500;
-  padding: 5px 9px;
-  border-radius: 6px;
-  cursor: pointer;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  white-space: nowrap;
-  transition: all 0.15s ease;
+/* OVERRIDE GLOBAL .cad-tool-btn SO TEXT BUTTONS NEVER OVERLAP */
+.cad-preprocess-toolbar .cad-tool-btn {
+  width: auto !important;
+  min-width: 30px !important;
+  height: 29px !important;
+  padding: 0 10px !important;
+  font-size: 11.5px !important;
+  font-weight: 500 !important;
+  border-radius: 6px !important;
+  cursor: pointer !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  white-space: nowrap !important;
+  transition: all 0.15s ease !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  border: 1px solid var(--cad-border, #283344) !important;
+  color: var(--cad-text-main, #f1f5f9) !important;
+  font-family: inherit !important;
 }
 
-.cad-tool-btn:hover:not(:disabled) {
-  background: rgba(51, 65, 85, 0.85);
-  border-color: rgba(56, 189, 248, 0.35);
-  color: #ffffff;
+.cad-preprocess-toolbar .cad-tool-btn:hover:not(:disabled) {
+  background: var(--cad-bg-hover, #273042) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
 }
 
-.cad-tool-btn:active:not(:disabled) {
-  transform: translateY(1px);
+.cad-preprocess-toolbar .cad-tool-btn:active:not(:disabled) {
+  transform: translateY(1px) !important;
 }
 
-.cad-tool-btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+.cad-preprocess-toolbar .cad-tool-btn:disabled {
+  opacity: 0.35 !important;
+  cursor: not-allowed !important;
 }
 
-.cad-tool-btn.btn-active-highlight {
-  background: #0284c7;
-  border-color: #38bdf8;
-  color: #ffffff;
-  box-shadow: 0 0 10px rgba(2, 132, 199, 0.4);
+.cad-preprocess-toolbar .cad-tool-btn.btn-active-highlight {
+  background: var(--cad-accent, #3b82f6) !important;
+  border-color: var(--cad-accent-hover, #60a5fa) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.45) !important;
 }
 
-.cad-tool-btn.btn-reset:hover:not(:disabled) {
-  border-color: rgba(248, 113, 113, 0.4);
-  color: #fca5a5;
+.cad-preprocess-toolbar .cad-tool-btn.btn-reset:hover:not(:disabled) {
+  border-color: rgba(239, 68, 68, 0.5) !important;
+  color: #fca5a5 !important;
 }
 
 .cad-preprocess-toolbar .toolbar-spacer {
   flex: 1;
 }
 
-/* Viewport Area */
+/* Workspace Viewport */
 .cad-preprocess-viewport {
   flex: 1;
   position: relative;
-  background: #090d15;
-  background-image:
-    radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.12) 1px, transparent 0);
+  background-color: var(--cad-bg-deep, #0c0e12);
+  background-image: radial-gradient(circle at 1px 1px, rgba(148, 163, 184, 0.08) 1px, transparent 0);
   background-size: 24px 24px;
   overflow: hidden;
   cursor: grab;
@@ -293,38 +328,6 @@
   user-select: none;
 }
 
-.viewport-image-canvas {
-  position: absolute;
-  top: 0;
-  left: 0;
-  pointer-events: none;
-  will-change: transform;
-  transform-origin: 0 0;
-}
-
-.original-src-img {
-  display: block;
-  pointer-events: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-  border-radius: 2px;
-  image-rendering: auto;
-}
-
-.preview-img-result {
-  display: block;
-  pointer-events: none;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.6);
-  border-radius: 2px;
-  background-image:
-    linear-gradient(45deg, #1e293b 25%, transparent 25%),
-    linear-gradient(-45deg, #1e293b 25%, transparent 25%),
-    linear-gradient(45deg, transparent 75%, #1e293b 75%),
-    linear-gradient(-45deg, transparent 75%, #1e293b 75%);
-  background-size: 16px 16px;
-  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
-  background-color: #0b0f19;
-}
-
 .viewport-svg-overlay {
   position: absolute;
   top: 0;
@@ -333,29 +336,26 @@
   will-change: transform;
 }
 
-/* Corner Handles & Interactive Elements */
 .interactive-corner-handle {
-  transition: transform 0.15s ease, r 0.15s ease, fill 0.15s ease;
+  transition: transform 0.12s ease, r 0.12s ease, fill 0.12s ease;
 }
 
 .interactive-corner-handle:hover {
   r: 15;
-  fill: rgba(56, 189, 248, 0.45);
+  fill: rgba(59, 130, 246, 0.45);
 }
 
-/* Magnifier Loupe */
+/* Loupe Magnifier */
 .cad-corner-loupe {
   position: absolute;
   top: 0;
   left: 0;
-  width: 124px;
-  height: 124px;
+  width: 130px;
+  height: 130px;
   border-radius: 50%;
-  border: 2.5px solid #38bdf8;
-  box-shadow:
-    0 12px 30px rgba(0, 0, 0, 0.8),
-    0 0 18px rgba(56, 189, 248, 0.5);
-  background: #0f172a;
+  border: 2.5px solid var(--cad-accent, #3b82f6);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.8), 0 0 20px rgba(59, 130, 246, 0.5);
+  background: #0f141f;
   pointer-events: none;
   z-index: 50;
   overflow: hidden;
@@ -384,37 +384,38 @@
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.5px;
-  color: #38bdf8;
-  background: rgba(15, 23, 42, 0.85);
+  color: #93c5fd;
+  background: rgba(15, 20, 31, 0.9);
   padding: 1px 0;
 }
 
-/* Bottom Hint */
+/* Floating Viewport Hint */
 .cad-viewport-hint {
   position: absolute;
-  bottom: 12px;
+  bottom: 14px;
   left: 50%;
-  transform: translateX(-50%);
-  background: rgba(15, 23, 42, 0.85);
-  backdrop-filter: blur(4px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  padding: 6px 14px;
+  transform: translate(-50%);
+  background: var(--cad-glass-bg, rgba(20, 24, 32, 0.9));
+  backdrop-filter: blur(10px);
+  border: 1px solid var(--cad-border, #283344);
+  padding: 6px 16px;
   border-radius: 20px;
   font-size: 11.5px;
-  color: #94a3b8;
+  color: var(--cad-text-muted, #94a3b8);
   pointer-events: none;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
   white-space: nowrap;
 }
 
-/* Modal Footer */
+/* Preprocess Modal Footer */
 .cad-preprocess-footer {
   padding: 12px 20px;
-  background: rgba(15, 23, 42, 0.95);
-  border-top: 1px solid var(--cad-border);
+  background: var(--cad-bg-surface, #141820);
+  border-top: 1px solid var(--cad-border, #283344);
   display: flex;
   align-items: center;
   justify-content: space-between;
+  flex-shrink: 0;
 }
 
 .footer-left-group {
@@ -428,31 +429,31 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
   padding: 3px 8px;
   border-radius: 6px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--cad-border, #283344);
 }
 
 .scale-selector-label {
   font-size: 11.5px;
-  color: var(--cad-text-muted);
+  color: var(--cad-text-muted, #94a3b8);
   white-space: nowrap;
 }
 
 .scale-seg-group {
   display: flex;
-  background: rgba(15, 23, 42, 0.9);
+  background: rgba(10, 14, 22, 0.8);
   padding: 2px;
   border-radius: 5px;
   gap: 2px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--cad-border, #283344);
 }
 
 .scale-seg-btn {
   background: transparent;
   border: none;
-  color: #94a3b8;
+  color: var(--cad-text-muted, #94a3b8);
   font-size: 11px;
   font-weight: 500;
   padding: 3px 7px;
@@ -460,25 +461,26 @@
   cursor: pointer;
   transition: all 0.15s ease;
   white-space: nowrap;
+  font-family: inherit;
 }
 
 .scale-seg-btn:hover {
-  color: #ffffff;
+  color: #fff;
   background: rgba(255, 255, 255, 0.08);
 }
 
 .scale-seg-btn.active {
-  background: #0284c7;
-  color: #ffffff;
+  background: var(--cad-accent, #3b82f6);
+  color: #fff;
   font-weight: 600;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
 }
 
 .scale-custom-input-wrap {
   display: flex;
   align-items: center;
-  background: rgba(15, 23, 42, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(10, 14, 22, 0.8);
+  border: 1px solid var(--cad-border, #283344);
   border-radius: 4px;
   padding: 1px 4px;
   gap: 2px;
@@ -488,24 +490,17 @@
   width: 36px;
   background: transparent;
   border: none;
-  color: #38bdf8;
+  color: #93c5fd;
   font-size: 11px;
-  font-family: monospace;
+  font-family: var(--cad-font-mono, monospace);
   font-weight: 600;
   text-align: right;
   outline: none;
-  -moz-appearance: textfield;
-}
-
-.scale-custom-input::-webkit-outer-spin-button,
-.scale-custom-input::-webkit-inner-spin-button {
-  -webkit-appearance: none;
-  margin: 0;
 }
 
 .scale-percent-symbol {
   font-size: 10px;
-  color: var(--cad-text-muted);
+  color: var(--cad-text-muted, #94a3b8);
 }
 
 .footer-meta-info {
@@ -516,29 +511,29 @@
 }
 
 .meta-scale-badge {
-  background: rgba(234, 179, 8, 0.16);
-  color: #facc15;
-  border: 1px solid rgba(234, 179, 8, 0.35);
+  background: rgba(245, 158, 11, 0.12);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.35);
   font-size: 10.5px;
-  padding: 1px 5px;
-  border-radius: 3px;
+  padding: 2px 6px;
+  border-radius: 4px;
   font-weight: 600;
-  font-family: monospace;
+  font-family: var(--cad-font-mono, monospace);
 }
 
 .footer-meta-info .meta-label {
-  color: var(--cad-text-muted);
+  color: var(--cad-text-muted, #94a3b8);
 }
 
 .footer-meta-info .meta-value {
-  color: #38bdf8;
+  color: #93c5fd;
   font-weight: 600;
-  font-family: monospace;
-  font-size: 13px;
+  font-family: var(--cad-font-mono, monospace);
+  font-size: 12.5px;
 }
 
 .footer-meta-info .meta-hint {
-  color: var(--cad-text-muted);
+  color: var(--cad-text-muted, #94a3b8);
   font-size: 11px;
 }
 
@@ -548,85 +543,99 @@
   gap: 10px;
 }
 
+/* Footer Action Buttons matching MyCad's .cad-btn standard */
+.cad-preprocess-footer .cad-btn-flat {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--cad-border, #283344);
+  color: var(--cad-text-main, #f1f5f9);
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.cad-preprocess-footer .cad-btn-flat:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
 .cad-btn-outline {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #e2e8f0;
-  padding: 6px 14px;
-  font-size: 12px;
-  border-radius: 6px;
+  background: var(--cad-bg-card, #1e2532);
+  border: 1px solid var(--cad-border, #283344);
+  color: var(--cad-text-main, #f1f5f9);
+  padding: 8px 16px;
+  font-size: 12.5px;
+  font-weight: 500;
+  border-radius: 8px;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   gap: 6px;
   transition: all 0.15s ease;
+  font-family: inherit;
 }
 
 .cad-btn-outline:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
-  border-color: rgba(56, 189, 248, 0.4);
+  background: var(--cad-bg-hover, #273042);
+  border-color: var(--cad-accent, #3b82f6);
   color: #ffffff;
 }
 
 .cad-btn-outline:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
 }
 
-.cad-preprocess-footer .cad-btn-flat {
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  color: var(--cad-text-muted);
-  padding: 6px 14px;
-  font-size: 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.cad-preprocess-footer .cad-btn-flat:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.08);
+.cad-preprocess-footer .cad-btn-primary {
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: 1px solid rgba(255, 255, 255, 0.18);
   color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.25);
-}
-
-
-/* ==========================================================================
-   Batch Image Import Modal Styles
-   ========================================================================== */
-.batch-import-modal-overlay {
-  position: fixed;
-  inset: 0;
-  background: rgba(4, 8, 16, 0.78);
-  backdrop-filter: blur(8px);
-  display: flex;
+  padding: 8px 20px;
+  font-size: 12.5px;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  animation: fadeInModal 0.2s ease-out;
+  gap: 7px;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.18s ease;
+  font-family: inherit;
 }
 
+.cad-preprocess-footer .cad-btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
+}
+
+.cad-preprocess-footer .cad-btn-primary:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+
+/* --------------------------------------------------------------------------
+   4. Batch Image Import Modal (Multi-file Import Dialog)
+   -------------------------------------------------------------------------- */
 .batch-import-modal-container {
   width: 580px;
   max-width: 92vw;
-  background: #0f172a;
-  border: 1px solid rgba(56, 189, 248, 0.25);
-  border-radius: 12px;
-  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6), 0 0 30px rgba(56, 189, 248, 0.08);
+  background: linear-gradient(180deg, var(--cad-bg-panel, #181d26) 0%, var(--cad-bg-surface, #141820) 100%);
+  border: 1px solid var(--cad-border, #283344);
+  border-radius: 14px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.85),
+              0 0 0 1px rgba(255, 255, 255, 0.06),
+              0 0 30px rgba(59, 130, 246, 0.1);
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: scaleUpModal 0.22s cubic-bezier(0.16, 1, 0.3, 1);
-}
-
-@keyframes fadeInModal {
-  from { opacity: 0; }
-  to { opacity: 1; }
-}
-
-@keyframes scaleUpModal {
-  from { opacity: 0; transform: scale(0.95); }
-  to { opacity: 1; transform: scale(1); }
+  animation: cadModalPop 0.22s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .batch-import-modal-header {
@@ -634,8 +643,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(15, 23, 42, 0.95);
+  border-bottom: 1px solid var(--cad-border, #283344);
+  background: var(--cad-bg-surface, #141820);
 }
 
 .batch-import-title-group {
@@ -648,43 +657,29 @@
   width: 36px;
   height: 36px;
   border-radius: 8px;
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
+  background: rgba(59, 130, 246, 0.12);
+  color: #60a5fa;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 1px solid rgba(56, 189, 248, 0.25);
+  border: 1px solid rgba(59, 130, 246, 0.28);
 }
 
 .batch-import-modal-header h3 {
   margin: 0;
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #f8fafc;
 }
 
 .batch-import-subtitle {
   margin: 2px 0 0 0;
   font-size: 12px;
-  color: #94a3b8;
+  color: var(--cad-text-muted, #94a3b8);
 }
 
-.batch-import-close-btn {
-  background: transparent;
-  border: none;
-  color: #94a3b8;
-  cursor: pointer;
-  padding: 6px;
-  border-radius: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.15s ease;
-}
-
-.batch-import-close-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #f8fafc;
+.batch-import-subtitle strong {
+  color: var(--cad-text-main, #f1f5f9);
 }
 
 .batch-import-modal-body {
@@ -704,8 +699,8 @@
 
 .batch-import-card {
   position: relative;
-  background: rgba(15, 23, 42, 0.6);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--cad-bg-card, #1e2532);
+  border: 1px solid var(--cad-border, #283344);
   border-radius: 10px;
   padding: 14px;
   cursor: pointer;
@@ -717,15 +712,15 @@
 }
 
 .batch-import-card:hover {
-  background: rgba(30, 41, 59, 0.5);
-  border-color: rgba(56, 189, 248, 0.4);
+  background: var(--cad-bg-hover, #273042);
+  border-color: rgba(255, 255, 255, 0.2);
   transform: translateY(-2px);
 }
 
 .batch-import-card.selected {
-  background: rgba(2, 132, 199, 0.14);
-  border-color: #38bdf8;
-  box-shadow: 0 0 16px rgba(56, 189, 248, 0.18);
+  background: rgba(59, 130, 246, 0.09);
+  border-color: var(--cad-accent, #3b82f6);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
 }
 
 .batch-import-card-header {
@@ -744,13 +739,13 @@
 }
 
 .original-icon-box {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .optimize-icon-box {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.14);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
@@ -769,13 +764,13 @@
 }
 
 .badge-cyan {
-  background: rgba(56, 189, 248, 0.15);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .badge-amber {
-  background: rgba(245, 158, 11, 0.15);
+  background: rgba(245, 158, 11, 0.14);
   color: #fbbf24;
   border: 1px solid rgba(245, 158, 11, 0.3);
 }
@@ -783,18 +778,20 @@
 .badge-amber-sm {
   font-size: 10px;
   padding: 1px 5px;
-  background: rgba(245, 158, 11, 0.2);
+  background: rgba(245, 158, 11, 0.18);
   color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.3);
   border-radius: 3px;
   font-weight: 600;
+  font-family: var(--cad-font-mono, monospace);
 }
 
 .batch-check-indicator {
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #38bdf8;
-  color: #0f172a;
+  background: var(--cad-accent, #3b82f6);
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -802,14 +799,14 @@
 }
 
 .batch-import-card-title {
-  font-size: 14px;
+  font-size: 13.5px;
   font-weight: 600;
   color: #f8fafc;
 }
 
 .batch-import-card-desc {
   font-size: 11.5px;
-  color: #94a3b8;
+  color: var(--cad-text-muted, #94a3b8);
   line-height: 1.45;
 }
 
@@ -818,8 +815,8 @@
   align-items: flex-start;
   gap: 10px;
   background: rgba(245, 158, 11, 0.08);
-  border: 1px solid rgba(245, 158, 11, 0.3);
-  padding: 10px 12px;
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  padding: 11px 14px;
   border-radius: 8px;
 }
 
@@ -844,7 +841,7 @@
 .batch-import-files-heading {
   font-size: 12px;
   font-weight: 600;
-  color: #94a3b8;
+  color: var(--cad-text-muted, #94a3b8);
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -852,14 +849,14 @@
 
 .batch-loading-text {
   font-size: 11px;
-  color: #38bdf8;
+  color: var(--cad-accent, #3b82f6);
 }
 
 .batch-import-files-list {
-  background: rgba(15, 23, 42, 0.7);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--cad-bg-deep, #0c0e12);
+  border: 1px solid var(--cad-border, #283344);
   border-radius: 8px;
-  max-height: 140px;
+  max-height: 150px;
   overflow-y: auto;
   padding: 4px;
 }
@@ -869,12 +866,12 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 10px;
-  border-radius: 4px;
+  border-radius: 5px;
   font-size: 12px;
 }
 
 .batch-file-row:hover {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .batch-file-info {
@@ -893,8 +890,9 @@
 }
 
 .batch-file-size {
-  color: #64748b;
+  color: var(--cad-text-dim, #64748b);
   font-size: 11px;
+  font-family: var(--cad-font-mono, monospace);
 }
 
 .batch-file-details {
@@ -904,9 +902,9 @@
 }
 
 .batch-file-dims {
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-family: var(--cad-font-mono, monospace);
   font-size: 11px;
-  color: #94a3b8;
+  color: var(--cad-text-muted, #94a3b8);
 }
 
 .batch-file-dims.highlight {
@@ -917,41 +915,50 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 12px;
   padding: 14px 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.07);
-  background: rgba(15, 23, 42, 0.95);
+  border-top: 1px solid var(--cad-border, #283344);
+  background: var(--cad-bg-surface, #141820);
 }
 
 .batch-btn {
-  padding: 8px 16px;
-  border-radius: 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 8px 18px;
+  border-radius: 8px;
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
-  transition: all 0.15s ease;
-  border: none;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
+  border: 1px solid transparent;
+  outline: none;
+  font-family: inherit;
 }
 
 .batch-btn-secondary {
-  background: rgba(255, 255, 255, 0.07);
-  color: #cbd5e1;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--cad-border, #283344);
+  color: var(--cad-text-main, #f1f5f9);
 }
 
 .batch-btn-secondary:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.2);
   color: #ffffff;
 }
 
 .batch-btn-primary {
-  background: #0284c7;
+  background: linear-gradient(135deg, #3b82f6, #2563eb);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(2, 132, 199, 0.3);
+  font-weight: 600;
+  box-shadow: 0 2px 10px rgba(37, 99, 235, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
 .batch-btn-primary:hover {
-  background: #0369a1;
-  box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
+  background: linear-gradient(135deg, #60a5fa, #3b82f6);
+  box-shadow: 0 4px 16px rgba(37, 99, 235, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  transform: translateY(-1px);
 }
-
-
