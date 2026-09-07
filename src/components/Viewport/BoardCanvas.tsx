@@ -1139,12 +1139,18 @@ function drawImageLayer(
     ctx.globalCompositeOperation = "source-over";
   }
 
-  // Optical filters
+  // Optical filters & Tint
   let filterStr = "";
   if (layer.brightness !== undefined && layer.brightness !== 100) filterStr += `brightness(${layer.brightness}%) `;
   if (layer.contrast !== undefined && layer.contrast !== 100) filterStr += `contrast(${layer.contrast}%) `;
   if (layer.invert) filterStr += "invert(100%) ";
   if (layer.grayscale) filterStr += "grayscale(100%) ";
+
+  if (layer.tintColor === "green") filterStr += "sepia(100%) hue-rotate(85deg) saturate(220%) ";
+  else if (layer.tintColor === "blue") filterStr += "sepia(100%) hue-rotate(180deg) saturate(220%) ";
+  else if (layer.tintColor === "red") filterStr += "sepia(100%) hue-rotate(320deg) saturate(250%) ";
+  else if (layer.tintColor === "amber") filterStr += "sepia(100%) hue-rotate(30deg) saturate(300%) ";
+
   if (filterStr) ctx.filter = filterStr.trim();
 
   ctx.drawImage(img, 0, 0, wPx, hPx);

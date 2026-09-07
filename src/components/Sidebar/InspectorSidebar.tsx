@@ -1,11 +1,15 @@
-import React, { useState } from "react";
+import React from "react";
 import {
   Image as ImageIcon,
+  Move,
+  Compass,
   RotateCw,
   RotateCcw,
   FlipHorizontal,
   FlipVertical,
   Ruler,
+  Layers,
+  Zap,
   Lock,
   Unlock,
   Eye,
@@ -64,15 +68,18 @@ export const InspectorSidebar: React.FC = () => {
 
   if (!imgLayer) {
     return (
-      <aside className="cad-sidebar cad-sidebar-right" style={{ width: `${rightSidebarWidth}px` }}>
-        <div className="cad-sidebar-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-            <ImageIcon size={14} color="#60a5fa" />
-            <span style={{ fontWeight: 600 }}>Свойства изображения</span>
+      <aside className="cad-inspector-panel" style={{ width: `${rightSidebarWidth}px` }}>
+        <div className="cad-sidebar-header" style={{ padding: "12px 14px", borderBottom: "1px solid #1e293b" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+            <ImageIcon size={16} color="#38bdf8" />
+            <span style={{ fontWeight: 600, fontSize: "12px", color: "#f8fafc" }}>Свойства изображения</span>
           </div>
         </div>
-        <div style={{ padding: "40px 20px", textAlign: "center", color: "var(--cad-text-dim)", fontSize: "12px", lineHeight: "1.6" }}>
-          Выберите скан платы на холсте или в дереве проекта для настройки калибровки, угла и оптических фильтров
+        <div style={{ padding: "48px 24px", textAlign: "center", color: "#64748b", fontSize: "12px", lineHeight: "1.6" }}>
+          <div style={{ width: "42px", height: "42px", borderRadius: "8px", background: "rgba(56, 189, 248, 0.08)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+            <ImageIcon size={20} color="#38bdf8" />
+          </div>
+          Выберите скан платы на холсте для настройки калибровки, юстировки угла и оптических фильтров
         </div>
       </aside>
     );
@@ -174,6 +181,12 @@ export const InspectorSidebar: React.FC = () => {
       if (imgLayer.contrast !== undefined && imgLayer.contrast !== 100) filterStr += `contrast(${imgLayer.contrast}%) `;
       if (imgLayer.invert) filterStr += "invert(100%) ";
       if (imgLayer.grayscale) filterStr += "grayscale(100%) ";
+
+      if (imgLayer.tintColor === "green") filterStr += "sepia(100%) hue-rotate(85deg) saturate(220%) ";
+      else if (imgLayer.tintColor === "blue") filterStr += "sepia(100%) hue-rotate(180deg) saturate(220%) ";
+      else if (imgLayer.tintColor === "red") filterStr += "sepia(100%) hue-rotate(320deg) saturate(250%) ";
+      else if (imgLayer.tintColor === "amber") filterStr += "sepia(100%) hue-rotate(30deg) saturate(300%) ";
+
       if (filterStr) ctx.filter = filterStr.trim();
 
       ctx.drawImage(img, 0, 0);
@@ -204,11 +217,11 @@ export const InspectorSidebar: React.FC = () => {
       blendMode: "normal",
       tintColor: "none",
     });
-    notifySuccess("Трансформации и фильтры сброшены к значениям по умолчанию");
+    notifySuccess("Трансформации и фильтры сброшены");
   };
 
   return (
-    <aside className="cad-sidebar cad-sidebar-right" style={{ width: `${rightSidebarWidth}px` }}>
+    <aside className="cad-inspector-panel" style={{ width: `${rightSidebarWidth}px` }}>
       {/* Resizer bar */}
       <div
         onMouseDown={handleMouseDown}
@@ -225,11 +238,21 @@ export const InspectorSidebar: React.FC = () => {
       />
 
       {/* Header */}
-      <div className="cad-sidebar-header" style={{ justifyContent: "space-between", gap: "6px" }}>
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "space-between",
+          padding: "10px 12px",
+          borderBottom: "1px solid #1e293b",
+          gap: "8px",
+          background: "#0d131f",
+        }}
+      >
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: 0 }}>
           <ImageIcon
-            size={14}
-            color={isTop ? "var(--cad-top-layer)" : "var(--cad-bot-layer)"}
+            size={15}
+            color={isTop ? "#38bdf8" : "#f59e0b"}
             style={{ flexShrink: 0 }}
           />
           <input
@@ -243,21 +266,24 @@ export const InspectorSidebar: React.FC = () => {
 
         <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
           <button
-            className={`cad-tree-icon-btn ${imgLayer.locked ? "active" : ""}`}
+            className={`cad-tool-btn ${imgLayer.locked ? "active" : ""}`}
+            style={{ width: "26px", height: "26px" }}
             onClick={() => handleUpdate({ locked: !imgLayer.locked })}
             title={imgLayer.locked ? "Разблокировать слой" : "Заблокировать от перемещения"}
           >
             {imgLayer.locked ? <Lock size={13} color="#f59e0b" /> : <Unlock size={13} />}
           </button>
           <button
-            className="cad-tree-icon-btn"
+            className="cad-tool-btn"
+            style={{ width: "26px", height: "26px" }}
             onClick={() => handleUpdate({ visible: !imgLayer.visible })}
             title={imgLayer.visible ? "Скрыть слой" : "Показать слой"}
           >
             {imgLayer.visible ? <Eye size={13} /> : <EyeOff size={13} />}
           </button>
           <button
-            className="cad-tree-icon-btn"
+            className="cad-tool-btn"
+            style={{ width: "26px", height: "26px" }}
             onClick={() => selectImage(null)}
             title="Снять выделение"
           >
@@ -266,11 +292,20 @@ export const InspectorSidebar: React.FC = () => {
         </div>
       </div>
 
-      <div className="cad-sidebar-content" style={{ padding: "10px", display: "flex", flexDirection: "column", gap: "10px" }}>
+      <div
+        className="cad-sidebar-content"
+        style={{
+          padding: "10px",
+          display: "flex",
+          flexDirection: "column",
+          gap: "9px",
+          overflowY: "auto",
+        }}
+      >
         {/* Side Switcher (Top ↔ Bottom) */}
-        <div className="cad-prop-group" style={{ padding: "8px 10px" }}>
+        <div className="cad-card-group" style={{ padding: "8px 10px" }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-            <span style={{ fontSize: "11px", fontWeight: 600, color: "var(--cad-text-muted)" }}>Сторона платы:</span>
+            <span style={{ fontSize: "10.5px", fontWeight: 600, color: "#94a3b8" }}>Сторона платы:</span>
             <span className="cad-badge-dim">{naturalW} × {naturalH} px</span>
           </div>
 
@@ -328,41 +363,47 @@ export const InspectorSidebar: React.FC = () => {
           </div>
         )}
 
-        <div style={{ opacity: imgLayer.locked ? 0.5 : 1, pointerEvents: imgLayer.locked ? "none" : "auto", display: "flex", flexDirection: "column", gap: "10px" }}>
-          {/* 1. Geometry & Scale */}
-          <div className="cad-prop-group">
-            <div className="cad-prop-group-header">1. Геометрия и позиция</div>
+        <div style={{ opacity: imgLayer.locked ? 0.5 : 1, pointerEvents: imgLayer.locked ? "none" : "auto", display: "flex", flexDirection: "column", gap: "9px" }}>
+          {/* Card: Геометрия и позиция */}
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Move size={13} />
+              <span>Геометрия и позиция</span>
+            </div>
 
+            {/* Position X / Y */}
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "6px" }}>
-              <div className="cad-labeled-input">
-                <label>Смещение X (мм)</label>
+              <div className="cad-field-wrap">
+                <span className="cad-field-prefix">X</span>
                 <input
                   type="number"
                   step="0.5"
-                  className="cad-prop-input"
+                  className="cad-modern-input"
                   value={imgLayer.offsetX ?? 0}
                   onChange={(e) => handleUpdate({ offsetX: parseFloat(e.target.value) || 0 })}
                 />
+                <span className="cad-field-suffix">мм</span>
               </div>
-              <div className="cad-labeled-input">
-                <label>Смещение Y (мм)</label>
+              <div className="cad-field-wrap">
+                <span className="cad-field-prefix">Y</span>
                 <input
                   type="number"
                   step="0.5"
-                  className="cad-prop-input"
+                  className="cad-modern-input"
                   value={imgLayer.offsetY ?? 0}
                   onChange={(e) => handleUpdate({ offsetY: parseFloat(e.target.value) || 0 })}
                 />
+                <span className="cad-field-suffix">мм</span>
               </div>
             </div>
 
-            {/* Width and Height with Aspect Lock */}
-            <div style={{ display: "flex", alignItems: "flex-end", gap: "6px", marginBottom: "6px" }}>
-              <div className="cad-labeled-input" style={{ flex: 1 }}>
-                <label>Ширина W (px)</label>
+            {/* Dimensions W and H with Aspect Lock */}
+            <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
+              <div className="cad-field-wrap" style={{ flex: 1 }}>
+                <span className="cad-field-prefix">W</span>
                 <input
                   type="number"
-                  className="cad-prop-input"
+                  className="cad-modern-input"
                   value={curW}
                   onChange={(e) => {
                     const newW = Math.max(10, parseInt(e.target.value, 10) || 10);
@@ -370,6 +411,7 @@ export const InspectorSidebar: React.FC = () => {
                     handleUpdate({ scale: Math.round(newScale * 1000) / 1000 });
                   }}
                 />
+                <span className="cad-field-suffix">px</span>
               </div>
 
               <button
@@ -381,11 +423,11 @@ export const InspectorSidebar: React.FC = () => {
                 {imgLayer.lockAspectRatio !== false ? <Link size={12} /> : <Unlink size={12} />}
               </button>
 
-              <div className="cad-labeled-input" style={{ flex: 1 }}>
-                <label>Высота H (px)</label>
+              <div className="cad-field-wrap" style={{ flex: 1 }}>
+                <span className="cad-field-prefix">H</span>
                 <input
                   type="number"
-                  className="cad-prop-input"
+                  className="cad-modern-input"
                   value={curH}
                   onChange={(e) => {
                     const newH = Math.max(10, parseInt(e.target.value, 10) || 10);
@@ -393,42 +435,48 @@ export const InspectorSidebar: React.FC = () => {
                     handleUpdate({ scale: Math.round(newScale * 1000) / 1000 });
                   }}
                 />
+                <span className="cad-field-suffix">px</span>
               </div>
             </div>
 
             {/* Scale Slider */}
-            <div className="cad-prop-row" style={{ marginTop: "4px" }}>
-              <span className="cad-prop-label">Масштаб ({Math.round(currentScale * 100)}%):</span>
-              <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, justifyContent: "flex-end" }}>
-                <input
-                  type="range"
-                  min="0.05"
-                  max="5.0"
-                  step="0.01"
-                  className="cad-prop-slider"
-                  style={{ width: "90px" }}
-                  value={currentScale}
-                  onChange={(e) => handleUpdate({ scale: parseFloat(e.target.value) || 1.0 })}
-                />
-                <button
-                  type="button"
-                  className="cad-btn cad-btn-secondary"
-                  style={{ fontSize: "10px", padding: "2px 6px" }}
-                  onClick={() => handleUpdate({ scale: 1.0 })}
-                  title="Сбросить масштаб в 100% (1.0x)"
-                >
-                  1:1
-                </button>
-              </div>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
+              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>Масштаб:</span>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "#38bdf8", fontFamily: "JetBrains Mono" }}>
+                {Math.round(currentScale * 100)}%
+              </span>
+            </div>
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <input
+                type="range"
+                min="0.05"
+                max="5.0"
+                step="0.01"
+                className="cad-modern-slider"
+                value={currentScale}
+                onChange={(e) => handleUpdate({ scale: parseFloat(e.target.value) || 1.0 })}
+              />
+              <button
+                type="button"
+                className="cad-badge-dim"
+                style={{ cursor: "pointer", padding: "3px 8px" }}
+                onClick={() => handleUpdate({ scale: 1.0 })}
+                title="Сбросить масштаб в 100% (1.0x)"
+              >
+                1:1
+              </button>
             </div>
           </div>
 
-          {/* 2. Orientation & Alignment (Micro-stepping) */}
-          <div className="cad-prop-group">
-            <div className="cad-prop-group-header">2. Поворот и юстировка</div>
+          {/* Card: Поворот и юстировка */}
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Compass size={13} />
+              <span>Поворот и юстировка</span>
+            </div>
 
             {/* Fine angle bar */}
-            <div className="cad-fine-angle-bar">
+            <div className="cad-fine-angle-bar" style={{ marginBottom: "6px" }}>
               <button
                 type="button"
                 className="cad-step-btn"
@@ -471,11 +519,11 @@ export const InspectorSidebar: React.FC = () => {
             </div>
 
             {/* Quick 90 deg and 0 deg buttons */}
-            <div className="cad-btn-grid-2" style={{ marginTop: "6px" }}>
+            <div className="cad-btn-grid-2" style={{ marginBottom: "6px" }}>
               <button
                 type="button"
                 className="cad-btn cad-btn-secondary"
-                style={{ fontSize: "11px", padding: "5px" }}
+                style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }}
                 onClick={() => handleUpdate({ rotation: ((imgLayer.rotation || 0) + 90) % 360 })}
                 title="Повернуть на +90° по часовой стрелке"
               >
@@ -485,7 +533,7 @@ export const InspectorSidebar: React.FC = () => {
               <button
                 type="button"
                 className="cad-btn cad-btn-secondary"
-                style={{ fontSize: "11px", padding: "5px" }}
+                style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }}
                 onClick={() => handleUpdate({ rotation: 0 })}
                 title="Сбросить угол в 0°"
               >
@@ -495,11 +543,11 @@ export const InspectorSidebar: React.FC = () => {
             </div>
 
             {/* Mirror X / Y */}
-            <div className="cad-btn-grid-2" style={{ marginTop: "6px" }}>
+            <div className="cad-btn-grid-2">
               <button
                 type="button"
                 className={`cad-btn cad-btn-secondary ${imgLayer.mirrored ? "active" : ""}`}
-                style={{ fontSize: "11px", padding: "5px" }}
+                style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }}
                 onClick={() => handleUpdate({ mirrored: !imgLayer.mirrored })}
                 title="Отзеркалить по горизонтали (Flip X)"
               >
@@ -509,7 +557,7 @@ export const InspectorSidebar: React.FC = () => {
               <button
                 type="button"
                 className={`cad-btn cad-btn-secondary ${imgLayer.flipV ? "active" : ""}`}
-                style={{ fontSize: "11px", padding: "5px" }}
+                style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }}
                 onClick={() => handleUpdate({ flipV: !imgLayer.flipV })}
                 title="Отзеркалить по вертикали (Flip Y)"
               >
@@ -519,16 +567,19 @@ export const InspectorSidebar: React.FC = () => {
             </div>
           </div>
 
-          {/* 3. Calibration & DPI */}
-          <div className="cad-prop-group">
-            <div className="cad-prop-group-header">3. Калибровка (CAD-масштаб)</div>
+          {/* Card: Калибровка масштаба */}
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Ruler size={13} />
+              <span>Калибровка (CAD-масштаб)</span>
+            </div>
 
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "6px" }}>
-              <div className="cad-labeled-input">
-                <label>Плотность (DPI)</label>
+              <div className="cad-field-wrap">
+                <span className="cad-field-prefix">DPI</span>
                 <input
                   type="number"
-                  className="cad-prop-input"
+                  className="cad-modern-input"
                   value={currentDpi}
                   onChange={(e) => {
                     const dpiVal = parseInt(e.target.value, 10) || 600;
@@ -539,12 +590,12 @@ export const InspectorSidebar: React.FC = () => {
                   }}
                 />
               </div>
-              <div className="cad-labeled-input">
-                <label>Плотность (px/мм)</label>
+              <div className="cad-field-wrap">
+                <span className="cad-field-prefix">PX/ММ</span>
                 <input
                   type="number"
                   step="0.01"
-                  className="cad-prop-input"
+                  className="cad-modern-input"
                   value={currentPxPerMm}
                   onChange={(e) => {
                     const pxVal = parseFloat(e.target.value) || 23.62;
@@ -558,14 +609,14 @@ export const InspectorSidebar: React.FC = () => {
             </div>
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
-              <span style={{ fontSize: "10.5px", color: "var(--cad-text-dim)" }}>Физический размер:</span>
-              <span className="cad-badge-dim">{widthMm} × {heightMm} мм</span>
+              <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>Физический размер:</span>
+              <span className="cad-badge-dim" style={{ color: "#38bdf8" }}>{widthMm} × {heightMm} мм</span>
             </div>
 
             <button
               type="button"
               className="cad-btn cad-btn-secondary"
-              style={{ width: "100%", fontSize: "11px", padding: "6px" }}
+              style={{ width: "100%", fontSize: "11px", padding: "6px", justifyContent: "center", border: "1px solid rgba(56, 189, 248, 0.3)" }}
               onClick={() => setActiveTool("calibrate")}
               title="Кликните 2 точки известного расстояния на холсте"
             >
@@ -574,21 +625,24 @@ export const InspectorSidebar: React.FC = () => {
             </button>
           </div>
 
-          {/* 4. Display Filters & Blending */}
-          <div className="cad-prop-group">
-            <div className="cad-prop-group-header">4. Отображение и смешивание</div>
+          {/* Card: Отображение и смешивание */}
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Layers size={13} />
+              <span>Отображение и смешивание</span>
+            </div>
 
             {/* Blend Mode */}
-            <div className="cad-prop-row">
-              <span className="cad-prop-label">Режим смешивания:</span>
+            <div style={{ marginBottom: "8px" }}>
+              <div style={{ fontSize: "10px", color: "#94a3b8", marginBottom: "4px" }}>Режим смешивания:</div>
               <select
                 className="cad-prop-select"
                 value={imgLayer.blendMode || "normal"}
                 onChange={(e) => handleUpdate({ blendMode: e.target.value })}
               >
                 <option value="normal">Normal (Обычный)</option>
-                <option value="multiply">Multiply (Умножение)</option>
-                <option value="difference">Difference (Разница)</option>
+                <option value="multiply">Multiply (Умножение — просвет белого фона)</option>
+                <option value="difference">Difference (Разница — подсветка несовпадений)</option>
                 <option value="screen">Screen (Осветление)</option>
                 <option value="overlay">Overlay (Перекрытие)</option>
                 <option value="darken">Darken (Затемнение)</option>
@@ -596,72 +650,110 @@ export const InspectorSidebar: React.FC = () => {
               </select>
             </div>
 
+            {/* PCB Mask Tint */}
+            <div style={{ marginBottom: "8px" }}>
+              <div style={{ fontSize: "10px", color: "#94a3b8", marginBottom: "4px" }}>Тонировка маски (PCB Tint):</div>
+              <div className="cad-tint-chips">
+                {[
+                  { id: "none", label: "Оригинал" },
+                  { id: "green", label: "Зеленая" },
+                  { id: "blue", label: "Синяя" },
+                  { id: "red", label: "Красная" },
+                  { id: "amber", label: "Медь" },
+                ].map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className={`cad-tint-pill ${(imgLayer.tintColor || "none") === t.id ? "active" : ""}`}
+                    onClick={() => handleUpdate({ tintColor: t.id })}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Opacity */}
-            <div className="cad-prop-row">
-              <span className="cad-prop-label">Прозрачность ({Math.round((imgLayer.opacity ?? 0.85) * 100)}%):</span>
+            <div style={{ marginBottom: "6px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10.5px", color: "#94a3b8" }}>
+                <span>Прозрачность:</span>
+                <strong style={{ color: "#f8fafc", fontFamily: "JetBrains Mono" }}>{Math.round((imgLayer.opacity ?? 0.85) * 100)}%</strong>
+              </div>
               <input
                 type="range"
                 min="0.05"
                 max="1.0"
                 step="0.05"
-                className="cad-prop-slider"
+                className="cad-modern-slider"
                 value={imgLayer.opacity ?? 0.85}
                 onChange={(e) => handleUpdate({ opacity: parseFloat(e.target.value) })}
               />
             </div>
 
             {/* Brightness */}
-            <div className="cad-prop-row">
-              <span className="cad-prop-label">Яркость ({Math.round(imgLayer.brightness ?? 100)}%):</span>
+            <div style={{ marginBottom: "6px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10.5px", color: "#94a3b8" }}>
+                <span>Яркость:</span>
+                <strong style={{ color: "#f8fafc", fontFamily: "JetBrains Mono" }}>{Math.round(imgLayer.brightness ?? 100)}%</strong>
+              </div>
               <input
                 type="range"
                 min="30"
                 max="200"
                 step="5"
-                className="cad-prop-slider"
+                className="cad-modern-slider"
                 value={imgLayer.brightness ?? 100}
                 onChange={(e) => handleUpdate({ brightness: parseFloat(e.target.value) })}
               />
             </div>
 
             {/* Contrast */}
-            <div className="cad-prop-row">
-              <span className="cad-prop-label">Контраст ({Math.round(imgLayer.contrast ?? 100)}%):</span>
+            <div style={{ marginBottom: "8px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: "10.5px", color: "#94a3b8" }}>
+                <span>Контраст:</span>
+                <strong style={{ color: "#f8fafc", fontFamily: "JetBrains Mono" }}>{Math.round(imgLayer.contrast ?? 100)}%</strong>
+              </div>
               <input
                 type="range"
                 min="50"
                 max="250"
                 step="5"
-                className="cad-prop-slider"
+                className="cad-modern-slider"
                 value={imgLayer.contrast ?? 100}
                 onChange={(e) => handleUpdate({ contrast: parseFloat(e.target.value) })}
               />
             </div>
 
-            {/* Invert & Grayscale */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginTop: "6px" }}>
-              <label className="cad-checkbox-label">
+            {/* Modern Toggle Switches for Invert & Grayscale */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: "4px" }}>
+              <label className="cad-toggle-switch">
                 <input
                   type="checkbox"
                   checked={Boolean(imgLayer.invert)}
                   onChange={(e) => handleUpdate({ invert: e.target.checked })}
                 />
+                <span className="cad-switch-track" />
                 <span>Инверсия</span>
               </label>
-              <label className="cad-checkbox-label">
+
+              <label className="cad-toggle-switch">
                 <input
                   type="checkbox"
                   checked={Boolean(imgLayer.grayscale)}
                   onChange={(e) => handleUpdate({ grayscale: e.target.checked })}
                 />
-                <span>Оттенки серого</span>
+                <span className="cad-switch-track" />
+                <span>Ч/Б режим</span>
               </label>
             </div>
           </div>
 
-          {/* 5. Quick Actions */}
-          <div className="cad-prop-group">
-            <div className="cad-prop-group-header">5. Быстрые действия</div>
+          {/* Card: Быстрые действия */}
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Zap size={13} />
+              <span>Быстрые действия</span>
+            </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
               <button
@@ -671,7 +763,7 @@ export const InspectorSidebar: React.FC = () => {
                 onClick={handleReplaceFile}
                 title="Заменить файл изображения с сохранением координат, масштаба и фильтров"
               >
-                <Upload size={12} style={{ marginRight: "6px" }} />
+                <Upload size={12} style={{ marginRight: "6px", color: "#38bdf8" }} />
                 <span>Заменить файл...</span>
               </button>
 
@@ -702,7 +794,7 @@ export const InspectorSidebar: React.FC = () => {
               <button
                 type="button"
                 className="cad-btn cad-btn-secondary"
-                style={{ width: "100%", fontSize: "11px", justifyContent: "center", color: "#f87171" }}
+                style={{ width: "100%", fontSize: "11px", justifyContent: "center", color: "#f87171", borderColor: "rgba(239, 68, 68, 0.25)" }}
                 onClick={handleResetTransforms}
                 title="Сбросить масштаб в 1.0x, угол в 0° и вернуть фильтры к значениям по умолчанию"
               >
