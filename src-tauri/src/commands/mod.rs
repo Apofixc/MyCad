@@ -366,8 +366,47 @@ pub fn image_import(state: State<AppState>, file_path: String, side: String) -> 
 
 #[tauri::command]
 pub fn image_detect_corners(file_path: String) -> Result<[(f64, f64); 4], String> {
-    let img = image::open(&file_path).map_err(|e| e.to_string())?;
+    let img = pipeline::load_image(&file_path)?;
     Ok(pipeline::detect_board_corners(&img))
+}
+
+#[tauri::command]
+pub fn detect_board_corners(source: String) -> Result<pipeline::QuadPoints, String> {
+    let img = pipeline::load_image(&source)?;
+    let c = pipeline::detect_board_corners(&img);
+    Ok(pipeline::QuadPoints {
+        top_left: pipeline::Point2D { x: c[0].0, y: c[0].1 },
+        top_right: pipeline::Point2D { x: c[1].0, y: c[1].1 },
+        bottom_right: pipeline::Point2D { x: c[2].0, y: c[2].1 },
+        bottom_left: pipeline::Point2D { x: c[3].0, y: c[3].1 },
+    })
+}
+
+#[tauri::command]
+pub fn process_board_image(
+    state: State<AppState>,
+    request: pipeline::ProcessImageRequest,
+) -> Result<pipeline::ProcessImageResponse, String> {
+    let guard = state.session.lock().map_err(|e| e.to_string())?;
+    let default_temp = dirs::cache_dir()
+        .unwrap_or_else(std::env::temp_dir)
+        .join("mycad");
+    let cache_dir = if let Some(ref session) = *guard {
+        &session.temp_image_dir
+    } else {
+        &default_temp
+    };
+    pipeline::process_image(request, cache_dir)
+}
+
+#[tauri::command]
+pub fn read_image_file(
+    state: State<AppState>,
+    path: String,
+) -> Result<pipeline::LoadedImageFile, String> {
+    let guard = state.session.lock().map_err(|e| e.to_string())?;
+    let cache_dir = guard.as_ref().map(|s| s.temp_image_dir.as_path());
+    pipeline::read_image_file_info(&path, cache_dir)
 }
 
 #[tauri::command]
@@ -382,7 +421,7 @@ pub fn image_warp_perspective(
     let guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_ref().ok_or("Нет активного проекта")?;
 
-    let img = image::open(&file_path).map_err(|e| e.to_string())?;
+    let img = pipeline::load_image(&file_path)?;
     let warped = pipeline::warp_perspective(&img, &corners, target_w, target_h)?;
 
     let (filename, dest_path) = pipeline::save_image_to_session_cache(&warped, &session.temp_image_dir, &format!("{}_warped", side))?;
@@ -420,4 +459,5 @@ pub fn image_warp_perspective(
 pub fn image_read_bytes(file_path: String) -> Result<Vec<u8>, String> {
     std::fs::read(&file_path).map_err(|e| format!("Не удалось прочитать файл {}: {}", file_path, e))
 }
+
 

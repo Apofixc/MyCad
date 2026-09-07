@@ -6,8 +6,16 @@ import { CurtainSlider } from "./CurtainSlider";
 import { MagnifierLoupe } from "./MagnifierLoupe";
 import { engineClient, resolveImageUrl } from "../../api/engineClient";
 
+import { Image as ImageIcon } from "lucide-react";
+import {
+  extractImagesFromDrop,
+  extractImageFromClipboard,
+  readFileAsDataUrl,
+} from "../../utils/imageLoader";
+
 export const BoardCanvas: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const containerRef = useRef<HTMLDivElement | null>(null);
 
   const {
     board,
@@ -28,7 +36,12 @@ export const BoardCanvas: React.FC = () => {
     showBottomLayer,
     curtainPosition,
     curtainVertical,
+    setPendingPreprocess,
+    setPendingBatchImport,
   } = useUiStore();
+
+  // Drag-and-drop overlay state
+  const [isCanvasDragOver, setIsCanvasDragOver] = useState(false);
 
   // Dragging / Panning state
   const [isPanning, setIsPanning] = useState(false);
@@ -279,8 +292,109 @@ export const BoardCanvas: React.FC = () => {
     setViewportPan({ x: newPanX, y: newPanY });
   };
 
+  // Clipboard Paste (Ctrl+V)
+  useEffect(() => {
+    const handlePaste = async (e: ClipboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable)
+      ) {
+        return;
+      }
+
+      const file = extractImageFromClipboard(e);
+      if (file) {
+        e.preventDefault();
+        const side = showTopLayer ? "top" : "bottom";
+        const centerMm = screenToBoardMm(
+          (canvasRef.current?.clientWidth || 800) / 2,
+          (canvasRef.current?.clientHeight || 600) / 2
+        );
+        const dataUrl = await readFileAsDataUrl(file);
+        setPendingPreprocess({
+          file,
+          dataUrl,
+          name: file.name || "Снимок_платы",
+          side,
+          customPos: centerMm,
+        });
+      }
+    };
+
+    window.addEventListener("paste", handlePaste);
+    return () => window.removeEventListener("paste", handlePaste);
+  }, [showTopLayer, screenToBoardMm, setPendingPreprocess]);
+
   return (
-    <div className="cad-viewport">
+    <div
+      ref={containerRef}
+      className="cad-viewport"
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsCanvasDragOver(true);
+      }}
+      onDragEnter={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsCanvasDragOver(true);
+      }}
+      onDragLeave={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (e.currentTarget.contains(e.relatedTarget as Node)) return;
+        setIsCanvasDragOver(false);
+      }}
+      onDrop={async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setIsCanvasDragOver(false);
+
+        const files = extractImagesFromDrop(e);
+        if (files.length === 0) return;
+
+        const rect = containerRef.current?.getBoundingClientRect();
+        const mouseX = e.clientX - (rect?.left || 0);
+        const mouseY = e.clientY - (rect?.top || 0);
+        const dropMm = screenToBoardMm(mouseX, mouseY);
+        const side = showTopLayer ? "top" : "bottom";
+
+        if (files.length === 1) {
+          const f = files[0];
+          const filePath = (f as any).filePath as string | undefined;
+          const dataUrl = filePath ? filePath : await readFileAsDataUrl(f);
+          setPendingPreprocess({
+            file: f,
+            filePath,
+            dataUrl,
+            name: f.name,
+            side,
+            customPos: dropMm,
+          });
+        } else {
+          setPendingBatchImport({
+            files,
+            side,
+            customPos: dropMm,
+          });
+        }
+      }}
+    >
+      {/* Drag & Drop Visual Overlay */}
+      {isCanvasDragOver && (
+        <div className="cad-canvas-dragover-overlay">
+          <ImageIcon size={48} className="dragover-icon" />
+          <h3>Бросьте сюда фото платы</h3>
+          <p>
+            Изображения будут добавлены в слой{" "}
+            <span style={{ color: "#38bdf8", fontWeight: 600 }}>
+              {showTopLayer ? "Top (Лицевая сторона)" : "Bottom (Оборотная сторона)"}
+            </span>
+          </p>
+        </div>
+      )}
+
       <canvas
         ref={canvasRef}
         className="cad-canvas"

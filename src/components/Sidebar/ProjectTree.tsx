@@ -19,10 +19,12 @@ import {
   CircleDot,
   Network,
   Workflow,
+  Crop,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
 import { BoardImageLayer } from "../../types/cad";
+import { openImageFileDialog, readFileAsDataUrl } from "../../utils/imageLoader";
 
 interface ContextMenuState {
   x: number;
@@ -81,7 +83,33 @@ export const ProjectTree: React.FC = () => {
     toggleAllComponents,
     openModal,
     setPreprocessSide,
+    setPendingPreprocess,
+    setPendingBatchImport,
   } = useUiStore();
+
+  const handleImportScan = async (side: "top" | "bottom", docId: string) => {
+    setActiveFile(docId);
+    const files = await openImageFileDialog();
+    if (!files || files.length === 0) return;
+
+    if (files.length === 1) {
+      const f = files[0];
+      const filePath = (f as any).filePath as string | undefined;
+      const dataUrl = filePath ? filePath : await readFileAsDataUrl(f);
+      setPendingPreprocess({
+        file: f,
+        filePath,
+        dataUrl,
+        name: f.name,
+        side,
+      });
+    } else {
+      setPendingBatchImport({
+        files,
+        side,
+      });
+    }
+  };
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
@@ -410,7 +438,7 @@ export const ProjectTree: React.FC = () => {
                                         className="cad-tree-icon-btn"
                                         onClick={() => {
                                           if (!isActive) setActiveFile(file.id);
-                                          openModal("preprocess");
+                                          handleImportScan("top", file.id);
                                         }}
                                         title="Импортировать скан схемы"
                                       >
@@ -426,7 +454,7 @@ export const ProjectTree: React.FC = () => {
                                           className="cad-tree-ghost-btn"
                                           onClick={() => {
                                             if (!isActive) setActiveFile(file.id);
-                                            openModal("preprocess");
+                                            handleImportScan("top", file.id);
                                           }}
                                         >
                                           <Plus size={11} />
@@ -850,8 +878,7 @@ export const ProjectTree: React.FC = () => {
                                               className="cad-tree-icon-btn"
                                               onClick={() => {
                                                 if (!isActive) setActiveFile(file.id);
-                                                setPreprocessSide("top");
-                                                openModal("preprocess");
+                                                handleImportScan("top", file.id);
                                               }}
                                               title="Импортировать скан Top"
                                             >
@@ -867,8 +894,7 @@ export const ProjectTree: React.FC = () => {
                                                 className="cad-tree-ghost-btn"
                                                 onClick={() => {
                                                   if (!isActive) setActiveFile(file.id);
-                                                  setPreprocessSide("top");
-                                                  openModal("preprocess");
+                                                  handleImportScan("top", file.id);
                                                 }}
                                               >
                                                 <Plus size={11} />
@@ -1012,8 +1038,7 @@ export const ProjectTree: React.FC = () => {
                                               className="cad-tree-icon-btn"
                                               onClick={() => {
                                                 if (!isActive) setActiveFile(file.id);
-                                                setPreprocessSide("bottom");
-                                                openModal("preprocess");
+                                                handleImportScan("bottom", file.id);
                                               }}
                                               title="Импортировать скан Bottom"
                                             >
@@ -1467,20 +1492,39 @@ export const ProjectTree: React.FC = () => {
           onClick={(e) => e.stopPropagation()}
         >
           {contextMenu.targetImage && (
-            <div
-              className="cad-context-item"
-              onClick={async () => {
-                const others = contextMenu.allSideImages.filter((i) => i.id !== contextMenu.targetImage!.id);
-                if (others.length > 0) {
-                  await batchSetVisibility(others.map((i) => i.id), false);
-                }
-                await updateImageLayer({ ...contextMenu.targetImage!, visible: true });
-                setContextMenu(null);
-              }}
-            >
-              <Eye size={12} color="#38bdf8" />
-              <span>Изолировать (скрыть остальные)</span>
-            </div>
+            <>
+              <div
+                className="cad-context-item"
+                onClick={() => {
+                  const img = contextMenu.targetImage!;
+                  setPendingPreprocess({
+                    filePath: img.cachedUrl?.startsWith("data:") ? undefined : img.cachedUrl,
+                    dataUrl: img.cachedUrl || "",
+                    name: img.name,
+                    side: img.side,
+                    replaceImageId: img.id,
+                  });
+                  setContextMenu(null);
+                }}
+              >
+                <Crop size={12} color="#38bdf8" />
+                <span>Предобработка / Кадрирование (Warp / Crop)</span>
+              </div>
+              <div
+                className="cad-context-item"
+                onClick={async () => {
+                  const others = contextMenu.allSideImages.filter((i) => i.id !== contextMenu.targetImage!.id);
+                  if (others.length > 0) {
+                    await batchSetVisibility(others.map((i) => i.id), false);
+                  }
+                  await updateImageLayer({ ...contextMenu.targetImage!, visible: true });
+                  setContextMenu(null);
+                }}
+              >
+                <Eye size={12} color="#38bdf8" />
+                <span>Изолировать (скрыть остальные)</span>
+              </div>
+            </>
           )}
           <div
             className="cad-context-item"

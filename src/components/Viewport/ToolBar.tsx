@@ -1,4 +1,3 @@
-import React from "react";
 import {
   MousePointer,
   Move,
@@ -9,12 +8,47 @@ import {
   Search,
   Zap,
   Grid,
+  ImagePlus,
 } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
 import { ToolMode } from "../../types/cad";
+import { openImageFileDialog, readFileAsDataUrl } from "../../utils/imageLoader";
 
 export const ToolBar: React.FC = () => {
-  const { activeTool, setActiveTool, showGrid, toggleGrid, toggleLoupe, loupeActive } = useUiStore();
+  const {
+    activeTool,
+    setActiveTool,
+    showGrid,
+    toggleGrid,
+    toggleLoupe,
+    showTopLayer,
+    setPendingPreprocess,
+    setPendingBatchImport,
+  } = useUiStore();
+
+  const handleAddImage = async () => {
+    const files = await openImageFileDialog();
+    if (!files || files.length === 0) return;
+    const side = showTopLayer ? "top" : "bottom";
+
+    if (files.length === 1) {
+      const f = files[0];
+      const filePath = (f as any).filePath as string | undefined;
+      const dataUrl = filePath ? filePath : await readFileAsDataUrl(f);
+      setPendingPreprocess({
+        file: f,
+        filePath,
+        dataUrl,
+        name: f.name,
+        side,
+      });
+    } else {
+      setPendingBatchImport({
+        files,
+        side,
+      });
+    }
+  };
 
   const tools: { id: ToolMode; label: string; icon: React.ReactNode; shortcut: string }[] = [
     { id: "select", label: "Выбор и инспекция", icon: <MousePointer size={16} />, shortcut: "V" },
@@ -30,6 +64,20 @@ export const ToolBar: React.FC = () => {
 
   return (
     <div className="cad-floating-toolbar">
+      <button
+        className="cad-tool-btn"
+        onClick={handleAddImage}
+        title="Добавить фото или скан платы (PNG, JPG, WEBP, BMP, TIF)"
+        style={{
+          background: "rgba(14, 165, 233, 0.18)",
+          borderColor: "rgba(56, 189, 248, 0.4)",
+          color: "#38bdf8",
+        }}
+      >
+        <ImagePlus size={16} />
+      </button>
+
+      <div className="cad-tool-sep" />
       {tools.map((t) => (
         <button
           key={t.id}

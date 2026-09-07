@@ -429,6 +429,35 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
       return [] as unknown as T;
     }
 
+    case "detect_board_corners": {
+      return {
+        topLeft: { x: 50, y: 50 },
+        topRight: { x: 1870, y: 50 },
+        bottomRight: { x: 1870, y: 1030 },
+        bottomLeft: { x: 50, y: 1030 },
+      } as unknown as T;
+    }
+
+    case "process_board_image": {
+      return {
+        dataUrl: args.request?.source || "",
+        filePath: undefined,
+        width: 1920,
+        height: 1080,
+      } as unknown as T;
+    }
+
+    case "read_image_file": {
+      const name = args.path.split(/[/\\]/).pop() || "image";
+      return {
+        name,
+        mime: "image/png",
+        filePath: args.path,
+        width: 1920,
+        height: 1080,
+      } as unknown as T;
+    }
+
     default:
       throw new Error(`[MockIPC] Unknown command: ${cmd}`);
   }

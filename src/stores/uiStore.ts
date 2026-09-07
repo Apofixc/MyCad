@@ -1,6 +1,22 @@
 import { create } from "zustand";
 import { ToolMode } from "../types/cad";
 
+export interface PendingPreprocessItem {
+  file?: File;
+  filePath?: string;
+  dataUrl: string;
+  name: string;
+  side: "top" | "bottom";
+  customPos?: { x: number; y: number };
+  replaceImageId?: string;
+}
+
+export interface PendingBatchImportItem {
+  files: File[];
+  side: "top" | "bottom";
+  customPos?: { x: number; y: number };
+}
+
 interface UiStore {
   activeTool: ToolMode;
   cursorMm: { x: number; y: number };
@@ -42,6 +58,11 @@ interface UiStore {
     confirmClose: boolean;
   };
   preprocessSide: "top" | "bottom";
+  pendingPreprocess: PendingPreprocessItem | null;
+  pendingBatchImport: PendingBatchImportItem | null;
+
+  setPendingPreprocess: (item: PendingPreprocessItem | null) => void;
+  setPendingBatchImport: (item: PendingBatchImportItem | null) => void;
 
   // Actions
   setActiveTool: (tool: ToolMode) => void;
@@ -114,7 +135,11 @@ export const useUiStore = create<UiStore>((set) => ({
     confirmClose: false,
   },
   preprocessSide: "top",
+  pendingPreprocess: null,
+  pendingBatchImport: null,
 
+  setPendingPreprocess: (item) => set({ pendingPreprocess: item }),
+  setPendingBatchImport: (item) => set({ pendingBatchImport: item }),
   setPreprocessSide: (side) => set({ preprocessSide: side }),
   setActiveTool: (tool) => set({ activeTool: tool }),
   setCursorMm: (pos) => set({ cursorMm: pos }),
