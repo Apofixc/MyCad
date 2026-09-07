@@ -24,7 +24,6 @@ impl GlobalDb {
                  id TEXT PRIMARY KEY,
                  name TEXT NOT NULL,
                  file_path TEXT NOT NULL UNIQUE,
-                 component_count INTEGER DEFAULT 0,
                  last_opened DATETIME NOT NULL,
                  created_at DATETIME NOT NULL
              );
@@ -40,17 +39,15 @@ impl GlobalDb {
 
     pub fn add_recent_project(&mut self, proj: &RecentProject) -> Result<(), String> {
         self.conn.execute(
-            "INSERT INTO recent_projects (id, name, file_path, component_count, last_opened, created_at)
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+            "INSERT INTO recent_projects (id, name, file_path, last_opened, created_at)
+             VALUES (?1, ?2, ?3, ?4, ?5)
              ON CONFLICT(file_path) DO UPDATE SET
                  name = excluded.name,
-                 component_count = excluded.component_count,
                  last_opened = excluded.last_opened",
             params![
                 proj.id,
                 proj.name,
                 proj.file_path,
-                proj.component_count as i64,
                 proj.last_opened,
                 proj.created_at
             ],
@@ -60,18 +57,16 @@ impl GlobalDb {
 
     pub fn get_recent_projects(&self) -> Result<Vec<RecentProject>, String> {
         let mut stmt = self.conn
-            .prepare("SELECT id, name, file_path, component_count, last_opened, created_at FROM recent_projects ORDER BY last_opened DESC LIMIT 20")
+            .prepare("SELECT id, name, file_path, last_opened, created_at FROM recent_projects ORDER BY last_opened DESC LIMIT 20")
             .map_err(|e| e.to_string())?;
 
         let rows = stmt.query_map([], |row| {
-            let count: i64 = row.get(3)?;
             Ok(RecentProject {
                 id: row.get(0)?,
                 name: row.get(1)?,
                 file_path: row.get(2)?,
-                component_count: count as usize,
-                last_opened: row.get(4)?,
-                created_at: row.get(5)?,
+                last_opened: row.get(3)?,
+                created_at: row.get(4)?,
             })
         }).map_err(|e| e.to_string())?;
 

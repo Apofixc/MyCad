@@ -119,7 +119,6 @@ pub struct RecentProject {
     pub id: String,
     pub name: String,
     pub file_path: String,
-    pub component_count: usize,
     pub last_opened: String,
     pub created_at: String,
 }

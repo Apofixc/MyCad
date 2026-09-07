@@ -32,7 +32,6 @@ pub fn project_create(
         id: manifest.id.clone(),
         name: manifest.name.clone(),
         file_path: path,
-        component_count: 0,
         last_opened: chrono::Utc::now().to_rfc3339(),
         created_at: manifest.created_at.clone(),
     };
@@ -54,7 +53,6 @@ pub fn project_open(state: State<AppState>, path: String) -> Result<ProjectManif
         id: manifest.id.clone(),
         name: manifest.name.clone(),
         file_path: path,
-        component_count: 0,
         last_opened: chrono::Utc::now().to_rfc3339(),
         created_at: manifest.created_at.clone(),
     };

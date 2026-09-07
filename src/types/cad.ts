@@ -79,7 +79,6 @@ export interface RecentProject {
   id: string;
   name: string;
   filePath: string;
-  componentCount: number;
   lastOpened: string;
   createdAt: string;
 }

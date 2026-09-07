@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Cpu, Plus, FolderOpen, Clock, FileCode, Trash2, ChevronRight } from "lucide-react";
+import { Layers, Plus, FolderOpen, Clock, FileCode, Trash2, ChevronRight } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
 import { engineClient } from "../../api/engineClient";
@@ -89,7 +89,7 @@ export const StartScreen: React.FC = () => {
       <div className="cad-start-content">
         <div className="cad-start-hero">
           <div className="cad-start-logo-wrap">
-            <Cpu size={36} />
+            <Layers size={36} color="#60a5fa" />
           </div>
           <h1 className="cad-start-title">MyCad</h1>
           <p className="cad-start-subtitle">
@@ -153,8 +153,8 @@ export const StartScreen: React.FC = () => {
                       <div style={{ minWidth: 0 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
                           <span style={{ fontWeight: 600, fontSize: "13px", color: "#fff" }}>{item.name}</span>
-                          <span style={{ fontSize: "10px", padding: "1px 5px", background: "rgba(255,255,255,0.06)", borderRadius: "3px", color: "#94a3b8" }}>
-                            {item.componentCount} комп.
+                          <span style={{ fontSize: "10px", padding: "1px 5px", background: "rgba(59,130,246,0.15)", borderRadius: "3px", color: "#60a5fa" }}>
+                            .mycad
                           </span>
                         </div>
                         <div style={{ fontSize: "11px", color: "var(--cad-text-dim)", textOverflow: "ellipsis", overflow: "hidden", whiteSpace: "nowrap" }}>
