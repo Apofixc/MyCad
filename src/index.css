@@ -1295,88 +1295,114 @@ body,
 /* ========================================================================= */
 /* Batch Selection Bar in Sidebar                                            */
 /* ========================================================================= */
+/* ========================================================================= */
+/* Batch Selection Floating Pill Bar in Sidebar                              */
+/* ========================================================================= */
 .cad-batch-bar {
   position: sticky;
-  bottom: 8px;
-  margin: 0 6px 6px 6px;
-  background: rgba(20, 24, 32, 0.95);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border: 1px solid var(--cad-border);
-  padding: 8px 10px;
+  bottom: 10px;
+  margin: 0 8px;
   display: flex;
-  flex-direction: column;
-  gap: 7px;
-  z-index: 25;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  animation: slideUp 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  justify-content: center;
+  z-index: 40;
+  pointer-events: auto;
+  animation: cadPillSlideUp 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-@keyframes slideUp {
-  from { transform: translateY(12px); opacity: 0; }
+@keyframes cadPillSlideUp {
+  from { transform: translateY(10px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
 
-.cad-batch-header {
+.cad-batch-pill-content {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: 6px;
+  background: rgba(15, 20, 28, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  padding: 4px 6px 4px 10px;
+  border-radius: 24px;
+  box-shadow: 
+    0 12px 32px rgba(0, 0, 0, 0.7),
+    0 0 0 1px rgba(255, 255, 255, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.cad-batch-pill-badge {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-family: var(--cad-font-mono, monospace);
   font-size: 11px;
-  color: var(--cad-text-muted);
-  font-weight: 500;
-}
-
-.cad-batch-count {
-  font-family: var(--cad-font-mono);
-  font-size: 10.5px;
-  font-weight: 600;
+  font-weight: 700;
   color: #60a5fa;
-  background: rgba(59, 130, 246, 0.15);
-  padding: 1px 7px;
-  border-radius: 4px;
-  border: 1px solid rgba(59, 130, 246, 0.3);
+  user-select: none;
 }
 
-.cad-batch-buttons {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
+.cad-batch-pill-divider {
+  width: 1px;
+  height: 14px;
+  background: rgba(255, 255, 255, 0.12);
+  margin: 0 2px;
 }
 
-.cad-batch-btn {
+.cad-batch-pill-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.cad-batch-pill-btn {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  height: 25px;
-  font-size: 10.5px;
-  font-weight: 500;
-  background: var(--cad-bg-deep);
-  border: 1px solid var(--cad-border);
-  border-radius: 5px;
-  color: var(--cad-text-muted);
+  width: 26px;
+  height: 26px;
+  border-radius: 6px;
+  background: transparent;
+  border: none;
+  color: #cbd5e1;
   cursor: pointer;
-  transition: all 0.12s ease;
-  padding: 0 4px;
-  white-space: nowrap;
+  transition: all 0.12s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.cad-batch-btn:hover {
-  background: var(--cad-bg-hover);
-  border-color: rgba(59, 130, 246, 0.4);
+.cad-batch-pill-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
+  transform: translateY(-1px);
 }
 
-.cad-batch-btn.danger {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.25);
+.cad-batch-pill-btn:active {
+  transform: translateY(0);
+}
+
+.cad-batch-pill-btn.danger {
   color: #f87171;
 }
 
-.cad-batch-btn.danger:hover {
+.cad-batch-pill-btn.danger:hover {
   background: rgba(239, 68, 68, 0.2);
-  border-color: rgba(239, 68, 68, 0.45);
+  color: #ff8080;
+}
+
+.cad-batch-pill-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.cad-batch-pill-close:hover {
+  background: rgba(255, 255, 255, 0.15);
   color: #ffffff;
 }
 
@@ -1473,30 +1499,34 @@ body,
   margin: 3px 0;
 }
 
-/* Quick Image Hover Preview Card */
+/* Quick Image Hover Preview Card (2026 Modern CAD Style) */
 .cad-image-preview-card {
   position: fixed;
   z-index: 9999;
-  width: 290px;
-  background: rgba(18, 22, 30, 0.94);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  width: 320px;
+  background: rgba(13, 17, 24, 0.92);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
   border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 10px;
-  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
-  padding: 10px;
+  border-radius: 14px;
+  box-shadow:
+    0 24px 54px -8px rgba(0, 0, 0, 0.85),
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
   user-select: none;
   pointer-events: auto;
-  animation: cadPreviewFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  animation: cadPreviewPop 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+  transform-origin: top left;
 }
 
-@keyframes cadPreviewFadeIn {
+@keyframes cadPreviewPop {
   from {
     opacity: 0;
-    transform: translateY(6px) scale(0.98);
+    transform: translateY(6px) scale(0.96);
   }
   to {
     opacity: 1;
@@ -1508,70 +1538,203 @@ body,
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.cad-image-preview-tag-group {
+  display: flex;
+  align-items: center;
   gap: 6px;
+}
+
+.cad-side-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  padding: 3px 9px;
+  border-radius: 12px;
+  user-select: none;
+}
+
+.cad-side-pill.top {
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.22) 0%, rgba(99, 102, 241, 0.18) 100%);
+  border: 1px solid rgba(96, 165, 250, 0.4);
+  color: #93c5fd;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.18);
+}
+
+.cad-side-pill.bottom {
+  background: linear-gradient(135deg, rgba(245, 158, 11, 0.22) 0%, rgba(234, 88, 12, 0.18) 100%);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  color: #fcd34d;
+  box-shadow: 0 0 12px rgba(245, 158, 11, 0.18);
+}
+
+.cad-side-pill-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.cad-side-pill.top .cad-side-pill-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
+}
+
+.cad-side-pill.bottom .cad-side-pill-dot {
+  background: #fbbf24;
+  box-shadow: 0 0 6px #fbbf24;
+}
+
+.cad-preview-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  font-weight: 500;
+  padding: 2px 7px;
+  border-radius: 10px;
+}
+
+.cad-preview-status-pill.muted {
+  background: rgba(148, 163, 184, 0.12);
+  border: 1px solid rgba(148, 163, 184, 0.25);
+  color: #94a3b8;
+}
+
+.cad-preview-status-pill.warning {
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  color: #f59e0b;
 }
 
 .cad-image-preview-title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-width: 0;
-  flex: 1;
+  padding: 0 2px;
+}
+
+.cad-image-preview-title-icon {
+  color: #60a5fa;
+  flex-shrink: 0;
 }
 
 .cad-image-preview-name {
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
-  color: #f1f5f9;
+  color: #f8fafc;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  letter-spacing: -0.01em;
 }
 
-.cad-image-preview-thumb-box {
+.cad-image-preview-thumb-stage {
   width: 100%;
-  height: 135px;
-  background: #090d14;
-  background-image: 
-    linear-gradient(45deg, #111722 25%, transparent 25%), 
-    linear-gradient(-45deg, #111722 25%, transparent 25%), 
-    linear-gradient(45deg, transparent 75%, #111722 75%), 
-    linear-gradient(-45deg, transparent 75%, #111722 75%);
-  background-size: 16px 16px;
-  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
-  border-radius: 6px;
+  height: 155px;
+  background: #090d15;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 12px 12px;
+  border-radius: 10px;
   border: 1px solid rgba(255, 255, 255, 0.08);
   overflow: hidden;
   position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
 .cad-image-preview-img {
-  max-width: 100%;
-  max-height: 100%;
+  max-width: 92%;
+  max-height: 92%;
   object-fit: contain;
-  transition: filter 0.15s ease;
+  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.75));
+  transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1), filter 0.15s ease;
 }
 
-.cad-image-preview-meta {
+.cad-image-preview-thumb-stage:hover .cad-image-preview-img {
+  transform: scale(1.03);
+}
+
+.cad-image-preview-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  font-size: 11px;
+  color: #94a3b8;
+}
+
+.cad-image-preview-chips {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--cad-text-dim);
-  background: rgba(255, 255, 255, 0.03);
-  padding: 4px 8px;
-  border-radius: 4px;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.cad-preview-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  padding: 3px 8px;
+  border-radius: 6px;
   font-family: var(--cad-font-mono, monospace);
+  font-size: 10.5px;
+  color: #94a3b8;
+  font-weight: 500;
+  transition: all 0.12s ease;
+}
+
+.cad-preview-chip:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #cbd5e1;
 }
 
 .cad-image-preview-actions {
   display: flex;
-  flex-direction: column;
-  gap: 6px;
   margin-top: 2px;
+}
+
+.cad-preview-crop-btn {
+  width: 100%;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%);
+  border: 1px solid rgba(96, 165, 250, 0.45);
+  border-radius: 8px;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  letter-spacing: 0.01em;
+  box-shadow: 
+    0 4px 14px rgba(37, 99, 235, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cad-preview-crop-btn:hover {
+  background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  box-shadow: 
+    0 6px 20px rgba(37, 99, 235, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+  color: #ffffff;
+}
+
+.cad-preview-crop-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
 }
 
 /* ==========================================================================

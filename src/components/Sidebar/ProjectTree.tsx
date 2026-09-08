@@ -21,6 +21,10 @@ import {
   CircleDot,
   Network,
   Workflow,
+  Loader2,
+  Maximize2,
+  ZoomIn,
+  RotateCw,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
@@ -1572,70 +1576,69 @@ export const ProjectTree: React.FC = () => {
         </div>
       </div>
 
-      {/* Batch Selection Action Bar */}
+      {/* Batch Selection Floating Pill Bar */}
       {selectedImageIds.length > 0 && (
         <div className="cad-batch-bar" onClick={(e) => e.stopPropagation()}>
-          <div className="cad-batch-header">
-            <span>Выбрано слоев:</span>
-            <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-              <span className="cad-batch-count">{selectedImageIds.length}</span>
+          <div className="cad-batch-pill-content">
+            <div className="cad-batch-pill-badge" title="Количество выбранных слоев">
+              <Check size={11} color="#60a5fa" strokeWidth={2.5} />
+              <span>{selectedImageIds.length}</span>
+            </div>
+
+            <div className="cad-batch-pill-divider" />
+
+            <div className="cad-batch-pill-actions">
               <button
-                className="cad-tree-icon-btn"
-                style={{ width: "16px", height: "16px" }}
-                onClick={clearSelectedImages}
-                title="Снять выбор со всех слоев"
+                className="cad-batch-pill-btn"
+                onClick={() => batchSetVisibility(selectedImageIds, true)}
+                title="Показать все выбранные слои"
               >
-                <X size={11} />
+                <Eye size={13} color="#60a5fa" />
+              </button>
+              <button
+                className="cad-batch-pill-btn"
+                onClick={() => batchSetVisibility(selectedImageIds, false)}
+                title="Скрыть все выбранные слои"
+              >
+                <EyeOff size={13} color="#94a3b8" />
+              </button>
+              <button
+                className="cad-batch-pill-btn"
+                onClick={() => batchSetLocked(selectedImageIds, true)}
+                title="Заблокировать выбранные слои"
+              >
+                <Lock size={13} color="#f59e0b" />
+              </button>
+              <button
+                className="cad-batch-pill-btn"
+                onClick={() => batchSetLocked(selectedImageIds, false)}
+                title="Разблокировать выбранные слои"
+              >
+                <Unlock size={13} color="#10b981" />
+              </button>
+              <button
+                className="cad-batch-pill-btn danger"
+                onClick={() => {
+                  if (window.confirm(`Удалить ${selectedImageIds.length} выбранных слоев?`)) {
+                    batchDeleteLayers(selectedImageIds);
+                  }
+                }}
+                title="Удалить выбранные слои"
+              >
+                <Trash2 size={13} />
               </button>
             </div>
-          </div>
-          <div className="cad-batch-buttons">
+
+            <div className="cad-batch-pill-divider" />
+
             <button
-              className="cad-batch-btn"
-              onClick={() => batchSetVisibility(selectedImageIds, true)}
-              title="Показать все выбранные слои"
+              className="cad-batch-pill-close"
+              onClick={clearSelectedImages}
+              title="Снять выбор со всех слоев (Esc)"
             >
-              <Eye size={11} color="#60a5fa" />
-              <span>Показать</span>
-            </button>
-            <button
-              className="cad-batch-btn"
-              onClick={() => batchSetVisibility(selectedImageIds, false)}
-              title="Скрыть все выбранные слои"
-            >
-              <EyeOff size={11} color="#94a3b8" />
-              <span>Скрыть</span>
-            </button>
-            <button
-              className="cad-batch-btn"
-              onClick={() => batchSetLocked(selectedImageIds, true)}
-              title="Заблокировать все выбранные слои"
-            >
-              <Lock size={11} color="#f59e0b" />
-              <span>Блок.</span>
-            </button>
-            <button
-              className="cad-batch-btn"
-              onClick={() => batchSetLocked(selectedImageIds, false)}
-              title="Разблокировать все выбранные слои"
-            >
-              <Unlock size={11} color="#10b981" />
-              <span>Разблок.</span>
+              <X size={12} />
             </button>
           </div>
-          <button
-            className="cad-batch-btn danger"
-            style={{ width: "100%", marginTop: "2px" }}
-            onClick={() => {
-              if (window.confirm(`Удалить ${selectedImageIds.length} выбранных слоев?`)) {
-                batchDeleteLayers(selectedImageIds);
-              }
-            }}
-            title="Удалить все выбранные слои"
-          >
-            <Trash2 size={11} />
-            <span>Удалить выбранные ({selectedImageIds.length})</span>
-          </button>
         </div>
       )}
 
@@ -1768,19 +1771,21 @@ export const ProjectTree: React.FC = () => {
         </div>
       )}
 
-      {/* Quick Image Hover Preview Popover */}
+      {/* Quick Image Hover Preview Popover (2026 Modern CAD Style) */}
       {hoverPreview && (() => {
-        const cardWidth = 290;
-        const cardHeight = 245;
+        const cardWidth = 320;
+        const cardHeight = 295;
 
-        // Position directly under cursor
-        let previewLeft = hoverPreview.x - 14;
-        previewLeft = Math.max(12, Math.min(previewLeft, window.innerWidth - cardWidth - 14));
+        // Position under cursor with smart viewport clamping
+        let previewLeft = hoverPreview.x - 16;
+        previewLeft = Math.max(16, Math.min(previewLeft, window.innerWidth - cardWidth - 16));
 
-        let previewTop = hoverPreview.y + 14;
-        if (previewTop + cardHeight > window.innerHeight - 12) {
-          previewTop = Math.max(10, hoverPreview.y - cardHeight - 12);
+        let previewTop = hoverPreview.y + 16;
+        if (previewTop + cardHeight > window.innerHeight - 16) {
+          previewTop = Math.max(12, hoverPreview.y - cardHeight - 12);
         }
+
+        const isTop = hoverPreview.side === "top";
 
         return (
           <div
@@ -1793,28 +1798,36 @@ export const ProjectTree: React.FC = () => {
             onMouseLeave={handlePopoverMouseLeave}
             onClick={(e) => e.stopPropagation()}
           >
+            {/* Header: Side pill + Status badges */}
             <div className="cad-image-preview-header">
-              <div className="cad-image-preview-title">
-                <ImageIcon size={13} color="#60a5fa" style={{ flexShrink: 0 }} />
-                <span className="cad-image-preview-name" title={hoverPreview.layer.name}>
-                  {hoverPreview.layer.name}
+              <div className="cad-image-preview-tag-group">
+                <span className={`cad-side-pill ${isTop ? "top" : "bottom"}`}>
+                  <span className="cad-side-pill-dot" />
+                  {isTop ? "TOP (Лицевая)" : "BOTTOM (Оборотная)"}
                 </span>
+                {!hoverPreview.layer.visible && (
+                  <span className="cad-preview-status-pill muted" title="Слой скрыт на холсте">
+                    <EyeOff size={10} />
+                    <span>Скрыт</span>
+                  </span>
+                )}
+                {hoverPreview.layer.locked && (
+                  <span className="cad-preview-status-pill warning" title="Слой защищен от изменений">
+                    <Lock size={10} />
+                    <span>Защита</span>
+                  </span>
+                )}
               </div>
-              <span
-                className="cad-badge"
-                style={{
-                  fontSize: "9px",
-                  padding: "1px 5px",
-                  background: hoverPreview.side === "top" ? "rgba(59, 130, 246, 0.2)" : "rgba(245, 158, 11, 0.2)",
-                  color: hoverPreview.side === "top" ? "#60a5fa" : "#f59e0b",
-                  border: `1px solid ${hoverPreview.side === "top" ? "rgba(59, 130, 246, 0.4)" : "rgba(245, 158, 11, 0.4)"}`,
-                }}
-              >
-                {hoverPreview.side.toUpperCase()}
-              </span>
             </div>
 
-            <div className="cad-image-preview-thumb-box">
+            {/* Name */}
+            <div className="cad-image-preview-title" title={hoverPreview.layer.name}>
+              <ImageIcon size={13} className="cad-image-preview-title-icon" />
+              <span className="cad-image-preview-name">{hoverPreview.layer.name}</span>
+            </div>
+
+            {/* Studio Canvas Thumbnail Stage */}
+            <div className="cad-image-preview-thumb-stage">
               {hoverPreview.resolvedSrc ? (
                 <img
                   className="cad-image-preview-img"
@@ -1823,71 +1836,42 @@ export const ProjectTree: React.FC = () => {
                   style={getLayerFilterStyle(hoverPreview.layer)}
                 />
               ) : (
-                <div style={{ fontSize: "10.5px", color: "var(--cad-text-dim)", fontStyle: "italic" }}>
-                  Загрузка превью...
-                </div>
-              )}
-              {!hoverPreview.layer.visible && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 6,
-                    left: 6,
-                    background: "rgba(0, 0, 0, 0.65)",
-                    backdropFilter: "blur(4px)",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    fontSize: "9.5px",
-                    color: "#94a3b8",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  <EyeOff size={10} />
-                  <span>Скрыт</span>
-                </div>
-              )}
-              {hoverPreview.layer.locked && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 6,
-                    right: 6,
-                    background: "rgba(0, 0, 0, 0.65)",
-                    backdropFilter: "blur(4px)",
-                    padding: "2px 6px",
-                    borderRadius: "4px",
-                    fontSize: "9.5px",
-                    color: "#f59e0b",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "4px",
-                  }}
-                >
-                  <Lock size={10} />
-                  <span>Защищен</span>
+                <div className="cad-image-preview-loading">
+                  <Loader2 size={16} className="cad-spin" />
+                  <span>Загрузка предпросмотра...</span>
                 </div>
               )}
             </div>
 
-            <div className="cad-image-preview-meta">
-              <span>
-                {hoverPreview.layer.width && hoverPreview.layer.height
-                  ? `${hoverPreview.layer.width} × ${hoverPreview.layer.height} px`
-                  : "Размер не определен"}
-              </span>
-              <span>
-                {hoverPreview.layer.scale ? `${hoverPreview.layer.scale.toFixed(2)}x` : "1.00x"}
-                {hoverPreview.layer.rotation ? ` · ${hoverPreview.layer.rotation}°` : ""}
-              </span>
+            {/* Technical Chips Strip */}
+            <div className="cad-image-preview-chips">
+              <div className="cad-preview-chip" title="Разрешение изображения в пикселях">
+                <Maximize2 size={10} />
+                <span>
+                  {hoverPreview.layer.width && hoverPreview.layer.height
+                    ? `${hoverPreview.layer.width} × ${hoverPreview.layer.height} px`
+                    : "Исходный размер"}
+                </span>
+              </div>
+              <div className="cad-preview-chip" title="Текущий масштаб слоя">
+                <ZoomIn size={10} />
+                <span>
+                  {hoverPreview.layer.scale ? `${Math.round(hoverPreview.layer.scale * 100)}%` : "100%"}
+                </span>
+              </div>
+              {hoverPreview.layer.rotation ? (
+                <div className="cad-preview-chip" title="Угол поворота слоя">
+                  <RotateCw size={10} />
+                  <span>{hoverPreview.layer.rotation}°</span>
+                </div>
+              ) : null}
             </div>
 
+            {/* Action Bar */}
             <div className="cad-image-preview-actions">
               <button
                 type="button"
-                className="cad-btn cad-btn-secondary"
-                style={{ width: "100%", fontSize: "11px", padding: "6px 8px", justifyContent: "center" }}
+                className="cad-preview-crop-btn"
                 onClick={() => {
                   setPendingPreprocess({
                     filePath: hoverPreview.layer.cachedUrl,
@@ -1897,10 +1881,10 @@ export const ProjectTree: React.FC = () => {
                   });
                   setHoverPreview(null);
                 }}
-                title="Открыть окно кадрирования, поворота и выравнивания горизонта"
+                title="Открыть визуальный редактор кадрирования, поворота и выравнивания"
               >
-                <Crop size={12} style={{ marginRight: "6px", color: "#60a5fa" }} />
-                <span>Кадрировать...</span>
+                <Crop size={13} strokeWidth={2.2} />
+                <span>Кадрировать скан...</span>
               </button>
             </div>
           </div>
