@@ -1018,9 +1018,6 @@ export const BoardCanvas: React.FC = () => {
         backgroundColor: "var(--cad-bg-deep)",
       }}
     >
-      {/* StartScreen subtle background grid with radial ambient glow */}
-      <div className="cad-start-bg-grid" />
-
       <canvas
         ref={canvasRef}
         style={{ width: "100%", height: "100%", display: "block", position: "relative", zIndex: 1 }}
@@ -1332,56 +1329,127 @@ function drawGrid(
   stepMm: number,
   mmToPx: number
 ) {
-  const stepPx = stepMm * mmToPx * zoom;
-  if (stepPx < 8) return;
+  const baseStepPx = stepMm * mmToPx * zoom;
+  if (baseStepPx <= 0) return;
+
+  // Adaptive scaling: If step is too small (< 10px), step up to keep grid visible and legible
+  let mult = 1;
+  const multipliers = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
+  while (baseStepPx * mult < 10 && mult < 50000) {
+    const next = multipliers.find((m) => m > mult);
+    if (!next) {
+      mult *= 2;
+    } else {
+      mult = next;
+    }
+  }
+
+  const stepPx = baseStepPx * mult;
+
+  // Major lines multiplier (10 for decimal like 0.1/1.0, 5 for others)
+  const isMetricDec = [0.1, 1.0, 10.0].some((v) => Math.abs(stepMm - v) < 0.001);
+  const majorMult = isMetricDec ? 10 : 5;
+  const majorStepPx = stepPx * majorMult;
 
   ctx.save();
-  ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+
+  // 1. Minor grid lines
+  ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
   ctx.lineWidth = 1;
 
-  const startX = pan.x % stepPx;
-  const startY = pan.y % stepPx;
+  const startX = ((pan.x % stepPx) + stepPx) % stepPx;
+  const startY = ((pan.y % stepPx) + stepPx) % stepPx;
 
   ctx.beginPath();
-  for (let x = startX; x < width; x += stepPx) {
-    ctx.moveTo(x, 0);
-    ctx.lineTo(x, height);
+  for (let x = startX; x <= width; x += stepPx) {
+    const px = Math.floor(x) + 0.5;
+    ctx.moveTo(px, 0);
+    ctx.lineTo(px, height);
   }
-  for (let y = startY; y < height; y += stepPx) {
-    ctx.moveTo(0, y);
-    ctx.lineTo(width, y);
+  for (let y = startY; y <= height; y += stepPx) {
+    const py = Math.floor(y) + 0.5;
+    ctx.moveTo(0, py);
+    ctx.lineTo(width, py);
   }
   ctx.stroke();
 
-  // Major 5mm lines
-  const majorStepPx = stepPx * 5;
+  // 2. Major grid lines
   if (majorStepPx >= 20) {
-    ctx.strokeStyle = "rgba(59, 130, 246, 0.08)";
+    ctx.strokeStyle = "rgba(59, 130, 246, 0.15)";
     ctx.lineWidth = 1;
-    const majorStartX = pan.x % majorStepPx;
-    const majorStartY = pan.y % majorStepPx;
+    const majorStartX = ((pan.x % majorStepPx) + majorStepPx) % majorStepPx;
+    const majorStartY = ((pan.y % majorStepPx) + majorStepPx) % majorStepPx;
 
     ctx.beginPath();
-    for (let x = majorStartX; x < width; x += majorStepPx) {
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
+    for (let x = majorStartX; x <= width; x += majorStepPx) {
+      const px = Math.floor(x) + 0.5;
+      ctx.moveTo(px, 0);
+      ctx.lineTo(px, height);
     }
-    for (let y = majorStartY; y < height; y += majorStepPx) {
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
+    for (let y = majorStartY; y <= height; y += majorStepPx) {
+      const py = Math.floor(y) + 0.5;
+      ctx.moveTo(0, py);
+      ctx.lineTo(width, py);
     }
     ctx.stroke();
   }
 
-  // Draw (0,0) Board Origin Cross
-  ctx.strokeStyle = "rgba(239, 68, 68, 0.7)";
-  ctx.lineWidth = 2;
-  ctx.beginPath();
-  ctx.moveTo(pan.x - 15, pan.y);
-  ctx.lineTo(pan.x + 15, pan.y);
-  ctx.moveTo(pan.x, pan.y - 15);
-  ctx.lineTo(pan.x, pan.y + 15);
-  ctx.stroke();
+  // 3. Board Coordinate Axes (X=0: Green, Y=0: Red)
+  const originScreenX = Math.floor(pan.x) + 0.5;
+  if (originScreenX >= 0 && originScreenX <= width) {
+    ctx.strokeStyle = "rgba(34, 197, 94, 0.35)"; // CAD Green (Y-axis line)
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(originScreenX, 0);
+    ctx.lineTo(originScreenX, height);
+    ctx.stroke();
+  }
+
+  const originScreenY = Math.floor(pan.y) + 0.5;
+  if (originScreenY >= 0 && originScreenY <= height) {
+    ctx.strokeStyle = "rgba(239, 68, 68, 0.35)"; // CAD Red (X-axis line)
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(0, originScreenY);
+    ctx.lineTo(width, originScreenY);
+    ctx.stroke();
+  }
+
+  // 4. (0,0) Board Origin Target & Crosshair
+  if (
+    pan.x >= -40 &&
+    pan.x <= width + 40 &&
+    pan.y >= -40 &&
+    pan.y <= height + 40
+  ) {
+    const ox = Math.floor(pan.x) + 0.5;
+    const oy = Math.floor(pan.y) + 0.5;
+
+    // Origin circle
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(ox, oy, 6, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Cross markers
+    ctx.strokeStyle = "#ef4444";
+    ctx.beginPath();
+    ctx.moveTo(ox - 14, oy);
+    ctx.lineTo(ox + 14, oy);
+    ctx.stroke();
+
+    ctx.strokeStyle = "#22c55e";
+    ctx.beginPath();
+    ctx.moveTo(ox, oy - 14);
+    ctx.lineTo(ox, oy + 14);
+    ctx.stroke();
+
+    // Small coordinate origin tag
+    ctx.font = "10px JetBrains Mono, monospace";
+    ctx.fillStyle = "rgba(148, 163, 184, 0.85)";
+    ctx.fillText("(0, 0)", ox + 9, oy - 8);
+  }
 
   ctx.restore();
 }

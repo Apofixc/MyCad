@@ -46,64 +46,6 @@ export const ToolBar: React.FC = () => {
     }
   }, [isUnderlay, activeTool, setActiveTool]);
 
-  // Global hotkeys for tools when not focused on an input element
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const target = e.target as HTMLElement;
-      if (
-        target.tagName === "INPUT" ||
-        target.tagName === "TEXTAREA" ||
-        target.isContentEditable
-      ) {
-        return;
-      }
-
-      if (e.ctrlKey || e.metaKey || e.altKey) return;
-
-      const key = e.key.toUpperCase();
-      switch (key) {
-        case "V":
-          setActiveTool("select");
-          break;
-        case "T":
-          if (isUnderlay) setActiveTool("transform");
-          break;
-        case "C":
-          if (isUnderlay) setActiveTool("calibrate");
-          break;
-        case "L":
-          if (isUnderlay) setActiveTool("level");
-          break;
-        case "R":
-          if (isUnderlay) setActiveTool("register");
-          break;
-        case "S":
-          if (isUnderlay) setActiveTool("curtain");
-          break;
-        case "B":
-          if (isUnderlay) setActiveTool("blink");
-          break;
-        case "M":
-          setActiveTool("measure");
-          break;
-        case "Z":
-          toggleLoupe();
-          setActiveTool("magnifier");
-          break;
-        case "G":
-          toggleGrid();
-          break;
-        case "F":
-        case "А":
-        case "0":
-          fitAllImages();
-          break;
-      }
-    };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isUnderlay, setActiveTool, toggleGrid, toggleLoupe, fitAllImages]);
 
   const handleAddImage = async (side: "top" | "bottom") => {
     if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {

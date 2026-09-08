@@ -83,6 +83,7 @@ export const App: React.FC = () => {
           setActiveTool("blink");
           break;
         case "g":
+        case "п":
           toggleGrid();
           break;
         case "f":
