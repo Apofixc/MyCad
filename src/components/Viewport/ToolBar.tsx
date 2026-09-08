@@ -10,6 +10,7 @@ import {
   Zap,
   Grid,
   ImagePlus,
+  Maximize2,
 } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
 import { ToolMode } from "../../types/cad";
@@ -24,6 +25,7 @@ export const ToolBar: React.FC = () => {
     toggleLoupe,
     setPendingPreprocess,
     setPendingBatchImport,
+    fitAllImages,
   } = useUiStore();
 
   const isUnderlay = activeWorkLayer?.type === "underlay";
@@ -91,12 +93,17 @@ export const ToolBar: React.FC = () => {
         case "G":
           toggleGrid();
           break;
+        case "F":
+        case "А":
+        case "0":
+          fitAllImages();
+          break;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [isUnderlay, setActiveTool, toggleGrid, toggleLoupe]);
+  }, [isUnderlay, setActiveTool, toggleGrid, toggleLoupe, fitAllImages]);
 
   const handleAddImage = async (side: "top" | "bottom") => {
     if (typeof window !== "undefined" && "__TAURI_INTERNALS__" in window) {
@@ -225,6 +232,15 @@ export const ToolBar: React.FC = () => {
         title="Координатная сетка платы (G)"
       >
         <Grid size={16} />
+      </button>
+
+      {/* Вписать все изображения */}
+      <button
+        className="cad-tool-btn"
+        onClick={() => fitAllImages()}
+        title="Вписать все изображения (F / 0)"
+      >
+        <Maximize2 size={16} />
       </button>
     </div>
   );

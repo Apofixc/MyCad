@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { ToolMode, ActiveWorkLayer, BoardImageLayer } from "../types/cad";
+import { useProjectStore } from "./projectStore";
 
 interface UiStore {
   activeTool: ToolMode;
@@ -9,6 +10,7 @@ interface UiStore {
   viewportZoom: number; // in %
   viewportPan: { x: number; y: number };
   focusImageLayer: (imgLayer: BoardImageLayer) => void;
+  fitAllImages: (images?: BoardImageLayer[]) => void;
   gridStepMm: number;
   showGrid: boolean;
 
@@ -187,6 +189,88 @@ export const useUiStore = create<UiStore>((set) => ({
     const fitZoomX = ((viewportW * 0.72) / (wMm * MM_TO_PX)) * 100;
     const fitZoomY = ((viewportH * 0.72) / (hMm * MM_TO_PX)) * 100;
     const newZoom = Math.max(15, Math.min(600, Math.round(Math.min(fitZoomX, fitZoomY))));
+    const zoomFactor = newZoom / 100;
+
+    const newPanX = Math.round(viewportW / 2 - centerMmX * MM_TO_PX * zoomFactor);
+    const newPanY = Math.round(viewportH / 2 - centerMmY * MM_TO_PX * zoomFactor);
+
+    nextUpdates.viewportZoom = newZoom;
+    nextUpdates.viewportPan = { x: newPanX, y: newPanY };
+    set(nextUpdates);
+  },
+  fitAllImages: (imagesToFit) => {
+    const state = useUiStore.getState();
+    let targets = imagesToFit;
+    if (!targets || targets.length === 0) {
+      const board = useProjectStore.getState().board;
+      if (board) {
+        const topImgs = board.data?.bgTop?.images || [];
+        const botImgs = board.data?.bgBottom?.images || [];
+        const visibleImgs = [...topImgs, ...botImgs].filter((img) => img.visible !== false);
+        targets = visibleImgs.length > 0 ? visibleImgs : [...topImgs, ...botImgs];
+      }
+    }
+
+    if (!targets || targets.length === 0) return;
+
+    const nextUpdates: Partial<UiStore> = {};
+    if (targets.some((img) => (img.side || "top").toLowerCase() === "top") && !state.showTopLayer) {
+      nextUpdates.showTopLayer = true;
+    }
+    if (targets.some((img) => (img.side || "top").toLowerCase() === "bottom") && !state.showBottomLayer) {
+      nextUpdates.showBottomLayer = true;
+    }
+
+    let minX = Infinity;
+    let maxX = -Infinity;
+    let minY = Infinity;
+    let maxY = -Infinity;
+
+    for (const img of targets) {
+      const naturalW = img.width || 2000;
+      const naturalH = img.height || 1500;
+      const scale = img.scale || 1.0;
+      const pxPerMm = img.pxPerMm || 23.62;
+      const wMm = (naturalW * scale) / pxPerMm;
+      const hMm = (naturalH * scale) / pxPerMm;
+      const cx = (img.offsetX || 0) + wMm / 2;
+      const cy = (img.offsetY || 0) + hMm / 2;
+      const hw = wMm / 2;
+      const hh = hMm / 2;
+
+      const rotRad = ((img.rotation || 0) * Math.PI) / 180;
+      const cos = Math.abs(Math.cos(rotRad));
+      const sin = Math.abs(Math.sin(rotRad));
+      const boundHw = hw * cos + hh * sin;
+      const boundHh = hw * sin + hh * cos;
+
+      const iMinX = cx - boundHw;
+      const iMaxX = cx + boundHw;
+      const iMinY = cy - boundHh;
+      const iMaxY = cy + boundHh;
+
+      if (iMinX < minX) minX = iMinX;
+      if (iMaxX > maxX) maxX = iMaxX;
+      if (iMinY < minY) minY = iMinY;
+      if (iMaxY > maxY) maxY = iMaxY;
+    }
+
+    if (minX === Infinity || maxX === -Infinity) return;
+
+    const totalWidthMm = Math.max(1, maxX - minX);
+    const totalHeightMm = Math.max(1, maxY - minY);
+    const centerMmX = (minX + maxX) / 2;
+    const centerMmY = (minY + maxY) / 2;
+
+    const leftW = state.leftSidebarCollapsed ? 0 : state.leftSidebarWidth;
+    const rightW = state.rightSidebarCollapsed ? 0 : state.rightSidebarWidth;
+    const viewportW = Math.max(300, (typeof window !== "undefined" ? window.innerWidth : 1200) - leftW - rightW);
+    const viewportH = Math.max(300, (typeof window !== "undefined" ? window.innerHeight : 800) - 80);
+
+    const MM_TO_PX = 10;
+    const fitZoomX = ((viewportW * 0.78) / (totalWidthMm * MM_TO_PX)) * 100;
+    const fitZoomY = ((viewportH * 0.78) / (totalHeightMm * MM_TO_PX)) * 100;
+    const newZoom = Math.max(10, Math.min(600, Math.round(Math.min(fitZoomX, fitZoomY))));
     const zoomFactor = newZoom / 100;
 
     const newPanX = Math.round(viewportW / 2 - centerMmX * MM_TO_PX * zoomFactor);

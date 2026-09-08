@@ -25,6 +25,7 @@ export const App: React.FC = () => {
     openModal,
     setActiveTool,
     toggleGrid,
+    fitAllImages,
   } = useUiStore();
 
   // Global Keyboard Shortcuts
@@ -84,12 +85,17 @@ export const App: React.FC = () => {
         case "g":
           toggleGrid();
           break;
+        case "f":
+        case "а":
+        case "0":
+          fitAllImages();
+          break;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [saveProject, openModal, toggleLeftSidebar, setActiveTool, toggleGrid]);
+  }, [saveProject, openModal, toggleLeftSidebar, setActiveTool, toggleGrid, fitAllImages]);
 
   return (
     <div className="cad-app-container">

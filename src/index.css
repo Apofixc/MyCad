@@ -782,6 +782,19 @@ body,
   color: #94a3b8;
 }
 
+.cad-status-pill.cad-status-btn {
+  cursor: pointer;
+  user-select: none;
+}
+
+.cad-status-pill.cad-status-btn:hover {
+  background: var(--cad-bg-hover);
+  border-color: rgba(96, 165, 250, 0.45);
+  color: #fff;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
 .cad-status-pill strong {
   color: #fff;
 }

@@ -1,10 +1,10 @@
 import React from "react";
-import { CheckCircle2, AlertCircle, Crosshair, Layers, FileText, Grid, ZoomIn } from "lucide-react";
+import { CheckCircle2, AlertCircle, Crosshair, Layers, FileText, Grid, ZoomIn, Maximize2 } from "lucide-react";
 import { useUiStore } from "../stores/uiStore";
 import { useProjectStore } from "../stores/projectStore";
 
 export const StatusBar: React.FC = () => {
-  const { cursorMm, viewportZoom, gridStepMm } = useUiStore();
+  const { cursorMm, viewportZoom, gridStepMm, fitAllImages } = useUiStore();
   const { manifest, activeFileType, board, schematic, isDirty } = useProjectStore();
 
   const topCount = board?.data.bgTop.images.length || 0;
@@ -74,9 +74,14 @@ export const StatusBar: React.FC = () => {
         </div>
 
         {/* Zoom Capsule */}
-        <div className="cad-status-pill">
+        <div
+          className="cad-status-pill cad-status-btn"
+          onClick={() => fitAllImages()}
+          title="Вписать все изображения (F / 0)"
+        >
           <ZoomIn size={12} color="#94a3b8" />
           <span>Зум: <strong>{viewportZoom}%</strong></span>
+          <Maximize2 size={11} color="#60a5fa" style={{ marginLeft: 3 }} />
         </div>
       </div>
     </footer>

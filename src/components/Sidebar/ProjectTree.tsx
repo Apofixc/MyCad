@@ -118,6 +118,7 @@ export const ProjectTree: React.FC = () => {
     activeWorkLayer,
     setActiveWorkLayer,
     focusImageLayer,
+    fitAllImages,
   } = useUiStore();
 
   const handlePickAndAddImages = async (side: "top" | "bottom") => {
@@ -950,6 +951,18 @@ export const ProjectTree: React.FC = () => {
                                       >
                                         {isAllBgLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
                                       </button>
+                                      {allBgImages.length > 0 && (
+                                        <button
+                                          className="cad-tree-icon-btn"
+                                          onClick={() => {
+                                            if (!isActive) setActiveFile(file.id);
+                                            fitAllImages(allBgImages);
+                                          }}
+                                          title="Вписать все изображения платы на холст (F / 0)"
+                                        >
+                                          <Maximize2 size={12} color="#60a5fa" />
+                                        </button>
+                                      )}
                                     </div>
                                   </div>
 
@@ -1004,6 +1017,18 @@ export const ProjectTree: React.FC = () => {
                                             >
                                               {isAllTopLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
                                             </button>
+                                            {bgTopImages.length > 0 && (
+                                              <button
+                                                className="cad-tree-icon-btn"
+                                                onClick={() => {
+                                                  if (!isActive) setActiveFile(file.id);
+                                                  fitAllImages(bgTopImages);
+                                                }}
+                                                title="Вписать все изображения Top"
+                                              >
+                                                <Maximize2 size={12} color="#60a5fa" />
+                                              </button>
+                                            )}
                                           </div>
                                         </div>
 
@@ -1166,6 +1191,18 @@ export const ProjectTree: React.FC = () => {
                                             >
                                               {isAllBotLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
                                             </button>
+                                            {bgBottomImages.length > 0 && (
+                                              <button
+                                                className="cad-tree-icon-btn"
+                                                onClick={() => {
+                                                  if (!isActive) setActiveFile(file.id);
+                                                  fitAllImages(bgBottomImages);
+                                                }}
+                                                title="Вписать все изображения Bottom"
+                                              >
+                                                <Maximize2 size={12} color="#60a5fa" />
+                                              </button>
+                                            )}
                                           </div>
                                         </div>
 
@@ -1666,6 +1703,16 @@ export const ProjectTree: React.FC = () => {
               >
                 <Target size={12} color="#60a5fa" />
                 <span>Фокус / Приблизить к скану</span>
+              </div>
+              <div
+                className="cad-context-item"
+                onClick={() => {
+                  fitAllImages();
+                  setContextMenu(null);
+                }}
+              >
+                <Maximize2 size={12} color="#60a5fa" />
+                <span>Вписать все изображения (F / 0)</span>
               </div>
               <div
                 className="cad-context-item"
