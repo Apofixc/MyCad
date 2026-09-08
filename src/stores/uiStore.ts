@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { ToolMode, ActiveWorkLayer } from "../types/cad";
+import { ToolMode, ActiveWorkLayer, BoardImageLayer } from "../types/cad";
 
 interface UiStore {
   activeTool: ToolMode;
@@ -8,6 +8,7 @@ interface UiStore {
   cursorMm: { x: number; y: number };
   viewportZoom: number; // in %
   viewportPan: { x: number; y: number };
+  focusImageLayer: (imgLayer: BoardImageLayer) => void;
   gridStepMm: number;
   showGrid: boolean;
 
@@ -158,6 +159,43 @@ export const useUiStore = create<UiStore>((set) => ({
   setCursorMm: (pos) => set({ cursorMm: pos }),
   setViewportZoom: (zoom) => set({ viewportZoom: Math.max(10, Math.min(2000, zoom)) }),
   setViewportPan: (pan) => set({ viewportPan: pan }),
+  focusImageLayer: (imgLayer) => {
+    const isTop = (imgLayer.side || "top").toLowerCase() === "top";
+    const state = useUiStore.getState();
+    const nextUpdates: Partial<UiStore> = {};
+    if (isTop && !state.showTopLayer) {
+      nextUpdates.showTopLayer = true;
+    } else if (!isTop && !state.showBottomLayer) {
+      nextUpdates.showBottomLayer = true;
+    }
+
+    const naturalW = imgLayer.width || 2000;
+    const naturalH = imgLayer.height || 1500;
+    const scale = imgLayer.scale || 1.0;
+    const pxPerMm = imgLayer.pxPerMm || 23.62;
+    const wMm = (naturalW * scale) / pxPerMm;
+    const hMm = (naturalH * scale) / pxPerMm;
+    const centerMmX = (imgLayer.offsetX || 0) + wMm / 2;
+    const centerMmY = (imgLayer.offsetY || 0) + hMm / 2;
+
+    const leftW = state.leftSidebarCollapsed ? 0 : state.leftSidebarWidth;
+    const rightW = state.rightSidebarCollapsed ? 0 : state.rightSidebarWidth;
+    const viewportW = Math.max(300, (typeof window !== "undefined" ? window.innerWidth : 1200) - leftW - rightW);
+    const viewportH = Math.max(300, (typeof window !== "undefined" ? window.innerHeight : 800) - 80);
+
+    const MM_TO_PX = 10;
+    const fitZoomX = ((viewportW * 0.72) / (wMm * MM_TO_PX)) * 100;
+    const fitZoomY = ((viewportH * 0.72) / (hMm * MM_TO_PX)) * 100;
+    const newZoom = Math.max(15, Math.min(600, Math.round(Math.min(fitZoomX, fitZoomY))));
+    const zoomFactor = newZoom / 100;
+
+    const newPanX = Math.round(viewportW / 2 - centerMmX * MM_TO_PX * zoomFactor);
+    const newPanY = Math.round(viewportH / 2 - centerMmY * MM_TO_PX * zoomFactor);
+
+    nextUpdates.viewportZoom = newZoom;
+    nextUpdates.viewportPan = { x: newPanX, y: newPanY };
+    set(nextUpdates);
+  },
   setGridStepMm: (step) => set({ gridStepMm: step }),
   toggleGrid: () => set((state) => ({ showGrid: !state.showGrid })),
 

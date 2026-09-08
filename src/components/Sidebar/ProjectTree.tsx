@@ -11,6 +11,7 @@ import {
   Plus,
   Trash2,
   Crop,
+  Target,
   ChevronDown,
   ChevronRight,
   Edit2,
@@ -86,6 +87,7 @@ export const ProjectTree: React.FC = () => {
     setPendingBatchImport,
     activeWorkLayer,
     setActiveWorkLayer,
+    focusImageLayer,
   } = useUiStore();
 
   const handlePickAndAddImages = async (side: "top" | "bottom") => {
@@ -962,6 +964,13 @@ export const ProjectTree: React.FC = () => {
                                                         selectImage(img.id);
                                                       }
                                                     }}
+                                                    onDoubleClick={(e) => {
+                                                      e.stopPropagation();
+                                                      if (!isActive) setActiveFile(file.id);
+                                                      if (!img.visible) updateImageLayer({ ...img, visible: true });
+                                                      selectImage(img.id);
+                                                      focusImageLayer(img);
+                                                    }}
                                                     onContextMenu={(e) => {
                                                       e.preventDefault();
                                                       e.stopPropagation();
@@ -1001,38 +1010,16 @@ export const ProjectTree: React.FC = () => {
                                                     <div className="cad-tree-actions" onClick={(e) => e.stopPropagation()}>
                                                       <button
                                                         className="cad-tree-icon-btn"
-                                                        onClick={() => {
-                                                          setPendingPreprocess({
-                                                            filePath: img.cachedUrl,
-                                                            name: img.name,
-                                                            side: "top",
-                                                            replaceLayerId: img.id,
-                                                          });
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          if (!isActive) setActiveFile(file.id);
+                                                          if (!img.visible) updateImageLayer({ ...img, visible: true });
+                                                          selectImage(img.id);
+                                                          focusImageLayer(img);
                                                         }}
-                                                        title="Предобработка / Кадрировать..."
+                                                        title="Фокус: показать и центрировать скан на холсте (двойной клик)"
                                                       >
-                                                        <Crop size={11} color="#60a5fa" />
-                                                      </button>
-                                                      <button
-                                                        className="cad-tree-icon-btn"
-                                                        onClick={() => updateImageLayer({ ...img, visible: !img.visible })}
-                                                        title={img.visible ? "Скрыть" : "Показать"}
-                                                      >
-                                                        {img.visible ? <Eye size={11} /> : <EyeOff size={11} />}
-                                                      </button>
-                                                      <button
-                                                        className="cad-tree-icon-btn"
-                                                        onClick={() => updateImageLayer({ ...img, locked: !img.locked })}
-                                                        title={img.locked ? "Разблокировать" : "Заблокировать"}
-                                                      >
-                                                        {img.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
-                                                      </button>
-                                                      <button
-                                                        className="cad-tree-icon-btn danger"
-                                                        onClick={() => deleteImageLayer(img.id)}
-                                                        title="Удалить скан"
-                                                      >
-                                                        <Trash2 size={11} />
+                                                        <Target size={11} color="#60a5fa" />
                                                       </button>
                                                     </div>
                                                   </div>
@@ -1146,6 +1133,13 @@ export const ProjectTree: React.FC = () => {
                                                         selectImage(img.id);
                                                       }
                                                     }}
+                                                    onDoubleClick={(e) => {
+                                                      e.stopPropagation();
+                                                      if (!isActive) setActiveFile(file.id);
+                                                      if (!img.visible) updateImageLayer({ ...img, visible: true });
+                                                      selectImage(img.id);
+                                                      focusImageLayer(img);
+                                                    }}
                                                     onContextMenu={(e) => {
                                                       e.preventDefault();
                                                       e.stopPropagation();
@@ -1185,38 +1179,16 @@ export const ProjectTree: React.FC = () => {
                                                     <div className="cad-tree-actions" onClick={(e) => e.stopPropagation()}>
                                                       <button
                                                         className="cad-tree-icon-btn"
-                                                        onClick={() => {
-                                                          setPendingPreprocess({
-                                                            filePath: img.cachedUrl,
-                                                            name: img.name,
-                                                            side: "bottom",
-                                                            replaceLayerId: img.id,
-                                                          });
+                                                        onClick={(e) => {
+                                                          e.stopPropagation();
+                                                          if (!isActive) setActiveFile(file.id);
+                                                          if (!img.visible) updateImageLayer({ ...img, visible: true });
+                                                          selectImage(img.id);
+                                                          focusImageLayer(img);
                                                         }}
-                                                        title="Предобработка / Кадрировать..."
+                                                        title="Фокус: показать и центрировать скан на холсте (двойной клик)"
                                                       >
-                                                        <Crop size={11} color="#60a5fa" />
-                                                      </button>
-                                                      <button
-                                                        className="cad-tree-icon-btn"
-                                                        onClick={() => updateImageLayer({ ...img, visible: !img.visible })}
-                                                        title={img.visible ? "Скрыть" : "Показать"}
-                                                      >
-                                                        {img.visible ? <Eye size={11} /> : <EyeOff size={11} />}
-                                                      </button>
-                                                      <button
-                                                        className="cad-tree-icon-btn"
-                                                        onClick={() => updateImageLayer({ ...img, locked: !img.locked })}
-                                                        title={img.locked ? "Разблокировать" : "Заблокировать"}
-                                                      >
-                                                        {img.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
-                                                      </button>
-                                                      <button
-                                                        className="cad-tree-icon-btn danger"
-                                                        onClick={() => deleteImageLayer(img.id)}
-                                                        title="Удалить скан"
-                                                      >
-                                                        <Trash2 size={11} />
+                                                        <Target size={11} color="#60a5fa" />
                                                       </button>
                                                     </div>
                                                   </div>
@@ -1603,6 +1575,19 @@ export const ProjectTree: React.FC = () => {
         >
           {contextMenu.targetImage && (
             <>
+              <div
+                className="cad-context-item"
+                onClick={() => {
+                  const img = contextMenu.targetImage!;
+                  if (!img.visible) updateImageLayer({ ...img, visible: true });
+                  selectImage(img.id);
+                  focusImageLayer(img);
+                  setContextMenu(null);
+                }}
+              >
+                <Target size={12} color="#60a5fa" />
+                <span>Фокус / Приблизить к скану</span>
+              </div>
               <div
                 className="cad-context-item"
                 onClick={() => {

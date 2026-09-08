@@ -20,6 +20,9 @@ import {
   Download,
   Link,
   Unlink,
+  Target,
+  Crop,
+  Trash2,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
@@ -33,12 +36,15 @@ export const InspectorSidebar: React.FC = () => {
     selectedImageId,
     selectImage,
     updateImageLayer,
+    deleteImageLayer,
   } = useProjectStore();
 
   const {
     rightSidebarWidth,
     setRightSidebarWidth,
     setActiveTool,
+    focusImageLayer,
+    setPendingPreprocess,
   } = useUiStore();
 
   // Resize handler for right sidebar
@@ -280,6 +286,14 @@ export const InspectorSidebar: React.FC = () => {
         </div>
 
         <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
+          <button
+            className="cad-tool-btn"
+            style={{ width: "26px", height: "26px" }}
+            onClick={() => focusImageLayer(imgLayer)}
+            title="Фокус: центрировать и приблизить скан на холсте"
+          >
+            <Target size={13} color="#60a5fa" />
+          </button>
           <button
             className={`cad-tool-btn ${imgLayer.locked ? "active" : ""}`}
             style={{ width: "26px", height: "26px" }}
@@ -771,16 +785,36 @@ export const InspectorSidebar: React.FC = () => {
             </div>
 
             <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
-              <button
-                type="button"
-                className="cad-btn cad-btn-secondary"
-                style={{ width: "100%", fontSize: "11px", justifyContent: "center" }}
-                onClick={handleReplaceFile}
-                title="Заменить файл изображения с сохранением координат, масштаба и фильтров"
-              >
-                <Upload size={12} style={{ marginRight: "6px", color: "#60a5fa" }} />
-                <span>Заменить файл...</span>
-              </button>
+              <div className="cad-btn-grid-2">
+                <button
+                  type="button"
+                  className="cad-btn cad-btn-secondary"
+                  style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center" }}
+                  onClick={handleReplaceFile}
+                  title="Заменить файл изображения с сохранением координат, масштаба и фильтров"
+                >
+                  <Upload size={12} style={{ flexShrink: 0, marginRight: "4px", color: "#60a5fa" }} />
+                  <span>Заменить...</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="cad-btn cad-btn-secondary"
+                  style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center" }}
+                  onClick={() => {
+                    setPendingPreprocess({
+                      filePath: imgLayer.cachedUrl,
+                      name: imgLayer.name,
+                      side: (imgLayer.side as "top" | "bottom") || "top",
+                      replaceLayerId: imgLayer.id,
+                    });
+                  }}
+                  title="Открыть окно кадрирования, поворота и выравнивания горизонта"
+                >
+                  <Crop size={12} style={{ flexShrink: 0, marginRight: "4px", color: "#60a5fa" }} />
+                  <span>Кадрировать...</span>
+                </button>
+              </div>
 
               <div className="cad-btn-grid-2">
                 <button
@@ -806,16 +840,32 @@ export const InspectorSidebar: React.FC = () => {
                 </button>
               </div>
 
-              <button
-                type="button"
-                className="cad-btn cad-btn-secondary"
-                style={{ width: "100%", fontSize: "11px", justifyContent: "center", color: "#f87171", borderColor: "rgba(239, 68, 68, 0.25)" }}
-                onClick={handleResetTransforms}
-                title="Сбросить масштаб в 1.0x, угол в 0° и вернуть фильтры к значениям по умолчанию"
-              >
-                <RotateCcw size={12} style={{ marginRight: "6px" }} />
-                <span>Сбросить все трансформации</span>
-              </button>
+              <div className="cad-btn-grid-2">
+                <button
+                  type="button"
+                  className="cad-btn cad-btn-secondary"
+                  style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center", color: "var(--cad-text-dim)" }}
+                  onClick={handleResetTransforms}
+                  title="Сбросить масштаб в 1.0x, угол в 0° и вернуть фильтры к значениям по умолчанию"
+                >
+                  <RotateCcw size={12} style={{ flexShrink: 0, marginRight: "4px" }} />
+                  <span>Сброс</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="cad-btn cad-btn-secondary"
+                  style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center", color: "#f87171", borderColor: "rgba(239, 68, 68, 0.25)" }}
+                  onClick={() => {
+                    deleteImageLayer(imgLayer.id);
+                    selectImage(null);
+                  }}
+                  title="Удалить данный скан из проекта"
+                >
+                  <Trash2 size={12} style={{ flexShrink: 0, marginRight: "4px" }} />
+                  <span>Удалить</span>
+                </button>
+              </div>
             </div>
           </div>
         </div>
