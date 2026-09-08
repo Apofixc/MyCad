@@ -910,16 +910,6 @@ export const ProjectTree: React.FC = () => {
                                             >
                                               {isAllTopLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
                                             </button>
-                                            <button
-                                              className="cad-tree-icon-btn"
-                                              onClick={() => {
-                                                if (!isActive) setActiveFile(file.id);
-                                                handlePickAndAddImages("top");
-                                              }}
-                                              title="Импортировать скан Top"
-                                            >
-                                              <Plus size={12} />
-                                            </button>
                                           </div>
                                         </div>
 
@@ -1078,16 +1068,6 @@ export const ProjectTree: React.FC = () => {
                                               title={isAllBotLocked ? "Разблокировать все сканы Bottom" : "Заблокировать все сканы Bottom"}
                                             >
                                               {isAllBotLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
-                                            </button>
-                                            <button
-                                              className="cad-tree-icon-btn"
-                                              onClick={() => {
-                                                if (!isActive) setActiveFile(file.id);
-                                                handlePickAndAddImages("bottom");
-                                              }}
-                                              title="Импортировать скан Bottom"
-                                            >
-                                              <Plus size={12} />
                                             </button>
                                           </div>
                                         </div>
