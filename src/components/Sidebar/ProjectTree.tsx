@@ -299,7 +299,7 @@ export const ProjectTree: React.FC = () => {
 
     const onMouseMove = (moveEvent: MouseEvent) => {
       const newWidth = startWidth + (moveEvent.clientX - startX);
-      setLeftSidebarWidth(Math.max(180, Math.min(600, newWidth)));
+      setLeftSidebarWidth(Math.max(180, Math.min(650, newWidth)));
     };
 
     const onMouseUp = () => {

@@ -125,9 +125,9 @@ export const useUiStore = create<UiStore>((set) => ({
   loupeActive: false,
   loupeMagnification: 4,
 
-  leftSidebarWidth: 240,
+  leftSidebarWidth: 390,
   leftSidebarCollapsed: false,
-  rightSidebarWidth: 300,
+  rightSidebarWidth: 320,
   rightSidebarCollapsed: false,
 
   modals: {
@@ -224,9 +224,9 @@ export const useUiStore = create<UiStore>((set) => ({
   setLoupeMagnification: (mag) => set({ loupeMagnification: mag }),
   toggleLoupe: () => set((state) => ({ loupeActive: !state.loupeActive })),
 
-  setLeftSidebarWidth: (width) => set({ leftSidebarWidth: Math.max(160, Math.min(500, width)) }),
+  setLeftSidebarWidth: (width) => set({ leftSidebarWidth: Math.max(180, Math.min(650, width)) }),
   toggleLeftSidebar: () => set((state) => ({ leftSidebarCollapsed: !state.leftSidebarCollapsed })),
-  setRightSidebarWidth: (width) => set({ rightSidebarWidth: Math.max(200, Math.min(600, width)) }),
+  setRightSidebarWidth: (width) => set({ rightSidebarWidth: Math.max(220, Math.min(650, width)) }),
   toggleRightSidebar: () => set((state) => ({ rightSidebarCollapsed: !state.rightSidebarCollapsed })),
 
   openModal: (modal) =>
