@@ -173,7 +173,7 @@
 }
 
 .cad-batch-summary-bar .summary-value {
-  color: #38bdf8;
+  color: #60a5fa;
   font-weight: 600;
 }
 
@@ -200,9 +200,9 @@
 .cad-batch-count-pill {
   font-size: 11px;
   font-weight: 600;
-  background: rgba(56, 189, 248, 0.14);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
   padding: 2px 8px;
   border-radius: 12px;
 }
@@ -286,8 +286,8 @@
 .cad-batch-ext-tag {
   font-size: 10px;
   font-weight: 700;
-  color: #7dd3fc;
-  background: rgba(56, 189, 248, 0.12);
+  color: #93c5fd;
+  background: rgba(59, 130, 246, 0.15);
   padding: 1px 5px;
   border-radius: 4px;
 }
@@ -304,16 +304,16 @@
 .cad-batch-mp-tag {
   font-size: 10px;
   font-weight: 600;
-  color: #fbbf24;
-  background: rgba(245, 158, 11, 0.14);
+  color: #f1f5f9;
+  background: rgba(255, 255, 255, 0.08);
   padding: 1px 5px;
   border-radius: 4px;
 }
 
 .cad-batch-dim-tag {
   font-size: 10px;
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.12);
+  color: #94a3b8;
+  background: rgba(255, 255, 255, 0.05);
   padding: 1px 5px;
   border-radius: 4px;
 }
@@ -365,14 +365,14 @@
 
 .cad-batch-quality-card:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(56, 189, 248, 0.35);
+  border-color: rgba(59, 130, 246, 0.35);
   transform: translateY(-1px);
 }
 
 .cad-batch-quality-card.active {
-  background: rgba(56, 189, 248, 0.08);
-  border-color: #38bdf8;
-  box-shadow: 0 0 18px rgba(56, 189, 248, 0.16);
+  background: rgba(59, 130, 246, 0.08);
+  border-color: #3b82f6;
+  box-shadow: 0 0 18px rgba(59, 130, 246, 0.16);
 }
 
 .cad-batch-quality-card .quality-header {
@@ -391,15 +391,15 @@
 }
 
 .quality-icon-badge.original {
-  background: rgba(245, 158, 11, 0.14);
-  color: #fbbf24;
-  border: 1px solid rgba(245, 158, 11, 0.3);
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .quality-icon-badge.optimized {
-  background: rgba(56, 189, 248, 0.14);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .quality-pill {
@@ -412,8 +412,8 @@
 }
 
 .cad-batch-quality-card.active .quality-pill {
-  background: rgba(56, 189, 248, 0.2);
-  color: #7dd3fc;
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
 }
 
 .quality-title {
@@ -446,9 +446,9 @@
 }
 
 .cad-batch-quality-card.active .quality-spec-badge {
-  background: rgba(56, 189, 248, 0.12);
-  color: #7dd3fc;
-  border-color: rgba(56, 189, 248, 0.25);
+  background: rgba(59, 130, 246, 0.12);
+  color: #93c5fd;
+  border-color: rgba(59, 130, 246, 0.25);
 }
 
 .quality-check-mark {
@@ -458,8 +458,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: #38bdf8;
-  color: #06090e;
+  background: #2563eb;
+  color: #ffffff;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -471,13 +471,13 @@
   align-items: flex-start;
   gap: 12px;
   padding: 10px 14px;
-  background: rgba(16, 185, 129, 0.08);
-  border: 1px solid rgba(16, 185, 129, 0.25);
+  background: var(--cad-bg-panel);
+  border: 1px solid var(--cad-border);
   border-radius: 8px;
 }
 
 .cad-batch-placement-banner .placement-icon {
-  color: #34d399;
+  color: #60a5fa;
   flex-shrink: 0;
   margin-top: 2px;
 }
@@ -502,8 +502,9 @@
 .placement-badge {
   font-size: 10px;
   font-weight: 600;
-  color: #34d399;
-  background: rgba(16, 185, 129, 0.15);
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.15);
+  border: 1px solid rgba(59, 130, 246, 0.3);
   padding: 2px 7px;
   border-radius: 4px;
   white-space: nowrap;

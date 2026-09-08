@@ -549,7 +549,7 @@ export const BatchImageImportModal: React.FC = () => {
         {/* Footer */}
         <div className="cad-batch-footer">
           <div className="cad-batch-footer-left">
-            Всего к импорту: <strong style={{ color: "#38bdf8" }}>{items.length}</strong> фото (
+            Всего к импорту: <strong style={{ color: "#60a5fa" }}>{items.length}</strong> фото (
             {totalMp > 0 ? `~${totalMp.toFixed(0)} МП` : "..."})
           </div>
           <div className="cad-batch-footer-right">

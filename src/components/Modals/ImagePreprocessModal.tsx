@@ -2009,7 +2009,7 @@ function drawAlignmentGrid(
                     y1={tlScreen.y}
                     x2={brScreen.x}
                     y2={brScreen.y}
-                    stroke="rgba(56, 189, 248, 0.35)"
+                    stroke="rgba(59, 130, 246, 0.35)"
                     strokeWidth="1.2"
                     strokeDasharray="4 4"
                   />
@@ -2018,7 +2018,7 @@ function drawAlignmentGrid(
                     y1={trScreen.y}
                     x2={blScreen.x}
                     y2={blScreen.y}
-                    stroke="rgba(56, 189, 248, 0.35)"
+                    stroke="rgba(59, 130, 246, 0.35)"
                     strokeWidth="1.2"
                     strokeDasharray="4 4"
                   />
@@ -2026,8 +2026,8 @@ function drawAlignmentGrid(
                   {/* Quad boundary polygon */}
                   <polygon
                     points={`${tlScreen.x},${tlScreen.y} ${trScreen.x},${trScreen.y} ${brScreen.x},${brScreen.y} ${blScreen.x},${blScreen.y}`}
-                    fill="rgba(56, 189, 248, 0.12)"
-                    stroke="#38bdf8"
+                    fill="rgba(59, 130, 246, 0.12)"
+                    stroke="#3b82f6"
                     strokeWidth="2"
                     strokeDasharray="6 3"
                   />
@@ -2044,7 +2044,7 @@ function drawAlignmentGrid(
                         cx={item.pt.x}
                         cy={item.pt.y}
                         r="10"
-                        fill="#0284c7"
+                        fill="#2563eb"
                         stroke="#ffffff"
                         strokeWidth="2"
                         className="cad-preprocess-handle"
