@@ -12,7 +12,7 @@ import { useProjectStore } from "../stores/projectStore";
 
 export const TopBar: React.FC = () => {
   const { toggleLeftSidebar, toggleRightSidebar, rightSidebarCollapsed } = useUiStore();
-  const { manifest, isDirty, saveProject, closeProject, activeFileType, selectedImageId, selectImage, board } = useProjectStore();
+  const { manifest, isDirty, saveProject, closeProject, activeFileType, selectedImageId } = useProjectStore();
 
   const handleSave = async () => {
     try {
@@ -73,24 +73,18 @@ export const TopBar: React.FC = () => {
         {activeFileType === "board" && (
           <button
             className={`cad-top-tool-btn ${selectedImageId && !rightSidebarCollapsed ? "active" : ""}`}
+            disabled={!selectedImageId}
             onClick={() => {
               if (selectedImageId) {
                 toggleRightSidebar();
-              } else {
-                const firstImg =
-                  board?.data?.bgTop?.images?.[0] || board?.data?.bgBottom?.images?.[0];
-                if (firstImg) {
-                  selectImage(firstImg.id);
-                  if (rightSidebarCollapsed) {
-                    toggleRightSidebar();
-                  }
-                }
               }
             }}
             title={
-              selectedImageId && !rightSidebarCollapsed
-                ? "Скрыть панель свойств (Esc)"
-                : "Открыть свойства скана платы"
+              selectedImageId
+                ? rightSidebarCollapsed
+                  ? "Развернуть панель свойств"
+                  : "Скрыть панель свойств"
+                : "Свойства объекта (выберите скан платы на холсте)"
             }
           >
             <PanelRight size={16} />
