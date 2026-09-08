@@ -164,7 +164,7 @@ export const ToolBar: React.FC = () => {
             className="cad-tool-btn"
             onClick={() => handleAddImage(underlaySide)}
             title={`Добавить скан в активный слой: ${underlaySide === "top" ? "Top (Лицевой)" : "Bottom (Оборотный)"}`}
-            style={{ color: "#38bdf8" }}
+            style={{ color: "#60a5fa" }}
           >
             <ImagePlus size={16} />
           </button>

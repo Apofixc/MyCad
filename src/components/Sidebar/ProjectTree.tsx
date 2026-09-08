@@ -278,7 +278,7 @@ export const ProjectTree: React.FC = () => {
           >
             <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
               {schematicsGroupOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              <Cpu size={13} color="#38bdf8" />
+              <Cpu size={13} color="#60a5fa" />
               <span>СХЕМЫ</span>
             </div>
             {schematicFiles.length > 0 && (
@@ -323,7 +323,7 @@ export const ProjectTree: React.FC = () => {
                             {isOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                           </span>
 
-                          <FileCode size={13} color="#38bdf8" style={{ flexShrink: 0 }} />
+                          <FileCode size={13} color="#60a5fa" style={{ flexShrink: 0 }} />
 
                           {isEditing ? (
                             <div
@@ -340,8 +340,8 @@ export const ProjectTree: React.FC = () => {
                                   if (e.key === "Escape") setEditingFileId(null);
                                 }}
                                 style={{
-                                  background: "#0f172a",
-                                  border: "1px solid #38bdf8",
+                                  background: "var(--cad-bg-deep)",
+                                  border: "1px solid var(--cad-border-focus)",
                                   color: "#fff",
                                   fontSize: "11px",
                                   padding: "2px 4px",
@@ -724,7 +724,7 @@ export const ProjectTree: React.FC = () => {
                                   if (e.key === "Escape") setEditingFileId(null);
                                 }}
                                 style={{
-                                  background: "#0f172a",
+                                  background: "var(--cad-bg-deep)",
                                   border: "1px solid #60a5fa",
                                   color: "#fff",
                                   fontSize: "11px",
@@ -810,7 +810,7 @@ export const ProjectTree: React.FC = () => {
                                   >
                                     <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
                                       <span>{isBgGroupOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
-                                      <ImageIcon size={12} color="#818cf8" style={{ flexShrink: 0 }} />
+                                      <ImageIcon size={12} color="#60a5fa" style={{ flexShrink: 0 }} />
                                       <span className="cad-tree-item-name" style={{ color: "#e2e8f0" }}>
                                         Подложка
                                       </span>
@@ -981,7 +981,7 @@ export const ProjectTree: React.FC = () => {
                                                       >
                                                         {isMultiSelected && <Check size={9} color="#ffffff" />}
                                                       </div>
-                                                      <ImageIcon size={11} color="#f87171" style={{ flexShrink: 0 }} />
+                                                      <ImageIcon size={11} color="#60a5fa" style={{ flexShrink: 0 }} />
                                                       <span className="cad-tree-item-name" style={{ fontSize: "11px" }}>
                                                         {img.name}
                                                       </span>
@@ -1000,7 +1000,7 @@ export const ProjectTree: React.FC = () => {
                                                         }}
                                                         title="Предобработка / Кадрировать..."
                                                       >
-                                                        <Crop size={11} color="#38bdf8" />
+                                                        <Crop size={11} color="#60a5fa" />
                                                       </button>
                                                       <button
                                                         className="cad-tree-icon-btn"
@@ -1162,7 +1162,7 @@ export const ProjectTree: React.FC = () => {
                                                       >
                                                         {isMultiSelected && <Check size={9} color="#ffffff" />}
                                                       </div>
-                                                      <ImageIcon size={11} color="#38bdf8" style={{ flexShrink: 0 }} />
+                                                      <ImageIcon size={11} color="#60a5fa" style={{ flexShrink: 0 }} />
                                                       <span className="cad-tree-item-name" style={{ fontSize: "11px" }}>
                                                         {img.name}
                                                       </span>
@@ -1181,7 +1181,7 @@ export const ProjectTree: React.FC = () => {
                                                         }}
                                                         title="Предобработка / Кадрировать..."
                                                       >
-                                                        <Crop size={11} color="#38bdf8" />
+                                                        <Crop size={11} color="#60a5fa" />
                                                       </button>
                                                       <button
                                                         className="cad-tree-icon-btn"
@@ -1533,7 +1533,7 @@ export const ProjectTree: React.FC = () => {
               onClick={() => batchSetVisibility(selectedImageIds, true)}
               title="Показать все выбранные слои"
             >
-              <Eye size={11} color="#38bdf8" />
+              <Eye size={11} color="#60a5fa" />
               <span>Показать</span>
             </button>
             <button
@@ -1603,7 +1603,7 @@ export const ProjectTree: React.FC = () => {
                   setContextMenu(null);
                 }}
               >
-                <Crop size={12} color="#38bdf8" />
+                <Crop size={12} color="#60a5fa" />
                 <span>Кадрировать / Выровнять скан...</span>
               </div>
               <div
@@ -1617,7 +1617,7 @@ export const ProjectTree: React.FC = () => {
                   setContextMenu(null);
                 }}
               >
-                <Eye size={12} color="#38bdf8" />
+                <Eye size={12} color="#60a5fa" />
                 <span>Изолировать (скрыть остальные)</span>
               </div>
             </>

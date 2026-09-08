@@ -69,15 +69,15 @@ export const InspectorSidebar: React.FC = () => {
   if (!imgLayer) {
     return (
       <aside className="cad-inspector-panel" style={{ width: `${rightSidebarWidth}px` }}>
-        <div className="cad-sidebar-header" style={{ padding: "12px 14px", borderBottom: "1px solid #1e293b" }}>
+        <div className="cad-sidebar-header" style={{ padding: "12px 14px", borderBottom: "1px solid var(--cad-border)" }}>
           <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <ImageIcon size={16} color="#38bdf8" />
+            <ImageIcon size={16} color="#60a5fa" />
             <span style={{ fontWeight: 600, fontSize: "12px", color: "#f8fafc" }}>Свойства изображения</span>
           </div>
         </div>
         <div style={{ padding: "48px 24px", textAlign: "center", color: "#64748b", fontSize: "12px", lineHeight: "1.6" }}>
-          <div style={{ width: "42px", height: "42px", borderRadius: "8px", background: "rgba(56, 189, 248, 0.08)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-            <ImageIcon size={20} color="#38bdf8" />
+          <div style={{ width: "42px", height: "42px", borderRadius: "8px", background: "rgba(59, 130, 246, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
+            <ImageIcon size={20} color="#60a5fa" />
           </div>
           Выберите скан платы на холсте для настройки калибровки, юстировки угла и оптических фильтров
         </div>
@@ -274,15 +274,15 @@ export const InspectorSidebar: React.FC = () => {
           alignItems: "center",
           justifyContent: "space-between",
           padding: "10px 12px",
-          borderBottom: "1px solid #1e293b",
+          borderBottom: "1px solid var(--cad-border)",
           gap: "8px",
-          background: "#0d131f",
+          background: "var(--cad-bg-surface)",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: "6px", flex: 1, minWidth: 0 }}>
           <ImageIcon
             size={15}
-            color={isTop ? "#38bdf8" : "#f59e0b"}
+            color={isTop ? "#60a5fa" : "#94a3b8"}
             style={{ flexShrink: 0 }}
           />
           <input
@@ -472,7 +472,7 @@ export const InspectorSidebar: React.FC = () => {
             {/* Scale Slider */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "4px" }}>
               <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>Масштаб:</span>
-              <span style={{ fontSize: "11px", fontWeight: 600, color: "#38bdf8", fontFamily: "JetBrains Mono" }}>
+              <span style={{ fontSize: "11px", fontWeight: 600, color: "#60a5fa", fontFamily: "JetBrains Mono" }}>
                 {Math.round(currentScale * 100)}%
               </span>
             </div>
@@ -640,17 +640,17 @@ export const InspectorSidebar: React.FC = () => {
 
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "8px" }}>
               <span style={{ fontSize: "10.5px", color: "#94a3b8" }}>Физический размер:</span>
-              <span className="cad-badge-dim" style={{ color: "#38bdf8" }}>{widthMm} × {heightMm} мм</span>
+              <span className="cad-badge-dim" style={{ color: "#60a5fa" }}>{widthMm} × {heightMm} мм</span>
             </div>
 
             <button
               type="button"
               className="cad-btn cad-btn-secondary"
-              style={{ width: "100%", fontSize: "11px", padding: "6px", justifyContent: "center", border: "1px solid rgba(56, 189, 248, 0.3)" }}
+              style={{ width: "100%", fontSize: "11px", padding: "6px", justifyContent: "center" }}
               onClick={() => setActiveTool("calibrate")}
               title="Кликните 2 точки известного расстояния на холсте"
             >
-              <Ruler size={13} style={{ marginRight: "6px", color: "#38bdf8" }} />
+              <Ruler size={13} style={{ marginRight: "6px", color: "#60a5fa" }} />
               <span>Калибровать по 2 точкам</span>
             </button>
           </div>
@@ -793,7 +793,7 @@ export const InspectorSidebar: React.FC = () => {
                 onClick={handleReplaceFile}
                 title="Заменить файл изображения с сохранением координат, масштаба и фильтров"
               >
-                <Upload size={12} style={{ marginRight: "6px", color: "#38bdf8" }} />
+                <Upload size={12} style={{ marginRight: "6px", color: "#60a5fa" }} />
                 <span>Заменить файл...</span>
               </button>
 

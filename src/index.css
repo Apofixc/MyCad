@@ -4,6 +4,7 @@
   --cad-bg-panel: #181d26;
   --cad-bg-card: #1e2532;
   --cad-bg-hover: #273042;
+  --cad-bg-viewport: #0c0e12;
   --cad-border: #283344;
   --cad-border-focus: #3b82f6;
 
@@ -392,9 +393,9 @@ body,
 }
 
 .cad-tree-item.work-layer-active {
-  background: rgba(56, 189, 248, 0.18);
+  background: rgba(59, 130, 246, 0.16);
   color: #ffffff;
-  border-left: 3px solid #38bdf8;
+  border-left: 3px solid #3b82f6;
   padding-left: 3px;
   font-weight: 500;
 }
@@ -716,19 +717,19 @@ body,
 }
 
 .cad-status-pill.cad-status-clean {
-  color: #4ade80;
-  border-color: rgba(74, 222, 128, 0.25);
-  background: rgba(16, 185, 129, 0.08);
+  color: #cbd5e1;
+  border-color: var(--cad-border);
+  background: var(--cad-bg-panel);
 }
 
 .cad-status-pill.cad-status-dirty {
   color: #fbbf24;
-  border-color: rgba(251, 191, 36, 0.3);
+  border-color: rgba(245, 158, 11, 0.3);
   background: rgba(245, 158, 11, 0.08);
 }
 
 .cad-status-pill.cad-status-coords {
-  color: #cbd5e1;
+  color: #94a3b8;
 }
 
 .cad-status-pill strong {
@@ -1249,9 +1250,9 @@ body,
   bottom: 0;
   left: 0;
   right: 0;
-  background: rgba(15, 23, 42, 0.96);
+  background: var(--cad-bg-surface);
   backdrop-filter: blur(12px);
-  border-top: 1px solid rgba(59, 130, 246, 0.35);
+  border-top: 1px solid var(--cad-border);
   padding: 6px 8px;
   display: flex;
   flex-direction: column;
@@ -1277,11 +1278,11 @@ body,
 
 .cad-batch-count {
   font-weight: 600;
-  color: #38bdf8;
-  background: rgba(56, 189, 248, 0.15);
+  color: #60a5fa;
+  background: rgba(59, 130, 246, 0.15);
   padding: 1px 6px;
   border-radius: 10px;
-  border: 1px solid rgba(56, 189, 248, 0.3);
+  border: 1px solid rgba(59, 130, 246, 0.3);
 }
 
 .cad-batch-buttons {
@@ -1336,8 +1337,8 @@ body,
 }
 
 .cad-tree-checkbox:hover {
-  border-color: #38bdf8;
-  background: rgba(56, 189, 248, 0.15);
+  border-color: #3b82f6;
+  background: rgba(59, 130, 246, 0.15);
 }
 
 .cad-tree-checkbox.checked {
@@ -1355,8 +1356,8 @@ body,
 .cad-context-menu {
   position: fixed;
   z-index: 9999;
-  background: #0f172a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--cad-bg-panel);
+  border: 1px solid var(--cad-border);
   border-radius: 6px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.6);
   padding: 4px;

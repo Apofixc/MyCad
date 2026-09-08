@@ -46,9 +46,9 @@ export const StatusBar: React.FC = () => {
           <div className="cad-status-pill cad-status-layers">
             <Layers size={12} color="#60a5fa" />
             <span>
-              Сканы: <strong style={{ color: "var(--cad-top-layer)" }}>Top ({topCount})</strong>
+              Сканы: <strong style={{ color: "#60a5fa" }}>Top ({topCount})</strong>
               {" / "}
-              <strong style={{ color: "var(--cad-bottom-layer)" }}>Bottom ({botCount})</strong>
+              <strong style={{ color: "#cbd5e1" }}>Bottom ({botCount})</strong>
             </span>
           </div>
         )}
