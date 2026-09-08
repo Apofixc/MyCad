@@ -234,22 +234,26 @@ export const ProjectTree: React.FC = () => {
       <div
         className="cad-sidebar-header"
         style={{
-          padding: "8px 10px",
           display: "flex",
           alignItems: "center",
           justifyContent: "space-between",
+          padding: "10px 12px",
+          borderBottom: "1px solid var(--cad-border)",
+          background: "var(--cad-bg-surface)",
+          gap: "8px",
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "7px", overflow: "hidden", flex: 1, minWidth: 0 }}>
           <Folder size={14} color="#60a5fa" style={{ flexShrink: 0 }} />
           <span
             style={{
               fontWeight: 600,
-              fontSize: "11.5px",
+              fontSize: "12px",
               color: "#f1f5f9",
               whiteSpace: "nowrap",
               overflow: "hidden",
               textOverflow: "ellipsis",
+              letterSpacing: "0.2px",
             }}
             title={manifest?.name}
           >
@@ -259,6 +263,7 @@ export const ProjectTree: React.FC = () => {
 
         <button
           className="cad-tree-icon-btn"
+          style={{ width: "24px", height: "24px" }}
           onClick={() => openModal("newDocument")}
           title="Добавить документ в проект"
         >
@@ -389,11 +394,11 @@ export const ProjectTree: React.FC = () => {
                               <Edit2 size={11} />
                             </button>
                             <button
-                              className="cad-tree-icon-btn"
+                              className="cad-tree-icon-btn danger"
                               onClick={(e) => handleRemove(file.id, file.name, e)}
                               title="Удалить схему"
                             >
-                              <Trash2 size={11} color="#ef4444" />
+                              <Trash2 size={11} />
                             </button>
                           </div>
                         )}
@@ -418,7 +423,7 @@ export const ProjectTree: React.FC = () => {
                                         {isBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                       </span>
                                       <div className="cad-tree-swatch swatch-schematic" />
-                                      <span className="cad-tree-item-name" style={{ color: "#e2e8f0" }}>
+                                      <span className="cad-tree-item-name">
                                         Подложка (скан)
                                       </span>
                                       {bgImages.length > 0 && (
@@ -426,7 +431,7 @@ export const ProjectTree: React.FC = () => {
                                       )}
                                     </div>
 
-                                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                    <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                       <button
                                         className={`cad-tree-icon-btn ${isAllSchBgVisible ? "active" : ""}`}
                                         onClick={async () => {
@@ -487,7 +492,7 @@ export const ProjectTree: React.FC = () => {
                                           return (
                                             <div
                                               key={img.id}
-                                              className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""}`}
+                                              className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""} ${selectedImageIds.length > 0 ? "has-multi-selection" : ""} ${!img.visible ? "is-hidden" : ""}`}
                                               onClick={(e) => {
                                                 if (!isActive) setActiveFile(file.id);
                                                 if (e.ctrlKey || e.metaKey) {
@@ -538,9 +543,12 @@ export const ProjectTree: React.FC = () => {
                                                 <span className="cad-tree-item-name" style={{ fontSize: "11px" }}>
                                                   {img.name}
                                                 </span>
-                                                {img.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
+                                                <div className="cad-tree-status-indicators">
+                                                  {!img.visible && <EyeOff size={11} color="var(--cad-text-dim)" />}
+                                                  {img.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
+                                                </div>
                                               </div>
-                                              <div className="cad-tree-actions" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                                              <div className="cad-tree-actions" onClick={(e) => e.stopPropagation()}>
                                                 <button
                                                   className="cad-tree-icon-btn"
                                                   onClick={() => updateImageLayer({ ...img, visible: !img.visible })}
@@ -556,11 +564,11 @@ export const ProjectTree: React.FC = () => {
                                                   {img.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
                                                 </button>
                                                 <button
-                                                  className="cad-tree-icon-btn"
+                                                  className="cad-tree-icon-btn danger"
                                                   onClick={() => deleteImageLayer(img.id)}
                                                   title="Удалить скан"
                                                 >
-                                                  <Trash2 size={11} color="#ef4444" />
+                                                  <Trash2 size={11} />
                                                 </button>
                                               </div>
                                             </div>
@@ -773,11 +781,11 @@ export const ProjectTree: React.FC = () => {
                               <Edit2 size={11} />
                             </button>
                             <button
-                              className="cad-tree-icon-btn"
+                              className="cad-tree-icon-btn danger"
                               onClick={(e) => handleRemove(file.id, file.name, e)}
                               title="Удалить плату"
                             >
-                              <Trash2 size={11} color="#ef4444" />
+                              <Trash2 size={11} />
                             </button>
                           </div>
                         )}
@@ -811,13 +819,13 @@ export const ProjectTree: React.FC = () => {
                                     <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
                                       <span>{isBgGroupOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
                                       <ImageIcon size={12} color="#60a5fa" style={{ flexShrink: 0 }} />
-                                      <span className="cad-tree-item-name" style={{ color: "#e2e8f0" }}>
+                                      <span className="cad-tree-item-name">
                                         Подложка
                                       </span>
                                       {totalBgCount > 0 && <span className="cad-tree-badge">{totalBgCount}</span>}
                                     </div>
 
-                                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                    <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                       <button
                                         className={`cad-tree-icon-btn ${isAllBgVisible ? "active" : ""}`}
                                         onClick={async () => {
@@ -866,13 +874,13 @@ export const ProjectTree: React.FC = () => {
                                               {isTopBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                             </span>
                                             <div className="cad-tree-swatch swatch-top" />
-                                            <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
+                                            <span className="cad-tree-item-name">
                                               Top (Лицевая)
                                             </span>
                                             {bgTopImages.length > 0 && <span className="cad-tree-badge">{bgTopImages.length}</span>}
                                           </div>
 
-                                          <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                          <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                             <button
                                               className={`cad-tree-icon-btn ${isAllTopVisible ? "active" : ""}`}
                                               onClick={async () => {
@@ -933,7 +941,7 @@ export const ProjectTree: React.FC = () => {
                                                 return (
                                                   <div
                                                     key={img.id}
-                                                    className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""}`}
+                                                    className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""} ${selectedImageIds.length > 0 ? "has-multi-selection" : ""} ${!img.visible ? "is-hidden" : ""}`}
                                                     onClick={(e) => {
                                                       if (!isActive) setActiveFile(file.id);
                                                       setActiveWorkLayer({ type: "underlay", side: "top" });
@@ -985,9 +993,12 @@ export const ProjectTree: React.FC = () => {
                                                       <span className="cad-tree-item-name" style={{ fontSize: "11px" }}>
                                                         {img.name}
                                                       </span>
-                                                      {img.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
+                                                      <div className="cad-tree-status-indicators">
+                                                        {!img.visible && <EyeOff size={11} color="var(--cad-text-dim)" />}
+                                                        {img.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
+                                                      </div>
                                                     </div>
-                                                    <div className="cad-tree-actions" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                                                    <div className="cad-tree-actions" onClick={(e) => e.stopPropagation()}>
                                                       <button
                                                         className="cad-tree-icon-btn"
                                                         onClick={() => {
@@ -1017,11 +1028,11 @@ export const ProjectTree: React.FC = () => {
                                                         {img.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
                                                       </button>
                                                       <button
-                                                        className="cad-tree-icon-btn"
+                                                        className="cad-tree-icon-btn danger"
                                                         onClick={() => deleteImageLayer(img.id)}
                                                         title="Удалить скан"
                                                       >
-                                                        <Trash2 size={11} color="#ef4444" />
+                                                        <Trash2 size={11} />
                                                       </button>
                                                     </div>
                                                   </div>
@@ -1053,7 +1064,7 @@ export const ProjectTree: React.FC = () => {
                                             {bgBottomImages.length > 0 && <span className="cad-tree-badge">{bgBottomImages.length}</span>}
                                           </div>
 
-                                          <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                          <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                             <button
                                               className={`cad-tree-icon-btn ${isAllBotVisible ? "active" : ""}`}
                                               onClick={async () => {
@@ -1114,7 +1125,7 @@ export const ProjectTree: React.FC = () => {
                                                 return (
                                                   <div
                                                     key={img.id}
-                                                    className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""}`}
+                                                    className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""} ${selectedImageIds.length > 0 ? "has-multi-selection" : ""} ${!img.visible ? "is-hidden" : ""}`}
                                                     onClick={(e) => {
                                                       if (!isActive) setActiveFile(file.id);
                                                       setActiveWorkLayer({ type: "underlay", side: "bottom" });
@@ -1166,9 +1177,12 @@ export const ProjectTree: React.FC = () => {
                                                       <span className="cad-tree-item-name" style={{ fontSize: "11px" }}>
                                                         {img.name}
                                                       </span>
-                                                      {img.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
+                                                      <div className="cad-tree-status-indicators">
+                                                        {!img.visible && <EyeOff size={11} color="var(--cad-text-dim)" />}
+                                                        {img.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
+                                                      </div>
                                                     </div>
-                                                    <div className="cad-tree-actions" style={{ opacity: 1 }} onClick={(e) => e.stopPropagation()}>
+                                                    <div className="cad-tree-actions" onClick={(e) => e.stopPropagation()}>
                                                       <button
                                                         className="cad-tree-icon-btn"
                                                         onClick={() => {
@@ -1198,11 +1212,11 @@ export const ProjectTree: React.FC = () => {
                                                         {img.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
                                                       </button>
                                                       <button
-                                                        className="cad-tree-icon-btn"
+                                                        className="cad-tree-icon-btn danger"
                                                         onClick={() => deleteImageLayer(img.id)}
                                                         title="Удалить скан"
                                                       >
-                                                        <Trash2 size={11} color="#ef4444" />
+                                                        <Trash2 size={11} />
                                                       </button>
                                                     </div>
                                                   </div>
@@ -1234,7 +1248,7 @@ export const ProjectTree: React.FC = () => {
                                   <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
                                     <span>{isCompGroupOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
                                     <Cpu size={12} color="#a855f7" style={{ flexShrink: 0 }} />
-                                    <span className="cad-tree-item-name" style={{ color: "#e2e8f0" }}>
+                                    <span className="cad-tree-item-name">
                                       Компоненты
                                     </span>
                                     {totalComponentsCount > 0 && (
@@ -1242,7 +1256,7 @@ export const ProjectTree: React.FC = () => {
                                     )}
                                   </div>
 
-                                  <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                  <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                     <button
                                       className={`cad-tree-icon-btn ${isAllComponentsVisible ? "active" : ""}`}
                                       onClick={() => {
@@ -1275,13 +1289,13 @@ export const ProjectTree: React.FC = () => {
                                         {isTopCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                       </span>
                                       <div className="cad-tree-swatch swatch-top" />
-                                      <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
+                                      <span className="cad-tree-item-name">
                                         Top (Лицевой монтаж)
                                       </span>
                                       {topComponents.length > 0 && <span className="cad-tree-badge">{topComponents.length}</span>}
                                     </div>
 
-                                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                    <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                       <button
                                         className={`cad-tree-icon-btn ${showTopComponents ? "active" : ""}`}
                                         onClick={() => {
@@ -1332,13 +1346,13 @@ export const ProjectTree: React.FC = () => {
                                         {isBotCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                       </span>
                                       <div className="cad-tree-swatch swatch-bottom" />
-                                      <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
+                                      <span className="cad-tree-item-name">
                                         Bottom (Оборотный монтаж)
                                       </span>
                                       {botComponents.length > 0 && <span className="cad-tree-badge">{botComponents.length}</span>}
                                     </div>
 
-                                    <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                    <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                       <button
                                         className={`cad-tree-icon-btn ${showBottomComponents ? "active" : ""}`}
                                         onClick={() => {
@@ -1394,12 +1408,12 @@ export const ProjectTree: React.FC = () => {
                                       {isCopperOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                     </span>
                                     <div className="cad-tree-swatch swatch-copper" />
-                                    <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
+                                    <span className="cad-tree-item-name">
                                       Слои топологии (медь)
                                     </span>
                                   </div>
 
-                                  <div style={{ display: "flex", alignItems: "center", gap: "2px" }} onClick={(e) => e.stopPropagation()}>
+                                  <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                     <button
                                       className={`cad-tree-icon-btn ${isAllCopperVisible ? "active" : ""}`}
                                       onClick={() => {
