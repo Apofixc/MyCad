@@ -1157,8 +1157,8 @@ export const BoardCanvas: React.FC = () => {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "12px" }}>
             <span style={{ fontWeight: 600 }}>
               {measurePts.length === 0
-                ? "Шаг 1: Кликните первую точку на базовой линии (край платы или дорожка)"
-                : "Шаг 2: Кликните вторую точку вдоль линии для выравнивания"}
+                ? "Шаг 1: Кликните первую точку на НАКЛОННОМ крае платы (или дорожке)"
+                : "Шаг 2: Кликните вторую точку на ТОМ ЖЕ наклонном крае (задает текущий угол платы)"}
             </span>
             <span style={{ color: "var(--cad-text-dim)" }}>
               (Точек: {measurePts.length} / 2)
@@ -1612,7 +1612,21 @@ function drawMeasurementOverlay(
     }
     const deltaDeg = Math.round(-minDiff * 100) / 100;
     const typeRu = bestTarget === 0 || Math.abs(bestTarget) === 180 ? "горизонт" : "вертикаль";
-    text = `Угол: ${rawAngle.toFixed(1)}° · Доворот: ${deltaDeg > 0 ? "+" : ""}${deltaDeg.toFixed(2)}° (${typeRu})`;
+    const isNearZero = Math.abs(deltaDeg) < 1.0;
+    text = isNearZero
+      ? `Угол: ${rawAngle.toFixed(1)}° · Доворот: ${deltaDeg > 0 ? "+" : ""}${deltaDeg.toFixed(2)}° (линия уже параллельна оси)`
+      : `Угол: ${rawAngle.toFixed(1)}° · Доворот: ${deltaDeg > 0 ? "+" : ""}${deltaDeg.toFixed(2)}° (${typeRu})`;
+
+    // Draw reference horizontal axis through p1 to show the target orientation
+    ctx.save();
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.35)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(p1.x - 2000, p1.y);
+    ctx.lineTo(p1.x + 2000, p1.y);
+    ctx.stroke();
+    ctx.restore();
   } else if (activeTool === "calibrate") {
     strokeColor = "#10b981";
     text = `База: ${distMm.toFixed(2)} мм (${distMil.toFixed(1)} mil)`;
