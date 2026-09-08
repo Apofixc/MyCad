@@ -395,7 +395,8 @@ export const BoardCanvas: React.FC = () => {
             boardMmToScreen,
             MM_TO_PX,
             zoomFactor,
-            loadedImagesRef.current
+            loadedImagesRef.current,
+            activeTool === "transform"
           );
         }
       }
@@ -608,8 +609,8 @@ export const BoardCanvas: React.FC = () => {
     if (e.button === 0) {
       const selectedLayer = getSelectedLayer();
 
-      // Check if clicked on a transform handle of the currently selected image
-      if (selectedLayer && !selectedLayer.locked) {
+      // Check if clicked on a transform handle of the currently selected image (ONLY in Transform tool)
+      if (activeTool === "transform" && selectedLayer && !selectedLayer.locked) {
         const img = loadedImagesRef.current.get(selectedLayer.id);
         if (img) {
           const hitHandle = getHitHandle(
@@ -850,9 +851,9 @@ export const BoardCanvas: React.FC = () => {
       return;
     }
 
-    // 4. Hover over handles or image
+    // 4. Hover over handles (ONLY in Transform tool) or image
     const selectedLayer = getSelectedLayer();
-    if (selectedLayer && !selectedLayer.locked) {
+    if (activeTool === "transform" && selectedLayer && !selectedLayer.locked) {
       const img = loadedImagesRef.current.get(selectedLayer.id);
       if (img) {
         const hitHandle = getHitHandle(
@@ -1336,7 +1337,8 @@ function drawSelectionBox(
   boardMmToScreen: (x: number, y: number) => { x: number; y: number },
   mmToPx: number,
   zoom: number,
-  cache: Map<string, HTMLImageElement>
+  cache: Map<string, HTMLImageElement>,
+  isTransformMode: boolean = false
 ) {
   const img = cache.get(layer.id);
   if (!img || !img.complete || img.naturalWidth === 0) return;
@@ -1360,60 +1362,65 @@ function drawSelectionBox(
   }
 
   // Bounding box with glow
-  ctx.shadowColor = "rgba(56, 189, 248, 0.75)";
-  ctx.shadowBlur = 8;
-  ctx.strokeStyle = "#38bdf8";
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([6, 3]);
+  ctx.shadowColor = isTransformMode ? "rgba(56, 189, 248, 0.75)" : "rgba(56, 189, 248, 0.4)";
+  ctx.shadowBlur = isTransformMode ? 8 : 4;
+  ctx.strokeStyle = isTransformMode ? "#38bdf8" : "#0284c7";
+  ctx.lineWidth = isTransformMode ? 1.5 : 1.2;
+  ctx.setLineDash(isTransformMode ? [6, 3] : [4, 4]);
   ctx.strokeRect(-2, -2, wPx + 4, hPx + 4);
-
-  // Rotation stem & lollipop
-  const stemLen = 28;
-  ctx.beginPath();
-  ctx.moveTo(wPx / 2, -2);
-  ctx.lineTo(wPx / 2, -2 - stemLen);
-  ctx.strokeStyle = "#38bdf8";
-  ctx.lineWidth = 1.5;
-  ctx.setLineDash([3, 2]);
-  ctx.stroke();
-
   ctx.setLineDash([]);
   ctx.shadowBlur = 0;
 
-  // Rotation handle circle
-  ctx.beginPath();
-  ctx.arc(wPx / 2, -2 - stemLen, 5, 0, Math.PI * 2);
-  ctx.fillStyle = "#ffffff";
-  ctx.fill();
-  ctx.strokeStyle = "#0284c7";
-  ctx.lineWidth = 1.5;
-  ctx.stroke();
+  // Render handles and rotation lollipop ONLY in Transform tool
+  if (isTransformMode) {
+    // Rotation stem & lollipop
+    const stemLen = 28;
+    ctx.beginPath();
+    ctx.moveTo(wPx / 2, -2);
+    ctx.lineTo(wPx / 2, -2 - stemLen);
+    ctx.strokeStyle = "#38bdf8";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([3, 2]);
+    ctx.stroke();
 
-  // 8 resize handles
-  ctx.fillStyle = "#ffffff";
-  ctx.strokeStyle = "#0284c7";
-  ctx.lineWidth = 1.5;
+    ctx.setLineDash([]);
+    ctx.shadowBlur = 0;
 
-  const hs = 8;
-  const handles = [
-    { x: -2, y: -2 },
-    { x: wPx / 2, y: -2 },
-    { x: wPx + 2, y: -2 },
-    { x: wPx + 2, y: hPx / 2 },
-    { x: wPx + 2, y: hPx + 2 },
-    { x: wPx / 2, y: hPx + 2 },
-    { x: -2, y: hPx + 2 },
-    { x: -2, y: hPx / 2 },
-  ];
+    // Rotation handle circle
+    ctx.beginPath();
+    ctx.arc(wPx / 2, -2 - stemLen, 5, 0, Math.PI * 2);
+    ctx.fillStyle = "#ffffff";
+    ctx.fill();
+    ctx.strokeStyle = "#0284c7";
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
 
-  handles.forEach((h) => {
-    ctx.fillRect(h.x - hs / 2, h.y - hs / 2, hs, hs);
-    ctx.strokeRect(h.x - hs / 2, h.y - hs / 2, hs, hs);
-  });
+    // 8 resize handles
+    ctx.fillStyle = "#ffffff";
+    ctx.strokeStyle = "#0284c7";
+    ctx.lineWidth = 1.5;
+
+    const hs = 8;
+    const handles = [
+      { x: -2, y: -2 },
+      { x: wPx / 2, y: -2 },
+      { x: wPx + 2, y: -2 },
+      { x: wPx + 2, y: hPx / 2 },
+      { x: wPx + 2, y: hPx + 2 },
+      { x: wPx / 2, y: hPx + 2 },
+      { x: -2, y: hPx + 2 },
+      { x: -2, y: hPx / 2 },
+    ];
+
+    handles.forEach((h) => {
+      ctx.fillRect(h.x - hs / 2, h.y - hs / 2, hs, hs);
+      ctx.strokeRect(h.x - hs / 2, h.y - hs / 2, hs, hs);
+    });
+  }
 
   // Name tag badge
   const sideLabel = layer.side === "top" ? "TOP" : "BOT";
-  const badgeText = `${layer.name || "Скан"} (${sideLabel})`;
+  const badgeText = `${layer.name || "Скан"} (${sideLabel})${isTransformMode ? " · ТРАНСФОРМАЦИЯ" : ""}`;
   ctx.font = "bold 11px JetBrains Mono, monospace";
   const textW = ctx.measureText(badgeText).width;
   const badgeW = textW + 16;
@@ -1421,11 +1428,11 @@ function drawSelectionBox(
 
   ctx.fillStyle = "rgba(8, 12, 20, 0.9)";
   ctx.fillRect(-2, -badgeH - 6, badgeW, badgeH);
-  ctx.strokeStyle = "#38bdf8";
+  ctx.strokeStyle = isTransformMode ? "#38bdf8" : "#0284c7";
   ctx.lineWidth = 1;
   ctx.strokeRect(-2, -badgeH - 6, badgeW, badgeH);
 
-  ctx.fillStyle = layer.side === "top" ? "#38bdf8" : "#f59e0b";
+  ctx.fillStyle = isTransformMode ? "#38bdf8" : layer.side === "top" ? "#93c5fd" : "#fcd34d";
   ctx.textBaseline = "middle";
   ctx.fillText(badgeText, 6, -badgeH / 2 - 6);
 
