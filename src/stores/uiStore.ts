@@ -69,6 +69,7 @@ interface UiStore {
   setCursorMm: (pos: { x: number; y: number }) => void;
   setViewportZoom: (zoom: number) => void;
   setViewportPan: (pan: { x: number; y: number }) => void;
+  setViewportZoomAndPan: (zoom: number, pan: { x: number; y: number }) => void;
   setGridStepMm: (step: number) => void;
   toggleGrid: () => void;
 
@@ -161,6 +162,11 @@ export const useUiStore = create<UiStore>((set) => ({
   setCursorMm: (pos) => set({ cursorMm: pos }),
   setViewportZoom: (zoom) => set({ viewportZoom: Math.max(10, Math.min(2000, zoom)) }),
   setViewportPan: (pan) => set({ viewportPan: pan }),
+  setViewportZoomAndPan: (zoom, pan) =>
+    set({
+      viewportZoom: Math.max(10, Math.min(2000, zoom)),
+      viewportPan: pan,
+    }),
   focusImageLayer: (imgLayer) => {
     const isTop = (imgLayer.side || "top").toLowerCase() === "top";
     const state = useUiStore.getState();

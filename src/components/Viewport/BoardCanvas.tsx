@@ -45,6 +45,7 @@ export const BoardCanvas: React.FC = () => {
     setViewportZoom,
     viewportPan,
     setViewportPan,
+    setViewportZoomAndPan,
     setCursorMm,
     showGrid,
     gridStepMm,
@@ -282,6 +283,8 @@ export const BoardCanvas: React.FC = () => {
   // Track canvas dirty state
   const dirtyRef = useRef(true);
   const cursorRafRef = useRef<number | null>(null);
+  const wheelRafRef = useRef<number | null>(null);
+  const pendingWheelRef = useRef<{ zoom: number; pan: { x: number; y: number } } | null>(null);
 
   // Main Render Loop
   useEffect(() => {
@@ -987,7 +990,7 @@ export const BoardCanvas: React.FC = () => {
     setIsPanning(false);
   };
 
-  // Cursor-anchored Zoom on Wheel
+  // Cursor-anchored Zoom on Wheel with rAF batching
   const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
     e.preventDefault();
     const rect = canvasRef.current?.getBoundingClientRect();
@@ -995,16 +998,28 @@ export const BoardCanvas: React.FC = () => {
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
 
-    const zoomFactorBefore = viewportZoom / 100;
+    const currentZoom = pendingWheelRef.current ? pendingWheelRef.current.zoom : viewportZoom;
+    const currentPan = pendingWheelRef.current ? pendingWheelRef.current.pan : viewportPan;
+
+    const zoomFactorBefore = currentZoom / 100;
     const zoomDelta = e.deltaY < 0 ? 1.15 : 0.87;
-    const nextZoom = Math.max(10, Math.min(2000, Math.round(viewportZoom * zoomDelta)));
+    const nextZoom = Math.max(10, Math.min(2000, Math.round(currentZoom * zoomDelta)));
     const zoomFactorAfter = nextZoom / 100;
 
-    const newPanX = mouseX - ((mouseX - viewportPan.x) * zoomFactorAfter) / zoomFactorBefore;
-    const newPanY = mouseY - ((mouseY - viewportPan.y) * zoomFactorAfter) / zoomFactorBefore;
+    const newPanX = mouseX - ((mouseX - currentPan.x) * zoomFactorAfter) / zoomFactorBefore;
+    const newPanY = mouseY - ((mouseY - currentPan.y) * zoomFactorAfter) / zoomFactorBefore;
 
-    setViewportZoom(nextZoom);
-    setViewportPan({ x: newPanX, y: newPanY });
+    pendingWheelRef.current = { zoom: nextZoom, pan: { x: newPanX, y: newPanY } };
+
+    if (!wheelRafRef.current) {
+      wheelRafRef.current = requestAnimationFrame(() => {
+        if (pendingWheelRef.current) {
+          setViewportZoomAndPan(pendingWheelRef.current.zoom, pendingWheelRef.current.pan);
+          pendingWheelRef.current = null;
+        }
+        wheelRafRef.current = null;
+      });
+    }
   };
 
   return (
@@ -1332,10 +1347,10 @@ function drawGrid(
   const baseStepPx = stepMm * mmToPx * zoom;
   if (baseStepPx <= 0) return;
 
-  // Adaptive scaling: If step is too small (< 10px), step up to keep grid visible and legible
+  // Adaptive scaling: keep grid line spacing >= 22px for 60fps performance and clean visuals
   let mult = 1;
   const multipliers = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000];
-  while (baseStepPx * mult < 10 && mult < 50000) {
+  while (baseStepPx * mult < 22 && mult < 50000) {
     const next = multipliers.find((m) => m > mult);
     if (!next) {
       mult *= 2;
@@ -1346,14 +1361,14 @@ function drawGrid(
 
   const stepPx = baseStepPx * mult;
 
-  // Major lines multiplier (10 for decimal like 0.1/1.0, 5 for others)
+  // Major lines multiplier
   const isMetricDec = [0.1, 1.0, 10.0].some((v) => Math.abs(stepMm - v) < 0.001);
   const majorMult = isMetricDec ? 10 : 5;
   const majorStepPx = stepPx * majorMult;
 
   ctx.save();
 
-  // 1. Minor grid lines
+  // 1. Minor grid lines (single path, fast bitwise rounding)
   ctx.strokeStyle = "rgba(255, 255, 255, 0.05)";
   ctx.lineWidth = 1;
 
@@ -1362,19 +1377,19 @@ function drawGrid(
 
   ctx.beginPath();
   for (let x = startX; x <= width; x += stepPx) {
-    const px = Math.floor(x) + 0.5;
+    const px = (x | 0) + 0.5;
     ctx.moveTo(px, 0);
     ctx.lineTo(px, height);
   }
   for (let y = startY; y <= height; y += stepPx) {
-    const py = Math.floor(y) + 0.5;
+    const py = (y | 0) + 0.5;
     ctx.moveTo(0, py);
     ctx.lineTo(width, py);
   }
   ctx.stroke();
 
   // 2. Major grid lines
-  if (majorStepPx >= 20) {
+  if (majorStepPx >= 44) {
     ctx.strokeStyle = "rgba(59, 130, 246, 0.15)";
     ctx.lineWidth = 1;
     const majorStartX = ((pan.x % majorStepPx) + majorStepPx) % majorStepPx;
@@ -1382,22 +1397,22 @@ function drawGrid(
 
     ctx.beginPath();
     for (let x = majorStartX; x <= width; x += majorStepPx) {
-      const px = Math.floor(x) + 0.5;
+      const px = (x | 0) + 0.5;
       ctx.moveTo(px, 0);
       ctx.lineTo(px, height);
     }
     for (let y = majorStartY; y <= height; y += majorStepPx) {
-      const py = Math.floor(y) + 0.5;
+      const py = (y | 0) + 0.5;
       ctx.moveTo(0, py);
       ctx.lineTo(width, py);
     }
     ctx.stroke();
   }
 
-  // 3. Board Coordinate Axes (X=0: Green, Y=0: Red)
-  const originScreenX = Math.floor(pan.x) + 0.5;
+  // 3. Board Coordinate Axes
+  const originScreenX = (pan.x | 0) + 0.5;
   if (originScreenX >= 0 && originScreenX <= width) {
-    ctx.strokeStyle = "rgba(34, 197, 94, 0.35)"; // CAD Green (Y-axis line)
+    ctx.strokeStyle = "rgba(34, 197, 94, 0.35)"; // Green Y axis
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(originScreenX, 0);
@@ -1405,9 +1420,9 @@ function drawGrid(
     ctx.stroke();
   }
 
-  const originScreenY = Math.floor(pan.y) + 0.5;
+  const originScreenY = (pan.y | 0) + 0.5;
   if (originScreenY >= 0 && originScreenY <= height) {
-    ctx.strokeStyle = "rgba(239, 68, 68, 0.35)"; // CAD Red (X-axis line)
+    ctx.strokeStyle = "rgba(239, 68, 68, 0.35)"; // Red X axis
     ctx.lineWidth = 1.5;
     ctx.beginPath();
     ctx.moveTo(0, originScreenY);
@@ -1417,38 +1432,35 @@ function drawGrid(
 
   // 4. (0,0) Board Origin Target & Crosshair
   if (
-    pan.x >= -40 &&
-    pan.x <= width + 40 &&
-    pan.y >= -40 &&
-    pan.y <= height + 40
+    pan.x >= -30 &&
+    pan.x <= width + 30 &&
+    pan.y >= -30 &&
+    pan.y <= height + 30
   ) {
-    const ox = Math.floor(pan.x) + 0.5;
-    const oy = Math.floor(pan.y) + 0.5;
+    const ox = (pan.x | 0) + 0.5;
+    const oy = (pan.y | 0) + 0.5;
 
-    // Origin circle
     ctx.strokeStyle = "#38bdf8";
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.arc(ox, oy, 6, 0, Math.PI * 2);
+    ctx.arc(ox, oy, 5, 0, Math.PI * 2);
     ctx.stroke();
 
-    // Cross markers
     ctx.strokeStyle = "#ef4444";
     ctx.beginPath();
-    ctx.moveTo(ox - 14, oy);
-    ctx.lineTo(ox + 14, oy);
+    ctx.moveTo(ox - 12, oy);
+    ctx.lineTo(ox + 12, oy);
     ctx.stroke();
 
     ctx.strokeStyle = "#22c55e";
     ctx.beginPath();
-    ctx.moveTo(ox, oy - 14);
-    ctx.lineTo(ox, oy + 14);
+    ctx.moveTo(ox, oy - 12);
+    ctx.lineTo(ox, oy + 12);
     ctx.stroke();
 
-    // Small coordinate origin tag
-    ctx.font = "10px JetBrains Mono, monospace";
+    ctx.font = "10px monospace";
     ctx.fillStyle = "rgba(148, 163, 184, 0.85)";
-    ctx.fillText("(0, 0)", ox + 9, oy - 8);
+    ctx.fillText("(0, 0)", ox + 8, oy - 7);
   }
 
   ctx.restore();

@@ -15,15 +15,13 @@ import { useUiStore } from "../stores/uiStore";
 import { useProjectStore } from "../stores/projectStore";
 
 export const StatusBar: React.FC = () => {
-  const {
-    cursorMm,
-    viewportZoom,
-    gridStepMm,
-    setGridStepMm,
-    showGrid,
-    toggleGrid,
-    fitAllImages,
-  } = useUiStore();
+  const cursorMm = useUiStore((s) => s.cursorMm);
+  const viewportZoom = useUiStore((s) => s.viewportZoom);
+  const gridStepMm = useUiStore((s) => s.gridStepMm);
+  const setGridStepMm = useUiStore((s) => s.setGridStepMm);
+  const showGrid = useUiStore((s) => s.showGrid);
+  const toggleGrid = useUiStore((s) => s.toggleGrid);
+  const fitAllImages = useUiStore((s) => s.fitAllImages);
   const { manifest, activeFileType, board, schematic, isDirty } = useProjectStore();
 
   const [isGridMenuOpen, setIsGridMenuOpen] = useState(false);
