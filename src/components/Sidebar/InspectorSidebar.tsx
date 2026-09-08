@@ -67,22 +67,7 @@ export const InspectorSidebar: React.FC = () => {
     board?.data?.bgBottom?.images?.find((i) => i.id === selectedImageId);
 
   if (!imgLayer) {
-    return (
-      <aside className="cad-inspector-panel" style={{ width: `${rightSidebarWidth}px` }}>
-        <div className="cad-sidebar-header" style={{ padding: "12px 14px", borderBottom: "1px solid var(--cad-border)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <ImageIcon size={16} color="#60a5fa" />
-            <span style={{ fontWeight: 600, fontSize: "12px", color: "#f8fafc" }}>Свойства изображения</span>
-          </div>
-        </div>
-        <div style={{ padding: "48px 24px", textAlign: "center", color: "#64748b", fontSize: "12px", lineHeight: "1.6" }}>
-          <div style={{ width: "42px", height: "42px", borderRadius: "8px", background: "rgba(59, 130, 246, 0.1)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 12px" }}>
-            <ImageIcon size={20} color="#60a5fa" />
-          </div>
-          Выберите скан платы на холсте для настройки калибровки, юстировки угла и оптических фильтров
-        </div>
-      </aside>
-    );
+    return null;
   }
 
   const isTop = (imgLayer.side || "top").toLowerCase() === "top";
@@ -315,7 +300,7 @@ export const InspectorSidebar: React.FC = () => {
             className="cad-tool-btn"
             style={{ width: "26px", height: "26px" }}
             onClick={() => selectImage(null)}
-            title="Снять выделение"
+            title="Закрыть панель свойств (Esc)"
           >
             <X size={13} />
           </button>
@@ -409,7 +394,7 @@ export const InspectorSidebar: React.FC = () => {
                   type="number"
                   step="0.5"
                   className="cad-modern-input"
-                  value={imgLayer.offsetX ?? 0}
+                  value={imgLayer.offsetX !== undefined ? Math.round(imgLayer.offsetX * 10) / 10 : 0}
                   onChange={(e) => handleUpdate({ offsetX: parseFloat(e.target.value) || 0 })}
                 />
                 <span className="cad-field-suffix">мм</span>
@@ -420,7 +405,7 @@ export const InspectorSidebar: React.FC = () => {
                   type="number"
                   step="0.5"
                   className="cad-modern-input"
-                  value={imgLayer.offsetY ?? 0}
+                  value={imgLayer.offsetY !== undefined ? Math.round(imgLayer.offsetY * 10) / 10 : 0}
                   onChange={(e) => handleUpdate({ offsetY: parseFloat(e.target.value) || 0 })}
                 />
                 <span className="cad-field-suffix">мм</span>
@@ -429,7 +414,7 @@ export const InspectorSidebar: React.FC = () => {
 
             {/* Dimensions W and H with Aspect Lock */}
             <div style={{ display: "flex", alignItems: "center", gap: "6px", marginBottom: "8px" }}>
-              <div className="cad-field-wrap" style={{ flex: 1 }}>
+              <div className="cad-field-wrap" style={{ flex: 1, minWidth: 0 }}>
                 <span className="cad-field-prefix">W</span>
                 <input
                   type="number"
@@ -453,7 +438,7 @@ export const InspectorSidebar: React.FC = () => {
                 {imgLayer.lockAspectRatio !== false ? <Link size={12} /> : <Unlink size={12} />}
               </button>
 
-              <div className="cad-field-wrap" style={{ flex: 1 }}>
+              <div className="cad-field-wrap" style={{ flex: 1, minWidth: 0 }}>
                 <span className="cad-field-prefix">H</span>
                 <input
                   type="number"
@@ -610,7 +595,7 @@ export const InspectorSidebar: React.FC = () => {
                 <input
                   type="number"
                   className="cad-modern-input"
-                  value={currentDpi}
+                  value={Math.round(currentDpi)}
                   onChange={(e) => {
                     const dpiVal = parseInt(e.target.value, 10) || 600;
                     handleUpdate({
@@ -626,7 +611,7 @@ export const InspectorSidebar: React.FC = () => {
                   type="number"
                   step="0.01"
                   className="cad-modern-input"
-                  value={currentPxPerMm}
+                  value={Math.round(currentPxPerMm * 100) / 100}
                   onChange={(e) => {
                     const pxVal = parseFloat(e.target.value) || 23.62;
                     handleUpdate({
@@ -801,22 +786,22 @@ export const InspectorSidebar: React.FC = () => {
                 <button
                   type="button"
                   className="cad-btn cad-btn-secondary"
-                  style={{ fontSize: "11px", justifyContent: "center" }}
+                  style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center" }}
                   onClick={handleDuplicate}
                   title="Создать копию изображения на холсте"
                 >
-                  <Copy size={12} style={{ marginRight: "4px" }} />
+                  <Copy size={12} style={{ flexShrink: 0, marginRight: "4px" }} />
                   <span>Дублировать</span>
                 </button>
 
                 <button
                   type="button"
                   className="cad-btn cad-btn-secondary"
-                  style={{ fontSize: "11px", justifyContent: "center" }}
+                  style={{ fontSize: "11px", padding: "6px 8px", justifyContent: "center" }}
                   onClick={handleExportImage}
                   title="Экспортировать скан с фильтрами в PNG"
                 >
-                  <Download size={12} style={{ marginRight: "4px" }} />
+                  <Download size={12} style={{ flexShrink: 0, marginRight: "4px" }} />
                   <span>Экспорт...</span>
                 </button>
               </div>

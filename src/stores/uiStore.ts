@@ -126,7 +126,7 @@ export const useUiStore = create<UiStore>((set) => ({
 
   leftSidebarWidth: 240,
   leftSidebarCollapsed: false,
-  rightSidebarWidth: 280,
+  rightSidebarWidth: 300,
   rightSidebarCollapsed: false,
 
   modals: {

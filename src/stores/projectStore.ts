@@ -8,6 +8,7 @@ import {
 } from "../types/cad";
 import { engineClient } from "../api/engineClient";
 import { reportError, notifySuccess } from "../utils/errorHandler";
+import { useUiStore } from "./uiStore";
 
 interface ProjectStore {
   manifest: ProjectManifest | null;
@@ -219,6 +220,11 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     if (!id) {
       set({ selectedImageId: null, selectedImageIds: [] });
       return;
+    }
+    // Auto-open right inspector sidebar when an image is selected
+    const uiState = useUiStore.getState();
+    if (uiState.rightSidebarCollapsed) {
+      useUiStore.setState({ rightSidebarCollapsed: false });
     }
     if (isMulti) {
       const { selectedImageIds } = get();
