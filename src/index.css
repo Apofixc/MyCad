@@ -1473,6 +1473,107 @@ body,
   margin: 3px 0;
 }
 
+/* Quick Image Hover Preview Card */
+.cad-image-preview-card {
+  position: fixed;
+  z-index: 9999;
+  width: 290px;
+  background: rgba(18, 22, 30, 0.94);
+  backdrop-filter: blur(18px);
+  -webkit-backdrop-filter: blur(18px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.65), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  user-select: none;
+  pointer-events: auto;
+  animation: cadPreviewFadeIn 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes cadPreviewFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.cad-image-preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.cad-image-preview-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex: 1;
+}
+
+.cad-image-preview-name {
+  font-size: 11.5px;
+  font-weight: 600;
+  color: #f1f5f9;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cad-image-preview-thumb-box {
+  width: 100%;
+  height: 135px;
+  background: #090d14;
+  background-image: 
+    linear-gradient(45deg, #111722 25%, transparent 25%), 
+    linear-gradient(-45deg, #111722 25%, transparent 25%), 
+    linear-gradient(45deg, transparent 75%, #111722 75%), 
+    linear-gradient(-45deg, transparent 75%, #111722 75%);
+  background-size: 16px 16px;
+  background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cad-image-preview-img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  transition: filter 0.15s ease;
+}
+
+.cad-image-preview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--cad-text-dim);
+  background: rgba(255, 255, 255, 0.03);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: var(--cad-font-mono, monospace);
+}
+
+.cad-image-preview-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 2px;
+}
+
 /* ==========================================================================
    Modernized Premium CAD InspectorSidebar Styles
    ========================================================================== */

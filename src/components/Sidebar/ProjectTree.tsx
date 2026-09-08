@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   Folder,
   Cpu,
@@ -25,6 +25,7 @@ import {
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
 import { BoardImageLayer } from "../../types/cad";
+import { resolveImageUrl } from "../../api/engineClient";
 
 interface ContextMenuState {
   x: number;
@@ -34,6 +35,31 @@ interface ContextMenuState {
   targetIds: string[];
   groupTitle: string;
 }
+
+interface HoverPreviewState {
+  layer: BoardImageLayer;
+  side: "top" | "bottom";
+  x: number;
+  y: number;
+  resolvedSrc?: string;
+}
+
+const getLayerFilterStyle = (img: BoardImageLayer): React.CSSProperties => {
+  let filterStr = "";
+  if (img.brightness !== undefined && img.brightness !== 100) filterStr += `brightness(${img.brightness}%) `;
+  if (img.contrast !== undefined && img.contrast !== 100) filterStr += `contrast(${img.contrast}%) `;
+  if (img.invert) filterStr += "invert(100%) ";
+  if (img.grayscale) filterStr += "grayscale(100%) ";
+  if (img.tintColor === "green") filterStr += "sepia(100%) hue-rotate(85deg) saturate(220%) ";
+  else if (img.tintColor === "blue") filterStr += "sepia(100%) hue-rotate(180deg) saturate(220%) ";
+  else if (img.tintColor === "red") filterStr += "sepia(100%) hue-rotate(320deg) saturate(250%) ";
+  else if (img.tintColor === "amber") filterStr += "sepia(100%) hue-rotate(30deg) saturate(300%) ";
+  return {
+    filter: filterStr.trim() || undefined,
+    opacity: img.opacity !== undefined ? Math.max(0.3, img.opacity) : 1,
+    transform: `${img.mirrored ? "scaleX(-1)" : ""} ${img.flipV ? "scaleY(-1)" : ""}`.trim() || undefined,
+  };
+};
 
 export const ProjectTree: React.FC = () => {
   const {
@@ -135,11 +161,75 @@ export const ProjectTree: React.FC = () => {
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
 
+  // Quick Hover Preview popover state
+  const [hoverPreview, setHoverPreview] = useState<HoverPreviewState | null>(null);
+  const hoverTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const leaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMousePosRef = useRef({ x: 0, y: 0 });
+
+  const handleRowMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleRowMouseEnter = (e: React.MouseEvent<HTMLDivElement>, img: BoardImageLayer, side: "top" | "bottom") => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+    lastMousePosRef.current = { x: e.clientX, y: e.clientY };
+
+    if (hoverTimerRef.current) clearTimeout(hoverTimerRef.current);
+    hoverTimerRef.current = setTimeout(async () => {
+      let resolved = img.cachedUrl;
+      if (img.cachedUrl) {
+        try {
+          resolved = await resolveImageUrl(img.cachedUrl);
+        } catch {}
+      }
+      setHoverPreview({
+        layer: img,
+        side,
+        x: lastMousePosRef.current.x,
+        y: lastMousePosRef.current.y,
+        resolvedSrc: resolved,
+      });
+    }, 220);
+  };
+
+  const handleRowMouseLeave = () => {
+    if (hoverTimerRef.current) {
+      clearTimeout(hoverTimerRef.current);
+      hoverTimerRef.current = null;
+    }
+    leaveTimerRef.current = setTimeout(() => {
+      setHoverPreview(null);
+    }, 200);
+  };
+
+  const handlePopoverMouseEnter = () => {
+    if (leaveTimerRef.current) {
+      clearTimeout(leaveTimerRef.current);
+      leaveTimerRef.current = null;
+    }
+  };
+
+  const handlePopoverMouseLeave = () => {
+    leaveTimerRef.current = setTimeout(() => {
+      setHoverPreview(null);
+    }, 150);
+  };
+
   useEffect(() => {
-    const handleClose = () => setContextMenu(null);
+    const handleClose = () => {
+      setContextMenu(null);
+      setHoverPreview(null);
+    };
     window.addEventListener("click", handleClose);
     const handleKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setContextMenu(null);
+      if (e.key === "Escape") {
+        setContextMenu(null);
+        setHoverPreview(null);
+      }
     };
     window.addEventListener("keydown", handleKey);
     return () => {
@@ -975,6 +1065,9 @@ export const ProjectTree: React.FC = () => {
                                                         groupTitle: "Top сканы",
                                                       });
                                                     }}
+                                                    onMouseEnter={(e) => handleRowMouseEnter(e, img, "top")}
+                                                    onMouseMove={handleRowMouseMove}
+                                                    onMouseLeave={handleRowMouseLeave}
                                                   >
                                                     <div style={{ display: "flex", alignItems: "center", gap: "4px", overflow: "hidden", flex: 1 }}>
                                                       <div
@@ -1134,6 +1227,9 @@ export const ProjectTree: React.FC = () => {
                                                         groupTitle: "Bottom сканы",
                                                       });
                                                     }}
+                                                    onMouseEnter={(e) => handleRowMouseEnter(e, img, "bottom")}
+                                                    onMouseMove={handleRowMouseMove}
+                                                    onMouseLeave={handleRowMouseLeave}
                                                   >
                                                     <div style={{ display: "flex", alignItems: "center", gap: "4px", overflow: "hidden", flex: 1 }}>
                                                       <div
@@ -1671,6 +1767,145 @@ export const ProjectTree: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* Quick Image Hover Preview Popover */}
+      {hoverPreview && (() => {
+        const cardWidth = 290;
+        const cardHeight = 245;
+
+        // Position directly under cursor
+        let previewLeft = hoverPreview.x - 14;
+        previewLeft = Math.max(12, Math.min(previewLeft, window.innerWidth - cardWidth - 14));
+
+        let previewTop = hoverPreview.y + 14;
+        if (previewTop + cardHeight > window.innerHeight - 12) {
+          previewTop = Math.max(10, hoverPreview.y - cardHeight - 12);
+        }
+
+        return (
+          <div
+            className="cad-image-preview-card"
+            style={{
+              top: `${previewTop}px`,
+              left: `${previewLeft}px`,
+            }}
+            onMouseEnter={handlePopoverMouseEnter}
+            onMouseLeave={handlePopoverMouseLeave}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="cad-image-preview-header">
+              <div className="cad-image-preview-title">
+                <ImageIcon size={13} color="#60a5fa" style={{ flexShrink: 0 }} />
+                <span className="cad-image-preview-name" title={hoverPreview.layer.name}>
+                  {hoverPreview.layer.name}
+                </span>
+              </div>
+              <span
+                className="cad-badge"
+                style={{
+                  fontSize: "9px",
+                  padding: "1px 5px",
+                  background: hoverPreview.side === "top" ? "rgba(59, 130, 246, 0.2)" : "rgba(245, 158, 11, 0.2)",
+                  color: hoverPreview.side === "top" ? "#60a5fa" : "#f59e0b",
+                  border: `1px solid ${hoverPreview.side === "top" ? "rgba(59, 130, 246, 0.4)" : "rgba(245, 158, 11, 0.4)"}`,
+                }}
+              >
+                {hoverPreview.side.toUpperCase()}
+              </span>
+            </div>
+
+            <div className="cad-image-preview-thumb-box">
+              {hoverPreview.resolvedSrc ? (
+                <img
+                  className="cad-image-preview-img"
+                  src={hoverPreview.resolvedSrc}
+                  alt={hoverPreview.layer.name}
+                  style={getLayerFilterStyle(hoverPreview.layer)}
+                />
+              ) : (
+                <div style={{ fontSize: "10.5px", color: "var(--cad-text-dim)", fontStyle: "italic" }}>
+                  Загрузка превью...
+                </div>
+              )}
+              {!hoverPreview.layer.visible && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 6,
+                    left: 6,
+                    background: "rgba(0, 0, 0, 0.65)",
+                    backdropFilter: "blur(4px)",
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                    fontSize: "9.5px",
+                    color: "#94a3b8",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <EyeOff size={10} />
+                  <span>Скрыт</span>
+                </div>
+              )}
+              {hoverPreview.layer.locked && (
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 6,
+                    right: 6,
+                    background: "rgba(0, 0, 0, 0.65)",
+                    backdropFilter: "blur(4px)",
+                    padding: "2px 6px",
+                    borderRadius: "4px",
+                    fontSize: "9.5px",
+                    color: "#f59e0b",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "4px",
+                  }}
+                >
+                  <Lock size={10} />
+                  <span>Защищен</span>
+                </div>
+              )}
+            </div>
+
+            <div className="cad-image-preview-meta">
+              <span>
+                {hoverPreview.layer.width && hoverPreview.layer.height
+                  ? `${hoverPreview.layer.width} × ${hoverPreview.layer.height} px`
+                  : "Размер не определен"}
+              </span>
+              <span>
+                {hoverPreview.layer.scale ? `${hoverPreview.layer.scale.toFixed(2)}x` : "1.00x"}
+                {hoverPreview.layer.rotation ? ` · ${hoverPreview.layer.rotation}°` : ""}
+              </span>
+            </div>
+
+            <div className="cad-image-preview-actions">
+              <button
+                type="button"
+                className="cad-btn cad-btn-secondary"
+                style={{ width: "100%", fontSize: "11px", padding: "6px 8px", justifyContent: "center" }}
+                onClick={() => {
+                  setPendingPreprocess({
+                    filePath: hoverPreview.layer.cachedUrl,
+                    name: hoverPreview.layer.name,
+                    side: hoverPreview.side,
+                    replaceLayerId: hoverPreview.layer.id,
+                  });
+                  setHoverPreview(null);
+                }}
+                title="Открыть окно кадрирования, поворота и выравнивания горизонта"
+              >
+                <Crop size={12} style={{ marginRight: "6px", color: "#60a5fa" }} />
+                <span>Кадрировать...</span>
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* 3. Sidebar Resizer */}
       <div
