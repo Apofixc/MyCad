@@ -30,12 +30,12 @@
 .cad-batch-modal {
   width: 660px;
   max-width: 94vw;
-  background: linear-gradient(180deg, #101522 0%, #0a0d14 100%);
-  border: 1px solid rgba(56, 189, 248, 0.22);
+  background: linear-gradient(180deg, #181d26 0%, #12161f 100%);
+  border: 1px solid var(--cad-border);
   border-radius: 14px;
   box-shadow:
     0 24px 70px rgba(0, 0, 0, 0.85),
-    0 0 35px rgba(56, 189, 248, 0.1);
+    0 0 35px rgba(59, 130, 246, 0.12);
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -47,7 +47,7 @@
 /* Header */
 .cad-batch-header {
   padding: 14px 20px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.015);
   border-bottom: 1px solid var(--cad-border);
   display: flex;
   justify-content: space-between;
@@ -64,13 +64,13 @@
   width: 36px;
   height: 36px;
   border-radius: 10px;
-  background: rgba(56, 189, 248, 0.12);
-  color: #38bdf8;
-  border: 1px solid rgba(56, 189, 248, 0.35);
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.2), rgba(6, 182, 212, 0.2));
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 0 14px rgba(56, 189, 248, 0.2);
+  box-shadow: 0 0 16px rgba(59, 130, 246, 0.25);
 }
 
 .cad-batch-header .title {

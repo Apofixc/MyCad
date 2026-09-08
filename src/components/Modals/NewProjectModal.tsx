@@ -35,13 +35,23 @@ export const NewProjectModal: React.FC = () => {
     <div className="cad-modal-backdrop" onClick={() => closeModal("newProject")}>
       <div className="cad-modal-box" onClick={(e) => e.stopPropagation()}>
         <div className="cad-modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Plus size={18} color="#3b82f6" />
-            <span>Создание нового проекта MyCad</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div className="cad-modal-icon-badge">
+              <Plus size={18} color="#60a5fa" />
+            </div>
+            <div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "#fff" }}>
+                Создание нового проекта MyCad
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginTop: "1px" }}>
+                Контейнер файла архива платы и схем .mycad
+              </div>
+            </div>
           </div>
           <button
-            style={{ background: "transparent", border: "none", color: "var(--cad-text-dim)", cursor: "pointer" }}
+            className="cad-modal-close-btn"
             onClick={() => closeModal("newProject")}
+            title="Закрыть"
           >
             <X size={16} />
           </button>

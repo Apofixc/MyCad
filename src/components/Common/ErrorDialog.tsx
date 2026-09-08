@@ -49,18 +49,29 @@ export const ErrorDialog: React.FC = () => {
           className="cad-modal-header"
           style={{ borderBottom: "1px solid rgba(239, 68, 68, 0.25)" }}
         >
-          <div style={{ display: "flex", alignItems: "center", gap: "8px", color: "#f87171" }}>
-            <AlertTriangle size={18} color="#ef4444" />
-            <span style={{ fontWeight: 600 }}>{currentError.title || "Произошла ошибка"}</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div
+              className="cad-modal-icon-badge"
+              style={{
+                background: "rgba(239, 68, 68, 0.15)",
+                borderColor: "rgba(239, 68, 68, 0.35)",
+                boxShadow: "0 0 16px rgba(239, 68, 68, 0.25)",
+              }}
+            >
+              <AlertTriangle size={18} color="#f87171" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 600, color: "#f87171", fontSize: "15px" }}>
+                {currentError.title || "Произошла ошибка"}
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginTop: "1px" }}>
+                Системное уведомление MyCad
+              </div>
+            </div>
           </div>
           <button
+            className="cad-modal-close-btn"
             onClick={clearError}
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--cad-text-dim)",
-              cursor: "pointer",
-            }}
             title="Закрыть"
           >
             <X size={16} />

@@ -58,20 +58,22 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="cad-modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-            <Ruler size={18} color="#38bdf8" />
-            <span style={{ fontWeight: 600 }}>Калибровка масштаба изображения</span>
+          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+            <div className="cad-modal-icon-badge">
+              <Ruler size={18} color="#60a5fa" />
+            </div>
+            <div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "#fff" }}>
+                Калибровка масштаба изображения
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginTop: "1px" }}>
+                Привязка пикселей скана платы к миллиметрам (ECAD)
+              </div>
+            </div>
           </div>
           <button
             type="button"
-            style={{
-              background: "transparent",
-              border: "none",
-              color: "var(--cad-text-dim)",
-              cursor: "pointer",
-              display: "flex",
-              alignItems: "center",
-            }}
+            className="cad-modal-close-btn"
             onClick={onClose}
             title="Закрыть"
           >
@@ -183,7 +185,6 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
             <button
               type="submit"
               className="cad-btn cad-btn-primary"
-              style={{ background: "#0284c7", borderColor: "#38bdf8", color: "#ffffff" }}
             >
               <Check size={14} style={{ marginRight: "4px" }} />
               <span>Применить масштаб</span>
