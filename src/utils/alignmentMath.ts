@@ -262,14 +262,15 @@ export function calculateLayerRegistration(
   const angleTop = Math.atan2(top2.y - top1.y, top2.x - top1.x);
   const angleBot = Math.atan2(bot2.y - bot1.y, bot2.x - bot1.x);
 
-  const deltaRad = angleTop - angleBot;
+  let deltaRad = angleTop - angleBot;
+  while (deltaRad > Math.PI) deltaRad -= 2 * Math.PI;
+  while (deltaRad < -Math.PI) deltaRad += 2 * Math.PI;
   const deltaDeg = (deltaRad * 180) / Math.PI;
 
   const origScale = botLayer.scale || 1.0;
   const newScale = Math.round(origScale * scaleFactor * 1000) / 1000;
 
-  const rotDir = botLayer.mirrored ? -1 : 1;
-  let newRotation = Math.round(((botLayer.rotation || 0) + rotDir * deltaDeg) * 100) / 100;
+  let newRotation = Math.round(((botLayer.rotation || 0) + deltaDeg) * 100) / 100;
   while (newRotation < 0) newRotation += 360;
   while (newRotation >= 360) newRotation -= 360;
 

@@ -594,9 +594,10 @@ export const BoardCanvas: React.FC = () => {
           setRegistrationState((prev) => ({ ...prev, topPts: newTop }));
         } else {
           setRegistrationState({ step: 2, topPts: newTop.slice(0, 2), botPts: [] });
-          // Ensure Bottom scan is visible for step 2
+          // Temporarily hide Top layer so the user can clearly see and click points on Bottom without obstruction
+          setShowTopLayer(false);
           setShowBottomLayer(true);
-          notifySuccess("Точки 1 и 2 на Top зафиксированы. Укажите те же 2 точки на стороне Bottom");
+          notifySuccess("Опорные точки 1 и 2 на Top зафиксированы. Слой Top скрыт: укажите те же 2 точки на стороне Bottom");
         }
       } else {
         const newBot = [...registrationState.botPts, [mouseMm.x, mouseMm.y] as [number, number]];
@@ -608,15 +609,18 @@ export const BoardCanvas: React.FC = () => {
           const bot1 = { x: newBot[0][0], y: newBot[0][1] };
           const bot2 = { x: newBot[1][0], y: newBot[1][1] };
 
-          const botLayer = board?.data?.bgBottom?.images[0];
+          const selectedBottomLayer = selectedImageId
+            ? board?.data?.bgBottom?.images?.find((img) => img.id === selectedImageId)
+            : null;
+          const botLayer = selectedBottomLayer || board?.data?.bgBottom?.images?.[0];
           if (!botLayer) {
             notifyWarning("На стороне Bottom не найден скан для совмещения");
             return;
           }
 
           const botImg = loadedImagesRef.current.get(botLayer.id);
-          const naturalW = botImg?.naturalWidth || 1000;
-          const naturalH = botImg?.naturalHeight || 1000;
+          const naturalW = botImg?.naturalWidth || botLayer.width || 1000;
+          const naturalH = botImg?.naturalHeight || botLayer.height || 1000;
 
           try {
             const res = calculateLayerRegistration(top1, top2, bot1, bot2, botLayer, naturalW, naturalH);
@@ -628,6 +632,7 @@ export const BoardCanvas: React.FC = () => {
               scale: res.newScale,
             };
             updateImageLayer(updatedBot);
+            selectImage(updatedBot.id);
             setShowTopLayer(true);
             setShowBottomLayer(true);
             notifySuccess("Слои Top и Bottom успешно совмещены");
@@ -1078,8 +1083,8 @@ export const BoardCanvas: React.FC = () => {
           <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "12px" }}>
             <span style={{ fontWeight: 600 }}>
               {registrationState.step === 1
-                ? "Шаг 1: Укажите 2 переходных отверстия на стороне Top"
-                : "Шаг 2: Укажите те же 2 отверстия на стороне Bottom"}
+                ? "Шаг 1: Укажите 2 опорные точки на стороне Top (референс)"
+                : "Шаг 2: Укажите те же 2 опорные точки на стороне Bottom"}
             </span>
             <span style={{ color: "var(--cad-text-dim)" }}>
               (Точек: {registrationState.step === 1 ? registrationState.topPts.length : registrationState.botPts.length} / 2)
@@ -1091,8 +1096,41 @@ export const BoardCanvas: React.FC = () => {
               className="cad-modern-btn cad-btn-ghost cad-btn-xs"
               style={{ fontSize: "11px", padding: "2px 8px" }}
               onClick={() => setShowTopLayer(!showTopLayer)}
+              title="Переключить видимость слоя Top для сравнения"
             >
-              {showTopLayer ? "Скрыть Top" : "Показать Top"}
+              {showTopLayer ? "Скрыть Top" : "Показать Top (референс)"}
+            </button>
+          )}
+          {((registrationState.step === 1 && registrationState.topPts.length > 0) ||
+            (registrationState.step === 2 && registrationState.botPts.length > 0)) && (
+            <button
+              type="button"
+              className="cad-modern-btn cad-btn-ghost cad-btn-xs"
+              style={{ fontSize: "11px", padding: "2px 8px" }}
+              onClick={() => {
+                if (registrationState.step === 1) {
+                  setRegistrationState({ step: 1, topPts: [], botPts: [] });
+                } else {
+                  setRegistrationState((prev) => ({ ...prev, botPts: [] }));
+                }
+              }}
+              title="Сбросить точки текущего шага"
+            >
+              Сбросить
+            </button>
+          )}
+          {registrationState.step === 2 && (
+            <button
+              type="button"
+              className="cad-modern-btn cad-btn-ghost cad-btn-xs"
+              style={{ fontSize: "11px", padding: "2px 8px" }}
+              onClick={() => {
+                setRegistrationState({ step: 1, topPts: [], botPts: [] });
+                setShowTopLayer(true);
+              }}
+              title="Вернуться к выбору точек на стороне Top"
+            >
+              К шагу 1
             </button>
           )}
           <button
@@ -1101,6 +1139,8 @@ export const BoardCanvas: React.FC = () => {
             style={{ marginLeft: "8px" }}
             onClick={() => {
               setRegistrationState({ step: 1, topPts: [], botPts: [] });
+              setShowTopLayer(true);
+              setShowBottomLayer(true);
               setActiveTool("select");
             }}
             title="Отмена совмещения"
@@ -1643,6 +1683,36 @@ function drawRegistrationTargets(
     ctx.fillText(label, p.x + 10, p.y - 10);
     ctx.restore();
   };
+
+  // Connecting line for Top reference points
+  if (reg.topPts.length === 2) {
+    const p1 = boardMmToScreen(reg.topPts[0][0], reg.topPts[0][1]);
+    const p2 = boardMmToScreen(reg.topPts[1][0], reg.topPts[1][1]);
+    ctx.save();
+    ctx.strokeStyle = "rgba(56, 189, 248, 0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Connecting line for Bottom points
+  if (reg.botPts.length === 2) {
+    const p1 = boardMmToScreen(reg.botPts[0][0], reg.botPts[0][1]);
+    const p2 = boardMmToScreen(reg.botPts[1][0], reg.botPts[1][1]);
+    ctx.save();
+    ctx.strokeStyle = "rgba(245, 158, 11, 0.6)";
+    ctx.lineWidth = 1.5;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   reg.topPts.forEach((pt, idx) => drawTarget(pt, `Top-${idx + 1}`, "#38bdf8"));
   reg.botPts.forEach((pt, idx) => drawTarget(pt, `Bot-${idx + 1}`, "#f59e0b"));
