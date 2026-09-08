@@ -173,20 +173,41 @@ export function calculateHorizonLeveling(
   },
   naturalW: number,
   naturalH: number
-): { newRotation: number; newOffsetX: number; newOffsetY: number; deltaDeg: number } {
+): {
+  newRotation: number;
+  newOffsetX: number;
+  newOffsetY: number;
+  deltaDeg: number;
+  targetType: "horizontal" | "vertical";
+  rawAngle: number;
+} {
   const rawAngle = (Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180) / Math.PI;
 
-  let norm = rawAngle;
-  while (norm > 90) norm -= 180;
-  while (norm < -90) norm += 180;
+  // Ищем ближайшую ортогональную ось: 0° (вправо), 90° (вниз), 180°/-180° (влево), -90° (вверх)
+  const targets = [0, 90, 180, -180, -90];
+  let minDiff = Infinity;
+  let bestTarget = 0;
 
-  // Если слой отзеркален, визуальное направление вращения инвертировано
-  const deltaDeg = layer.mirrored ? norm : -norm;
+  for (const t of targets) {
+    let diff = rawAngle - t;
+    while (diff > 180) diff -= 360;
+    while (diff < -180) diff += 360;
+    if (Math.abs(diff) < Math.abs(minDiff)) {
+      minDiff = diff;
+      bestTarget = t;
+    }
+  }
+
+  // Необходимый доворот: компенсация отклонения от целевой оси
+  const deltaDeg = Math.round(-minDiff * 100) / 100;
+  const targetType: "horizontal" | "vertical" =
+    bestTarget === 0 || Math.abs(bestTarget) === 180 ? "horizontal" : "vertical";
+
   let newRotation = Math.round(((layer.rotation || 0) + deltaDeg) * 100) / 100;
   while (newRotation < 0) newRotation += 360;
   while (newRotation >= 360) newRotation -= 360;
 
-  // Компенсация центра: поворот вокруг точки p1
+  // Точная компенсация центра: сохраняем точку p1 строго неподвижной в координатах платы
   const pxPerMm = layer.pxPerMm || 23.62;
   const scale = layer.scale || 1.0;
   const wMm = (naturalW / pxPerMm) * scale;
@@ -195,7 +216,7 @@ export function calculateHorizonLeveling(
   const oldCx = (layer.offsetX || 0) + wMm / 2;
   const oldCy = (layer.offsetY || 0) + hMm / 2;
 
-  const dRad = ((layer.mirrored ? -deltaDeg : deltaDeg) * Math.PI) / 180;
+  const dRad = (deltaDeg * Math.PI) / 180;
   const cos = Math.cos(dRad);
   const sin = Math.sin(dRad);
 
@@ -208,7 +229,7 @@ export function calculateHorizonLeveling(
   const newOffsetX = Math.round((newCx - wMm / 2) * 100) / 100;
   const newOffsetY = Math.round((newCy - hMm / 2) * 100) / 100;
 
-  return { newRotation, newOffsetX, newOffsetY, deltaDeg };
+  return { newRotation, newOffsetX, newOffsetY, deltaDeg, targetType, rawAngle };
 }
 
 /**

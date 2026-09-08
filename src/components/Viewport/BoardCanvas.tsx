@@ -14,7 +14,7 @@ import {
   calculateLayerRegistration,
 } from "../../utils/alignmentMath";
 import { notifySuccess, notifyWarning, reportError } from "../../utils/errorHandler";
-import { Target, X, Check, RotateCcw, Zap, Play, Pause } from "lucide-react";
+import { Target, X, Check, RotateCcw, Zap, Play, Pause, Compass } from "lucide-react";
 import { BoardImageLayer } from "../../types/cad";
 
 export type TransformHandleType =
@@ -401,9 +401,9 @@ export const BoardCanvas: React.FC = () => {
         }
       }
 
-      // 4. Draw Active Tool Overlays (Measure / Calibration lines)
+      // 4. Draw Active Tool Overlays (Measure / Calibration / Level lines)
       if (measurePts.length > 0) {
-        drawMeasurementOverlay(ctx, measurePts, rubberbandMm, boardMmToScreen);
+        drawMeasurementOverlay(ctx, measurePts, rubberbandMm, boardMmToScreen, activeTool);
       }
 
       // 5. Draw Registration Targets
@@ -507,10 +507,36 @@ export const BoardCanvas: React.FC = () => {
 
     // Tool: Level (Horizon alignment)
     if (activeTool === "level") {
-      const activeLayer = getSelectedLayer() || board?.data?.bgTop?.images[0] || board?.data?.bgBottom?.images[0];
+      const activeSide = activeWorkLayer.type === "underlay" ? activeWorkLayer.side : "top";
+      const topImages = (showTopLayer ? board?.data?.bgTop?.images || [] : []).filter((l) => l.visible);
+      const botImages = (showBottomLayer ? board?.data?.bgBottom?.images || [] : []).filter((l) => l.visible);
+      const orderedImages =
+        activeSide === "bottom"
+          ? [...botImages.slice().reverse(), ...topImages.slice().reverse()]
+          : [...topImages.slice().reverse(), ...botImages.slice().reverse()];
+
+      let hitLayer: BoardImageLayer | null = null;
+      for (const layer of orderedImages) {
+        if (isPointInImage(mouseMm, layer, loadedImagesRef.current.get(layer.id))) {
+          hitLayer = layer;
+          break;
+        }
+      }
+
+      const activeLayer =
+        hitLayer ||
+        getSelectedLayer() ||
+        (activeSide === "bottom" ? botImages[0] : topImages[0]) ||
+        topImages[0] ||
+        botImages[0];
+
       if (!activeLayer) {
-        notifyWarning("Для выравнивания выберите изображение на холсте");
+        notifyWarning("Для выравнивания выберите или добавьте изображение на холсте");
         return;
+      }
+
+      if (selectedImageId !== activeLayer.id) {
+        selectImage(activeLayer.id);
       }
 
       if (measurePts.length === 0) {
@@ -518,6 +544,12 @@ export const BoardCanvas: React.FC = () => {
       } else if (measurePts.length === 1) {
         const p1 = measurePts[0];
         const p2: [number, number] = [mouseMm.x, mouseMm.y];
+
+        if (Math.hypot(p2[0] - p1[0], p2[1] - p1[1]) < 0.5) {
+          notifyWarning("Точки слишком близко. Укажите вторую точку дальше вдоль базовой линии");
+          return;
+        }
+
         setMeasurePts([p1, p2]);
 
         const img = loadedImagesRef.current.get(activeLayer.id);
@@ -540,8 +572,12 @@ export const BoardCanvas: React.FC = () => {
             offsetY: res.newOffsetY,
           };
           updateImageLayer(updatedLayer);
-          notifySuccess(`Горизонт выровнен: доворот на ${res.deltaDeg > 0 ? "+" : ""}${res.deltaDeg.toFixed(1)}°`);
+          const typeRu = res.targetType === "horizontal" ? "в горизонт" : "в вертикаль";
+          notifySuccess(
+            `Выровнено ${typeRu}: доворот на ${res.deltaDeg > 0 ? "+" : ""}${res.deltaDeg.toFixed(2)}° (итоговый угол: ${res.newRotation.toFixed(1)}°)`
+          );
           setMeasurePts([]);
+          setRubberbandMm(null);
           setActiveTool("select");
         } catch (err) {
           reportError(err, "Ошибка выравнивания горизонта");
@@ -882,6 +918,19 @@ export const BoardCanvas: React.FC = () => {
       }
     }
 
+    // Precision tools use crosshair cursor
+    if (
+      activeTool === "level" ||
+      activeTool === "measure" ||
+      activeTool === "calibrate" ||
+      activeTool === "register"
+    ) {
+      if (canvasRef.current && canvasRef.current.style.cursor !== "crosshair") {
+        canvasRef.current.style.cursor = "crosshair";
+      }
+      return;
+    }
+
     // Hover over any visible image
     const activeSide = activeWorkLayer.type === "underlay" ? activeWorkLayer.side : "top";
     const topImages = (showTopLayer ? board?.data?.bgTop?.images || [] : []).filter((l) => l.visible);
@@ -1055,6 +1104,36 @@ export const BoardCanvas: React.FC = () => {
               setActiveTool("select");
             }}
             title="Отмена совмещения"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
+      {/* Level Tool Banner */}
+      {activeTool === "level" && (
+        <div className="cad-registration-banner" style={{ borderColor: "#f59e0b" }}>
+          <Compass size={16} color="#f59e0b" />
+          <div style={{ display: "flex", alignItems: "center", gap: "10px", fontSize: "12px" }}>
+            <span style={{ fontWeight: 600 }}>
+              {measurePts.length === 0
+                ? "Шаг 1: Кликните первую точку на базовой линии (край платы или дорожка)"
+                : "Шаг 2: Кликните вторую точку вдоль линии для выравнивания"}
+            </span>
+            <span style={{ color: "var(--cad-text-dim)" }}>
+              (Точек: {measurePts.length} / 2)
+            </span>
+          </div>
+          <button
+            type="button"
+            className="cad-tree-icon-btn"
+            style={{ marginLeft: "8px" }}
+            onClick={() => {
+              setMeasurePts([]);
+              setRubberbandMm(null);
+              setActiveTool("select");
+            }}
+            title="Отмена выравнивания (Esc)"
           >
             <X size={14} />
           </button>
@@ -1443,7 +1522,8 @@ function drawMeasurementOverlay(
   ctx: CanvasRenderingContext2D,
   pts: [number, number][],
   rubberbandMm: { x: number; y: number } | null,
-  boardMmToScreen: (x: number, y: number) => { x: number; y: number }
+  boardMmToScreen: (x: number, y: number) => { x: number; y: number },
+  activeTool?: string
 ) {
   const p1 = boardMmToScreen(pts[0][0], pts[0][1]);
   let p2: { x: number; y: number };
@@ -1461,7 +1541,7 @@ function drawMeasurementOverlay(
   } else {
     // Single point
     ctx.save();
-    ctx.fillStyle = "#38bdf8";
+    ctx.fillStyle = activeTool === "level" ? "#f59e0b" : "#38bdf8";
     ctx.beginPath();
     ctx.arc(p1.x, p1.y, 5, 0, Math.PI * 2);
     ctx.fill();
@@ -1471,9 +1551,35 @@ function drawMeasurementOverlay(
 
   const distMm = Math.hypot(dxMm, dyMm);
   const distMil = distMm * 39.3701;
+  const rawAngle = (Math.atan2(dyMm, dxMm) * 180) / Math.PI;
+
+  let strokeColor = "#38bdf8";
+  let text = `${distMm.toFixed(2)} мм (${distMil.toFixed(1)} mil)`;
+
+  if (activeTool === "level") {
+    strokeColor = "#f59e0b";
+    const targets = [0, 90, 180, -180, -90];
+    let minDiff = Infinity;
+    let bestTarget = 0;
+    for (const t of targets) {
+      let diff = rawAngle - t;
+      while (diff > 180) diff -= 360;
+      while (diff < -180) diff += 360;
+      if (Math.abs(diff) < Math.abs(minDiff)) {
+        minDiff = diff;
+        bestTarget = t;
+      }
+    }
+    const deltaDeg = Math.round(-minDiff * 100) / 100;
+    const typeRu = bestTarget === 0 || Math.abs(bestTarget) === 180 ? "горизонт" : "вертикаль";
+    text = `Угол: ${rawAngle.toFixed(1)}° · Доворот: ${deltaDeg > 0 ? "+" : ""}${deltaDeg.toFixed(2)}° (${typeRu})`;
+  } else if (activeTool === "calibrate") {
+    strokeColor = "#10b981";
+    text = `База: ${distMm.toFixed(2)} мм (${distMil.toFixed(1)} mil)`;
+  }
 
   ctx.save();
-  ctx.strokeStyle = "#38bdf8";
+  ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 2;
   ctx.beginPath();
   ctx.moveTo(p1.x, p1.y);
@@ -1481,29 +1587,28 @@ function drawMeasurementOverlay(
   ctx.stroke();
 
   // Endpoints
-  ctx.fillStyle = "#38bdf8";
+  ctx.fillStyle = strokeColor;
   ctx.beginPath();
   ctx.arc(p1.x, p1.y, 4, 0, Math.PI * 2);
   ctx.arc(p2.x, p2.y, 4, 0, Math.PI * 2);
   ctx.fill();
 
-  // Distance label
+  // Distance / Angle label badge
   const midX = (p1.x + p2.x) / 2;
   const midY = (p1.y + p2.y) / 2;
-  const text = `${distMm.toFixed(2)} мм (${distMil.toFixed(1)} mil)`;
   ctx.font = "bold 11px JetBrains Mono, monospace";
   const tw = ctx.measureText(text).width + 16;
 
-  ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
-  ctx.fillRect(midX - tw / 2, midY - 12, tw, 24);
-  ctx.strokeStyle = "#38bdf8";
+  ctx.fillStyle = "rgba(15, 23, 42, 0.94)";
+  ctx.fillRect(midX - tw / 2, midY - 14, tw, 24);
+  ctx.strokeStyle = strokeColor;
   ctx.lineWidth = 1;
-  ctx.strokeRect(midX - tw / 2, midY - 12, tw, 24);
+  ctx.strokeRect(midX - tw / 2, midY - 14, tw, 24);
 
   ctx.fillStyle = "#ffffff";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText(text, midX, midY);
+  ctx.fillText(text, midX, midY - 2);
 
   ctx.restore();
 }
