@@ -906,19 +906,32 @@ export const ProjectTree: React.FC = () => {
                               const isAllBotVisible = bgBottomImages.length > 0 ? bgBottomImages.every((img) => img.visible) && showBottomLayer : showBottomLayer;
                               const isAllBotLocked = bgBottomImages.length > 0 && bgBottomImages.every((img) => img.locked);
 
+                              const isUnderlayActive = isActive && activeWorkLayer?.type === "underlay";
+
                               return (
                                 <>
                                   <div
-                                    className="cad-tree-item"
-                                    onClick={(e) => toggleSide(bgGroupKey, e, true)}
+                                    className={`cad-tree-item ${isUnderlayActive ? "work-layer-active" : ""}`}
+                                    onClick={() => {
+                                      if (!isActive) setActiveFile(file.id);
+                                      setActiveWorkLayer({
+                                        type: "underlay",
+                                        side: activeWorkLayer?.type === "underlay" ? (activeWorkLayer.side || "top") : "top",
+                                      });
+                                    }}
                                     style={{ fontWeight: 600 }}
                                   >
                                     <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                      <span>{isBgGroupOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                      <span onClick={(e) => { e.stopPropagation(); toggleSide(bgGroupKey, e, true); }}>
+                                        {isBgGroupOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                      </span>
                                       <ImageIcon size={12} color="#60a5fa" style={{ flexShrink: 0 }} />
                                       <span className="cad-tree-item-name">
                                         Подложка
                                       </span>
+                                      {isUnderlayActive && (
+                                        <span className="cad-work-layer-badge">активен</span>
+                                      )}
                                       {totalBgCount > 0 && <span className="cad-tree-badge">{totalBgCount}</span>}
                                     </div>
 
@@ -951,18 +964,6 @@ export const ProjectTree: React.FC = () => {
                                       >
                                         {isAllBgLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
                                       </button>
-                                      {allBgImages.length > 0 && (
-                                        <button
-                                          className="cad-tree-icon-btn"
-                                          onClick={() => {
-                                            if (!isActive) setActiveFile(file.id);
-                                            fitAllImages(allBgImages);
-                                          }}
-                                          title="Вписать все изображения платы на холст (F / 0)"
-                                        >
-                                          <Maximize2 size={12} color="#60a5fa" />
-                                        </button>
-                                      )}
                                     </div>
                                   </div>
 
@@ -970,67 +971,60 @@ export const ProjectTree: React.FC = () => {
                                     <div className="cad-tree-subbranch">
                                       {/* 1.1 Top (Лицевая) */}
                                       <div>
-                                        <div
-                                          className={`cad-tree-item ${activeWorkLayer?.type === "underlay" && activeWorkLayer.side === "top" ? "work-layer-active" : ""}`}
-                                          onClick={() => {
-                                            if (!isActive) setActiveFile(file.id);
-                                            setActiveWorkLayer({ type: "underlay", side: "top" });
-                                          }}
-                                          title="Нажмите для выбора активного слоя Top подложки"
-                                        >
-                                          <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                            <span onClick={(e) => { e.stopPropagation(); toggleSide(topBgKey, e, true); }}>
-                                              {isTopBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                                            </span>
-                                            <div className="cad-tree-swatch swatch-top" />
-                                            <span className="cad-tree-item-name">
-                                              Top (Лицевая)
-                                            </span>
-                                            {bgTopImages.length > 0 && <span className="cad-tree-badge">{bgTopImages.length}</span>}
-                                          </div>
+                                        {(() => {
+                                          const isTopUnderlayActive = isActive && activeWorkLayer?.type === "underlay" && activeWorkLayer.side === "top";
+                                          return (
+                                            <div
+                                              className={`cad-tree-item ${isTopUnderlayActive ? "sublayer-active" : ""}`}
+                                              onClick={() => {
+                                                if (!isActive) setActiveFile(file.id);
+                                                setActiveWorkLayer({ type: "underlay", side: "top" });
+                                              }}
+                                              title="Нажмите для выбора активного слоя Top подложки"
+                                            >
+                                              <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                                <span onClick={(e) => { e.stopPropagation(); toggleSide(topBgKey, e, true); }}>
+                                                  {isTopBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                                </span>
+                                                <div className="cad-tree-swatch swatch-top" />
+                                                <span className="cad-tree-item-name">
+                                                  Top (Лицевая)
+                                                </span>
+                                                {bgTopImages.length > 0 && <span className="cad-tree-badge">{bgTopImages.length}</span>}
+                                              </div>
 
-                                          <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
-                                            <button
-                                              className={`cad-tree-icon-btn ${isAllTopVisible ? "active" : ""}`}
-                                              onClick={async () => {
-                                                if (!isActive) setActiveFile(file.id);
-                                                const nextVis = !isAllTopVisible;
-                                                setShowTopLayer(nextVis);
-                                                if (bgTopImages.length > 0) {
-                                                  await batchSetVisibility(bgTopImages.map((i) => i.id), nextVis);
-                                                }
-                                              }}
-                                              title={isAllTopVisible ? "Скрыть слой Top и все сканы" : "Показать слой Top и все сканы"}
-                                            >
-                                              {isAllTopVisible ? <Eye size={12} /> : <EyeOff size={12} />}
-                                            </button>
-                                            <button
-                                              className="cad-tree-icon-btn"
-                                              onClick={async () => {
-                                                if (!isActive) setActiveFile(file.id);
-                                                const nextLock = !isAllTopLocked;
-                                                if (bgTopImages.length > 0) {
-                                                  await batchSetLocked(bgTopImages.map((i) => i.id), nextLock);
-                                                }
-                                              }}
-                                              title={isAllTopLocked ? "Разблокировать все сканы Top" : "Заблокировать все сканы Top"}
-                                            >
-                                              {isAllTopLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
-                                            </button>
-                                            {bgTopImages.length > 0 && (
-                                              <button
-                                                className="cad-tree-icon-btn"
-                                                onClick={() => {
-                                                  if (!isActive) setActiveFile(file.id);
-                                                  fitAllImages(bgTopImages);
-                                                }}
-                                                title="Вписать все изображения Top"
-                                              >
-                                                <Maximize2 size={12} color="#60a5fa" />
-                                              </button>
-                                            )}
-                                          </div>
-                                        </div>
+                                              <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                  className={`cad-tree-icon-btn ${isAllTopVisible ? "active" : ""}`}
+                                                  onClick={async () => {
+                                                    if (!isActive) setActiveFile(file.id);
+                                                    const nextVis = !isAllTopVisible;
+                                                    setShowTopLayer(nextVis);
+                                                    if (bgTopImages.length > 0) {
+                                                      await batchSetVisibility(bgTopImages.map((i) => i.id), nextVis);
+                                                    }
+                                                  }}
+                                                  title={isAllTopVisible ? "Скрыть слой Top и все сканы" : "Показать слой Top и все сканы"}
+                                                >
+                                                  {isAllTopVisible ? <Eye size={12} /> : <EyeOff size={12} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={async () => {
+                                                    if (!isActive) setActiveFile(file.id);
+                                                    const nextLock = !isAllTopLocked;
+                                                    if (bgTopImages.length > 0) {
+                                                      await batchSetLocked(bgTopImages.map((i) => i.id), nextLock);
+                                                    }
+                                                  }}
+                                                  title={isAllTopLocked ? "Разблокировать все сканы Top" : "Заблокировать все сканы Top"}
+                                                >
+                                                  {isAllTopLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })()}
 
                                         {isTopBgOpen && (
                                           <div className="cad-tree-subbranch">
@@ -1047,8 +1041,8 @@ export const ProjectTree: React.FC = () => {
                                               </button>
                                             ) : (
                                               bgTopImages.map((img) => {
-                                                const isSelected = selectedImageId === img.id && isActive;
-                                                const isMultiSelected = selectedImageIds.includes(img.id);
+                                                const isSelected = selectedImageId === img.id && isActive && activeWorkLayer?.type === "underlay";
+                                                const isMultiSelected = selectedImageIds.includes(img.id) && activeWorkLayer?.type === "underlay";
                                                 return (
                                                   <div
                                                     key={img.id}
@@ -1144,67 +1138,60 @@ export const ProjectTree: React.FC = () => {
 
                                       {/* 1.2 Bottom (Оборотная) */}
                                       <div>
-                                        <div
-                                          className={`cad-tree-item ${activeWorkLayer?.type === "underlay" && activeWorkLayer.side === "bottom" ? "work-layer-active" : ""}`}
-                                          onClick={() => {
-                                            if (!isActive) setActiveFile(file.id);
-                                            setActiveWorkLayer({ type: "underlay", side: "bottom" });
-                                          }}
-                                          title="Нажмите для выбора активного слоя Bottom подложки"
-                                        >
-                                          <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                            <span onClick={(e) => { e.stopPropagation(); toggleSide(botBgKey, e, true); }}>
-                                              {isBotBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                                            </span>
-                                            <div className="cad-tree-swatch swatch-bottom" />
-                                            <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
-                                              Bottom (Оборотная)
-                                            </span>
-                                            {bgBottomImages.length > 0 && <span className="cad-tree-badge">{bgBottomImages.length}</span>}
-                                          </div>
+                                        {(() => {
+                                          const isBotUnderlayActive = isActive && activeWorkLayer?.type === "underlay" && activeWorkLayer.side === "bottom";
+                                          return (
+                                            <div
+                                              className={`cad-tree-item ${isBotUnderlayActive ? "sublayer-active" : ""}`}
+                                              onClick={() => {
+                                                if (!isActive) setActiveFile(file.id);
+                                                setActiveWorkLayer({ type: "underlay", side: "bottom" });
+                                              }}
+                                              title="Нажмите для выбора активного слоя Bottom подложки"
+                                            >
+                                              <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                                <span onClick={(e) => { e.stopPropagation(); toggleSide(botBgKey, e, true); }}>
+                                                  {isBotBgOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                                </span>
+                                                <div className="cad-tree-swatch swatch-bottom" />
+                                                <span className="cad-tree-item-name" style={{ color: "#cbd5e1" }}>
+                                                  Bottom (Оборотная)
+                                                </span>
+                                                {bgBottomImages.length > 0 && <span className="cad-tree-badge">{bgBottomImages.length}</span>}
+                                              </div>
 
-                                          <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
-                                            <button
-                                              className={`cad-tree-icon-btn ${isAllBotVisible ? "active" : ""}`}
-                                              onClick={async () => {
-                                                if (!isActive) setActiveFile(file.id);
-                                                const nextVis = !isAllBotVisible;
-                                                setShowBottomLayer(nextVis);
-                                                if (bgBottomImages.length > 0) {
-                                                  await batchSetVisibility(bgBottomImages.map((i) => i.id), nextVis);
-                                                }
-                                              }}
-                                              title={isAllBotVisible ? "Скрыть слой Bottom и все сканы" : "Показать слой Bottom и все сканы"}
-                                            >
-                                              {isAllBotVisible ? <Eye size={12} /> : <EyeOff size={12} />}
-                                            </button>
-                                            <button
-                                              className="cad-tree-icon-btn"
-                                              onClick={async () => {
-                                                if (!isActive) setActiveFile(file.id);
-                                                const nextLock = !isAllBotLocked;
-                                                if (bgBottomImages.length > 0) {
-                                                  await batchSetLocked(bgBottomImages.map((i) => i.id), nextLock);
-                                                }
-                                              }}
-                                              title={isAllBotLocked ? "Разблокировать все сканы Bottom" : "Заблокировать все сканы Bottom"}
-                                            >
-                                              {isAllBotLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
-                                            </button>
-                                            {bgBottomImages.length > 0 && (
-                                              <button
-                                                className="cad-tree-icon-btn"
-                                                onClick={() => {
-                                                  if (!isActive) setActiveFile(file.id);
-                                                  fitAllImages(bgBottomImages);
-                                                }}
-                                                title="Вписать все изображения Bottom"
-                                              >
-                                                <Maximize2 size={12} color="#60a5fa" />
-                                              </button>
-                                            )}
-                                          </div>
-                                        </div>
+                                              <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                  className={`cad-tree-icon-btn ${isAllBotVisible ? "active" : ""}`}
+                                                  onClick={async () => {
+                                                    if (!isActive) setActiveFile(file.id);
+                                                    const nextVis = !isAllBotVisible;
+                                                    setShowBottomLayer(nextVis);
+                                                    if (bgBottomImages.length > 0) {
+                                                      await batchSetVisibility(bgBottomImages.map((i) => i.id), nextVis);
+                                                    }
+                                                  }}
+                                                  title={isAllBotVisible ? "Скрыть слой Bottom и все сканы" : "Показать слой Bottom и все сканы"}
+                                                >
+                                                  {isAllBotVisible ? <Eye size={12} /> : <EyeOff size={12} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={async () => {
+                                                    if (!isActive) setActiveFile(file.id);
+                                                    const nextLock = !isAllBotLocked;
+                                                    if (bgBottomImages.length > 0) {
+                                                      await batchSetLocked(bgBottomImages.map((i) => i.id), nextLock);
+                                                    }
+                                                  }}
+                                                  title={isAllBotLocked ? "Разблокировать все сканы Bottom" : "Заблокировать все сканы Bottom"}
+                                                >
+                                                  {isAllBotLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        })()}
 
                                         {isBotBgOpen && (
                                           <div className="cad-tree-subbranch">
@@ -1221,8 +1208,8 @@ export const ProjectTree: React.FC = () => {
                                               </button>
                                             ) : (
                                               bgBottomImages.map((img) => {
-                                                const isSelected = selectedImageId === img.id && isActive;
-                                                const isMultiSelected = selectedImageIds.includes(img.id);
+                                                const isSelected = selectedImageId === img.id && isActive && activeWorkLayer?.type === "underlay";
+                                                const isMultiSelected = selectedImageIds.includes(img.id) && activeWorkLayer?.type === "underlay";
                                                 return (
                                                   <div
                                                     key={img.id}
@@ -1327,19 +1314,31 @@ export const ProjectTree: React.FC = () => {
                           {/* ========================================================================= */}
                           <div>
                             {(() => {
+                              const isCompActive = isActive && activeWorkLayer?.type === "components";
                               const isAllComponentsVisible = showTopComponents && showBottomComponents;
                               return (
                                 <div
-                                  className="cad-tree-item"
-                                  onClick={(e) => toggleSide(compGroupKey, e, true)}
+                                  className={`cad-tree-item ${isCompActive ? "work-layer-active" : ""}`}
+                                  onClick={() => {
+                                    if (!isActive) setActiveFile(file.id);
+                                    setActiveWorkLayer({
+                                      type: "components",
+                                      side: activeWorkLayer?.type === "components" ? (activeWorkLayer.side || "top") : "top",
+                                    });
+                                  }}
                                   style={{ fontWeight: 600 }}
                                 >
                                   <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                    <span>{isCompGroupOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}</span>
+                                    <span onClick={(e) => { e.stopPropagation(); toggleSide(compGroupKey, e, true); }}>
+                                      {isCompGroupOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                    </span>
                                     <Cpu size={12} color="#a855f7" style={{ flexShrink: 0 }} />
                                     <span className="cad-tree-item-name">
                                       Компоненты
                                     </span>
+                                    {isCompActive && (
+                                      <span className="cad-work-layer-badge">активен</span>
+                                    )}
                                     {totalComponentsCount > 0 && (
                                       <span className="cad-tree-badge">{totalComponentsCount}</span>
                                     )}
@@ -1365,38 +1364,43 @@ export const ProjectTree: React.FC = () => {
                               <div className="cad-tree-subbranch">
                                 {/* 2.1 Top Components */}
                                 <div>
-                                  <div
-                                    className={`cad-tree-item ${activeWorkLayer?.type === "components" && activeWorkLayer.side === "top" ? "work-layer-active" : ""}`}
-                                    onClick={() => {
-                                      if (!isActive) setActiveFile(file.id);
-                                      setActiveWorkLayer({ type: "components", side: "top" });
-                                    }}
-                                    title="Нажмите для выбора активного слоя Top компонентов"
-                                  >
-                                    <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                      <span onClick={(e) => { e.stopPropagation(); toggleSide(topCompKey, e, true); }}>
-                                        {isTopCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                                      </span>
-                                      <div className="cad-tree-swatch swatch-top" />
-                                      <span className="cad-tree-item-name">
-                                        Top (Лицевой монтаж)
-                                      </span>
-                                      {topComponents.length > 0 && <span className="cad-tree-badge">{topComponents.length}</span>}
-                                    </div>
-
-                                    <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
-                                      <button
-                                        className={`cad-tree-icon-btn ${showTopComponents ? "active" : ""}`}
+                                  {(() => {
+                                    const isTopCompActive = isActive && activeWorkLayer?.type === "components" && activeWorkLayer.side === "top";
+                                    return (
+                                      <div
+                                        className={`cad-tree-item ${isTopCompActive ? "sublayer-active" : ""}`}
                                         onClick={() => {
                                           if (!isActive) setActiveFile(file.id);
-                                          setShowTopComponents(!showTopComponents);
+                                          setActiveWorkLayer({ type: "components", side: "top" });
                                         }}
-                                        title={showTopComponents ? "Скрыть компоненты Top" : "Показать компоненты Top"}
+                                        title="Нажмите для выбора активного слоя Top компонентов"
                                       >
-                                        {showTopComponents ? <Eye size={12} /> : <EyeOff size={12} />}
-                                      </button>
-                                    </div>
-                                  </div>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                          <span onClick={(e) => { e.stopPropagation(); toggleSide(topCompKey, e, true); }}>
+                                            {isTopCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                          </span>
+                                          <div className="cad-tree-swatch swatch-top" />
+                                          <span className="cad-tree-item-name">
+                                            Top (Лицевой монтаж)
+                                          </span>
+                                          {topComponents.length > 0 && <span className="cad-tree-badge">{topComponents.length}</span>}
+                                        </div>
+
+                                        <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            className={`cad-tree-icon-btn ${showTopComponents ? "active" : ""}`}
+                                            onClick={() => {
+                                              if (!isActive) setActiveFile(file.id);
+                                              setShowTopComponents(!showTopComponents);
+                                            }}
+                                            title={showTopComponents ? "Скрыть компоненты Top" : "Показать компоненты Top"}
+                                          >
+                                            {showTopComponents ? <Eye size={12} /> : <EyeOff size={12} />}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                   {isTopCompOpen && (
                                     <div className="cad-tree-subbranch">
@@ -1422,38 +1426,43 @@ export const ProjectTree: React.FC = () => {
 
                                 {/* 2.2 Bottom Components */}
                                 <div>
-                                  <div
-                                    className={`cad-tree-item ${activeWorkLayer?.type === "components" && activeWorkLayer.side === "bottom" ? "work-layer-active" : ""}`}
-                                    onClick={() => {
-                                      if (!isActive) setActiveFile(file.id);
-                                      setActiveWorkLayer({ type: "components", side: "bottom" });
-                                    }}
-                                    title="Нажмите для выбора активного слоя Bottom компонентов"
-                                  >
-                                    <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                      <span onClick={(e) => { e.stopPropagation(); toggleSide(botCompKey, e, true); }}>
-                                        {isBotCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
-                                      </span>
-                                      <div className="cad-tree-swatch swatch-bottom" />
-                                      <span className="cad-tree-item-name">
-                                        Bottom (Оборотный монтаж)
-                                      </span>
-                                      {botComponents.length > 0 && <span className="cad-tree-badge">{botComponents.length}</span>}
-                                    </div>
-
-                                    <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
-                                      <button
-                                        className={`cad-tree-icon-btn ${showBottomComponents ? "active" : ""}`}
+                                  {(() => {
+                                    const isBotCompActive = isActive && activeWorkLayer?.type === "components" && activeWorkLayer.side === "bottom";
+                                    return (
+                                      <div
+                                        className={`cad-tree-item ${isBotCompActive ? "sublayer-active" : ""}`}
                                         onClick={() => {
                                           if (!isActive) setActiveFile(file.id);
-                                          setShowBottomComponents(!showBottomComponents);
+                                          setActiveWorkLayer({ type: "components", side: "bottom" });
                                         }}
-                                        title={showBottomComponents ? "Скрыть компоненты Bottom" : "Показать компоненты Bottom"}
+                                        title="Нажмите для выбора активного слоя Bottom компонентов"
                                       >
-                                        {showBottomComponents ? <Eye size={12} /> : <EyeOff size={12} />}
-                                      </button>
-                                    </div>
-                                  </div>
+                                        <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
+                                          <span onClick={(e) => { e.stopPropagation(); toggleSide(botCompKey, e, true); }}>
+                                            {isBotCompOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
+                                          </span>
+                                          <div className="cad-tree-swatch swatch-bottom" />
+                                          <span className="cad-tree-item-name">
+                                            Bottom (Оборотный монтаж)
+                                          </span>
+                                          {botComponents.length > 0 && <span className="cad-tree-badge">{botComponents.length}</span>}
+                                        </div>
+
+                                        <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
+                                          <button
+                                            className={`cad-tree-icon-btn ${showBottomComponents ? "active" : ""}`}
+                                            onClick={() => {
+                                              if (!isActive) setActiveFile(file.id);
+                                              setShowBottomComponents(!showBottomComponents);
+                                            }}
+                                            title={showBottomComponents ? "Скрыть компоненты Bottom" : "Показать компоненты Bottom"}
+                                          >
+                                            {showBottomComponents ? <Eye size={12} /> : <EyeOff size={12} />}
+                                          </button>
+                                        </div>
+                                      </div>
+                                    );
+                                  })()}
 
                                   {isBotCompOpen && (
                                     <div className="cad-tree-subbranch">
@@ -1485,21 +1494,31 @@ export const ProjectTree: React.FC = () => {
                           {/* ========================================================================= */}
                           <div>
                             {(() => {
+                              const isCopperActive = isActive && (activeWorkLayer?.type === "copper" || activeWorkLayer?.type === "vias");
                               const isAllCopperVisible = showTopCopper && showBottomCopper && showVias;
                               return (
                                 <div
-                                  className="cad-tree-item"
-                                  onClick={(e) => toggleSide(copperKey, e, false)}
+                                  className={`cad-tree-item ${isCopperActive ? "work-layer-active" : ""}`}
+                                  onClick={() => {
+                                    if (!isActive) setActiveFile(file.id);
+                                    if (activeWorkLayer?.type !== "copper" && activeWorkLayer?.type !== "vias") {
+                                      setActiveWorkLayer({ type: "copper", side: "top" });
+                                    }
+                                  }}
                                   style={{ opacity: 0.9 }}
+                                  title="Нажмите для выбора активного слоя топологии (медь)"
                                 >
                                   <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                    <span>
+                                    <span onClick={(e) => { e.stopPropagation(); toggleSide(copperKey, e, false); }}>
                                       {isCopperOpen ? <ChevronDown size={11} /> : <ChevronRight size={11} />}
                                     </span>
                                     <div className="cad-tree-swatch swatch-copper" />
                                     <span className="cad-tree-item-name">
                                       Слои топологии (медь)
                                     </span>
+                                    {isCopperActive && (
+                                      <span className="cad-work-layer-badge">активен</span>
+                                    )}
                                   </div>
 
                                   <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
@@ -1521,84 +1540,99 @@ export const ProjectTree: React.FC = () => {
                             {isCopperOpen && (
                               <div className="cad-tree-subbranch">
                                 {/* Top Copper */}
-                                <div
-                                  className={`cad-tree-item ${activeWorkLayer?.type === "copper" && activeWorkLayer.side === "top" ? "work-layer-active" : ""}`}
-                                  onClick={() => {
-                                    if (!isActive) setActiveFile(file.id);
-                                    setActiveWorkLayer({ type: "copper", side: "top" });
-                                  }}
-                                  title="Нажмите для выбора активного слоя Top Copper"
-                                >
-                                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <div className="cad-tree-swatch swatch-top" />
-                                    <span style={{ fontSize: "11px", color: "#cbd5e1" }}>Top Copper (Лицевой)</span>
-                                  </div>
-                                  <button
-                                    className={`cad-tree-icon-btn ${showTopCopper ? "active" : ""}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (!isActive) setActiveFile(file.id);
-                                      setShowTopCopper(!showTopCopper);
-                                    }}
-                                    title={showTopCopper ? "Скрыть Top Copper" : "Показать Top Copper"}
-                                  >
-                                    {showTopCopper ? <Eye size={12} /> : <EyeOff size={12} />}
-                                  </button>
-                                </div>
-
-                                {/* Bottom Copper */}
-                                <div
-                                  className={`cad-tree-item ${activeWorkLayer?.type === "copper" && activeWorkLayer.side === "bottom" ? "work-layer-active" : ""}`}
-                                  onClick={() => {
-                                    if (!isActive) setActiveFile(file.id);
-                                    setActiveWorkLayer({ type: "copper", side: "bottom" });
-                                  }}
-                                  title="Нажмите для выбора активного слоя Bottom Copper"
-                                >
-                                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <div className="cad-tree-swatch swatch-bottom" />
-                                    <span style={{ fontSize: "11px", color: "#cbd5e1" }}>Bottom Copper (Оборотный)</span>
-                                  </div>
-                                  <button
-                                    className={`cad-tree-icon-btn ${showBottomCopper ? "active" : ""}`}
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      if (!isActive) setActiveFile(file.id);
-                                      setShowBottomCopper(!showBottomCopper);
-                                    }}
-                                    title={showBottomCopper ? "Скрыть Bottom Copper" : "Показать Bottom Copper"}
-                                  >
-                                    {showBottomCopper ? <Eye size={12} /> : <EyeOff size={12} />}
-                                  </button>
-                                </div>
-
-                                {/* Vias */}
-                                <div
-                                   className={`cad-tree-item ${activeWorkLayer?.type === "vias" ? "work-layer-active" : ""}`}
-                                   onClick={() => {
-                                     if (!isActive) setActiveFile(file.id);
-                                     setActiveWorkLayer({ type: "vias" });
-                                   }}
-                                   title="Нажмите для выбора активного слоя Vias"
-                                 >
-                                  <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                                    <div className="cad-tree-swatch swatch-vias" />
-                                    <span style={{ fontSize: "11px", color: "#cbd5e1" }}>Переходные отв. (Vias)</span>
-                                  </div>
-                                  <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
-                                    {viasCount > 0 && <span className="cad-tree-badge">{viasCount}</span>}
-                                    <button
-                                      className={`cad-tree-icon-btn ${showVias ? "active" : ""}`}
+                                {(() => {
+                                  const isTopCopperActive = isActive && activeWorkLayer?.type === "copper" && activeWorkLayer.side === "top";
+                                  return (
+                                    <div
+                                      className={`cad-tree-item ${isTopCopperActive ? "sublayer-active" : ""}`}
                                       onClick={() => {
                                         if (!isActive) setActiveFile(file.id);
-                                        setShowVias(!showVias);
+                                        setActiveWorkLayer({ type: "copper", side: "top" });
                                       }}
-                                      title={showVias ? "Скрыть Vias" : "Показать Vias"}
+                                      title="Выбрать слой Top Copper"
                                     >
-                                      {showVias ? <Eye size={12} /> : <EyeOff size={12} />}
-                                    </button>
-                                  </div>
-                                </div>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <div className="cad-tree-swatch swatch-top" />
+                                        <span style={{ fontSize: "11px", color: "#cbd5e1" }}>Top Copper (Лицевой)</span>
+                                      </div>
+                                      <button
+                                        className={`cad-tree-icon-btn ${showTopCopper ? "active" : ""}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!isActive) setActiveFile(file.id);
+                                          setShowTopCopper(!showTopCopper);
+                                        }}
+                                        title={showTopCopper ? "Скрыть Top Copper" : "Показать Top Copper"}
+                                      >
+                                        {showTopCopper ? <Eye size={12} /> : <EyeOff size={12} />}
+                                      </button>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Bottom Copper */}
+                                {(() => {
+                                  const isBotCopperActive = isActive && activeWorkLayer?.type === "copper" && activeWorkLayer.side === "bottom";
+                                  return (
+                                    <div
+                                      className={`cad-tree-item ${isBotCopperActive ? "sublayer-active" : ""}`}
+                                      onClick={() => {
+                                        if (!isActive) setActiveFile(file.id);
+                                        setActiveWorkLayer({ type: "copper", side: "bottom" });
+                                      }}
+                                      title="Выбрать слой Bottom Copper"
+                                    >
+                                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <div className="cad-tree-swatch swatch-bottom" />
+                                        <span style={{ fontSize: "11px", color: "#cbd5e1" }}>Bottom Copper (Оборотный)</span>
+                                      </div>
+                                      <button
+                                        className={`cad-tree-icon-btn ${showBottomCopper ? "active" : ""}`}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          if (!isActive) setActiveFile(file.id);
+                                          setShowBottomCopper(!showBottomCopper);
+                                        }}
+                                        title={showBottomCopper ? "Скрыть Bottom Copper" : "Показать Bottom Copper"}
+                                      >
+                                        {showBottomCopper ? <Eye size={12} /> : <EyeOff size={12} />}
+                                      </button>
+                                    </div>
+                                  );
+                                })()}
+
+                                {/* Vias */}
+                                {(() => {
+                                  const isViasActive = isActive && activeWorkLayer?.type === "vias";
+                                  return (
+                                    <div
+                                      className={`cad-tree-item ${isViasActive ? "sublayer-active" : ""}`}
+                                      onClick={() => {
+                                        if (!isActive) setActiveFile(file.id);
+                                        setActiveWorkLayer({ type: "vias" });
+                                      }}
+                                      title="Выбрать слой Vias"
+                                    >
+                                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                                        <div className="cad-tree-swatch swatch-vias" />
+                                        <span style={{ fontSize: "11px", color: "#cbd5e1" }}>Переходные отв. (Vias)</span>
+                                      </div>
+                                      <div style={{ display: "flex", alignItems: "center", gap: "4px" }}>
+                                        {viasCount > 0 && <span className="cad-tree-badge">{viasCount}</span>}
+                                        <button
+                                          className={`cad-tree-icon-btn ${showVias ? "active" : ""}`}
+                                          onClick={() => {
+                                            if (!isActive) setActiveFile(file.id);
+                                            setShowVias(!showVias);
+                                          }}
+                                          title={showVias ? "Скрыть Vias" : "Показать Vias"}
+                                        >
+                                          {showVias ? <Eye size={12} /> : <EyeOff size={12} />}
+                                        </button>
+                                      </div>
+                                    </div>
+                                  );
+                                })()}
                               </div>
                             )}
                           </div>

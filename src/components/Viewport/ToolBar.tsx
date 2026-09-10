@@ -31,6 +31,7 @@ export const ToolBar: React.FC = () => {
   } = useUiStore();
 
   const isUnderlay = activeWorkLayer?.type === "underlay";
+  const isComponents = activeWorkLayer?.type === "components";
   const underlaySide = isUnderlay ? (activeWorkLayer.side || "top") : null;
 
   // Fallback to "select" tool if current tool is an image-only tool and underlay is not active
@@ -123,6 +124,21 @@ export const ToolBar: React.FC = () => {
         </>
       )}
 
+      {/* Кнопка базы компонентов — отображается ТОЛЬКО если активен слой компонентов */}
+      {isComponents && (
+        <>
+          <button
+            className="cad-tool-btn"
+            onClick={() => openModal("componentLibrary")}
+            title="Библиотека компонентов: добавить деталь на плату (R, C, микросхемы)"
+            style={{ color: "#c084fc" }}
+          >
+            <Cpu size={16} />
+          </button>
+          <div className="cad-tool-sep" />
+        </>
+      )}
+
       {/* Основной инструмент выбора */}
       <button
         className={`cad-tool-btn ${activeTool === "select" ? "active" : ""}`}
@@ -178,21 +194,11 @@ export const ToolBar: React.FC = () => {
         <Grid size={16} />
       </button>
 
-      {/* Библиотека компонентов */}
-      <button
-        className="cad-tool-btn"
-        onClick={() => openModal("componentLibrary")}
-        title="Библиотека компонентов и корпусов"
-        style={{ color: "#38bdf8" }}
-      >
-        <Cpu size={16} />
-      </button>
-
       {/* Вписать все изображения */}
       <button
         className="cad-tool-btn"
         onClick={() => fitAllImages()}
-        title="Вписать все изображения (F / 0)"
+        title="Вписать всю плату / все сканы (0)"
       >
         <Maximize2 size={16} />
       </button>

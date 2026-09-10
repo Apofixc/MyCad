@@ -397,11 +397,79 @@ body,
 }
 
 .cad-tree-item.work-layer-active {
-  background: rgba(59, 130, 246, 0.1);
-  color: #ffffff;
-  border-left: 2.5px solid #3b82f6;
-  padding-left: 4px;
-  font-weight: 500;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0.08) 100%) !important;
+  color: #ffffff !important;
+  border-left: 3.5px solid #38bdf8 !important;
+  padding-left: 5px;
+  font-weight: 600;
+  box-shadow: inset 0 0 10px rgba(56, 189, 248, 0.12);
+}
+
+.cad-tree-item.work-layer-active .cad-tree-item-name {
+  color: #60a5fa !important;
+  font-weight: 600;
+  text-shadow: 0 0 12px rgba(96, 165, 250, 0.3);
+}
+
+.cad-tree-item.sublayer-active {
+  background: rgba(56, 189, 248, 0.09) !important;
+  border-left: 2px solid rgba(56, 189, 248, 0.85) !important;
+  padding-left: 6px;
+  color: #ffffff !important;
+}
+
+.cad-tree-item.sublayer-active .cad-tree-item-name,
+.cad-tree-item.sublayer-active span {
+  color: #f8fafc !important;
+  font-weight: 600;
+}
+
+.cad-tree-item.sublayer-active .cad-tree-swatch {
+  transform: scale(1.2);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.cad-tree-item.sublayer-active .cad-tree-swatch.swatch-top {
+  box-shadow: 0 0 8px rgba(239, 68, 68, 0.8), 0 0 2px #ef4444;
+}
+
+.cad-tree-item.sublayer-active .cad-tree-swatch.swatch-bottom {
+  box-shadow: 0 0 8px rgba(59, 130, 246, 0.8), 0 0 2px #3b82f6;
+}
+
+.cad-tree-item.sublayer-active .cad-tree-swatch.swatch-copper {
+  box-shadow: 0 0 8px rgba(245, 158, 11, 0.8), 0 0 2px #f59e0b;
+}
+
+.cad-tree-item.sublayer-active .cad-tree-swatch.swatch-vias {
+  box-shadow: 0 0 8px rgba(234, 179, 8, 0.8), 0 0 2px #eab308;
+}
+
+.cad-work-layer-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3.5px;
+  background: rgba(14, 165, 233, 0.18);
+  border: 1px solid rgba(56, 189, 248, 0.45);
+  color: #38bdf8;
+  font-size: 9px;
+  font-weight: 700;
+  padding: 1px 6px;
+  border-radius: 9999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: 4px;
+  flex-shrink: 0;
+}
+
+.cad-work-layer-badge::before {
+  content: "";
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #38bdf8;
+  box-shadow: 0 0 6px #38bdf8;
 }
 
 .cad-tree-item.is-hidden {

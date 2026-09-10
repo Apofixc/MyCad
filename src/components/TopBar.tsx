@@ -6,13 +6,12 @@ import {
   LogOut,
   Layers,
   FileCode,
-  Cpu,
 } from "lucide-react";
 import { useUiStore } from "../stores/uiStore";
 import { useProjectStore } from "../stores/projectStore";
 
 export const TopBar: React.FC = () => {
-  const { toggleLeftSidebar, toggleRightSidebar, rightSidebarCollapsed, openModal } = useUiStore();
+  const { toggleLeftSidebar, toggleRightSidebar, rightSidebarCollapsed } = useUiStore();
   const { manifest, isDirty, saveProject, closeProject, activeFileType, selectedImageId, selectedComponentId } = useProjectStore();
 
   const handleSave = async () => {
@@ -62,15 +61,6 @@ export const TopBar: React.FC = () => {
       </div>
 
       <div className="cad-top-bar-actions">
-        <button
-          className="cad-top-tool-btn"
-          onClick={() => openModal("componentLibrary")}
-          title="Библиотека радиокомпонентов и посадочных мест (корпусов)"
-        >
-          <Cpu size={16} color="#38bdf8" />
-          <span style={{ fontSize: "12px", fontWeight: 600 }}>Библиотека</span>
-        </button>
-
         <button
           className={`cad-top-tool-btn ${isDirty ? "cad-save-needed" : ""}`}
           onClick={handleSave}

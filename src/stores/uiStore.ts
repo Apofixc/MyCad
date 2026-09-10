@@ -113,7 +113,16 @@ interface UiStore {
 export const useUiStore = create<UiStore>((set) => ({
   activeTool: "select",
   activeWorkLayer: { type: "underlay", side: "top" },
-  setActiveWorkLayer: (layer) => set({ activeWorkLayer: layer }),
+  setActiveWorkLayer: (layer) => {
+    set({ activeWorkLayer: layer });
+    if (layer.type === "components") {
+      useProjectStore.setState({ selectedImageId: null, selectedImageIds: [] });
+    } else if (layer.type === "underlay") {
+      useProjectStore.setState({ selectedComponentId: null });
+    } else {
+      useProjectStore.setState({ selectedImageId: null, selectedImageIds: [], selectedComponentId: null });
+    }
+  },
   cursorMm: { x: 0, y: 0 },
   viewportZoom: 100,
   viewportPan: { x: 0, y: 0 },

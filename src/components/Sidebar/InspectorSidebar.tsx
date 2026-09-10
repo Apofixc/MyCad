@@ -46,6 +46,7 @@ export const InspectorSidebar: React.FC = () => {
   } = useProjectStore();
 
   const {
+    activeWorkLayer,
     rightSidebarWidth,
     setRightSidebarWidth,
     setActiveTool,
@@ -320,6 +321,11 @@ export const InspectorSidebar: React.FC = () => {
         </div>
       </aside>
     );
+  }
+
+  // If the active layer is not underlay, do not display image inspector
+  if (activeWorkLayer?.type !== "underlay") {
+    return null;
   }
 
   // Strictly single image selection
