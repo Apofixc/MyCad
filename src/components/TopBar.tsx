@@ -1,7 +1,6 @@
 import React from "react";
 import {
   PanelLeft,
-  PanelRight,
   Save,
   LogOut,
   Layers,
@@ -11,8 +10,8 @@ import { useUiStore } from "../stores/uiStore";
 import { useProjectStore } from "../stores/projectStore";
 
 export const TopBar: React.FC = () => {
-  const { toggleLeftSidebar, toggleRightSidebar, rightSidebarCollapsed } = useUiStore();
-  const { manifest, isDirty, saveProject, closeProject, activeFileType, selectedImageId, selectedComponentId } = useProjectStore();
+  const { toggleLeftSidebar } = useUiStore();
+  const { manifest, isDirty, saveProject, closeProject } = useProjectStore();
 
   const handleSave = async () => {
     try {
@@ -64,32 +63,11 @@ export const TopBar: React.FC = () => {
         <button
           className={`cad-top-tool-btn ${isDirty ? "cad-save-needed" : ""}`}
           onClick={handleSave}
-          title="Сохранить проект в .mycad (Ctrl+S)"
+          title={isDirty ? "Сохранить проект в .mycad (Ctrl+S) — есть изменения" : "Проект сохранён (Ctrl+S)"}
         >
-          <Save size={16} />
+          <Save size={15} />
           <span style={{ fontSize: "12px", fontWeight: 600 }}>Сохранить</span>
         </button>
-
-        {activeFileType === "board" && (
-          <button
-            className={`cad-top-tool-btn ${(selectedImageId || selectedComponentId) && !rightSidebarCollapsed ? "active" : ""}`}
-            disabled={!selectedImageId && !selectedComponentId}
-            onClick={() => {
-              if (selectedImageId || selectedComponentId) {
-                toggleRightSidebar();
-              }
-            }}
-            title={
-              selectedImageId || selectedComponentId
-                ? rightSidebarCollapsed
-                  ? "Развернуть панель свойств"
-                  : "Скрыть панель свойств"
-                : "Свойства объекта (выберите скан или компонент на холсте)"
-            }
-          >
-            <PanelRight size={16} />
-          </button>
-        )}
 
         <div className="cad-tool-sep" />
 

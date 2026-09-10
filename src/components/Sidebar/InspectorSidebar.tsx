@@ -20,7 +20,6 @@ import {
   Download,
   Link,
   Unlink,
-  Target,
   Crop,
   Trash2,
   Cpu,
@@ -50,7 +49,6 @@ export const InspectorSidebar: React.FC = () => {
     rightSidebarWidth,
     setRightSidebarWidth,
     setActiveTool,
-    focusImageLayer,
     setPendingPreprocess,
     openModal,
     setEditingPackage,
@@ -548,14 +546,6 @@ export const InspectorSidebar: React.FC = () => {
 
         <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
           <button
-            className="cad-tool-btn"
-            style={{ width: "26px", height: "26px" }}
-            onClick={() => focusImageLayer(imgLayer)}
-            title="Фокус: центрировать и приблизить скан на холсте"
-          >
-            <Target size={13} color="#60a5fa" />
-          </button>
-          <button
             className={`cad-tool-btn ${imgLayer.locked ? "active" : ""}`}
             style={{ width: "26px", height: "26px" }}
             onClick={() => handleUpdate({ locked: !imgLayer.locked })}
@@ -570,14 +560,6 @@ export const InspectorSidebar: React.FC = () => {
             title={imgLayer.visible ? "Скрыть слой" : "Показать слой"}
           >
             {imgLayer.visible ? <Eye size={13} /> : <EyeOff size={13} />}
-          </button>
-          <button
-            className="cad-tool-btn"
-            style={{ width: "26px", height: "26px" }}
-            onClick={() => selectImage(null)}
-            title="Закрыть панель свойств (Esc)"
-          >
-            <X size={13} />
           </button>
         </div>
       </div>
