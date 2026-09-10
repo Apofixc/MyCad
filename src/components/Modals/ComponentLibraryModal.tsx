@@ -52,27 +52,221 @@ interface ComponentLibraryModalProps {
   onPlaceOnBoard?: (device: DeviceDefinition, packageDef: PackageDefinition) => void;
 }
 
-// Семейства корпусов для иерархического дерева
-const PACKAGE_FAMILIES = [
-  { id: "soic", name: "SOIC / SOP", match: (p: PackageDefinition) => p.family === "soic" || p.name.includes("SOIC") || p.name.includes("SOP") },
-  { id: "dip", name: "DIP / SIP", match: (p: PackageDefinition) => p.family === "dip" || p.name.includes("DIP") || p.name.includes("SIP") },
-  { id: "radial", name: "Radial (Выводные)", match: (p: PackageDefinition) => p.family === "radial" || p.name.includes("Radial") || p.name.includes("HC-49") },
-  { id: "axial", name: "Axial (Осевые)", match: (p: PackageDefinition) => p.family === "axial" || p.name.includes("Axial") || p.name.includes("DO-") },
-  { id: "chip_2pin", name: "Chip 2-Pin (0402..1206)", match: (p: PackageDefinition) => p.family === "chip_2pin" || /0402|0603|0805|1206|2010|2512/.test(p.name) },
-  { id: "connector", name: "Разъемы и клеммники", match: (p: PackageDefinition) => p.family === "connector" || p.name.includes("USB") || p.name.includes("Conn") || p.name.includes("Header") || p.name.includes("Клемм") },
-  { id: "switch", name: "Кнопки и реле", match: (p: PackageDefinition) => p.family === "switch" || p.name.includes("SW") || p.name.includes("Relay") || p.name.includes("Кнопка") || p.name.includes("Реле") },
-  { id: "qfp", name: "QFP / QFN / BGA", match: (p: PackageDefinition) => p.family === "qfp" || p.name.includes("QFP") || p.name.includes("QFN") || p.name.includes("BGA") },
-  { id: "to", name: "TO / SOT (Транзисторы)", match: (p: PackageDefinition) => p.family === "to" || p.family === "smd_discrete" || p.name.includes("TO-") || p.name.includes("SOT-") || p.name.includes("SOD-") },
-  { id: "other", name: "Прочие корпуса", match: (p: PackageDefinition) => p.family === "other" || (!["soic","dip","radial","axial","chip_2pin","connector","switch","qfp","to"].includes(p.family || "")) },
+// Интерфейс фильтра семейства корпусов
+interface PackageFamilyFilter {
+  id: string;
+  name: string;
+  match: (p: PackageDefinition) => boolean;
+}
+
+// Всеобъемлющая классификация семейств корпусов по стандартам IPC-7351, JEDEC, EIA и ГОСТ
+const PACKAGE_FAMILIES: PackageFamilyFilter[] = [
+  {
+    id: "chip_2pin",
+    name: "Чип-компоненты (SMD 0201..2512)",
+    match: (p: PackageDefinition) =>
+      p.family === "chip_2pin" ||
+      /0201|0402|0603|0805|1206|1210|1812|2010|2512/.test(p.name) ||
+      /0201|0402|0603|0805|1206|1210|1812|2010|2512/.test(p.id),
+  },
+  {
+    id: "diode_smd",
+    name: "SOD / MELF / SMA / SMB / SMC (Диоды SMD)",
+    match: (p: PackageDefinition) =>
+      /SOD|MELF|SMA|SMB|SMC|DO-214/i.test(p.name) ||
+      /SOD|MELF|SMA|SMB|SMC|DO_214/i.test(p.id) ||
+      (p.standard ? /DO-214|SOD|MELF/i.test(p.standard) : false),
+  },
+  {
+    id: "sot",
+    name: "SOT / TSOT (SOT-23, SOT-89, SOT-223)",
+    match: (p: PackageDefinition) =>
+      /SOT/i.test(p.name) ||
+      /SOT/i.test(p.id) ||
+      (p.standard ? /SOT/i.test(p.standard) : false),
+  },
+  {
+    id: "to_transistor",
+    name: "TO / DPAK / D2PAK (Силовые корпуса)",
+    match: (p: PackageDefinition) =>
+      /TO-|TO|DPAK|D2PAK/i.test(p.name) ||
+      /TO_|TO|DPAK|D2PAK/i.test(p.id) ||
+      (p.standard ? /TO-/i.test(p.standard) : false) ||
+      p.family === "to",
+  },
+  {
+    id: "dip",
+    name: "DIP / DIL (Двухрядные выводные ИМС)",
+    match: (p: PackageDefinition) =>
+      ((/DIP/i.test(p.name) || /DIP/i.test(p.id) || p.family === "dip") &&
+        !/SIP/i.test(p.name) &&
+        !/RELAY/i.test(p.id) &&
+        !/7SEG/i.test(p.id)),
+  },
+  {
+    id: "sip",
+    name: "SIP / SIL (Однорядные выводные ИМС и сборки)",
+    match: (p: PackageDefinition) =>
+      /SIP/i.test(p.name) ||
+      /SIP/i.test(p.id) ||
+      (p.standard ? /SIP/i.test(p.standard) : false),
+  },
+  {
+    id: "soic",
+    name: "SOIC / SOP (Малоразмерные планарные ИМС, 1.27мм)",
+    match: (p: PackageDefinition) =>
+      (/SOIC|SOP/i.test(p.name) || /SOIC|SOP/i.test(p.id) || p.family === "soic") &&
+      !/TSSOP|MSOP|SSOP/i.test(p.name),
+  },
+  {
+    id: "tssop",
+    name: "TSSOP / SSOP / MSOP (Тонкие планарные ИМС, 0.65/0.5мм)",
+    match: (p: PackageDefinition) =>
+      /TSSOP|SSOP|MSOP|VSSOP/i.test(p.name) ||
+      /TSSOP|SSOP|MSOP|VSSOP/i.test(p.id),
+  },
+  {
+    id: "qfp",
+    name: "QFP / LQFP / TQFP (Четырехсторонние с выводами)",
+    match: (p: PackageDefinition) =>
+      (/QFP|LQFP|TQFP|PQFP/i.test(p.name) || /QFP|LQFP|TQFP|PQFP/i.test(p.id)) &&
+      !/ESP32/i.test(p.id),
+  },
+  {
+    id: "qfn_dfn",
+    name: "QFN / DFN / MLF (Безвыводные No-Lead)",
+    match: (p: PackageDefinition) =>
+      /QFN|DFN|MLF/i.test(p.name) || /QFN|DFN|MLF/i.test(p.id),
+  },
+  {
+    id: "bga_lga",
+    name: "BGA / LGA / CSP (Матричные массивы)",
+    match: (p: PackageDefinition) =>
+      /BGA|LGA|CSP|WLCSP/i.test(p.name) || /BGA|LGA|CSP|WLCSP/i.test(p.id),
+  },
+  {
+    id: "plcc",
+    name: "PLCC / LCC (Чип-носители с J-выводами)",
+    match: (p: PackageDefinition) =>
+      /PLCC|LCC/i.test(p.name) || /PLCC|LCC/i.test(p.id),
+  },
+  {
+    id: "crystals",
+    name: "Кварцевые резонаторы и генераторы (HC-49, SMD, OSC)",
+    match: (p: PackageDefinition) =>
+      /Кварц|Резонатор|Генератор|Crystal|Oscillator|HC-49|32.768/i.test(p.name) ||
+      /CRYSTAL|RESONATOR|OSC/i.test(p.id),
+  },
+  {
+    id: "radial",
+    name: "Radial (Радиальные выводные конденсаторы, варисторы)",
+    match: (p: PackageDefinition) =>
+      (p.family === "radial" || /Radial|Варистор/i.test(p.name)) &&
+      !/LED/i.test(p.name) &&
+      !/Кварц|Резонатор|Зуммер/i.test(p.name) &&
+      !/DHT11|VS1838/i.test(p.id) &&
+      !/TRIMMER|POT/i.test(p.id) &&
+      !/CRYSTAL/i.test(p.id),
+  },
+  {
+    id: "axial",
+    name: "Axial (Осевые резисторы, диоды DO-35/DO-41)",
+    match: (p: PackageDefinition) =>
+      p.family === "axial" ||
+      /Axial|DO-35|DO-41|DO-204/i.test(p.name) ||
+      /DO_35|DO_41|DO35/i.test(p.id),
+  },
+  {
+    id: "opto_led",
+    name: "Светодиоды, индикаторы и оптопары",
+    match: (p: PackageDefinition) =>
+      /LED|Индикатор|7SEG|Опто|WS2812/i.test(p.name) ||
+      /LED|7SEG|OPTO/i.test(p.id),
+  },
+  {
+    id: "pot_trimmer",
+    name: "Потенциометры и подстроечные резисторы",
+    match: (p: PackageDefinition) =>
+      /Подстроеч|Потенциометр|3296|CA6V|WH148/i.test(p.name) ||
+      /POT|TRIMMER/i.test(p.id),
+  },
+  {
+    id: "switches",
+    name: "Кнопки, переключатели и энкодеры",
+    match: (p: PackageDefinition) =>
+      /Кнопка|Переключатель|Энкодер|Tact|Switch|Encoder/i.test(p.name) ||
+      /TACT|SWITCH|ENCODER/i.test(p.id),
+  },
+  {
+    id: "relays",
+    name: "Реле электромагнитные и твердотельные",
+    match: (p: PackageDefinition) =>
+      /Реле|Relay/i.test(p.name) || /RELAY/i.test(p.id),
+  },
+  {
+    id: "connectors",
+    name: "Разъемы, клеммники и гнезда",
+    match: (p: PackageDefinition) =>
+      /Разъем|Клеммник|USB|RJ45|PJ-307|Jack|Header|Socket|MicroSD|HanRun/i.test(p.name) ||
+      /CONN|USB|RJ45|AUDIO|MICROSD/i.test(p.id),
+  },
+  {
+    id: "modules",
+    name: "Модули, сенсоры и мезонины",
+    match: (p: PackageDefinition) =>
+      /Модуль|Датчик|ESP32|NRF24|OLED|DHT11|VS1838|Зуммер|Buzzer/i.test(p.name) ||
+      /MODULE|ESP32|NRF24|OLED|DHT11|VS1838|SENSOR|BUZZER/i.test(p.id),
+  },
+  {
+    id: "inductors_trans",
+    name: "Моточные изделия, дроссели и фильтры",
+    match: (p: PackageDefinition) =>
+      /Дроссель|Трансформатор|Фильтр питания|CD54|CD75|CD127|UU9/i.test(p.name) ||
+      /INDUCTOR|CHOKE|TRANSFORMER/i.test(p.id),
+  },
+  {
+    id: "battery",
+    name: "Держатели элементов питания и батарей",
+    match: (p: PackageDefinition) =>
+      /Батарейк|CR2032|18650|Holder/i.test(p.name) ||
+      /BATT|BATTERY/i.test(p.id),
+  },
+  {
+    id: "mechanical",
+    name: "Крепеж, контрольные точки и радиаторы",
+    match: (p: PackageDefinition) =>
+      /Отверстие|Крепеж|Testpoint|Fiducial|Радиатор/i.test(p.name) ||
+      /HOLE|TP|FID/i.test(p.id),
+  },
+  {
+    id: "other",
+    name: "Прочие / Специальные корпуса",
+    match: (p: PackageDefinition): boolean =>
+      !PACKAGE_FAMILIES.slice(0, 24).some((fam: PackageFamilyFilter) => fam.id !== "other" && fam.match(p)),
+  },
 ];
 
-// Фильтры по количеству контактов
+// Фильтры по шагу выводов (Lead Pitch)
+const PITCH_FILTERS = [
+  { id: "2.54", label: "2.54 мм (0.1') — DIP / THT / Header", match: (p: PackageDefinition) => p.pitch === 2.54 },
+  { id: "1.27", label: "1.27 мм (0.05') — SOIC / SOP", match: (p: PackageDefinition) => p.pitch === 1.27 },
+  { id: "0.80", label: "0.80 мм — QFP / QFN", match: (p: PackageDefinition) => p.pitch === 0.8 },
+  { id: "0.65", label: "0.65 мм — TSSOP / SSOP", match: (p: PackageDefinition) => p.pitch === 0.65 },
+  { id: "0.50", label: "0.50 мм — LQFP / QFN тонкий", match: (p: PackageDefinition) => p.pitch === 0.5 },
+  { id: "5.08", label: "5.00–5.08 мм — Клеммники / Реле", match: (p: PackageDefinition) => p.pitch === 5.08 || p.pitch === 5.0 },
+  { id: "3.81", label: "3.50–3.81 мм — Клеммники", match: (p: PackageDefinition) => p.pitch === 3.81 || p.pitch === 3.5 },
+  { id: "none", label: "Индивидуальный шаг / 2 вывода", match: (p: PackageDefinition) => !p.pitch || p.pitch === 0 },
+];
+
+// Фильтры по количеству контактов (расширенная сетка)
 const PIN_FILTERS = [
-  { id: "2", label: "2 вывода", match: (p: PackageDefinition) => p.pads.length === 2 },
-  { id: "3-4", label: "3–4 вывода", match: (p: PackageDefinition) => p.pads.length >= 3 && p.pads.length <= 4 },
-  { id: "5-8", label: "5–8 выводов", match: (p: PackageDefinition) => p.pads.length >= 5 && p.pads.length <= 8 },
-  { id: "9-16", label: "9–16 выводов", match: (p: PackageDefinition) => p.pads.length >= 9 && p.pads.length <= 16 },
-  { id: "17+", label: "17+ выводов", match: (p: PackageDefinition) => p.pads.length >= 17 },
+  { id: "2", label: "2 вывода (Чипы, диоды, кварцы)", match: (p: PackageDefinition) => p.pads.length === 2 },
+  { id: "3-4", label: "3–4 вывода (Транзисторы, оптопары)", match: (p: PackageDefinition) => p.pads.length >= 3 && p.pads.length <= 4 },
+  { id: "5-8", label: "5–8 выводов (SOIC-8, DIP-8, ОУ)", match: (p: PackageDefinition) => p.pads.length >= 5 && p.pads.length <= 8 },
+  { id: "9-16", label: "9–16 выводов (Логика 74-й серии)", match: (p: PackageDefinition) => p.pads.length >= 9 && p.pads.length <= 16 },
+  { id: "17-32", label: "17–32 вывода (Микроконтроллеры)", match: (p: PackageDefinition) => p.pads.length >= 17 && p.pads.length <= 32 },
+  { id: "33-64", label: "33–64 вывода (QFP-48/64, ESP32)", match: (p: PackageDefinition) => p.pads.length >= 33 && p.pads.length <= 64 },
+  { id: "65+", label: "65+ выводов (QFP-100/144, BGA)", match: (p: PackageDefinition) => p.pads.length >= 65 },
 ];
 
 // Полная классификация радиокомпонентов (16 всеобъемлющих категорий ECAD)
@@ -318,8 +512,16 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   const [selectedMount, setSelectedMount] = useState<string>("all");
   const [selectedPackageFamily, setSelectedPackageFamily] = useState<string>("all");
   const [selectedPinFilter, setSelectedPinFilter] = useState<string>("all");
+  const [selectedPitchFilter, setSelectedPitchFilter] = useState<string>("all");
+  const [selectedDeviceLinkFilter, setSelectedDeviceLinkFilter] = useState<"all" | "linked" | "unlinked" | string>("all");
 
   // Раскрытие разделов дерева
+  // Раскрытие категорий деталей внутри дерева корпусов
+  const [expandedPkgDeviceCats, setExpandedPkgDeviceCats] = useState<Record<string, boolean>>({
+    semiconductors: true,
+    passives: true,
+  });
+
   const [expandedCategories, setExpandedCategories] = useState<Record<string, boolean>>({
     semiconductors: true,
     passives: true,
@@ -329,9 +531,12 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   });
 
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
+    deviceLink: true,
+    deviceCategories: true,
     mountType: true,
     families: true,
     pins: false,
+    pitch: false,
   });
 
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
@@ -348,6 +553,26 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
       });
     }
   }, [isOpen, loadAll]);
+
+  // Карта связей: packageId -> список DeviceDefinition
+  const packageToDevicesMap = useMemo(() => {
+    const map = new Map<string, DeviceDefinition[]>();
+    devices.forEach((dev) => {
+      dev.supportedPackages?.forEach((sp) => {
+        const list = map.get(sp.packageId) || [];
+        list.push(dev);
+        map.set(sp.packageId, list);
+      });
+    });
+    return map;
+  }, [devices]);
+
+  const linkedPackagesCount = useMemo(() => {
+    return packages.filter((p) => (packageToDevicesMap.get(p.id)?.length || 0) > 0).length;
+  }, [packages, packageToDevicesMap]);
+
+  const unlinkedPackagesCount = packages.length - linkedPackagesCount;
+
 
   // Пользовательские категории, не вошедшие в стандартный список
   const customCategories = useMemo(() => {
@@ -392,6 +617,27 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   // Фильтрация корпусов
   const filteredPackages = useMemo(() => {
     return packages.filter((p) => {
+      // Фильтр по привязке к радиодеталям
+      if (selectedDeviceLinkFilter === "linked") {
+        if ((packageToDevicesMap.get(p.id)?.length || 0) === 0) return false;
+      } else if (selectedDeviceLinkFilter === "unlinked") {
+        if ((packageToDevicesMap.get(p.id)?.length || 0) > 0) return false;
+      } else if (selectedDeviceLinkFilter !== "all") {
+        const linkedDevs = packageToDevicesMap.get(p.id) || [];
+        const matchesCat = linkedDevs.some((d) => {
+          if (selectedDeviceLinkFilter.startsWith("dev_")) {
+            const devId = selectedDeviceLinkFilter.replace("dev_", "");
+            return d.id === devId;
+          }
+          const catConfig = DEVICE_TREE_CATEGORIES.find((c) => c.id === selectedDeviceLinkFilter);
+          if (catConfig) {
+            return catConfig.aliases.includes(d.category) || (catConfig as any).matchCategory?.(d.category);
+          }
+          return d.category === selectedDeviceLinkFilter;
+        });
+        if (!matchesCat) return false;
+      }
+
       if (selectedMount !== "all" && p.mountType !== selectedMount) return false;
       if (selectedPackageFamily !== "all") {
         const fam = PACKAGE_FAMILIES.find((f) => f.id === selectedPackageFamily);
@@ -401,16 +647,22 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
         const pf = PIN_FILTERS.find((f) => f.id === selectedPinFilter);
         if (pf && !pf.match(p)) return false;
       }
+      if (selectedPitchFilter !== "all") {
+        const pitchF = PITCH_FILTERS.find((f) => f.id === selectedPitchFilter);
+        if (pitchF && !pitchF.match(p)) return false;
+      }
       if (!searchQuery.trim()) return true;
       const q = searchQuery.toLowerCase();
+      const linkedDevs = packageToDevicesMap.get(p.id) || [];
       return (
         p.name.toLowerCase().includes(q) ||
         p.id.toLowerCase().includes(q) ||
         (p.standard && p.standard.toLowerCase().includes(q)) ||
-        (p.family && p.family.toLowerCase().includes(q))
+        (p.family && p.family.toLowerCase().includes(q)) ||
+        linkedDevs.some((d) => d.name.toLowerCase().includes(q) || d.designatorPrefix.toLowerCase().includes(q))
       );
     });
-  }, [packages, selectedMount, selectedPackageFamily, selectedPinFilter, searchQuery]);
+  }, [packages, selectedDeviceLinkFilter, selectedMount, selectedPackageFamily, selectedPinFilter, selectedPitchFilter, searchQuery, packageToDevicesMap]);
 
   // Текущие выбранные элементы
   const activeDevice = devices.find((d) => d.id === selectedDeviceId) || filteredDevices[0];
@@ -478,6 +730,11 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
       onPlaceOnBoard(genericDev, activePackage);
       onClose();
     }
+  };
+
+  const togglePkgDeviceCat = (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setExpandedPkgDeviceCats((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
   const toggleCategory = (id: string, e: React.MouseEvent) => {
@@ -655,6 +912,62 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
 
           {/* Кнопки создания */}
           <div style={{ display: "flex", gap: 8 }}>
+            {/* Информационный баннер активной фильтрации корпусов по радиодеталям */}
+            {activeTab === "packages" && selectedDeviceLinkFilter !== "all" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "space-between",
+                  padding: "8px 12px",
+                  marginBottom: 12,
+                  background: "rgba(59, 130, 246, 0.08)",
+                  border: "1px solid rgba(59, 130, 246, 0.25)",
+                  borderRadius: 6,
+                  fontSize: 11,
+                  color: "var(--cad-text-main)",
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Tag size={13} color="var(--cad-accent-hover)" />
+                  <span>
+                    Фильтр по радиодеталям:{" "}
+                    <strong style={{ color: "var(--cad-accent-hover)" }}>
+                      {(() => {
+                        if (selectedDeviceLinkFilter === "linked") return "Все привязанные корпуса к компонентам базы";
+                        if (selectedDeviceLinkFilter === "unlinked") return "Свободные шаблоны CAD";
+                        if (selectedDeviceLinkFilter.startsWith("dev_")) {
+                          const d = devices.find((x) => x.id === selectedDeviceLinkFilter.replace("dev_", ""));
+                          return d ? `Деталь: ${d.name} (${d.designatorPrefix})` : "Компонент";
+                        }
+                        const cat = DEVICE_TREE_CATEGORIES.find((c) => c.id === selectedDeviceLinkFilter);
+                        return cat ? `Категория «${cat.name}»` : selectedDeviceLinkFilter;
+                      })()}
+                    </strong>{" "}
+                    — найдено корпусов: <strong style={{ color: "#fff" }}>{filteredPackages.length} шт.</strong>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSelectedDeviceLinkFilter("all")}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    background: "transparent",
+                    border: "none",
+                    color: "var(--cad-text-muted)",
+                    cursor: "pointer",
+                    fontSize: 11,
+                  }}
+                  title="Сбросить фильтр по деталям"
+                >
+                  <span>Показать все</span>
+                  <X size={13} />
+                </button>
+              </div>
+            )}
+
             {activeTab === "devices" ? (
               <button
                 className="cad-btn-primary"
@@ -805,17 +1118,147 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                 <>
                   {/* Корпуса: Корневой узел */}
                   <button
-                    className={`lib-tree-node ${selectedMount === "all" && selectedPackageFamily === "all" && selectedPinFilter === "all" ? "active" : ""}`}
+                    className={`lib-tree-node ${selectedMount === "all" && selectedPackageFamily === "all" && selectedPinFilter === "all" && selectedPitchFilter === "all" && selectedDeviceLinkFilter === "all" ? "active" : ""}`}
                     onClick={() => {
                       setSelectedMount("all");
                       setSelectedPackageFamily("all");
                       setSelectedPinFilter("all");
+                      setSelectedPitchFilter("all");
+                      setSelectedDeviceLinkFilter("all");
                     }}
                   >
                     <Box size={14} color="var(--cad-accent-hover)" />
                     <span>Все корпуса</span>
                     <span className="lib-tree-badge">{packages.length}</span>
                   </button>
+
+                  {/* Раздел: Фильтр по радиокомпонентам */}
+                  <div className="lib-tree-section">
+                    <div className="lib-tree-section-header" onClick={() => toggleSection("deviceLink")}>
+                      <span>По радиодеталям</span>
+                      {expandedSections.deviceLink ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </div>
+                    {expandedSections.deviceLink && (
+                      <>
+                        <button
+                          className={`lib-tree-node ${selectedDeviceLinkFilter === "linked" ? "active" : ""}`}
+                          onClick={() => {
+                            setSelectedDeviceLinkFilter(selectedDeviceLinkFilter === "linked" ? "all" : "linked");
+                            setSelectedMount("all");
+                            setSelectedPackageFamily("all");
+                            setSelectedPinFilter("all");
+                          }}
+                          title="Корпуса, привязанные к готовым радиокомпонентам"
+                        >
+                          <Tag size={13} color="var(--cad-accent-hover)" />
+                          <span>Привязаны к компонентам</span>
+                          <span className="lib-tree-badge">{linkedPackagesCount}</span>
+                        </button>
+                        <button
+                          className={`lib-tree-node ${selectedDeviceLinkFilter === "unlinked" ? "active" : ""}`}
+                          onClick={() => {
+                            setSelectedDeviceLinkFilter(selectedDeviceLinkFilter === "unlinked" ? "all" : "unlinked");
+                            setSelectedMount("all");
+                            setSelectedPackageFamily("all");
+                            setSelectedPinFilter("all");
+                          }}
+                          title="Свободные посадочные места CAD для проектирования"
+                        >
+                          <Box size={13} color="var(--cad-text-dim)" />
+                          <span>Свободные шаблоны CAD</span>
+                          <span className="lib-tree-badge">{unlinkedPackagesCount}</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Раздел: Категории радиодеталей с раскрытием до компонентов */}
+                  <div className="lib-tree-section">
+                    <div className="lib-tree-section-header" onClick={() => toggleSection("deviceCategories")}>
+                      <span>Категории деталей</span>
+                      {expandedSections.deviceCategories ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+                    </div>
+                    {expandedSections.deviceCategories &&
+                      DEVICE_TREE_CATEGORIES.map((cat) => {
+                        // All devices belonging to this category
+                        const catDevs = devices.filter((d) => cat.aliases.includes(d.category) || (cat as any).matchCategory?.(d.category));
+                        
+                        // All packages used by devices in this category
+                        const count = packages.filter((p) => {
+                          const linkedDevs = packageToDevicesMap.get(p.id) || [];
+                          return linkedDevs.some((d) => cat.aliases.includes(d.category) || (cat as any).matchCategory?.(d.category));
+                        }).length;
+
+                        if (count === 0 && catDevs.length === 0) return null;
+                        const Icon = cat.icon;
+                        const isCatActive = selectedDeviceLinkFilter === cat.id;
+                        const isExpanded = !!expandedPkgDeviceCats[cat.id];
+
+                        return (
+                          <div key={cat.id} style={{ display: "flex", flexDirection: "column" }}>
+                            <button
+                              className={`lib-tree-node ${isCatActive ? "active" : ""}`}
+                              onClick={() => {
+                                setSelectedDeviceLinkFilter(isCatActive ? "all" : cat.id);
+                                setSelectedMount("all");
+                                setSelectedPackageFamily("all");
+                                setSelectedPinFilter("all");
+                              }}
+                              title={`Показать все корпуса для категории: ${cat.name} (${count} корпусов, ${catDevs.length} деталей)`}
+                            >
+                              <span
+                                onClick={(e) => togglePkgDeviceCat(cat.id, e)}
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                  width: 14,
+                                  height: 14,
+                                  color: "var(--cad-text-dim)",
+                                }}
+                              >
+                                {catDevs.length > 0 ? (isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />) : null}
+                              </span>
+                              <Icon size={13} color={cat.color} />
+                              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                {cat.name}
+                              </span>
+                              <span className="lib-tree-badge">{count}</span>
+                            </button>
+
+                            {/* Раскрывающийся список конкретных радиодеталей */}
+                            {isExpanded && catDevs.length > 0 && (
+                              <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                                {catDevs.map((dev) => {
+                                  const isDevActive = selectedDeviceLinkFilter === `dev_${dev.id}`;
+                                  const devPkgsCount = dev.supportedPackages?.length || 0;
+
+                                  return (
+                                    <button
+                                      key={dev.id}
+                                      className={`lib-tree-subnode ${isDevActive ? "active" : ""}`}
+                                      onClick={() => {
+                                        setSelectedDeviceLinkFilter(isDevActive ? "all" : `dev_${dev.id}`);
+                                        setSelectedMount("all");
+                                        setSelectedPackageFamily("all");
+                                        setSelectedPinFilter("all");
+                                      }}
+                                      title={`Показать корпус для детали: ${dev.name} (${dev.designatorPrefix})`}
+                                    >
+                                      <Tag size={10} color={isDevActive ? "var(--cad-accent-hover)" : "var(--cad-text-dim)"} />
+                                      <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                                        {dev.name}
+                                      </span>
+                                      <span className="lib-tree-badge">{dev.designatorPrefix}</span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                  </div>
 
                   {/* Раздел 1: Тип монтажа */}
                   <div className="lib-tree-section">
@@ -1119,6 +1562,60 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                         </span>
                         {pkg.pitch && <span>Шаг: {pkg.pitch} мм</span>}
                       </div>
+
+                      {/* Подробная строка связанных радиокомпонентов */}
+                      {(() => {
+                        const linkedDevs = packageToDevicesMap.get(pkg.id) || [];
+                        if (linkedDevs.length > 0) {
+                          return (
+                            <div
+                              style={{
+                                marginTop: 4,
+                                paddingTop: 6,
+                                borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+                                display: "flex",
+                                alignItems: "center",
+                                gap: 6,
+                                overflow: "hidden",
+                              }}
+                            >
+                              <Tag size={11} color="var(--cad-accent-hover)" style={{ flexShrink: 0 }} />
+                              <div style={{ display: "flex", gap: 4, overflow: "hidden", flexWrap: "wrap" }}>
+                                {linkedDevs.map((d) => (
+                                  <span
+                                    key={d.id}
+                                    style={{
+                                      fontSize: 10,
+                                      color: "var(--cad-accent-hover)",
+                                      background: "rgba(59, 130, 246, 0.12)",
+                                      border: "1px solid rgba(59, 130, 246, 0.25)",
+                                      padding: "1px 5px",
+                                      borderRadius: 3,
+                                      whiteSpace: "nowrap",
+                                    }}
+                                    title={`${d.name} (${d.designatorPrefix})${d.parameters?.value ? ' ' + d.parameters.value : ''}`}
+                                  >
+                                    <strong>{d.designatorPrefix}:</strong> {d.name}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        }
+                        return (
+                          <div
+                            style={{
+                              marginTop: 4,
+                              paddingTop: 6,
+                              borderTop: "1px solid rgba(255, 255, 255, 0.03)",
+                              fontSize: 10,
+                              color: "var(--cad-text-dim)",
+                            }}
+                          >
+                            Свободный шаблон CAD
+                          </div>
+                        );
+                      })()}
                     </div>
                   );
                 })}
@@ -1186,6 +1683,59 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                 >
                   <FootprintPreview packageDef={activePackage} height={240} interactive={false} />
                 </div>
+
+                {/* Связанные радиодетали */}
+                {(() => {
+                  const linkedDevs = packageToDevicesMap.get(activePackage.id) || [];
+                  return (
+                    <div className="form-section" style={{ background: "var(--cad-bg-surface, #141820)", border: "1px solid var(--cad-border, #283344)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span className="section-title" style={{ fontSize: 11 }}>Связанные радиодетали</span>
+                        <span className="lib-tree-badge">{linkedDevs.length} шт.</span>
+                      </div>
+
+                      {linkedDevs.length > 0 ? (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                          {linkedDevs.map((dev) => (
+                            <div
+                              key={dev.id}
+                              onClick={() => {
+                                setActiveTab("devices");
+                                setSelectedDeviceId(dev.id);
+                              }}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                padding: "6px 8px",
+                                background: "var(--cad-bg-panel, #181d26)",
+                                border: "1px solid var(--cad-border, #283344)",
+                                borderRadius: 5,
+                                cursor: "pointer",
+                                transition: "all 0.12s ease",
+                              }}
+                              title="Нажмите для перехода к радиокомпоненту"
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <Tag size={12} color="var(--cad-accent-hover)" />
+                                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--cad-text-main)" }}>
+                                  {dev.name}
+                                </span>
+                              </div>
+                              <span style={{ fontSize: 10, color: "var(--cad-accent-hover)", background: "rgba(59, 130, 246, 0.15)", padding: "1px 5px", borderRadius: 3, fontWeight: "bold" }}>
+                                {dev.designatorPrefix}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 11, color: "var(--cad-text-dim)", lineHeight: 1.4 }}>
+                          Корпус свободен (нет привязанных радиодеталей). Готов для создания нового компонента.
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 <div className="form-section" style={{ background: "var(--cad-bg-surface, #141820)", border: "1px solid var(--cad-border, #283344)" }}>
                   <span className="section-title">{activePackage.name}</span>
