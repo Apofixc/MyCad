@@ -41,6 +41,7 @@ import {
   Redo2,
   Crosshair,
   Wand2,
+  Box,
 } from "lucide-react";
 
 interface PackageEditorModalProps {
@@ -287,47 +288,53 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   const selectedGraphic = graphics.find((g) => g.id === selectedGraphicId);
 
   return (
-    <div className="cad-modal-overlay editor-overlay">
+    <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={onClose}>
       <div
-        className="cad-modal-container"
+        className="cad-modal-box modal-fullscreen"
+        onClick={(e) => e.stopPropagation()}
         style={{
-          width: "98vw",
-          height: "94vh",
-          maxWidth: "1800px",
           display: "flex",
           flexDirection: "column",
+          borderRadius: 12,
+          overflow: "hidden",
         }}
       >
         {/* ============================================================ */}
-        {/* ВЕРХНЯЯ ПАНЕЛЬ CAD-РЕДАКТОРА (TOPBAR)                         */}
+        {/* ЕДИНАЯ ШАПКА CAD-МОДАЛЬНОГО ОКНА (MYCAD DESIGN SYSTEM)         */}
         {/* ============================================================ */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "10px 18px",
-            background: "#0c1220",
-            borderBottom: "1px solid #1e293b",
-            gap: 12,
-          }}
-        >
-          {/* Название и тип корпуса */}
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+        <div className="cad-modal-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="cad-modal-icon-badge">
+              <Box size={18} color="#60a5fa" />
+            </div>
+            <div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                <span>{name || "Новое посадочное место (Footprint)"}</span>
+                <span style={{ fontSize: "10px", background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", border: "1px solid rgba(59, 130, 246, 0.3)", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
+                  {mountType.toUpperCase()}
+                </span>
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginTop: "1px" }}>
+                Векторный CAD-редактор посадочных мест • Площадки, шелкография, вырезы и графика
+              </div>
+            </div>
+          </div>
+
+          {/* Быстрое редактирование имени и типа монтажа прямо в шапке */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Название корпуса (напр. SOIC-8, TO-92, D-SUB9)"
+              placeholder="Название корпуса (напр. SOIC-8, TO-92)"
               className="cad-input"
-              style={{ width: 280, fontWeight: "bold", fontSize: 13 }}
+              style={{ width: 220, fontWeight: 600, fontSize: 12 }}
             />
-
             <select
               value={mountType}
               onChange={(e) => setMountType(e.target.value as MountType)}
               className="cad-input"
-              style={{ width: 110, fontSize: 12 }}
+              style={{ fontSize: 12 }}
             >
               <option value="smd">SMD (Поверхн.)</option>
               <option value="tht">THT (Выводной)</option>
@@ -335,11 +342,57 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
             </select>
           </div>
 
+          {/* Кнопки действий */}
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <button
+              className="cad-btn-secondary btn-sm"
+              onClick={() => setIsArrayModalOpen(true)}
+              title="Параметрический генератор массивов выводов (DIP, QFP, BGA)"
+            >
+              <Layers size={13} />
+              <span>Массив площадок</span>
+            </button>
+            <button className="cad-btn-primary btn-sm" onClick={handleSave}>
+              <Save size={13} />
+              <span>Сохранить корпус</span>
+            </button>
+            <button className="cad-modal-close-btn" onClick={onClose} title="Закрыть (Esc)">
+              <X size={16} />
+            </button>
+          </div>
+        </div>
+
+        {/* ============================================================ */}
+        {/* ПАНЕЛЬ CAD-ИНСТРУМЕНТОВ: СЕТКА, ПРИВЯЗКА, UNDO/REDO           */}
+        {/* ============================================================ */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "6px 16px",
+            background: "var(--cad-bg-surface, #141820)",
+            borderBottom: "1px solid var(--cad-border, #283344)",
+            gap: 12,
+            fontSize: 12,
+            flexShrink: 0,
+          }}
+        >
           {/* Инструменты координатной сетки и CAD-привязок */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 4, background: "#1e293b", padding: "2px 6px", borderRadius: 6 }}>
-              <Grid size={14} color="#94a3b8" />
-              <span style={{ fontSize: 11, color: "#94a3b8" }}>Сетка:</span>
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                background: "var(--cad-bg-panel, #181d26)",
+                padding: "2px 6px",
+                borderRadius: 6,
+                border: "1px solid var(--cad-border, #283344)",
+              }}
+            >
+              <Grid size={14} color="var(--cad-text-muted, #94a3b8)" />
+              <span style={{ fontSize: 11, color: "var(--cad-text-muted, #94a3b8)" }}>Сетка:</span>
               {[0.1, 0.5, 1.27, 2.54].map((step) => (
                 <button
                   key={step}
@@ -348,8 +401,8 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                   style={{
                     padding: "3px 7px",
                     fontSize: 11,
-                    background: gridStep === step ? "#2563eb" : "transparent",
-                    color: gridStep === step ? "#ffffff" : "#94a3b8",
+                    background: gridStep === step ? "var(--cad-accent, #3b82f6)" : "transparent",
+                    color: gridStep === step ? "#ffffff" : "var(--cad-text-muted, #94a3b8)",
                     border: "none",
                   }}
                 >
@@ -360,12 +413,10 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
 
             <button
               onClick={() => setSnapToGrid(!snapToGrid)}
-              className={`cad-btn-secondary ${snapToGrid ? "btn-active" : ""}`}
+              className="cad-btn-secondary btn-sm"
               style={{
-                fontSize: 11,
-                padding: "4px 8px",
-                color: snapToGrid ? "#38bdf8" : "#94a3b8",
-                borderColor: snapToGrid ? "#0284c7" : "#334155",
+                color: snapToGrid ? "var(--cad-accent, #38bdf8)" : "var(--cad-text-muted, #94a3b8)",
+                borderColor: snapToGrid ? "var(--cad-accent, #38bdf8)" : "var(--cad-border, #283344)",
               }}
             >
               Привязка: {snapToGrid ? "ВКЛ" : "ВЫКЛ"}
@@ -376,7 +427,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
               <button
                 onClick={handleUndo}
                 disabled={historyIndex <= 0}
-                className="cad-icon-btn"
+                className="cad-modal-close-btn"
                 title="Отменить (Ctrl+Z)"
                 style={{ opacity: historyIndex <= 0 ? 0.4 : 1 }}
               >
@@ -385,48 +436,32 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
               <button
                 onClick={handleRedo}
                 disabled={historyIndex >= history.length - 1}
-                className="cad-icon-btn"
+                className="cad-modal-close-btn"
                 title="Повторить (Ctrl+Y)"
                 style={{ opacity: historyIndex >= history.length - 1 ? 0.4 : 1 }}
               >
                 <Redo2 size={15} />
               </button>
             </div>
-
-            {/* Генератор массивов */}
-            <button
-              onClick={() => setIsArrayModalOpen(true)}
-              className="cad-btn-secondary"
-              style={{ fontSize: 12, padding: "5px 10px", display: "flex", alignItems: "center", gap: 6 }}
-            >
-              <Layers size={14} />
-              <span>Массив площадок</span>
-            </button>
-
-            {/* Авто-контур */}
-            <button
-              onClick={handleAutoSilk}
-              className="cad-btn-secondary"
-              title="Создать аккуратный контур шелкографии вокруг выводов"
-              style={{ fontSize: 12, padding: "5px 10px", display: "flex", alignItems: "center", gap: 6 }}
-            >
-              <Wand2 size={14} />
-              <span>Авто-контур</span>
-            </button>
           </div>
 
-          {/* Кнопки сохранения и закрытия */}
+          {/* Быстрые CAD-действия */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <button className="cad-btn-secondary" onClick={onClose} style={{ fontSize: 12 }}>
-              Отмена
+            <button
+              onClick={handleAutoSilk}
+              className="cad-btn-secondary btn-sm"
+              title="Создать аккуратный контур шелкографии вокруг выводов"
+            >
+              <Wand2 size={13} />
+              <span>Авто-шелкография</span>
             </button>
             <button
-              className="cad-btn-primary"
-              onClick={handleSave}
-              style={{ fontSize: 12, display: "flex", alignItems: "center", gap: 6 }}
+              onClick={handleCenterAll}
+              className="cad-btn-secondary btn-sm"
+              title="Центрировать все выводы относительно начала координат (0,0)"
             >
-              <Save size={14} />
-              <span>Сохранить корпус</span>
+              <RotateCcw size={13} />
+              <span>Центрировать (0,0)</span>
             </button>
           </div>
         </div>
@@ -439,13 +474,14 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
           <div
             style={{
               width: 58,
-              background: "#0c101d",
-              borderRight: "1px solid #1e293b",
+              background: "var(--cad-bg-surface, #141820)",
+              borderRight: "1px solid var(--cad-border, #283344)",
               display: "flex",
               flexDirection: "column",
               alignItems: "center",
               padding: "10px 0",
               gap: 6,
+              flexShrink: 0,
             }}
           >
             {[
@@ -462,7 +498,6 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
               <button
                 key={tool.id}
                 onClick={() => setActiveTool(tool.id as EditorTool)}
-                className={`cad-icon-btn ${activeTool === tool.id ? "active" : ""}`}
                 style={{
                   width: 42,
                   height: 42,
@@ -470,9 +505,11 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  background: activeTool === tool.id ? "#2563eb" : "transparent",
-                  color: activeTool === tool.id ? "#ffffff" : "#94a3b8",
-                  border: activeTool === tool.id ? "1px solid #60a5fa" : "1px solid transparent",
+                  background: activeTool === tool.id ? "var(--cad-accent, #3b82f6)" : "transparent",
+                  color: activeTool === tool.id ? "#ffffff" : "var(--cad-text-muted, #94a3b8)",
+                  border: activeTool === tool.id ? "1px solid rgba(255, 255, 255, 0.2)" : "1px solid transparent",
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
                 }}
                 title={tool.label}
               >
@@ -485,16 +522,16 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
             {/* Быстрое центрирование в (0,0) */}
             <button
               onClick={handleCenterAll}
-              className="cad-icon-btn"
+              className="cad-modal-close-btn"
               title="Центрировать все выводы в начало координат (0,0)"
-              style={{ width: 42, height: 42 }}
+              style={{ width: 40, height: 40 }}
             >
               <RotateCcw size={17} />
             </button>
           </div>
 
           {/* ЦЕНТРАЛЬНЫЙ ИНТЕРАКТИВНЫЙ ВЕКТОРНЫЙ ХОЛСТ */}
-          <div style={{ flex: 1, minWidth: 0, position: "relative" }}>
+          <div style={{ flex: 1, minWidth: 0, position: "relative", background: "var(--cad-bg-deep, #0c0e12)" }}>
             <InteractiveFootprintCanvas
               pads={pads}
               graphics={graphics}
@@ -517,15 +554,16 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
           <div
             style={{
               width: 380,
-              background: "#0d1322",
-              borderLeft: "1px solid #1e293b",
+              background: "var(--cad-bg-panel, #181d26)",
+              borderLeft: "1px solid var(--cad-border, #283344)",
               display: "flex",
               flexDirection: "column",
               overflowY: "auto",
+              flexShrink: 0,
             }}
           >
             {/* Переключатель вкладок инспектора */}
-            <div style={{ display: "flex", borderBottom: "1px solid #1e293b" }}>
+            <div style={{ display: "flex", borderBottom: "1px solid var(--cad-border, #283344)" }}>
               {[
                 { id: "props", label: "Свойства" },
                 { id: "pads", label: `Площадки (${pads.length})` },
@@ -538,12 +576,13 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                     flex: 1,
                     padding: "10px 4px",
                     fontSize: 12,
-                    background: inspectorTab === tab.id ? "#1e293b" : "transparent",
-                    color: inspectorTab === tab.id ? "#38bdf8" : "#94a3b8",
+                    background: inspectorTab === tab.id ? "var(--cad-bg-card, #1e2532)" : "transparent",
+                    color: inspectorTab === tab.id ? "var(--cad-accent, #3b82f6)" : "var(--cad-text-muted, #94a3b8)",
                     border: "none",
-                    borderBottom: inspectorTab === tab.id ? "2px solid #38bdf8" : "none",
+                    borderBottom: inspectorTab === tab.id ? "2px solid var(--cad-accent, #3b82f6)" : "none",
                     fontWeight: inspectorTab === tab.id ? "bold" : "normal",
                     cursor: "pointer",
+                    transition: "all 0.15s ease",
                   }}
                 >
                   {tab.label}

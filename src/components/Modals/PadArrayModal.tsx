@@ -105,14 +105,32 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
   };
 
   return (
-    <div className="cad-modal-overlay editor-overlay">
-      <div className="cad-modal-container" style={{ width: 540, maxWidth: "95vw" }}>
+    <div className="cad-modal-backdrop" style={{ zIndex: 1100 }} onClick={onClose}>
+      <div
+        className="cad-modal-box modal-md"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: 12,
+          overflow: "hidden",
+        }}
+      >
         <div className="cad-modal-header">
-          <div className="modal-title-with-icon">
-            <Layers size={18} className="title-icon" />
-            <span>Мастер массива контактных площадок</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="cad-modal-icon-badge">
+              <Layers size={18} color="#60a5fa" />
+            </div>
+            <div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "#fff" }}>
+                Мастер массива площадок
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginTop: "1px" }}>
+                Автоматическая генерация рядов, матриц и окружностей
+              </div>
+            </div>
           </div>
-          <button className="cad-modal-close-btn" onClick={onClose}>
+          <button className="cad-modal-close-btn" onClick={onClose} title="Закрыть (Esc)">
             <X size={16} />
           </button>
         </div>

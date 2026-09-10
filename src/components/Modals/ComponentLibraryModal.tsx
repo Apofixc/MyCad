@@ -171,74 +171,51 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   };
 
   return (
-    <div className="cad-modal-overlay">
+    <div className="cad-modal-backdrop" onClick={onClose}>
       <div
-        className="cad-modal-container component-library-modal"
+        className="cad-modal-box modal-fullscreen"
+        onClick={(e) => e.stopPropagation()}
         style={{
-          width: "95vw",
-          height: "90vh",
-          maxWidth: 1600,
-          background: "#0d121f",
           display: "flex",
           flexDirection: "column",
           borderRadius: 12,
-          border: "1px solid #1e293b",
-          boxShadow: "0 25px 60px rgba(0, 0, 0, 0.85)",
           overflow: "hidden",
         }}
       >
         {/* Шапка модального окна */}
-        <div
-          className="cad-modal-header"
-          style={{
-            background: "#0a0e1a",
-            borderBottom: "1px solid #1e293b",
-            padding: "10px 18px",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            flexShrink: 0,
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div
-                style={{
-                  width: 32,
-                  height: 32,
-                  borderRadius: 8,
-                  background: "linear-gradient(135deg, #2563eb, #38bdf8)",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  boxShadow: "0 2px 8px rgba(37, 99, 235, 0.4)",
-                }}
-              >
-                <Cpu size={18} color="#ffffff" />
-              </div>
-              <span style={{ fontSize: 16, fontWeight: 700, color: "#f8fafc", letterSpacing: "0.2px" }}>
+        <div className="cad-modal-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="cad-modal-icon-badge">
+              <Cpu size={18} color="#60a5fa" />
+            </div>
+            <div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "#fff", letterSpacing: "-0.2px" }}>
                 Библиотека компонентов и посадочных мест
-              </span>
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginTop: "1px" }}>
+                Каталог стандартных и пользовательских радиоэлементов и посадочных мест
+              </div>
             </div>
 
             {/* Переключатель вкладок: Радиодетали / Корпуса */}
             <div
               style={{
                 display: "flex",
-                background: "#141c2e",
+                background: "var(--cad-bg-surface, #141820)",
                 borderRadius: 8,
                 padding: 3,
-                border: "1px solid #27354f",
+                border: "1px solid var(--cad-border, #283344)",
+                marginLeft: 12,
               }}
             >
               <button
                 onClick={() => setActiveTab("devices")}
                 style={{
-                  padding: "6px 14px",
+                  padding: "5px 12px",
                   fontSize: 12,
                   fontWeight: activeTab === "devices" ? 700 : 500,
-                  background: activeTab === "devices" ? "#2563eb" : "transparent",
-                  color: activeTab === "devices" ? "#ffffff" : "#94a3b8",
+                  background: activeTab === "devices" ? "var(--cad-accent, #3b82f6)" : "transparent",
+                  color: activeTab === "devices" ? "#ffffff" : "var(--cad-text-muted, #94a3b8)",
                   border: "none",
                   borderRadius: 6,
                   cursor: "pointer",
@@ -254,11 +231,11 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
               <button
                 onClick={() => setActiveTab("packages")}
                 style={{
-                  padding: "6px 14px",
+                  padding: "5px 12px",
                   fontSize: 12,
                   fontWeight: activeTab === "packages" ? 700 : 500,
-                  background: activeTab === "packages" ? "#2563eb" : "transparent",
-                  color: activeTab === "packages" ? "#ffffff" : "#94a3b8",
+                  background: activeTab === "packages" ? "var(--cad-accent, #3b82f6)" : "transparent",
+                  color: activeTab === "packages" ? "#ffffff" : "var(--cad-text-muted, #94a3b8)",
                   border: "none",
                   borderRadius: 6,
                   cursor: "pointer",
@@ -284,21 +261,11 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
               <span>Импорт</span>
             </button>
             <button
+              className="cad-modal-close-btn"
               onClick={onClose}
-              style={{
-                background: "transparent",
-                border: "none",
-                color: "#94a3b8",
-                padding: 6,
-                borderRadius: 6,
-                cursor: "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-              }}
               title="Закрыть"
             >
-              <X size={18} />
+              <X size={16} />
             </button>
           </div>
         </div>

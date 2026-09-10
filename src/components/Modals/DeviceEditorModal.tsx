@@ -196,15 +196,38 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   };
 
   return (
-    <div className="cad-modal-overlay editor-overlay">
-      <div className="cad-modal-container" style={{ width: 1050, height: "88vh", maxWidth: "96vw" }}>
-        {/* Шапка */}
+    <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={onClose}>
+      <div
+        className="cad-modal-box modal-lg"
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          display: "flex",
+          flexDirection: "column",
+          borderRadius: 12,
+          overflow: "hidden",
+        }}
+      >
+        {/* Шапка модального окна */}
         <div className="cad-modal-header">
-          <div className="modal-title-with-icon">
-            <Cpu size={18} className="title-icon" />
-            <span>Редактор радиокомпонента (Device)</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <div className="cad-modal-icon-badge">
+              <Cpu size={18} color="#60a5fa" />
+            </div>
+            <div>
+              <div style={{ fontSize: "15px", fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
+                <span>{name || "Новый радиокомпонент (Device)"}</span>
+                {designatorPrefix && (
+                  <span style={{ fontSize: "10px", background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", border: "1px solid rgba(59, 130, 246, 0.3)", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
+                    {designatorPrefix}
+                  </span>
+                )}
+              </div>
+              <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginTop: "1px" }}>
+                Связка схемных логических выводов (Pins), параметров и посадочных мест (Pin-to-Pad Mapping)
+              </div>
+            </div>
           </div>
-          <button className="cad-modal-close-btn" onClick={onClose}>
+          <button className="cad-modal-close-btn" onClick={onClose} title="Закрыть (Esc)">
             <X size={16} />
           </button>
         </div>
