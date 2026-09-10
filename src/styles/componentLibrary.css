@@ -2394,3 +2394,83 @@
   color: var(--cad-accent-hover, #60a5fa);
   border-color: var(--cad-accent, #3b82f6);
 }
+
+/* ==========================================================================
+   Component Inspector & Sidebar Styles
+   ========================================================================== */
+.cad-inspector-body {
+  padding: 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.cad-inspector-section {
+  background: var(--cad-bg-panel, #181d26);
+  border: 1px solid var(--cad-border, #283344);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.cad-inspector-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--cad-text-muted, #94a3b8);
+  margin-bottom: 2px;
+}
+
+.cad-inspector-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cad-inspector-label {
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cad-text-muted, #94a3b8);
+}
+
+.cad-inspector-input {
+  background: var(--cad-bg-deep, #0c0e12) !important;
+  border: 1px solid var(--cad-border, #283344) !important;
+  color: var(--cad-text-main, #f8fafc) !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-family: var(--cad-font-ui, inherit) !important;
+  outline: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  transition: all 0.15s ease !important;
+}
+
+.cad-inspector-input:focus {
+  border-color: var(--cad-accent, #3b82f6) !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2) !important;
+}
+
+.cad-inspector-select {
+  background: var(--cad-bg-deep, #0c0e12) !important;
+  border: 1px solid var(--cad-border, #283344) !important;
+  color: var(--cad-text-main, #f8fafc) !important;
+  padding: 6px 10px !important;
+  border-radius: 6px !important;
+  font-size: 12px !important;
+  font-family: var(--cad-font-ui, inherit) !important;
+  outline: none !important;
+  width: 100% !important;
+  box-sizing: border-box !important;
+  cursor: pointer !important;
+}
+
+.cad-inspector-select:focus {
+  border-color: var(--cad-accent, #3b82f6) !important;
+}

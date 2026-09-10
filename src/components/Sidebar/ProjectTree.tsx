@@ -78,6 +78,8 @@ export const ProjectTree: React.FC = () => {
     selectAllImages,
     clearSelectedImages,
     updateImageLayer,
+    selectedComponentId,
+    selectComponent,
     updateImageLayers,
     batchSetVisibility,
     batchSetLocked,
@@ -774,8 +776,8 @@ export const ProjectTree: React.FC = () => {
                   const viasCount = boardData?.data?.vias?.length || 0;
 
                   const boardComponents = boardData?.data?.components || [];
-                  const topComponents = boardComponents.filter((c) => c.side === "top");
-                  const botComponents = boardComponents.filter((c) => c.side === "bottom");
+                  const topComponents = boardComponents.filter((c) => (c.layer || c.side || "top") !== "bottom");
+                  const botComponents = boardComponents.filter((c) => (c.layer || c.side) === "bottom");
                   const totalComponentsCount = boardComponents.length;
                   const totalBgCount = bgTopImages.length + bgBottomImages.length;
 
@@ -1409,16 +1411,28 @@ export const ProjectTree: React.FC = () => {
                                           (нет компонентов)
                                         </div>
                                       ) : (
-                                        topComponents.map((comp) => (
-                                          <div key={comp.id} className="cad-tree-item" style={{ fontSize: "11px" }}>
-                                            <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                              <CircleDot size={10} color="#f87171" style={{ flexShrink: 0 }} />
-                                              <span style={{ fontWeight: 600, color: "#f1f5f9" }}>{comp.refDes}</span>
-                                              {comp.name && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis" }}>{comp.name}</span>}
-                                              {comp.package && <span style={{ color: "#64748b", fontSize: "10px" }}>({comp.package})</span>}
+                                        topComponents.map((comp) => {
+                                          const isSelected = selectedComponentId === comp.id;
+                                          const label = comp.value ? `${comp.value}` : comp.name || comp.packageDef?.name || "";
+                                          return (
+                                            <div
+                                              key={comp.id}
+                                              className={`cad-tree-item ${isSelected ? "sublayer-active" : ""}`}
+                                              onClick={() => {
+                                                if (!isActive) setActiveFile(file.id);
+                                                selectComponent(comp.id);
+                                              }}
+                                              style={{ fontSize: "11px", cursor: "pointer" }}
+                                              title={`${comp.refDes} (${comp.packageDef?.name || comp.packageId})`}
+                                            >
+                                              <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", flex: 1 }}>
+                                                <CircleDot size={10} color={isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f87171"} style={{ flexShrink: 0 }} />
+                                                <span style={{ fontWeight: 600, color: isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f1f5f9" }}>{comp.refDes}</span>
+                                                {label && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>}
+                                              </div>
                                             </div>
-                                          </div>
-                                        ))
+                                          );
+                                        })
                                       )}
                                     </div>
                                   )}
@@ -1471,16 +1485,28 @@ export const ProjectTree: React.FC = () => {
                                           (нет компонентов)
                                         </div>
                                       ) : (
-                                        botComponents.map((comp) => (
-                                          <div key={comp.id} className="cad-tree-item" style={{ fontSize: "11px" }}>
-                                            <div style={{ display: "flex", alignItems: "center", gap: "5px", overflow: "hidden", flex: 1 }}>
-                                              <CircleDot size={10} color="#38bdf8" style={{ flexShrink: 0 }} />
-                                              <span style={{ fontWeight: 600, color: "#f1f5f9" }}>{comp.refDes}</span>
-                                              {comp.name && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis" }}>{comp.name}</span>}
-                                              {comp.package && <span style={{ color: "#64748b", fontSize: "10px" }}>({comp.package})</span>}
+                                        botComponents.map((comp) => {
+                                          const isSelected = selectedComponentId === comp.id;
+                                          const label = comp.value ? `${comp.value}` : comp.name || comp.packageDef?.name || "";
+                                          return (
+                                            <div
+                                              key={comp.id}
+                                              className={`cad-tree-item ${isSelected ? "sublayer-active" : ""}`}
+                                              onClick={() => {
+                                                if (!isActive) setActiveFile(file.id);
+                                                selectComponent(comp.id);
+                                              }}
+                                              style={{ fontSize: "11px", cursor: "pointer" }}
+                                              title={`${comp.refDes} (${comp.packageDef?.name || comp.packageId})`}
+                                            >
+                                              <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", flex: 1 }}>
+                                                <CircleDot size={10} color={isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#38bdf8"} style={{ flexShrink: 0 }} />
+                                                <span style={{ fontWeight: 600, color: isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f1f5f9" }}>{comp.refDes}</span>
+                                                {label && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>}
+                                              </div>
                                             </div>
-                                          </div>
-                                        ))
+                                          );
+                                        })
                                       )}
                                     </div>
                                   )}

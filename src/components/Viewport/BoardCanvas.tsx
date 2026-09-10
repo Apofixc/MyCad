@@ -1480,7 +1480,7 @@ function drawPlacedComponents(
   const pxPerMm = mmToPx * zoomFactor;
 
   for (const comp of components) {
-    const isTop = (comp.layer || comp.side) !== "bottom";
+    const isTop = (comp.layer || comp.side || "top") !== "bottom";
     if (isTop && !showTop) continue;
     if (!isTop && !showBottom) continue;
 
@@ -1503,83 +1503,223 @@ function drawPlacedComponents(
     }
 
     const pkg = comp.packageDef;
-    const bodyW = (pkg?.bodyWidth || 4) * pxPerMm;
-    const bodyH = (pkg?.bodyHeight || 4) * pxPerMm;
+    const bodyW = (pkg?.bodyWidth || 5) * pxPerMm;
+    const bodyH = (pkg?.bodyHeight || 5) * pxPerMm;
+    const pkgId = (pkg?.id || comp.packageId || "").toLowerCase();
+    const pkgName = (pkg?.name || "").toLowerCase();
+    const isPot = pkgId.includes("pot") || pkgId.includes("trimmer") || pkgName.includes("потенциометр") || pkgName.includes("wh148") || pkgName.includes("3296");
+    const isDip = pkgId.includes("dip") || pkgName.includes("dip");
+    const isSoic = pkgId.includes("soic") || pkgId.includes("sop") || pkgName.includes("soic");
+    const isLed = pkgId.includes("led") || pkgName.includes("led") || pkgName.includes("светодиод");
+    const isTo92 = pkgId.includes("to92") || pkgId.includes("to_92") || pkgName.includes("to-92");
+    const isCrystal = pkgId.includes("crystal") || pkgName.includes("кварц") || pkgName.includes("hc-49");
 
-    // 1. Silkscreen Graphics (Lines, Arcs, Rects, D-shape)
-    const silkColor = isTop ? "#e2e8f0" : "#93c5fd";
-    ctx.strokeStyle = silkColor;
-    ctx.lineWidth = Math.max(1, 0.15 * pxPerMm);
+    // -------------------------------------------------------------------------
+    // 1. Полупрозрачное тело компонента (Body Fill) для четкой читаемости на любом фоне
+    // -------------------------------------------------------------------------
+    ctx.fillStyle = isSelected
+      ? "rgba(56, 189, 248, 0.12)"
+      : isTop
+      ? "rgba(15, 23, 42, 0.42)"
+      : "rgba(30, 58, 138, 0.42)";
 
-    if (pkg && pkg.graphics && pkg.graphics.length > 0) {
-      for (const g of pkg.graphics) {
-        if (g.kind === "line") {
-          ctx.beginPath();
-          ctx.moveTo(g.x1 * pxPerMm, g.y1 * pxPerMm);
-          ctx.lineTo(g.x2 * pxPerMm, g.y2 * pxPerMm);
-          ctx.stroke();
-        } else if (g.kind === "rect") {
-          ctx.strokeRect(
-            (g.x - g.width / 2) * pxPerMm,
-            (g.y - g.height / 2) * pxPerMm,
-            g.width * pxPerMm,
-            g.height * pxPerMm
-          );
-        } else if (g.kind === "circle") {
-          ctx.beginPath();
-          ctx.arc(g.cx * pxPerMm, g.cy * pxPerMm, g.radius * pxPerMm, 0, Math.PI * 2);
-          ctx.stroke();
-        } else if (g.kind === "arc") {
-          ctx.beginPath();
-          ctx.arc(
-            g.cx * pxPerMm,
-            g.cy * pxPerMm,
-            g.radius * pxPerMm,
-            (g.startAngle * Math.PI) / 180,
-            (g.endAngle * Math.PI) / 180
-          );
-          ctx.stroke();
-        } else if (g.kind === "d_shape") {
-          const r = (g.diameter / 2) * pxPerMm;
-          ctx.beginPath();
-          ctx.arc(g.cx * pxPerMm, g.cy * pxPerMm, r, -Math.PI / 2, Math.PI / 2, false);
-          ctx.lineTo((g.cx - g.diameter / 2 + g.cutDepth) * pxPerMm, g.cy * pxPerMm + r);
-          ctx.lineTo((g.cx - g.diameter / 2 + g.cutDepth) * pxPerMm, g.cy * pxPerMm - r);
-          ctx.closePath();
-          ctx.stroke();
-        } else if (g.kind === "capsule") {
-          const w = g.width * pxPerMm;
-          const h = g.height * pxPerMm;
-          ctx.strokeRect((g.cx - g.width / 2) * pxPerMm, (g.cy - g.height / 2) * pxPerMm, w, h);
-        }
-      }
+    if (isPot) {
+      const potR = Math.min(bodyW, bodyH) * 0.44;
+      ctx.beginPath();
+      ctx.arc(0, 0, potR, 0, Math.PI * 2);
+      ctx.fill();
+    } else if (typeof (ctx as any).roundRect === "function") {
+      (ctx as any).roundRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH, Math.min(4, bodyW * 0.1));
+      ctx.fill();
     } else {
-      ctx.strokeRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH);
+      ctx.fillRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH);
     }
 
-    // 2. Copper Pads
+    // -------------------------------------------------------------------------
+    // 2. Векторная шелкография (Silkscreen Graphics) с высококонтрастным контуром
+    // -------------------------------------------------------------------------
+    // Для 100% читаемости на белых сканах и темных платах рисуем контрастную темную подложку
+    const silkMainColor = isTop ? "#ffffff" : "#60a5fa";
+    const silkCasingColor = "rgba(10, 15, 26, 0.85)";
+    const baseLineWidth = Math.max(1.2, 0.18 * pxPerMm);
+
+    const drawSilkscreenPrimitives = (strokeColor: string, lineWidth: number) => {
+      ctx.strokeStyle = strokeColor;
+      ctx.lineWidth = lineWidth;
+
+      if (pkg && pkg.graphics && pkg.graphics.length > 0) {
+        for (const g of pkg.graphics) {
+          if (g.kind === "line") {
+            ctx.beginPath();
+            ctx.moveTo(g.x1 * pxPerMm, g.y1 * pxPerMm);
+            ctx.lineTo(g.x2 * pxPerMm, g.y2 * pxPerMm);
+            ctx.stroke();
+          } else if (g.kind === "rect") {
+            ctx.strokeRect(
+              (g.x - g.width / 2) * pxPerMm,
+              (g.y - g.height / 2) * pxPerMm,
+              g.width * pxPerMm,
+              g.height * pxPerMm
+            );
+          } else if (g.kind === "circle") {
+            ctx.beginPath();
+            ctx.arc(g.cx * pxPerMm, g.cy * pxPerMm, g.radius * pxPerMm, 0, Math.PI * 2);
+            ctx.stroke();
+          } else if (g.kind === "arc") {
+            ctx.beginPath();
+            ctx.arc(
+              g.cx * pxPerMm,
+              g.cy * pxPerMm,
+              g.radius * pxPerMm,
+              (g.startAngle * Math.PI) / 180,
+              (g.endAngle * Math.PI) / 180
+            );
+            ctx.stroke();
+          } else if (g.kind === "d_shape") {
+            const r = (g.diameter / 2) * pxPerMm;
+            ctx.beginPath();
+            ctx.arc(g.cx * pxPerMm, g.cy * pxPerMm, r, -Math.PI / 2, Math.PI / 2, false);
+            ctx.lineTo((g.cx - g.diameter / 2 + g.cutDepth) * pxPerMm, g.cy * pxPerMm + r);
+            ctx.lineTo((g.cx - g.diameter / 2 + g.cutDepth) * pxPerMm, g.cy * pxPerMm - r);
+            ctx.closePath();
+            ctx.stroke();
+          } else if (g.kind === "capsule") {
+            ctx.strokeRect((g.cx - g.width / 2) * pxPerMm, (g.cy - g.height / 2) * pxPerMm, g.width * pxPerMm, g.height * pxPerMm);
+          }
+        }
+      } else if (isPot) {
+        // Достоверный контур потенциометра (круглый металлический корпус, вал, площадка выводов)
+        const potR = Math.min(bodyW, bodyH) * 0.44;
+        ctx.beginPath();
+        ctx.arc(0, 0, potR, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Внутренний круг оси / вала
+        ctx.beginPath();
+        ctx.arc(0, 0, potR * 0.38, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Срез оси вала (D-вал)
+        ctx.beginPath();
+        ctx.moveTo(-potR * 0.2, -potR * 0.3);
+        ctx.lineTo(potR * 0.2, -potR * 0.3);
+        ctx.stroke();
+
+        // Горловина к выводам
+        const neckW = bodyW * 0.42;
+        ctx.beginPath();
+        ctx.moveTo(-neckW / 2, -potR * 0.85);
+        ctx.lineTo(-neckW / 2, -bodyH * 0.46);
+        ctx.lineTo(neckW / 2, -bodyH * 0.46);
+        ctx.lineTo(neckW / 2, -potR * 0.85);
+        ctx.stroke();
+      } else if (isTo92) {
+        // TO-92 D-образный контур
+        const r = Math.min(bodyW, bodyH) * 0.45;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, -Math.PI * 0.8, Math.PI * 0.8, false);
+        ctx.closePath();
+        ctx.stroke();
+      } else if (isLed) {
+        // Круглый светодиод со срезом катода
+        const r = Math.min(bodyW, bodyH) * 0.45;
+        ctx.beginPath();
+        ctx.arc(0, 0, r, -Math.PI * 0.75, Math.PI * 0.75, false);
+        ctx.closePath();
+        ctx.stroke();
+      } else if (isCrystal) {
+        // Овальный корпус кварца HC-49
+        const r = Math.min(bodyW, bodyH) * 0.45;
+        ctx.beginPath();
+        ctx.arc(-bodyW * 0.25, 0, r, Math.PI / 2, (3 * Math.PI) / 2);
+        ctx.arc(bodyW * 0.25, 0, r, -Math.PI / 2, Math.PI / 2);
+        ctx.closePath();
+        ctx.stroke();
+      } else {
+        // Прямоугольный корпус ИМС с ключом (U-образная выемка у вывода 1)
+        const padR = Math.min(4, bodyW * 0.08);
+        if (typeof (ctx as any).roundRect === "function") {
+          (ctx as any).roundRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH, padR);
+          ctx.stroke();
+        } else {
+          ctx.strokeRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH);
+        }
+
+        // Ключевая выемка (Notch)
+        if (bodyW >= 14 && (isDip || isSoic)) {
+          ctx.beginPath();
+          const notchR = Math.min(bodyW, bodyH) * 0.12;
+          ctx.arc(0, -bodyH / 2, notchR, 0, Math.PI);
+          ctx.stroke();
+        }
+
+        // Точка вывода 1 (Pin 1 Dot)
+        const dotR = Math.max(1.5, 0.4 * pxPerMm);
+        ctx.beginPath();
+        ctx.arc(-bodyW / 2 + dotR * 3, -bodyH / 2 + dotR * 3, dotR, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    };
+
+    // Рисуем сначала темный контур (2px) для контраста
+    drawSilkscreenPrimitives(silkCasingColor, baseLineWidth + 1.2);
+    // Затем чистую яркую шелкографию поверх
+    drawSilkscreenPrimitives(silkMainColor, baseLineWidth);
+
+    // -------------------------------------------------------------------------
+    // 3. Контактные площадки (Copper Pads) и отверстия
+    // -------------------------------------------------------------------------
     if (pkg && pkg.pads && pkg.pads.length > 0) {
-      for (const pad of pkg.pads) {
+      pkg.pads.forEach((pad, padIndex) => {
         const padX = pad.x * pxPerMm;
         const padY = pad.y * pxPerMm;
-        const padW = Math.max(2, pad.width * pxPerMm);
-        const padH = Math.max(2, pad.height * pxPerMm);
+        const padW = Math.max(2.5, pad.width * pxPerMm);
+        const padH = Math.max(2.5, pad.height * pxPerMm);
         const isTht = Boolean(pad.drillDiameter && pad.drillDiameter > 0);
+        const isPin1 = String(pad.padNum) === "1" || padIndex === 0;
 
-        ctx.fillStyle = isTht ? "#10b981" : isTop ? "#f59e0b" : "#3b82f6";
+        // Медная площадка
+        ctx.fillStyle = isTht
+          ? isPin1
+            ? "#34d399"
+            : "#10b981"
+          : isTop
+          ? isPin1
+            ? "#fbbf24"
+            : "#f59e0b"
+          : isPin1
+          ? "#60a5fa"
+          : "#3b82f6";
+
+        // Тонкая темная фаска медной площадки
+        ctx.strokeStyle = "rgba(0, 0, 0, 0.5)";
+        ctx.lineWidth = 1;
 
         if (pad.shape === "circle") {
           ctx.beginPath();
-          ctx.arc(padX, padY, padW / 2, 0, Math.PI * 2);
+          if (isPin1 && isTht) {
+            // Квадратная/акцентная форма для вывода 1 THT
+            const r = Math.min(padW, padH) * 0.25;
+            if (typeof (ctx as any).roundRect === "function") {
+              (ctx as any).roundRect(padX - padW / 2, padY - padH / 2, padW, padH, r);
+            } else {
+              ctx.rect(padX - padW / 2, padY - padH / 2, padW, padH);
+            }
+          } else {
+            ctx.arc(padX, padY, padW / 2, 0, Math.PI * 2);
+          }
           ctx.fill();
+          ctx.stroke();
         } else if (pad.shape === "rounded_rect") {
           const r = Math.min(padW, padH) * 0.25;
+          ctx.beginPath();
           if (typeof (ctx as any).roundRect === "function") {
             (ctx as any).roundRect(padX - padW / 2, padY - padH / 2, padW, padH, r);
           } else {
             ctx.rect(padX - padW / 2, padY - padH / 2, padW, padH);
           }
           ctx.fill();
+          ctx.stroke();
         } else if (pad.shape === "chamfered_rect") {
           const ch = Math.min(padW, padH) * 0.25;
           const left = padX - padW / 2;
@@ -1594,6 +1734,7 @@ function drawPlacedComponents(
           ctx.lineTo(left, top + ch);
           ctx.closePath();
           ctx.fill();
+          ctx.stroke();
         } else if (pad.shape === "d_shape") {
           const r = padW / 2;
           ctx.beginPath();
@@ -1602,65 +1743,115 @@ function drawPlacedComponents(
           ctx.lineTo(padX - padW / 2, padY - padH / 2);
           ctx.closePath();
           ctx.fill();
+          ctx.stroke();
         } else {
-          ctx.fillRect(padX - padW / 2, padY - padH / 2, padW, padH);
+          ctx.beginPath();
+          ctx.rect(padX - padW / 2, padY - padH / 2, padW, padH);
+          ctx.fill();
+          ctx.stroke();
         }
 
-        // Drill hole
+        // Отверстие металлизации (Drill Hole) для THT
         if (isTht) {
-          const drillD = Math.max(1.5, (pad.drillDiameter || 0.8) * pxPerMm);
-          ctx.fillStyle = "#0c101d";
+          const drillD = Math.max(1.8, (pad.drillDiameter || 1.0) * pxPerMm);
+          ctx.fillStyle = "#0a0f1d";
           ctx.beginPath();
           ctx.arc(padX, padY, drillD / 2, 0, Math.PI * 2);
           ctx.fill();
+          ctx.strokeStyle = "rgba(0, 0, 0, 0.7)";
+          ctx.lineWidth = 1;
+          ctx.stroke();
         }
 
-        // Pad number label
-        if (padW >= 12 && padH >= 10 && pad.padNum) {
-          ctx.fillStyle = "#000000";
-          ctx.font = `bold ${Math.max(7, Math.min(11, padH * 0.45))}px monospace`;
+        // Номер площадки (Pad Number): БЕЛЫЙ для темного отверстия THT, ЧЕРНЫЙ для медной площадки SMD
+        if (padW >= 10 && padH >= 10 && pad.padNum !== undefined) {
+          ctx.fillStyle = isTht ? "#ffffff" : "#000000";
+          const fontSz = Math.max(7, Math.min(11, padH * 0.44));
+          ctx.font = `bold ${fontSz}px monospace`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillText(String(pad.padNum), padX, padY);
         }
-      }
+      });
     }
 
-    // 3. RefDes and Value text
-    ctx.fillStyle = silkColor;
-    const refDesFontPx = Math.max(9, Math.min(16, 1.8 * pxPerMm));
-    ctx.font = `bold ${refDesFontPx}px sans-serif`;
+    // -------------------------------------------------------------------------
+    // 4. Плашка позиционного обозначения и номинала (RefDes & Value Badge)
+    // -------------------------------------------------------------------------
+    const labelText = comp.value ? `${comp.refDes} · ${comp.value}` : comp.refDes;
+    const fontPx = Math.max(10, Math.min(14, 1.6 * pxPerMm));
+    ctx.font = `bold ${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+    const textWidth = ctx.measureText(labelText).width;
+    const badgeW = textWidth + 12;
+    const badgeH = fontPx + 6;
+    const badgeY = -bodyH / 2 - badgeH / 2 - 4;
+
+    // Фоновая плашка с контрастной рамкой
+    ctx.fillStyle = isSelected ? "rgba(14, 23, 42, 0.95)" : "rgba(15, 23, 42, 0.88)";
+    ctx.strokeStyle = isSelected ? "#38bdf8" : "rgba(255, 255, 255, 0.25)";
+    ctx.lineWidth = isSelected ? 1.5 : 1;
+
+    if (typeof (ctx as any).roundRect === "function") {
+      ctx.beginPath();
+      (ctx as any).roundRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 4);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH);
+      ctx.strokeRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH);
+    }
+
+    // Текст внутри плашки
     ctx.textAlign = "center";
-    ctx.textBaseline = "bottom";
-    const labelY = -bodyH / 2 - 4;
-    ctx.fillText(comp.refDes, 0, labelY);
+    ctx.textBaseline = "middle";
+    ctx.fillStyle = isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#ffffff";
+    ctx.fillText(labelText, 0, badgeY);
 
-    if (comp.value) {
-      const valFontPx = Math.max(8, Math.min(13, 1.2 * pxPerMm));
-      ctx.font = `${valFontPx}px sans-serif`;
-      ctx.fillStyle = "#94a3b8";
-      ctx.fillText(comp.value, 0, labelY - refDesFontPx - 2);
-    }
-
-    // 4. Selection Highlight
+    // -------------------------------------------------------------------------
+    // 5. Рамка и маркеры выделения (Selection Box & Handles)
+    // -------------------------------------------------------------------------
     if (isSelected) {
+      const selPad = 5;
+      const boxW = bodyW + selPad * 2;
+      const boxH = bodyH + selPad * 2;
+
       ctx.strokeStyle = "#38bdf8";
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 1.5;
       ctx.setLineDash([4, 4]);
-      const selPad = 4;
-      ctx.strokeRect(-bodyW / 2 - selPad, -bodyH / 2 - selPad, bodyW + selPad * 2, bodyH + selPad * 2);
+      ctx.strokeRect(-boxW / 2, -boxH / 2, boxW, boxH);
       ctx.setLineDash([]);
 
-      ctx.fillStyle = "#38bdf8";
+      // 4 угловых маркера выделения (белая заливка, голубая рамка)
+      const handleSize = 6;
       const corners = [
-        [-bodyW / 2 - selPad, -bodyH / 2 - selPad],
-        [bodyW / 2 + selPad, -bodyH / 2 - selPad],
-        [bodyW / 2 + selPad, bodyH / 2 + selPad],
-        [-bodyW / 2 - selPad, bodyH / 2 + selPad],
+        [-boxW / 2, -boxH / 2],
+        [boxW / 2, -boxH / 2],
+        [boxW / 2, boxH / 2],
+        [-boxW / 2, boxH / 2],
       ];
-      for (const [cx, cy] of corners) {
-        ctx.fillRect(cx - 3, cy - 3, 6, 6);
-      }
+      corners.forEach(([cx, cy]) => {
+        ctx.fillStyle = "#ffffff";
+        ctx.fillRect(cx - handleSize / 2, cy - handleSize / 2, handleSize, handleSize);
+        ctx.strokeStyle = "#0284c7";
+        ctx.lineWidth = 1;
+        ctx.strokeRect(cx - handleSize / 2, cy - handleSize / 2, handleSize, handleSize);
+      });
+
+      // Линия и маркер поворота (Rotation Handle Stem)
+      ctx.beginPath();
+      ctx.moveTo(0, -boxH / 2);
+      ctx.lineTo(0, -boxH / 2 - 14);
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, -boxH / 2 - 14, 4, 0, Math.PI * 2);
+      ctx.fillStyle = "#38bdf8";
+      ctx.fill();
+      ctx.strokeStyle = "#ffffff";
+      ctx.lineWidth = 1;
+      ctx.stroke();
     }
 
     ctx.restore();

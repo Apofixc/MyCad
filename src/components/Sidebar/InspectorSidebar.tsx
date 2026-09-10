@@ -143,16 +143,22 @@ export const InspectorSidebar: React.FC = () => {
 
             <div className="cad-inspector-row">
               <label className="cad-inspector-label">Корпус (Footprint)</label>
-              <span style={{ fontSize: 12, color: "#38bdf8", fontWeight: "bold" }}>
-                {pkg?.name || comp.packageId}
-              </span>
-            </div>
-
-            {pkg && (
-              <div style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
-                Контактов: {pkg.pads.length} | {pkg.mountType.toUpperCase()} | {pkg.bodyWidth}×{pkg.bodyHeight} мм
+              <div style={{ background: "var(--cad-bg-deep, #0c0e12)", border: "1px solid var(--cad-border, #283344)", borderRadius: "6px", padding: "8px 10px" }}>
+                <div style={{ fontSize: 12, color: "var(--cad-accent-hover, #60a5fa)", fontWeight: 600, lineHeight: 1.3 }}>
+                  {pkg?.name || comp.packageId}
+                </div>
+                {pkg && (
+                  <div style={{ fontSize: 10.5, color: "var(--cad-text-muted, #94a3b8)", marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
+                    <span>Выводов: {pkg.pads.length}</span>
+                    <span>•</span>
+                    <span>{pkg.mountType.toUpperCase()}</span>
+                    <span>•</span>
+                    <span>{pkg.bodyWidth}×{pkg.bodyHeight} мм</span>
+                    {pkg.pitch ? <span>• Шаг: {pkg.pitch} мм</span> : null}
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
 
           {/* Сторона монтажа */}
@@ -273,7 +279,7 @@ export const InspectorSidebar: React.FC = () => {
             <div className="cad-inspector-section">
               <div className="cad-inspector-section-title">Вариант шелкографии корпуса</div>
               <select
-                className="cad-inspector-input"
+                className="cad-inspector-select"
                 value={comp.selectedVariantId || variants[0]?.id}
                 onChange={(e) =>
                   updateComponent({
