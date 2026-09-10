@@ -374,13 +374,46 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   <label className="form-label" style={{ fontSize: 10 }}>Категория:</label>
                   <input
                     type="text"
+                    list="cad-category-datalist"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    placeholder="ICs, Discrete..."
+                    placeholder="Выберите или введите..."
+                    className="cad-input"
+                    style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                  />
+                  <datalist id="cad-category-datalist">
+                    <option value="Пассивные компоненты" />
+                    <option value="Полупроводники (Дискретные)" />
+                    <option value="Интегральные микросхемы (IC)" />
+                    <option value="Микроконтроллеры, DSP и ПЛИС" />
+                    <option value="Источники и управление питанием" />
+                    <option value="Разъемы и соединители" />
+                    <option value="Коммутация и электромеханика" />
+                    <option value="Оптоэлектроника и индикация" />
+                    <option value="Датчики и сенсоры" />
+                    <option value="Кварцы и тактирование" />
+                    <option value="Акустика и звук" />
+                    <option value="ВЧ, СВЧ и беспроводная связь" />
+                    <option value="Трансформаторы и моточные узлы" />
+                    <option value="ЭМС и фильтрация помех (EMI/RFI)" />
+                    <option value="Модули и мезонины" />
+                    <option value="Служебные, крепеж и механика" />
+                  </datalist>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: 10 }}>Подкатегория:</label>
+                  <input
+                    type="text"
+                    value={subcategory}
+                    onChange={(e) => setSubcategory(e.target.value)}
+                    placeholder="Например: Резисторы, ОУ, LDO..."
                     className="cad-input"
                     style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
                   />
                 </div>
+              </div>
+
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                 <div>
                   <label className="form-label" style={{ fontSize: 10 }}>Номинал (Value):</label>
                   <input
@@ -392,22 +425,20 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
                   />
                 </div>
-              </div>
-
-              <div>
-                <label className="form-label" style={{ fontSize: 10 }}>Описание / Даташит:</label>
-                <input
-                  type="text"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
-                  placeholder="Краткое описание радиодетали или ссылка на документацию"
-                  className="cad-input"
-                  style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
-                />
+                <div>
+                  <label className="form-label" style={{ fontSize: 10 }}>Описание / Даташит:</label>
+                  <input
+                    type="text"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    placeholder="Краткое описание радиодетали"
+                    className="cad-input"
+                    style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                  />
+                </div>
               </div>
             </div>
 
-            {/* Карточка 2: Логические выводы схемы (Pins Data Grid) */}
             <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="device-card-header">
                 <div className="device-card-title">

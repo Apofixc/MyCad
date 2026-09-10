@@ -4,7 +4,7 @@
       "id": "passives",
       "name": "Пассивные компоненты",
       "icon": "Layers",
-      "description": "Резисторы, конденсаторы, индуктивности, защита цепей",
+      "description": "Резисторы, конденсаторы, индуктивности, защита цепей, фильтры",
       "subcategories": [
         {
           "id": "resistors",
@@ -30,9 +30,9 @@
     },
     {
       "id": "semiconductors",
-      "name": "Полупроводники",
+      "name": "Полупроводники (Дискретные)",
       "icon": "Zap",
-      "description": "Диоды, транзисторы, стабилизаторы, оптоэлектроника, тиристоры",
+      "description": "Диоды, выпрямители, транзисторы, тиристоры, стабилитроны",
       "subcategories": [
         {
           "id": "diodes",
@@ -50,14 +50,9 @@
           "description": "Симисторы BT136/BTA16, тиристоры MCR100, динисторы DB3"
         },
         {
-          "id": "voltage_regulators",
-          "name": "Стабилизаторы напряжения",
-          "description": "Линейные LDO, стабилизаторы 78xx/79xx, LM317, опорные TL431, DC-DC"
-        },
-        {
-          "id": "optoelectronics",
-          "name": "Оптоэлектроника и индикация",
-          "description": "Светодиоды, адресные WS2812B, OLED экраны, семисегментные индикаторы, оптопары"
+          "id": "zener_tvs",
+          "name": "Стабилитроны и защитные диоды",
+          "description": "Стабилитроны Zener, супрессоры TVS"
         }
       ]
     },
@@ -65,12 +60,12 @@
       "id": "ics",
       "name": "Интегральные микросхемы (IC)",
       "icon": "Cpu",
-      "description": "Аналоговые, цифровые, микроконтроллеры, память",
+      "description": "Аналоговые ОУ, цифровые, таймеры, интерфейсы, память",
       "subcategories": [
         {
           "id": "opamps",
-          "name": "Операционные усилители и УНЧ",
-          "description": "Прецизионные, скоростные ОУ, компараторы, УНЧ LM386"
+          "name": "Операционные усилители и компараторы",
+          "description": "Прецизионные, скоростные ОУ, компараторы LM393, УНЧ LM386"
         },
         {
           "id": "timers_pwm",
@@ -79,84 +74,387 @@
         },
         {
           "id": "logic",
-          "name": "Цифровая логика 74xx",
+          "name": "Цифровая логика 74xx / 40xx",
           "description": "Сдвиговые регистры, логические вентили, инверторы, буферы"
         },
         {
           "id": "interfaces",
           "name": "Интерфейсы и драйверы",
-          "description": "RS-485, USB-UART, изоляторы шин, сборки Дарлингтона, АЦП"
+          "description": "RS-485, USB-UART, изоляторы шин, сборки Дарлингтона, АЦП/ЦАП"
         },
         {
           "id": "memory",
-          "name": "Память",
+          "name": "Память EEPROM / Flash",
           "description": "Энергонезависимая I2C EEPROM и SPI Flash"
+        }
+      ]
+    },
+    {
+      "id": "mcu",
+      "name": "Микроконтроллеры, DSP и ПЛИС",
+      "icon": "Activity",
+      "description": "Микроконтроллеры ARM, AVR, ESP32, ПЛИС FPGA/CPLD",
+      "subcategories": [
+        {
+          "id": "wifi_bt",
+          "name": "Модули Wi-Fi / Bluetooth",
+          "description": "ESP32, ESP8266, NRF24L01, Bluetooth LE"
         },
         {
-          "id": "mcu",
-          "name": "Микроконтроллеры (MCU)",
-          "description": "AVR ATmega, STM32 ARM, ESP32 SoC, PIC"
+          "id": "arm_cortex",
+          "name": "ARM Cortex (STM32, RP2040)",
+          "description": "STM32F1/F4, RP2040, SAMD"
+        },
+        {
+          "id": "avr",
+          "name": "AVR (ATmega, ATtiny)",
+          "description": "ATmega328P, ATtiny85, ATmega2560"
+        },
+        {
+          "id": "fpga",
+          "name": "ПЛИС, FPGA и CPLD",
+          "description": "Xilinx, Altera/Intel, Lattice FPGA"
+        },
+        {
+          "id": "dev_boards",
+          "name": "Отладочные платы",
+          "description": "Модули Arduino, плагинные контроллеры"
+        }
+      ]
+    },
+    {
+      "id": "power",
+      "name": "Источники и управление питанием",
+      "icon": "BatteryCharging",
+      "description": "LDO, DC-DC преобразователи, контроллеры заряда, батарейные элементы",
+      "subcategories": [
+        {
+          "id": "ldo",
+          "name": "Линейные стабилизаторы (LDO)",
+          "description": "Линейные LDO, стабилизаторы 78xx/79xx, LM317, опорные TL431, AMS1117"
+        },
+        {
+          "id": "dcdc",
+          "name": "Импульсные DC-DC преобразователи",
+          "description": "Понижающие Step-Down, повышающие Step-Up"
+        },
+        {
+          "id": "battery_chargers",
+          "name": "Контроллеры заряда Li-Ion",
+          "description": "TP4056, платы BMS, защита аккумуляторов"
+        },
+        {
+          "id": "battery_holders",
+          "name": "Держатели батарей и элементы",
+          "description": "CR2032, 18650, клеммы батарей 9V"
         }
       ]
     },
     {
       "id": "connectors",
-      "name": "Разъемы и коммутация",
+      "name": "Разъемы и соединители",
       "icon": "Plug",
-      "description": "Клеммники, штыревые разъемы, USB, кнопки, реле, модули",
+      "description": "Клеммники, штыревые разъемы, USB, порты питания, аудио",
       "subcategories": [
+        {
+          "id": "headers",
+          "name": "Штыревые линейки (Pin Header)",
+          "description": "Разъемы 2.54мм, 2.0мм, 1.27мм, шлейфы IDC"
+        },
         {
           "id": "terminal_blocks",
           "name": "Винтовые клеммники",
           "description": "Шаг 5.08мм и 3.81мм 2P/3P/4P"
         },
         {
-          "id": "headers",
-          "name": "Штыревые линейки и модули",
-          "description": "Разъемы 2.54мм, дисплейные шлейфы, радиомодули NRF24L01"
+          "id": "usb_ports",
+          "name": "USB порты (Type-C, Micro)",
+          "description": "USB Type-C 16P/24P, Micro-USB SMD"
         },
         {
-          "id": "ports_power",
-          "name": "Порты, питание и память",
-          "description": "USB Type-C, Micro-USB, DC Jack, Audio 3.5mm, CR2032, MicroSD, RJ45"
+          "id": "dc_power",
+          "name": "Разъемы питания (DC Jack)",
+          "description": "DC Jack 5.5x2.1мм, клеммные вилки"
         },
         {
-          "id": "switches_relays",
-          "name": "Кнопки, переключатели и реле",
-          "description": "Тактовые кнопки, тумблеры, энкодеры EC11, реле SRD и HK19F"
+          "id": "audio_signal",
+          "name": "Аудио и сигнальные порты",
+          "description": "Audio Jack 3.5мм, RJ45 Ethernet, RCA, HDMI"
+        }
+      ]
+    },
+    {
+      "id": "switches",
+      "name": "Коммутация и электромеханика",
+      "icon": "Sliders",
+      "description": "Тактовые кнопки, реле, тумблеры, энкодеры",
+      "subcategories": [
+        {
+          "id": "buttons",
+          "name": "Тактовые кнопки",
+          "description": "Миниатюрные кнопки SMD и THT 6x6, 12x12"
+        },
+        {
+          "id": "relays",
+          "name": "Реле электромагнитные",
+          "description": "Силовые реле Songle SRD 5V/12V, сигнальные HK19F"
+        },
+        {
+          "id": "toggles",
+          "name": "Тумблеры и переключатели",
+          "description": "DIP-переключатели, ползунковые, кнопочные с фиксацией"
+        },
+        {
+          "id": "encoders",
+          "name": "Энкодеры поворотные",
+          "description": "Инкрементальные энкодеры EC11 со встроенной кнопкой"
+        }
+      ]
+    },
+    {
+      "id": "opto",
+      "name": "Оптоэлектроника и индикация",
+      "icon": "Sun",
+      "description": "Светодиоды, адресные ленты, дисплеи, оптопары",
+      "subcategories": [
+        {
+          "id": "leds",
+          "name": "Светодиоды (SMD / THT)",
+          "description": "Индикаторные 3мм, 5мм, SMD 0603, 0805, 1206"
+        },
+        {
+          "id": "addressable_leds",
+          "name": "Адресные светодиоды",
+          "description": "WS2812B, SK6812, APA102 RGB пиксели"
+        },
+        {
+          "id": "displays",
+          "name": "Дисплеи (OLED, LCD)",
+          "description": "I2C OLED 0.96\", LCD 1602, TFT SPI дисплеи"
+        },
+        {
+          "id": "seven_segment",
+          "name": "Семисегментные индикаторы",
+          "description": "1-, 2-, 4-разрядные индикаторы"
+        },
+        {
+          "id": "optocouplers",
+          "name": "Оптопары и оптореле",
+          "description": "Транзисторные PC817, 4N35, твердотельные реле"
+        }
+      ]
+    },
+    {
+      "id": "sensors",
+      "name": "Датчики и сенсоры",
+      "icon": "Gauge",
+      "description": "Температура, влажность, давление, IMU, датчики тока",
+      "subcategories": [
+        {
+          "id": "temp_humidity",
+          "name": "Температура и влажность",
+          "description": "Термометры DS18B20, влажность DHT11 / DHT22, SHT31"
+        },
+        {
+          "id": "pressure_baro",
+          "name": "Давление и барометры",
+          "description": "Барометры BMP280, BME280"
+        },
+        {
+          "id": "imu",
+          "name": "Акселерометры и гироскопы",
+          "description": "IMU MPU6050, ADXL345"
+        },
+        {
+          "id": "current_voltage",
+          "name": "Ток и напряжение",
+          "description": "Датчики тока ACS712, INA219, делители напряжения"
+        },
+        {
+          "id": "optical_magnetic",
+          "name": "Оптические и магнитные датчики",
+          "description": "Датчики Холла, фоторезисторы LDR, оптические концевики"
+        }
+      ]
+    },
+    {
+      "id": "crystals",
+      "name": "Кварцы и тактирование",
+      "icon": "Radio",
+      "description": "Кварцевые резонаторы, часовые кварцы, генераторы",
+      "subcategories": [
+        {
+          "id": "crystals_mhz",
+          "name": "Кварцевые резонаторы (MHz)",
+          "description": "HC-49U, HC-49S, SMD 3225 8MHz, 16MHz, 20MHz"
+        },
+        {
+          "id": "crystals_watch",
+          "name": "Часовые кварцы (32.768 kHz)",
+          "description": "Цилиндрические 2x6мм, SMD 32.768 кГц для RTC"
+        },
+        {
+          "id": "oscillators",
+          "name": "Активные генераторы (OSC)",
+          "description": "Кварцевые генераторы 3.3V / 5V, TCXO"
+        }
+      ]
+    },
+    {
+      "id": "audio",
+      "name": "Акустика и звук",
+      "icon": "Volume2",
+      "description": "Пьезозуммеры, динамики, микрофоны",
+      "subcategories": [
+        {
+          "id": "buzzers",
+          "name": "Пьезозуммеры (Buzzer)",
+          "description": "Активные и пассивные электромагнитные излучатели 5V / 12V"
+        },
+        {
+          "id": "speakers",
+          "name": "Динамики миниатюрные",
+          "description": "Динамические головки 8 Ом 0.5W"
+        },
+        {
+          "id": "microphones",
+          "name": "Микрофоны",
+          "description": "Электретные микрофонные капсюли, MEMS I2S"
+        }
+      ]
+    },
+    {
+      "id": "rf_wireless",
+      "name": "ВЧ, СВЧ и беспроводная связь",
+      "icon": "Wifi",
+      "description": "Антенны, радиомодули LoRa/GPS/GSM, ВЧ фильтры, балуны",
+      "subcategories": [
+        {
+          "id": "antennas",
+          "name": "Антенны (Chip, PCB, SMA)",
+          "description": "Керамические чип-антенны 2.4G, разъемы SMA/IPEX"
+        },
+        {
+          "id": "rf_modules",
+          "name": "Радиомодули (LoRa, GNSS/GPS, LTE)",
+          "description": "LoRa Ra-02, GPS NEO-6M, SIM800L, Zigbee"
+        },
+        {
+          "id": "rf_filters",
+          "name": "ВЧ фильтры и балуны",
+          "description": "Полосовые SAW фильтры, согласующие трансформаторы"
+        },
+        {
+          "id": "rf_amps",
+          "name": "ВЧ усилители и трансиверы",
+          "description": "Малошумящие LNA, усилители мощности PA"
+        }
+      ]
+    },
+    {
+      "id": "transformers",
+      "name": "Трансформаторы и моточные узлы",
+      "icon": "RefreshCw",
+      "description": "Импульсные, сетевые, токовые трансформаторы, Ethernet-магнетика",
+      "subcategories": [
+        {
+          "id": "pulse_trans",
+          "name": "Импульсные трансформаторы",
+          "description": "Трансформаторы Flyback, Forward, LLC на феррите"
+        },
+        {
+          "id": "mains_trans",
+          "name": "Сетевые трансформаторы 50/60 Гц",
+          "description": "Трансформаторы понижающие для линейных БП"
+        },
+        {
+          "id": "current_trans",
+          "name": "Токовые трансформаторы",
+          "description": "Измерительные трансформаторы тока"
+        },
+        {
+          "id": "lan_magnetics",
+          "name": "Ethernet LAN Magnetics",
+          "description": "Трансформаторы гальваноразвязки 10/100/1000M"
+        }
+      ]
+    },
+    {
+      "id": "emi_filtering",
+      "name": "ЭМС и фильтрация помех (EMI/RFI)",
+      "icon": "Shield",
+      "description": "Синфазные дроссели, ферритовые фильтры, экраны",
+      "subcategories": [
+        {
+          "id": "common_mode",
+          "name": "Синфазные дроссели (CMC)",
+          "description": "Дроссели подавления синфазных помех линий питания и USB"
+        },
+        {
+          "id": "ferrite_beads",
+          "name": "Ферритовые фильтры и бусины",
+          "description": "SMD Ferrite Beads для фильтрации высокочастотного шума"
+        },
+        {
+          "id": "shielding",
+          "name": "ЭМС экраны и кожухи",
+          "description": "Металлические экранирующие крышки PCB Shielding Cans"
+        }
+      ]
+    },
+    {
+      "id": "embedded_modules",
+      "name": "Модули и мезонины",
+      "icon": "CircuitBoard",
+      "description": "Готовые мини-платы, преобразователи, шилды, аудиокодеки",
+      "subcategories": [
+        {
+          "id": "power_modules",
+          "name": "Готовые модули питания",
+          "description": "Модули понижающие MP1584, LM2596, Mini360"
+        },
+        {
+          "id": "adc_dac_modules",
+          "name": "Модули АЦП / ЦАП",
+          "description": "Модули ADS1115, MCP4725, преобразователи уровней"
+        },
+        {
+          "id": "audio_modules",
+          "name": "Аудиокодеки и УНЧ модули",
+          "description": "ЦАП PCM5102, усилители PAM8403, TPA3116"
+        },
+        {
+          "id": "display_modules",
+          "name": "Дисплейные модули в сборе",
+          "description": "Модули Nextion, e-Paper Waveshare, HDMI"
         }
       ]
     },
     {
       "id": "hardware",
-      "name": "Служебные, механика и датчики",
-      "icon": "Crosshair",
-      "description": "Кварцы, контрольные точки, отверстия, акустика, датчики",
+      "name": "Служебные, крепеж и механика",
+      "icon": "Wrench",
+      "description": "Контрольные точки, крепеж, радиаторы, реперы",
       "subcategories": [
-        {
-          "id": "crystals",
-          "name": "Кварцы и генераторы",
-          "description": "Кварцевые резонаторы, часовые кварцы, генераторы, керамические резонаторы"
-        },
-        {
-          "id": "sensors",
-          "name": "Датчики и измерительные модули",
-          "description": "Термометры DS18B20, влажность DHT11, барометры BMP280, ток ACS712, IMU MPU6050"
-        },
         {
           "id": "testpoints",
           "name": "Контрольные точки (TP)",
-          "description": "Тестовые контактные площадки"
+          "description": "Тестовые контактные площадки для щупов и осциллографа"
         },
         {
           "id": "mounting_holes",
           "name": "Крепежные отверстия",
-          "description": "Монтажные отверстия под винты M2, M3, M4"
+          "description": "Монтажные отверстия под винты M2, M2.5, M3, M4"
         },
         {
-          "id": "audio_buzzers",
-          "name": "Акустика и индикация",
-          "description": "Пьезозуммеры, ИК-приемники, фоторезисторы"
+          "id": "heatsinks",
+          "name": "Радиаторы охлаждения",
+          "description": "Теплоотводы под корпуса TO-220, D2PAK"
+        },
+        {
+          "id": "fiducials",
+          "name": "Реперные знаки (Fiducials)",
+          "description": "Оптические реперы для SMD установщиков"
         }
       ]
     }
@@ -4656,7 +4954,7 @@
     {
       "id": "DEV_LED_3MM_RED",
       "name": "Светодиод 3мм (Красный)",
-      "category": "Полупроводники",
+      "category": "Оптоэлектроника и индикация",
       "description": "Индикаторный выводной светодиод 3мм, красный (Vf=2.0V, If=20mA)",
       "designatorPrefix": "HL",
       "symbolType": "led",
@@ -4685,12 +4983,13 @@
           "name": "Катод",
           "pinType": "passive"
         }
-      ]
+      ],
+      "subcategory": "Светодиоды (SMD / THT)"
     },
     {
       "id": "DEV_LED_5MM_GREEN",
       "name": "Светодиод 5мм (Зеленый)",
-      "category": "Полупроводники",
+      "category": "Оптоэлектроника и индикация",
       "description": "Индикаторный выводной светодиод 5мм, зеленый (Vf=2.2V, If=20mA)",
       "designatorPrefix": "HL",
       "symbolType": "led",
@@ -4719,12 +5018,13 @@
           "name": "Катод",
           "pinType": "passive"
         }
-      ]
+      ],
+      "subcategory": "Светодиоды (SMD / THT)"
     },
     {
       "id": "DEV_DIODE_1N4148",
       "name": "Диод 1N4148 (Импульсный)",
-      "category": "Полупроводники",
+      "category": "Полупроводники (Дискретные)",
       "description": "Быстродействующий кремниевый диод, 100V 150mA, 4ns",
       "designatorPrefix": "VD",
       "symbolType": "diode",
@@ -4753,12 +5053,13 @@
           "name": "Катод",
           "pinType": "passive"
         }
-      ]
+      ],
+      "subcategory": "Диоды и выпрямители"
     },
     {
       "id": "DEV_DIODE_1N4007",
       "name": "Диод 1N4007 (Выпрямительный)",
-      "category": "Полупроводники",
+      "category": "Полупроводники (Дискретные)",
       "description": "Силовой выпрямительный диод 1000V 1A",
       "designatorPrefix": "VD",
       "symbolType": "diode",
@@ -4787,7 +5088,8 @@
           "name": "Катод",
           "pinType": "passive"
         }
-      ]
+      ],
+      "subcategory": "Диоды и выпрямители"
     },
     {
       "id": "DEV_POT_WH148_10K",
@@ -4827,7 +5129,8 @@
           "name": "Вывод 2",
           "pinType": "passive"
         }
-      ]
+      ],
+      "subcategory": "Резисторы и триммеры"
     },
     {
       "id": "DEV_TRIMMER_3296W_10K",
@@ -4867,12 +5170,13 @@
           "name": "Вывод 2",
           "pinType": "passive"
         }
-      ]
+      ],
+      "subcategory": "Резисторы и триммеры"
     },
     {
       "id": "DEV_CRYSTAL_16MHZ",
       "name": "Кварцевый резонатор 16 МГц (HC-49U)",
-      "category": "Пассивные компоненты",
+      "category": "Кварцы и тактирование",
       "description": "Прецизионный кварцевый резонатор 16.000 МГц, 20pF",
       "designatorPrefix": "ZQ",
       "symbolType": "crystal",
@@ -4900,12 +5204,13 @@
           "name": "XTAL2",
           "pinType": "passive"
         }
-      ]
+      ],
+      "subcategory": "Кварцевые резонаторы (MHz)"
     },
     {
       "id": "DEV_BUZZER_5V",
       "name": "Пьезозуммер 5V активный",
-      "category": "Пассивные компоненты",
+      "category": "Акустика и звук",
       "description": "Электромагнитный/пьезоэлектрический звуковой излучатель со встроенным генератором",
       "designatorPrefix": "HA",
       "symbolType": "buzzer",
@@ -4934,12 +5239,13 @@
           "name": "Минус (GND)",
           "pinType": "power"
         }
-      ]
+      ],
+      "subcategory": "Пьезозуммеры (Buzzer)"
     },
     {
       "id": "DEV_BUTTON_12X12",
       "name": "Тактовая кнопка 12x12мм",
-      "category": "Электромеханика",
+      "category": "Коммутация и электромеханика",
       "description": "Миниатюрная нормально-разомкнутая тактовая кнопка",
       "designatorPrefix": "SW",
       "symbolType": "switch",
@@ -4979,12 +5285,13 @@
           "name": "Контакт 4",
           "pinType": "passive"
         }
-      ]
+      ],
+      "subcategory": "Тактовые кнопки"
     },
     {
       "id": "DEV_RELAY_SRD_05V",
       "name": "Реле 5V Songle SRD-05VDC-SL-C",
-      "category": "Электромеханика",
+      "category": "Коммутация и электромеханика",
       "description": "Миниатюрное силовое реле 10A 250VAC / 30VDC, катушка 5V",
       "designatorPrefix": "K",
       "symbolType": "relay",
@@ -5030,12 +5337,13 @@
           "name": "Норм. Замкн. (NC)",
           "pinType": "passive"
         }
-      ]
+      ],
+      "subcategory": "Реле электромагнитные"
     },
     {
       "id": "DEV_ESP32_WROOM_32",
       "name": "Wi-Fi / Bluetooth модуль ESP32-WROOM-32",
-      "category": "Микроконтроллеры и ИМС",
+      "category": "Микроконтроллеры и модули (MCU)",
       "description": "Двухъядерный 32-битный микроконтроллер Xtensa LX6 с Wi-Fi 802.11 b/g/n и Bluetooth v4.2 BR/EDR/BLE",
       "designatorPrefix": "U",
       "symbolType": "ic",
@@ -5115,12 +5423,13 @@
           "name": "TXD0",
           "pinType": "output"
         }
-      ]
+      ],
+      "subcategory": "Модули Wi-Fi / Bluetooth"
     },
     {
       "id": "DEV_SENSOR_DHT11",
       "name": "Датчик температуры и влажности DHT11",
-      "category": "Датчики и измерительные модули",
+      "category": "Датчики и сенсоры",
       "description": "Цифровой датчик относительной влажности (20-90%) и температуры (0-50°C)",
       "designatorPrefix": "U",
       "symbolType": "sensor",
@@ -5160,12 +5469,13 @@
           "name": "GND",
           "pinType": "power"
         }
-      ]
+      ],
+      "subcategory": "Температура и влажность"
     },
     {
       "id": "DEV_BATTERY_CR2032",
       "name": "Держатель батарейки CR2032 3V",
-      "category": "Источники питания",
+      "category": "Источники и управление питанием",
       "description": "Батарейный отсек для литиевого дискового элемента CR2032 3V",
       "designatorPrefix": "GB",
       "symbolType": "battery",
@@ -5193,7 +5503,8 @@
           "name": "GND",
           "pinType": "power"
         }
-      ]
+      ],
+      "subcategory": "Держатели батарей и элементы"
     }
   ]
 }

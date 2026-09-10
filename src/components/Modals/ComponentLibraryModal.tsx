@@ -17,6 +17,16 @@ import {
   Upload,
   Layers,
   Cpu,
+  CircuitBoard,
+  Shield,
+  RefreshCw,
+  Wifi,
+  Radio,
+  Wrench,
+  Volume2,
+  BatteryCharging,
+  Gauge,
+  Sun,
   Box,
   Check,
   X,
@@ -65,31 +75,32 @@ const PIN_FILTERS = [
   { id: "17+", label: "17+ выводов", match: (p: PackageDefinition) => p.pads.length >= 17 },
 ];
 
-// Категории компонентов с подкатегориями
+// Полная классификация радиокомпонентов (16 всеобъемлющих категорий ECAD)
 const DEVICE_TREE_CATEGORIES = [
-  {
-    id: "semiconductors",
-    name: "Полупроводники",
-    icon: Zap,
-    color: "#f59e0b",
-    matchCategory: (cat: string) => cat === "Полупроводники",
-    subcategories: [
-      { id: "leds", name: "Светодиоды и индикаторы", match: (d: DeviceDefinition) => d.id.includes("LED") || d.name.toLowerCase().includes("светодиод") },
-      { id: "diodes", name: "Диоды и выпрямители", match: (d: DeviceDefinition) => d.id.includes("DIODE") || d.id.includes("1N") || d.name.toLowerCase().includes("диод") },
-      { id: "transistors", name: "Транзисторы и ключи", match: (d: DeviceDefinition) => d.name.toLowerCase().includes("транзистор") || d.id.includes("FET") },
-    ],
-  },
   {
     id: "passives",
     name: "Пассивные компоненты",
     icon: Layers,
     color: "#06b6d4",
-    matchCategory: (cat: string) => cat === "Пассивные компоненты",
+    aliases: ["Пассивные компоненты", "Пассивные", "Passives"],
     subcategories: [
-      { id: "resistors", name: "Резисторы и триммеры", match: (d: DeviceDefinition) => d.id.includes("POT") || d.id.includes("TRIMMER") || d.name.toLowerCase().includes("резистор") || d.name.toLowerCase().includes("потенциометр") },
-      { id: "crystals", name: "Кварцевые резонаторы", match: (d: DeviceDefinition) => d.id.includes("CRYSTAL") || d.name.toLowerCase().includes("кварц") },
-      { id: "buzzers", name: "Пьезозуммеры и звук", match: (d: DeviceDefinition) => d.id.includes("BUZZER") || d.name.toLowerCase().includes("зуммер") },
-      { id: "capacitors", name: "Конденсаторы MLCC", match: (d: DeviceDefinition) => d.name.toLowerCase().includes("конденсатор") || d.id.includes("CAP") },
+      { id: "resistors", name: "Резисторы и триммеры", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Резистор")) || d.id.includes("POT") || d.id.includes("TRIMMER") || d.name.toLowerCase().includes("резистор") || d.name.toLowerCase().includes("потенциометр") },
+      { id: "capacitors", name: "Конденсаторы MLCC / Электролиты", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Конденсатор")) || d.name.toLowerCase().includes("конденсатор") || d.id.includes("CAP") },
+      { id: "inductors", name: "Индуктивности и дроссели", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Индуктивност")) || d.name.toLowerCase().includes("дроссель") || d.name.toLowerCase().includes("индуктивност") },
+      { id: "protection", name: "Защита цепей (Fuse, TVS, Polyfuse)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Защита")) || d.name.toLowerCase().includes("предохранитель") || d.name.toLowerCase().includes("супрессор") },
+    ],
+  },
+  {
+    id: "semiconductors",
+    name: "Полупроводники (Дискретные)",
+    icon: Zap,
+    color: "#f59e0b",
+    aliases: ["Полупроводники (Дискретные)", "Полупроводники", "Дискретные полупроводники", "Discrete"],
+    subcategories: [
+      { id: "diodes", name: "Диоды и выпрямители", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Диод")) || d.id.includes("DIODE") || d.id.includes("1N") || d.name.toLowerCase().includes("диод") },
+      { id: "transistors", name: "Транзисторы (BJT, MOSFET, IGBT)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Транзистор")) || d.name.toLowerCase().includes("транзистор") || d.id.includes("FET") },
+      { id: "thyristors", name: "Тиристоры и симисторы", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Тиристор")) || d.name.toLowerCase().includes("симистор") || d.name.toLowerCase().includes("тиристор") },
+      { id: "zener_tvs", name: "Стабилитроны и защитные диоды", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Стабилитрон")) || d.name.toLowerCase().includes("стабилитрон") },
     ],
   },
   {
@@ -97,33 +108,183 @@ const DEVICE_TREE_CATEGORIES = [
     name: "Интегральные микросхемы (IC)",
     icon: Cpu,
     color: "#a855f7",
-    matchCategory: (cat: string) => cat === "Интегральные микросхемы (IC)" || cat === "Интегральные микросхемы" || cat === "Микроконтроллеры и ИМС",
+    aliases: ["Интегральные микросхемы (IC)", "Интегральные микросхемы", "Микросхемы", "ICs"],
     subcategories: [
-      { id: "mcu", name: "Микроконтроллеры и модули", match: (d: DeviceDefinition) => d.id.includes("ESP") || d.id.includes("MCU") || d.name.toLowerCase().includes("модуль") },
-      { id: "logic", name: "Логика и усилители", match: (d: DeviceDefinition) => d.name.toLowerCase().includes("логика") || d.id.includes("74") },
+      { id: "opamps", name: "Операционные усилители и компараторы", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("усилител")) || d.name.toLowerCase().includes("оу") || d.name.toLowerCase().includes("компаратор") },
+      { id: "timers_pwm", name: "Таймеры и ШИМ-контроллеры", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Таймер")) || d.name.toLowerCase().includes("таймер") || d.id.includes("555") },
+      { id: "logic", name: "Цифровая логика 74xx / 40xx", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Логика")) || d.name.toLowerCase().includes("логика") || d.id.includes("74") },
+      { id: "interfaces", name: "Интерфейсы и драйверы", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Интерфейс")) || d.name.toLowerCase().includes("драйвер") || d.name.toLowerCase().includes("rs-485") },
+      { id: "memory", name: "Память EEPROM / Flash", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Память")) || d.name.toLowerCase().includes("eeprom") || d.name.toLowerCase().includes("flash") },
+    ],
+  },
+  {
+    id: "mcu",
+    name: "Микроконтроллеры, DSP и ПЛИС",
+    icon: Activity,
+    color: "#3b82f6",
+    aliases: ["Микроконтроллеры, DSP и ПЛИС", "Микроконтроллеры и модули (MCU)", "Микроконтроллеры и ИМС", "Микроконтроллеры", "MCU"],
+    subcategories: [
+      { id: "wifi_bt", name: "Модули Wi-Fi / Bluetooth (ESP, NRF)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Wi-Fi")) || d.id.includes("ESP") || d.name.toLowerCase().includes("esp") || d.name.toLowerCase().includes("модуль") },
+      { id: "arm_cortex", name: "ARM Cortex (STM32, RP2040)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("ARM")) || d.name.toLowerCase().includes("stm32") || d.name.toLowerCase().includes("cortex") },
+      { id: "avr", name: "AVR (ATmega, ATtiny)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("AVR")) || d.name.toLowerCase().includes("atmega") || d.name.toLowerCase().includes("attiny") },
+      { id: "fpga", name: "ПЛИС, FPGA и CPLD", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("FPGA")) || d.name.toLowerCase().includes("fpga") || d.name.toLowerCase().includes("плис") },
+      { id: "dev_boards", name: "Отладочные платы и модули", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Отладочн")) || d.name.toLowerCase().includes("arduino") },
+    ],
+  },
+  {
+    id: "power",
+    name: "Источники и управление питанием",
+    icon: BatteryCharging,
+    color: "#10b981",
+    aliases: ["Источники и управление питанием", "Источники питания", "Питание", "Power"],
+    subcategories: [
+      { id: "ldo", name: "Линейные стабилизаторы (LDO)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Линейн")) || d.name.toLowerCase().includes("ldo") || d.name.toLowerCase().includes("стабилизатор") },
+      { id: "dcdc", name: "Импульсные DC-DC преобразователи", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("DC-DC")) || d.name.toLowerCase().includes("dc-dc") || d.name.toLowerCase().includes("step-down") },
+      { id: "chargers", name: "Контроллеры заряда Li-Ion (BMS)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("заряда")) || d.name.toLowerCase().includes("tp4056") || d.name.toLowerCase().includes("bms") },
+      { id: "holders", name: "Держатели батарей и элементы", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("батаре")) || d.id.includes("BATTERY") || d.name.toLowerCase().includes("батарейк") || d.name.toLowerCase().includes("cr2032") },
     ],
   },
   {
     id: "connectors",
-    name: "Разъемы и коммутация",
+    name: "Разъемы и соединители",
     icon: Plug,
-    color: "#10b981",
-    matchCategory: (cat: string) => cat === "Разъемы и коммутация" || cat === "Электромеханика",
+    color: "#14b8a6",
+    aliases: ["Разъемы и соединители", "Разъемы и коммутация", "Разъемы", "Connectors"],
     subcategories: [
-      { id: "buttons", name: "Тактовые кнопки", match: (d: DeviceDefinition) => d.id.includes("BUTTON") || d.id.includes("SW") || d.name.toLowerCase().includes("кнопка") },
-      { id: "relays", name: "Силовые реле", match: (d: DeviceDefinition) => d.id.includes("RELAY") || d.name.toLowerCase().includes("реле") },
-      { id: "terminals", name: "Клеммы и разъемы", match: (d: DeviceDefinition) => d.name.toLowerCase().includes("разъем") || d.name.toLowerCase().includes("клемм") },
+      { id: "headers", name: "Штыревые линейки (Pin Header)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Штырев")) || d.name.toLowerCase().includes("штырев") || d.name.toLowerCase().includes("header") },
+      { id: "terminals", name: "Винтовые клеммники", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("клемм")) || d.name.toLowerCase().includes("клемм") },
+      { id: "usb_ports", name: "USB порты (Type-C, Micro)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("USB")) || d.name.toLowerCase().includes("usb") || d.name.toLowerCase().includes("type-c") },
+      { id: "dc_power", name: "Разъемы питания (DC Jack)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("питания")) || d.name.toLowerCase().includes("dc jack") },
+      { id: "audio_signal", name: "Аудио и сигнальные порты (RJ45, Jack)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Аудио")) || d.name.toLowerCase().includes("jack") || d.name.toLowerCase().includes("rj45") },
+    ],
+  },
+  {
+    id: "switches",
+    name: "Коммутация и электромеханика",
+    icon: Sliders,
+    color: "#8b5cf6",
+    aliases: ["Коммутация и электромеханика", "Электромеханика", "Кнопки и реле", "Switches"],
+    subcategories: [
+      { id: "buttons", name: "Тактовые кнопки", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("кнопк")) || d.id.includes("BUTTON") || d.id.includes("SW") || d.name.toLowerCase().includes("кнопка") },
+      { id: "relays", name: "Реле электромагнитные", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Реле")) || d.id.includes("RELAY") || d.name.toLowerCase().includes("реле") },
+      { id: "toggles", name: "Тумблеры и DIP-переключатели", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Тумблер")) || d.name.toLowerCase().includes("переключатель") || d.name.toLowerCase().includes("тумблер") },
+      { id: "encoders", name: "Энкодеры поворотные (EC11)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Энкодер")) || d.name.toLowerCase().includes("энкодер") },
+    ],
+  },
+  {
+    id: "opto",
+    name: "Оптоэлектроника и индикация",
+    icon: Sun,
+    color: "#eab308",
+    aliases: ["Оптоэлектроника и индикация", "Оптоэлектроника", "Индикация", "Opto"],
+    subcategories: [
+      { id: "leds", name: "Светодиоды (SMD / THT)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Светодиод")) || d.id.includes("LED") || d.name.toLowerCase().includes("светодиод") },
+      { id: "addressable_leds", name: "Адресные светодиоды (WS2812)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Адресн")) || d.name.toLowerCase().includes("ws2812") },
+      { id: "displays", name: "Дисплеи (OLED, LCD 1602)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Дисплей")) || d.name.toLowerCase().includes("oled") || d.name.toLowerCase().includes("lcd") },
+      { id: "seven_segment", name: "Семисегментные индикаторы", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Семисегмент")) || d.name.toLowerCase().includes("сегмент") },
+      { id: "optocouplers", name: "Оптопары и оптореле", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Оптопар")) || d.name.toLowerCase().includes("оптопар") || d.id.includes("PC817") },
+    ],
+  },
+  {
+    id: "sensors",
+    name: "Датчики и сенсоры",
+    icon: Gauge,
+    color: "#0ea5e9",
+    aliases: ["Датчики и сенсоры", "Датчики и измерительные модули", "Датчики", "Sensors"],
+    subcategories: [
+      { id: "temp_humidity", name: "Температура и влажность (DHT, DS18B20)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Температур")) || d.id.includes("SENSOR") || d.id.includes("DHT") || d.name.toLowerCase().includes("датчик") },
+      { id: "pressure_baro", name: "Давление и барометры (BMP280)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Давлен")) || d.name.toLowerCase().includes("bmp") || d.name.toLowerCase().includes("барометр") },
+      { id: "imu", name: "Акселерометры и IMU (MPU6050)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Акселерометр")) || d.name.toLowerCase().includes("акселерометр") || d.name.toLowerCase().includes("гироскоп") },
+      { id: "current_voltage", name: "Ток и напряжение (ACS712, INA219)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Ток")) || d.name.toLowerCase().includes("ток") },
+      { id: "optical_magnetic", name: "Оптические датчики и датчики Холла", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Оптическ")) || d.name.toLowerCase().includes("холл") || d.name.toLowerCase().includes("фоторезистор") },
+    ],
+  },
+  {
+    id: "crystals",
+    name: "Кварцы и тактирование",
+    icon: Radio,
+    color: "#f97316",
+    aliases: ["Кварцы и тактирование", "Кварцы и генераторы", "Кварцы", "Crystals"],
+    subcategories: [
+      { id: "crystals_mhz", name: "Кварцевые резонаторы (MHz)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("резонатор")) || d.id.includes("CRYSTAL") || d.name.toLowerCase().includes("кварц") },
+      { id: "crystals_watch", name: "Часовые кварцы (32.768 kHz)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Часов")) || d.name.toLowerCase().includes("32.768") || d.name.toLowerCase().includes("часовой") },
+      { id: "oscillators", name: "Активные генераторы (OSC, TCXO)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("генератор")) || d.name.toLowerCase().includes("генератор") },
+    ],
+  },
+  {
+    id: "audio",
+    name: "Акустика и звук",
+    icon: Volume2,
+    color: "#d946ef",
+    aliases: ["Акустика и звук", "Акустика и индикация", "Акустика", "Audio"],
+    subcategories: [
+      { id: "buzzers", name: "Пьезозуммеры (Buzzer 5V/12V)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("зуммер")) || d.id.includes("BUZZER") || d.name.toLowerCase().includes("зуммер") },
+      { id: "speakers", name: "Динамики миниатюрные", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Динамик")) || d.name.toLowerCase().includes("динамик") },
+      { id: "microphones", name: "Микрофоны (Электретные, MEMS)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Микрофон")) || d.name.toLowerCase().includes("микрофон") },
+    ],
+  },
+  {
+    id: "rf_wireless",
+    name: "ВЧ, СВЧ и беспроводная связь",
+    icon: Wifi,
+    color: "#84cc16",
+    aliases: ["ВЧ, СВЧ и беспроводная связь", "ВЧ и СВЧ", "Беспроводная связь", "RF", "Wireless"],
+    subcategories: [
+      { id: "antennas", name: "Антенны (Chip, PCB, SMA)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Антенн")) || d.name.toLowerCase().includes("антенн") },
+      { id: "rf_modules", name: "Радиомодули (LoRa, GNSS/GPS, LTE)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("модули")) || d.name.toLowerCase().includes("lora") || d.name.toLowerCase().includes("gps") },
+      { id: "rf_filters", name: "ВЧ фильтры и балуны (SAW, Balun)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("фильтр")) || d.name.toLowerCase().includes("balun") || d.name.toLowerCase().includes("saw") },
+      { id: "rf_amps", name: "ВЧ усилители (LNA, PA)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("усилител")) || d.name.toLowerCase().includes("lna") },
+    ],
+  },
+  {
+    id: "transformers",
+    name: "Трансформаторы и моточные узлы",
+    icon: RefreshCw,
+    color: "#fb7185",
+    aliases: ["Трансформаторы и моточные узлы", "Трансформаторы", "Transformers"],
+    subcategories: [
+      { id: "pulse_trans", name: "Импульсные трансформаторы (Flyback)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Импульсн")) || d.name.toLowerCase().includes("трансформатор") },
+      { id: "mains_trans", name: "Сетевые трансформаторы 50/60 Гц", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Сетев")) || d.name.toLowerCase().includes("сетевой трансформатор") },
+      { id: "current_trans", name: "Токовые трансформаторы", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Токов")) || d.name.toLowerCase().includes("трансформатор тока") },
+      { id: "lan_magnetics", name: "Ethernet LAN Magnetics", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Ethernet")) || d.name.toLowerCase().includes("magnetics") },
+    ],
+  },
+  {
+    id: "emi_filtering",
+    name: "ЭМС и фильтрация помех (EMI/RFI)",
+    icon: Shield,
+    color: "#6366f1",
+    aliases: ["ЭМС и фильтрация помех (EMI/RFI)", "ЭМС и фильтрация", "Фильтрация помех", "EMI"],
+    subcategories: [
+      { id: "common_mode", name: "Синфазные дроссели (CMC)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Синфазн")) || d.name.toLowerCase().includes("синфазн") },
+      { id: "ferrite_beads", name: "Ферритовые фильтры и бусины", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Феррит")) || d.name.toLowerCase().includes("ferrite") },
+      { id: "shielding", name: "ЭМС экраны и кожухи (Shield Cans)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("экран")) || d.name.toLowerCase().includes("shield") },
+    ],
+  },
+  {
+    id: "embedded_modules",
+    name: "Модули и мезонины",
+    icon: CircuitBoard,
+    color: "#f43f5e",
+    aliases: ["Модули и мезонины", "Модули", "Embedded Modules"],
+    subcategories: [
+      { id: "power_modules", name: "Готовые модули питания", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("питания")) || d.name.toLowerCase().includes("модуль питания") },
+      { id: "adc_dac_modules", name: "Модули АЦП / ЦАП (ADS1115)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("АЦП")) || d.name.toLowerCase().includes("ads1115") },
+      { id: "audio_modules", name: "Аудиокодеки и УНЧ модули", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Аудио")) || d.name.toLowerCase().includes("унч") },
+      { id: "display_modules", name: "Дисплейные модули в сборе", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Дисплейн")) || d.name.toLowerCase().includes("nextion") },
     ],
   },
   {
     id: "hardware",
-    name: "Служебные, датчики и питание",
-    icon: Crosshair,
-    color: "#ec4899",
-    matchCategory: (cat: string) => cat === "Служебные, механика и датчики" || cat === "Датчики и измерительные модули" || cat === "Источники питания",
+    name: "Служебные, крепеж и механика",
+    icon: Wrench,
+    color: "#64748b",
+    aliases: ["Служебные, крепеж и механика", "Служебные, механика и датчики", "Механика", "Hardware"],
     subcategories: [
-      { id: "sensors", name: "Датчики температуры и др.", match: (d: DeviceDefinition) => d.id.includes("SENSOR") || d.id.includes("DHT") || d.name.toLowerCase().includes("датчик") },
-      { id: "power", name: "Держатели батарей и питание", match: (d: DeviceDefinition) => d.id.includes("BATTERY") || d.name.toLowerCase().includes("батарейк") || d.name.toLowerCase().includes("питани") },
+      { id: "testpoints", name: "Контрольные точки (TP)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Контрольн")) || d.name.toLowerCase().includes("контрольная точка") || d.id.includes("TP") },
+      { id: "mounting_holes", name: "Крепежные отверстия (M2..M4)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Крепежн")) || d.name.toLowerCase().includes("отверстие") || d.id.includes("HOLE") },
+      { id: "heatsinks", name: "Радиаторы охлаждения", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Радиатор")) || d.name.toLowerCase().includes("радиатор") },
+      { id: "fiducials", name: "Реперные знаки (Fiducials)", match: (d: DeviceDefinition) => (d.subcategory && d.subcategory.includes("Репер")) || d.name.toLowerCase().includes("репер") || d.id.includes("FID") },
     ],
   },
 ];
@@ -190,7 +351,7 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
 
   // Пользовательские категории, не вошедшие в стандартный список
   const customCategories = useMemo(() => {
-    const standardMatch = (cat: string) => DEVICE_TREE_CATEGORIES.some((c) => c.matchCategory(cat));
+    const standardMatch = (cat: string) => DEVICE_TREE_CATEGORIES.some((c) => c.aliases.includes(cat) || (c as any).matchCategory?.(cat));
     const set = new Set<string>();
     devices.forEach((d) => {
       if (d.category && !standardMatch(d.category)) {
@@ -206,7 +367,8 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
       if (selectedCategory !== "all") {
         const catConfig = DEVICE_TREE_CATEGORIES.find((c) => c.id === selectedCategory);
         if (catConfig) {
-          if (!catConfig.matchCategory(d.category)) return false;
+          const isMatch = catConfig.aliases.includes(d.category) || (catConfig as any).matchCategory?.(d.category);
+          if (!isMatch) return false;
           if (selectedSubcategory !== "all") {
             const sub = catConfig.subcategories.find((s) => s.id === selectedSubcategory);
             if (sub && !sub.match(d)) return false;
@@ -544,7 +706,7 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
 
                     {DEVICE_TREE_CATEGORIES.map((cat) => {
                       const Icon = cat.icon;
-                      const catDevices = devices.filter((d) => cat.matchCategory(d.category));
+                      const catDevices = devices.filter((d) => cat.aliases.includes(d.category) || (cat as any).matchCategory?.(d.category));
                       const isCatActive = selectedCategory === cat.id && selectedSubcategory === "all";
                       const isExpanded = !!expandedCategories[cat.id];
 
