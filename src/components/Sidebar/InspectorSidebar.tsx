@@ -123,12 +123,20 @@ export const InspectorSidebar: React.FC = () => {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
             <button
+              className={`cad-tool-btn ${comp.locked ? "active" : ""}`}
+              style={{ width: "26px", height: "26px" }}
+              onClick={() => updateComponent({ ...comp, locked: !comp.locked })}
+              title={comp.locked ? "Разблокировать компонент" : "Заблокировать от перемещения"}
+            >
+              {comp.locked ? <Lock size={13} color="#f59e0b" /> : <Unlock size={13} />}
+            </button>
+            <button
               className="cad-tool-btn"
               style={{ width: "26px", height: "26px" }}
-              onClick={() => selectComponent(null)}
-              title="Закрыть панель свойств (снять выделение)"
+              onClick={() => updateComponent({ ...comp, visible: comp.visible === false ? true : false })}
+              title={comp.visible === false ? "Показать компонент на холсте" : "Скрыть компонент на холсте"}
             >
-              <X size={14} />
+              {comp.visible === false ? <EyeOff size={13} /> : <Eye size={13} />}
             </button>
           </div>
         </div>

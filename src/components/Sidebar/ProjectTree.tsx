@@ -80,7 +80,14 @@ export const ProjectTree: React.FC = () => {
     clearSelectedImages,
     updateImageLayer,
     selectedComponentId,
+    selectedComponentIds,
     selectComponent,
+    toggleSelectComponent,
+    selectAllComponents,
+    clearSelectedComponents,
+    batchSetComponentsVisibility,
+    batchSetComponentsLocked,
+    batchDeleteComponents,
     updateComponent,
     deleteComponent,
     updateImageLayers,
@@ -172,6 +179,18 @@ export const ProjectTree: React.FC = () => {
   };
 
   const [contextMenu, setContextMenu] = useState<ContextMenuState | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        if (contextMenu) setContextMenu(null);
+        if (selectedImageIds.length > 0) clearSelectedImages();
+        if (selectedComponentIds.length > 0) clearSelectedComponents();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [contextMenu, selectedImageIds.length, selectedComponentIds.length]);
 
   // Quick Hover Preview popover state
   const [hoverPreview, setHoverPreview] = useState<HoverPreviewState | null>(null);
@@ -1048,8 +1067,8 @@ export const ProjectTree: React.FC = () => {
                                               </button>
                                             ) : (
                                               bgTopImages.map((img) => {
-                                                const isSelected = selectedImageId === img.id && isActive && activeWorkLayer?.type === "underlay";
-                                                const isMultiSelected = selectedImageIds.includes(img.id) && activeWorkLayer?.type === "underlay";
+                                                const isSelected = selectedImageId === img.id && selectedImageIds.length <= 1;
+                                                const isMultiSelected = selectedImageIds.includes(img.id);
                                                 return (
                                                   <div
                                                     key={img.id}
@@ -1105,6 +1124,7 @@ export const ProjectTree: React.FC = () => {
                                                         onClick={(e) => {
                                                           e.stopPropagation();
                                                           if (!isActive) setActiveFile(file.id);
+                                                          setActiveWorkLayer({ type: "underlay", side: "top" });
                                                           toggleSelectImage(img.id);
                                                         }}
                                                         title="Выбрать для групповых действий"
@@ -1215,8 +1235,8 @@ export const ProjectTree: React.FC = () => {
                                               </button>
                                             ) : (
                                               bgBottomImages.map((img) => {
-                                                const isSelected = selectedImageId === img.id && isActive && activeWorkLayer?.type === "underlay";
-                                                const isMultiSelected = selectedImageIds.includes(img.id) && activeWorkLayer?.type === "underlay";
+                                                const isSelected = selectedImageId === img.id && selectedImageIds.length <= 1;
+                                                const isMultiSelected = selectedImageIds.includes(img.id);
                                                 return (
                                                   <div
                                                     key={img.id}
@@ -1272,6 +1292,7 @@ export const ProjectTree: React.FC = () => {
                                                         onClick={(e) => {
                                                           e.stopPropagation();
                                                           if (!isActive) setActiveFile(file.id);
+                                                          setActiveWorkLayer({ type: "underlay", side: "bottom" });
                                                           toggleSelectImage(img.id);
                                                         }}
                                                         title="Выбрать для групповых действий"
@@ -1362,16 +1383,6 @@ export const ProjectTree: React.FC = () => {
                                     >
                                       {isAllComponentsVisible ? <Eye size={12} /> : <EyeOff size={12} />}
                                     </button>
-                                    <button
-                                      className="cad-tree-icon-btn"
-                                      onClick={() => {
-                                        if (!isActive) setActiveFile(file.id);
-                                        openModal("componentLibrary");
-                                      }}
-                                      title="Добавить компонент из библиотеки"
-                                    >
-                                      <Plus size={12} />
-                                    </button>
                                   </div>
                                 </div>
                               );
@@ -1429,17 +1440,6 @@ export const ProjectTree: React.FC = () => {
                                           >
                                             {isAllTopCompLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
                                           </button>
-                                          <button
-                                            className="cad-tree-icon-btn"
-                                            onClick={() => {
-                                              if (!isActive) setActiveFile(file.id);
-                                              setActiveWorkLayer({ type: "components", side: "top" });
-                                              openModal("componentLibrary");
-                                            }}
-                                            title="Добавить компонент Top из библиотеки"
-                                          >
-                                            <Plus size={12} />
-                                          </button>
                                         </div>
                                       </div>
                                     );
@@ -1448,30 +1448,38 @@ export const ProjectTree: React.FC = () => {
                                   {isTopCompOpen && (
                                     <div className="cad-tree-subbranch">
                                       {topComponents.length === 0 ? (
-                                        <button
-                                          className="cad-tree-ghost-btn"
-                                          onClick={() => {
-                                            if (!isActive) setActiveFile(file.id);
-                                            setActiveWorkLayer({ type: "components", side: "top" });
-                                            openModal("componentLibrary");
-                                          }}
-                                        >
-                                          <Plus size={11} />
-                                          <span>Добавить компонент Top</span>
-                                        </button>
+                                        <div style={{ padding: "3px 12px", fontSize: "10.5px", color: "#64748b", fontStyle: "italic" }}>
+                                          (нет компонентов)
+                                        </div>
                                       ) : (
                                         topComponents.map((comp) => {
-                                          const isSelected = selectedComponentId === comp.id;
+                                          const isSelected = selectedComponentId === comp.id && selectedComponentIds.length <= 1;
+                                          const isMultiSelected = selectedComponentIds.includes(comp.id);
                                           const label = comp.value ? `${comp.value}` : comp.name || comp.packageDef?.name || "";
                                           const isHidden = comp.visible === false;
                                           return (
                                             <div
                                               key={comp.id}
-                                              className={`cad-tree-item ${isSelected ? "sublayer-active selected" : ""} ${isHidden ? "is-hidden" : ""}`}
-                                              onClick={() => {
+                                              className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""} ${selectedComponentIds.length > 0 ? "has-multi-selection" : ""} ${isHidden ? "is-hidden" : ""}`}
+                                              onClick={(e) => {
                                                 if (!isActive) setActiveFile(file.id);
                                                 setActiveWorkLayer({ type: "components", side: "top" });
-                                                selectComponent(comp.id);
+                                                if (e.ctrlKey || e.metaKey) {
+                                                  toggleSelectComponent(comp.id);
+                                                } else if (e.shiftKey && selectedComponentIds.length > 0) {
+                                                  const lastId = selectedComponentIds[selectedComponentIds.length - 1];
+                                                  const idx1 = topComponents.findIndex((c) => c.id === lastId);
+                                                  const idx2 = topComponents.findIndex((c) => c.id === comp.id);
+                                                  if (idx1 >= 0 && idx2 >= 0) {
+                                                    const [start, end] = idx1 < idx2 ? [idx1, idx2] : [idx2, idx1];
+                                                    const rangeIds = topComponents.slice(start, end + 1).map((c) => c.id);
+                                                    selectAllComponents(Array.from(new Set([...selectedComponentIds, ...rangeIds])));
+                                                  } else {
+                                                    selectComponent(comp.id);
+                                                  }
+                                                } else {
+                                                  selectComponent(comp.id);
+                                                }
                                               }}
                                               onDoubleClick={(e) => {
                                                 e.stopPropagation();
@@ -1495,8 +1503,19 @@ export const ProjectTree: React.FC = () => {
                                               title={`${comp.refDes} (${comp.packageDef?.name || comp.packageId})`}
                                             >
                                               <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", flex: 1 }}>
-                                                <CircleDot size={10} color={isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f87171"} style={{ flexShrink: 0 }} />
-                                                <span style={{ fontWeight: 600, color: isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f1f5f9" }}>{comp.refDes}</span>
+                                                <div
+                                                  className={`cad-tree-checkbox ${isMultiSelected ? "checked" : ""}`}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (!isActive) setActiveFile(file.id);
+                                                    toggleSelectComponent(comp.id);
+                                                  }}
+                                                  title="Выбрать для групповых действий"
+                                                >
+                                                  {isMultiSelected && <Check size={9} color="#ffffff" />}
+                                                </div>
+                                                <CircleDot size={10} color={isSelected || isMultiSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f87171"} style={{ flexShrink: 0 }} />
+                                                <span style={{ fontWeight: 600, color: isSelected || isMultiSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f1f5f9" }}>{comp.refDes}</span>
                                                 {label && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>}
                                                 <div className="cad-tree-status-indicators">
                                                   {isHidden && <EyeOff size={11} color="var(--cad-text-dim)" />}
@@ -1517,36 +1536,6 @@ export const ProjectTree: React.FC = () => {
                                                   title="Фокус: центрировать компонент на холсте (двойной клик)"
                                                 >
                                                   <Target size={11} color="#60a5fa" />
-                                                </button>
-                                                <button
-                                                  className="cad-tree-icon-btn"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    updateComponent({ ...comp, visible: comp.visible === false ? true : false });
-                                                  }}
-                                                  title={comp.visible === false ? "Показать компонент" : "Скрыть компонент"}
-                                                >
-                                                  {comp.visible === false ? <EyeOff size={11} /> : <Eye size={11} />}
-                                                </button>
-                                                <button
-                                                  className="cad-tree-icon-btn"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    updateComponent({ ...comp, locked: !comp.locked });
-                                                  }}
-                                                  title={comp.locked ? "Разблокировать перемещение" : "Заблокировать перемещение"}
-                                                >
-                                                  {comp.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
-                                                </button>
-                                                <button
-                                                  className="cad-tree-icon-btn danger"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    deleteComponent(comp.id);
-                                                  }}
-                                                  title="Удалить компонент с платы"
-                                                >
-                                                  <Trash2 size={11} />
                                                 </button>
                                               </div>
                                             </div>
@@ -1607,17 +1596,6 @@ export const ProjectTree: React.FC = () => {
                                           >
                                             {isAllBotCompLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
                                           </button>
-                                          <button
-                                            className="cad-tree-icon-btn"
-                                            onClick={() => {
-                                              if (!isActive) setActiveFile(file.id);
-                                              setActiveWorkLayer({ type: "components", side: "bottom" });
-                                              openModal("componentLibrary");
-                                            }}
-                                            title="Добавить компонент Bottom из библиотеки"
-                                          >
-                                            <Plus size={12} />
-                                          </button>
                                         </div>
                                       </div>
                                     );
@@ -1626,30 +1604,38 @@ export const ProjectTree: React.FC = () => {
                                   {isBotCompOpen && (
                                     <div className="cad-tree-subbranch">
                                       {botComponents.length === 0 ? (
-                                        <button
-                                          className="cad-tree-ghost-btn"
-                                          onClick={() => {
-                                            if (!isActive) setActiveFile(file.id);
-                                            setActiveWorkLayer({ type: "components", side: "bottom" });
-                                            openModal("componentLibrary");
-                                          }}
-                                        >
-                                          <Plus size={11} />
-                                          <span>Добавить компонент Bottom</span>
-                                        </button>
+                                        <div style={{ padding: "3px 12px", fontSize: "10.5px", color: "#64748b", fontStyle: "italic" }}>
+                                          (нет компонентов)
+                                        </div>
                                       ) : (
                                         botComponents.map((comp) => {
-                                          const isSelected = selectedComponentId === comp.id;
+                                          const isSelected = selectedComponentId === comp.id && selectedComponentIds.length <= 1;
+                                          const isMultiSelected = selectedComponentIds.includes(comp.id);
                                           const label = comp.value ? `${comp.value}` : comp.name || comp.packageDef?.name || "";
                                           const isHidden = comp.visible === false;
                                           return (
                                             <div
                                               key={comp.id}
-                                              className={`cad-tree-item ${isSelected ? "sublayer-active selected" : ""} ${isHidden ? "is-hidden" : ""}`}
-                                              onClick={() => {
+                                              className={`cad-tree-item ${isSelected ? "selected" : ""} ${isMultiSelected ? "multi-selected" : ""} ${selectedComponentIds.length > 0 ? "has-multi-selection" : ""} ${isHidden ? "is-hidden" : ""}`}
+                                              onClick={(e) => {
                                                 if (!isActive) setActiveFile(file.id);
                                                 setActiveWorkLayer({ type: "components", side: "bottom" });
-                                                selectComponent(comp.id);
+                                                if (e.ctrlKey || e.metaKey) {
+                                                  toggleSelectComponent(comp.id);
+                                                } else if (e.shiftKey && selectedComponentIds.length > 0) {
+                                                  const lastId = selectedComponentIds[selectedComponentIds.length - 1];
+                                                  const idx1 = botComponents.findIndex((c) => c.id === lastId);
+                                                  const idx2 = botComponents.findIndex((c) => c.id === comp.id);
+                                                  if (idx1 >= 0 && idx2 >= 0) {
+                                                    const [start, end] = idx1 < idx2 ? [idx1, idx2] : [idx2, idx1];
+                                                    const rangeIds = botComponents.slice(start, end + 1).map((c) => c.id);
+                                                    selectAllComponents(Array.from(new Set([...selectedComponentIds, ...rangeIds])));
+                                                  } else {
+                                                    selectComponent(comp.id);
+                                                  }
+                                                } else {
+                                                  selectComponent(comp.id);
+                                                }
                                               }}
                                               onDoubleClick={(e) => {
                                                 e.stopPropagation();
@@ -1673,8 +1659,19 @@ export const ProjectTree: React.FC = () => {
                                               title={`${comp.refDes} (${comp.packageDef?.name || comp.packageId})`}
                                             >
                                               <div style={{ display: "flex", alignItems: "center", gap: "6px", overflow: "hidden", flex: 1 }}>
-                                                <CircleDot size={10} color={isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#38bdf8"} style={{ flexShrink: 0 }} />
-                                                <span style={{ fontWeight: 600, color: isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f1f5f9" }}>{comp.refDes}</span>
+                                                <div
+                                                  className={`cad-tree-checkbox ${isMultiSelected ? "checked" : ""}`}
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (!isActive) setActiveFile(file.id);
+                                                    toggleSelectComponent(comp.id);
+                                                  }}
+                                                  title="Выбрать для групповых действий"
+                                                >
+                                                  {isMultiSelected && <Check size={9} color="#ffffff" />}
+                                                </div>
+                                                <CircleDot size={10} color={isSelected || isMultiSelected ? "var(--cad-accent-hover, #60a5fa)" : "#38bdf8"} style={{ flexShrink: 0 }} />
+                                                <span style={{ fontWeight: 600, color: isSelected || isMultiSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f1f5f9" }}>{comp.refDes}</span>
                                                 {label && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>}
                                                 <div className="cad-tree-status-indicators">
                                                   {isHidden && <EyeOff size={11} color="var(--cad-text-dim)" />}
@@ -1695,36 +1692,6 @@ export const ProjectTree: React.FC = () => {
                                                   title="Фокус: центрировать компонент на холсте (двойной клик)"
                                                 >
                                                   <Target size={11} color="#60a5fa" />
-                                                </button>
-                                                <button
-                                                  className="cad-tree-icon-btn"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    updateComponent({ ...comp, visible: comp.visible === false ? true : false });
-                                                  }}
-                                                  title={comp.visible === false ? "Показать компонент" : "Скрыть компонент"}
-                                                >
-                                                  {comp.visible === false ? <EyeOff size={11} /> : <Eye size={11} />}
-                                                </button>
-                                                <button
-                                                  className="cad-tree-icon-btn"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    updateComponent({ ...comp, locked: !comp.locked });
-                                                  }}
-                                                  title={comp.locked ? "Разблокировать перемещение" : "Заблокировать перемещение"}
-                                                >
-                                                  {comp.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
-                                                </button>
-                                                <button
-                                                  className="cad-tree-icon-btn danger"
-                                                  onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    deleteComponent(comp.id);
-                                                  }}
-                                                  title="Удалить компонент с платы"
-                                                >
-                                                  <Trash2 size={11} />
                                                 </button>
                                               </div>
                                             </div>
@@ -1897,7 +1864,7 @@ export const ProjectTree: React.FC = () => {
       </div>
 
       {/* Batch Selection Floating Pill Bar */}
-      {selectedImageIds.length > 0 && (
+      {selectedImageIds.length > 0 && selectedComponentIds.length === 0 && (
         <div className="cad-batch-bar" onClick={(e) => e.stopPropagation()}>
           <div className="cad-batch-pill-content">
             <div className="cad-batch-pill-badge" title="Количество выбранных слоев">
@@ -1955,6 +1922,72 @@ export const ProjectTree: React.FC = () => {
               className="cad-batch-pill-close"
               onClick={clearSelectedImages}
               title="Снять выбор со всех слоев (Esc)"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Pill Bar for Batch Component Selection */}
+      {selectedComponentIds.length > 0 && selectedImageIds.length === 0 && (
+        <div className="cad-batch-bar" onClick={(e) => e.stopPropagation()}>
+          <div className="cad-batch-pill-content">
+            <div className="cad-batch-pill-badge" title="Количество выбранных компонентов" style={{ color: "#c084fc" }}>
+              <Check size={11} color="#c084fc" strokeWidth={2.5} />
+              <span>{selectedComponentIds.length}</span>
+            </div>
+
+            <div className="cad-batch-pill-divider" />
+
+            <div className="cad-batch-pill-actions">
+              <button
+                className="cad-batch-pill-btn"
+                onClick={() => batchSetComponentsVisibility(selectedComponentIds, true)}
+                title="Показать все выбранные компоненты"
+              >
+                <Eye size={13} color="#60a5fa" />
+              </button>
+              <button
+                className="cad-batch-pill-btn"
+                onClick={() => batchSetComponentsVisibility(selectedComponentIds, false)}
+                title="Скрыть все выбранные компоненты"
+              >
+                <EyeOff size={13} color="#94a3b8" />
+              </button>
+              <button
+                className="cad-batch-pill-btn"
+                onClick={() => batchSetComponentsLocked(selectedComponentIds, true)}
+                title="Заблокировать выбранные компоненты"
+              >
+                <Lock size={13} color="#f59e0b" />
+              </button>
+              <button
+                className="cad-batch-pill-btn"
+                onClick={() => batchSetComponentsLocked(selectedComponentIds, false)}
+                title="Разблокировать выбранные компоненты"
+              >
+                <Unlock size={13} color="#10b981" />
+              </button>
+              <button
+                className="cad-batch-pill-btn danger"
+                onClick={() => {
+                  if (window.confirm(`Удалить ${selectedComponentIds.length} выбранных компонентов с платы?`)) {
+                    batchDeleteComponents(selectedComponentIds);
+                  }
+                }}
+                title="Удалить выбранные компоненты"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+
+            <div className="cad-batch-pill-divider" />
+
+            <button
+              className="cad-batch-pill-close"
+              onClick={clearSelectedComponents}
+              title="Снять выбор со всех компонентов (Esc)"
             >
               <X size={12} />
             </button>

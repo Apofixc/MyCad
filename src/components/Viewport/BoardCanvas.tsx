@@ -38,6 +38,7 @@ export const BoardCanvas: React.FC = () => {
     selectImage,
     updateImageLayer,
     selectedComponentId,
+    selectedComponentIds,
     selectComponent,
     updateComponent,
   } = useProjectStore();
@@ -420,7 +421,8 @@ export const BoardCanvas: React.FC = () => {
             showTopComponents,
             showBottomComponents,
             selectedComponentId,
-            compDragOffsetRef.current
+            compDragOffsetRef.current,
+            selectedComponentIds
           );
         }
 
@@ -468,6 +470,7 @@ export const BoardCanvas: React.FC = () => {
     showTopComponents,
     showBottomComponents,
     selectedComponentId,
+    selectedComponentIds,
     activeTool,
     strobePhase,
     curtainPosition,
@@ -749,7 +752,7 @@ export const BoardCanvas: React.FC = () => {
       }
 
       if (hitComp) {
-        selectComponent(hitComp.id);
+        selectComponent(hitComp.id, e.ctrlKey || e.metaKey);
         if (!hitComp.locked) {
           compDragRef.current = {
             isDragging: true,
@@ -1473,7 +1476,8 @@ function drawPlacedComponents(
   showTop: boolean,
   showBottom: boolean,
   selectedId: string | null,
-  dragOffset: { id: string; dxMm: number; dyMm: number } | null
+  dragOffset: { id: string; dxMm: number; dyMm: number } | null,
+  selectedIds?: string[]
 ) {
   if (!components || components.length === 0) return;
 
@@ -1485,7 +1489,7 @@ function drawPlacedComponents(
     if (!isTop && !showBottom) continue;
     if (comp.visible === false) continue;
 
-    const isSelected = comp.id === selectedId;
+    const isSelected = comp.id === selectedId || (selectedIds ? selectedIds.includes(comp.id) : false);
     let effX = comp.xMm ?? comp.x ?? 0;
     let effY = comp.yMm ?? comp.y ?? 0;
     if (dragOffset && dragOffset.id === comp.id) {

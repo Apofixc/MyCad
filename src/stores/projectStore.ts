@@ -22,6 +22,7 @@ interface ProjectStore {
   selectedImageId: string | null;
   selectedImageIds: string[];
   selectedComponentId: string | null;
+  selectedComponentIds: string[];
   isDirty: boolean;
   isLoading: boolean;
   error: string | null;
@@ -43,7 +44,13 @@ interface ProjectStore {
   toggleSelectImage: (id: string) => void;
   selectAllImages: (ids: string[]) => void;
   clearSelectedImages: () => void;
-  selectComponent: (id: string | null) => void;
+  selectComponent: (id: string | null, isMulti?: boolean) => void;
+  toggleSelectComponent: (id: string) => void;
+  selectAllComponents: (ids: string[]) => void;
+  clearSelectedComponents: () => void;
+  batchSetComponentsVisibility: (ids: string[], visible: boolean) => Promise<void>;
+  batchSetComponentsLocked: (ids: string[], locked: boolean) => Promise<void>;
+  batchDeleteComponents: (ids: string[]) => Promise<void>;
   addComponent: (component: PlacedComponent) => Promise<void>;
   updateComponent: (component: PlacedComponent) => Promise<void>;
   deleteComponent: (componentId: string) => Promise<void>;
@@ -66,6 +73,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   selectedImageId: null,
   selectedImageIds: [],
   selectedComponentId: null,
+  selectedComponentIds: [],
   isDirty: false,
   isLoading: false,
   error: null,
@@ -243,9 +251,15 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
         selectedImageIds: next,
         selectedImageId: next.length > 0 ? next[next.length - 1] : null,
         selectedComponentId: null,
+        selectedComponentIds: [],
       });
     } else {
-      set({ selectedImageId: id, selectedImageIds: [id], selectedComponentId: null });
+      set({
+        selectedImageId: id,
+        selectedImageIds: [id],
+        selectedComponentId: null,
+        selectedComponentIds: [],
+      });
     }
   },
 
@@ -257,6 +271,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       selectedImageIds: next,
       selectedImageId: next.length > 0 ? next[next.length - 1] : null,
       selectedComponentId: null,
+      selectedComponentIds: [],
     });
   },
 
@@ -265,6 +280,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       selectedImageIds: ids,
       selectedImageId: ids[0] || null,
       selectedComponentId: null,
+      selectedComponentIds: [],
     });
   },
 
@@ -275,16 +291,90 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     });
   },
 
-  selectComponent: (id) => {
+  selectComponent: (id, isMulti = false) => {
     if (!id) {
-      set({ selectedComponentId: null });
+      set({ selectedComponentId: null, selectedComponentIds: [] });
       return;
     }
     const uiState = useUiStore.getState();
     if (uiState.rightSidebarCollapsed) {
       useUiStore.setState({ rightSidebarCollapsed: false });
     }
-    set({ selectedComponentId: id, selectedImageId: null, selectedImageIds: [] });
+    if (isMulti) {
+      const { selectedComponentIds } = get();
+      const exists = selectedComponentIds.includes(id);
+      const next = exists ? selectedComponentIds.filter((i) => i !== id) : [...selectedComponentIds, id];
+      set({
+        selectedComponentIds: next,
+        selectedComponentId: next.length > 0 ? next[next.length - 1] : null,
+        selectedImageId: null,
+        selectedImageIds: [],
+      });
+    } else {
+      set({
+        selectedComponentId: id,
+        selectedComponentIds: [id],
+        selectedImageId: null,
+        selectedImageIds: [],
+      });
+    }
+  },
+
+  toggleSelectComponent: (id) => {
+    const { selectedComponentIds } = get();
+    const exists = selectedComponentIds.includes(id);
+    const next = exists ? selectedComponentIds.filter((i) => i !== id) : [...selectedComponentIds, id];
+    set({
+      selectedComponentIds: next,
+      selectedComponentId: next.length > 0 ? next[next.length - 1] : null,
+      selectedImageId: null,
+      selectedImageIds: [],
+    });
+  },
+
+  selectAllComponents: (ids) => {
+    set({
+      selectedComponentIds: ids,
+      selectedComponentId: ids[0] || null,
+      selectedImageId: null,
+      selectedImageIds: [],
+    });
+  },
+
+  clearSelectedComponents: () => {
+    set({
+      selectedComponentIds: [],
+      selectedComponentId: null,
+    });
+  },
+
+  batchSetComponentsVisibility: async (compIds, visible) => {
+    const { board } = get();
+    if (!board) return;
+    const comps = board.data?.components || [];
+    for (const c of comps) {
+      if (compIds.includes(c.id) && c.visible !== visible) {
+        await get().updateComponent({ ...c, visible });
+      }
+    }
+  },
+
+  batchSetComponentsLocked: async (compIds, locked) => {
+    const { board } = get();
+    if (!board) return;
+    const comps = board.data?.components || [];
+    for (const c of comps) {
+      if (compIds.includes(c.id) && c.locked !== locked) {
+        await get().updateComponent({ ...c, locked });
+      }
+    }
+  },
+
+  batchDeleteComponents: async (compIds) => {
+    for (const id of compIds) {
+      await get().deleteComponent(id);
+    }
+    set({ selectedComponentIds: [], selectedComponentId: null });
   },
 
   addComponent: async (component: PlacedComponent) => {
