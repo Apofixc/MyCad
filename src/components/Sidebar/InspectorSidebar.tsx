@@ -23,6 +23,8 @@ import {
   Target,
   Crop,
   Trash2,
+  Cpu,
+  Edit2,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
@@ -34,9 +36,13 @@ export const InspectorSidebar: React.FC = () => {
   const {
     board,
     selectedImageId,
+    selectedComponentId,
     selectImage,
+    selectComponent,
     updateImageLayer,
     deleteImageLayer,
+    updateComponent,
+    deleteComponent,
   } = useProjectStore();
 
   const {
@@ -45,6 +51,8 @@ export const InspectorSidebar: React.FC = () => {
     setActiveTool,
     focusImageLayer,
     setPendingPreprocess,
+    openModal,
+    setEditingPackage,
   } = useUiStore();
 
   // Resize handler for right sidebar
@@ -66,6 +74,253 @@ export const InspectorSidebar: React.FC = () => {
     window.addEventListener("mousemove", onMouseMove);
     window.addEventListener("mouseup", onMouseUp);
   };
+
+  // Component selection inspector
+  const comp = board?.data?.components?.find((c) => c.id === selectedComponentId);
+  if (comp) {
+    const isCompTop = comp.layer !== "bottom";
+    const pkg = comp.packageDef;
+    const variants = pkg?.variants || [];
+    const activeVariant = variants.find((v) => v.id === comp.selectedVariantId) || variants[0];
+
+    return (
+      <aside className="cad-inspector-panel" style={{ width: `${rightSidebarWidth}px` }}>
+        <div
+          onMouseDown={handleMouseDown}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "4px",
+            height: "100%",
+            cursor: "col-resize",
+            background: "transparent",
+            zIndex: 10,
+          }}
+        />
+
+        {/* Заголовок */}
+        <div className="cad-inspector-header">
+          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            <Cpu size={16} color="#38bdf8" />
+            <span style={{ fontWeight: "bold", fontSize: 13, color: "#f8fafc" }}>
+              Компонент: {comp.refDes}
+            </span>
+          </div>
+          <button
+            className="cad-panel-btn-icon"
+            onClick={() => selectComponent(null)}
+            title="Снять выделение"
+          >
+            <X size={15} />
+          </button>
+        </div>
+
+        <div className="cad-inspector-body">
+          {/* Основные свойства */}
+          <div className="cad-inspector-section">
+            <div className="cad-inspector-section-title">Параметры компонента</div>
+
+            <div className="cad-inspector-row">
+              <label className="cad-inspector-label">Позиционное обозначение</label>
+              <input
+                type="text"
+                className="cad-inspector-input"
+                value={comp.refDes}
+                onChange={(e) => updateComponent({ ...comp, refDes: e.target.value })}
+              />
+            </div>
+
+            <div className="cad-inspector-row">
+              <label className="cad-inspector-label">Номинал / Значение</label>
+              <input
+                type="text"
+                className="cad-inspector-input"
+                value={comp.value || ""}
+                placeholder="например, 10k, 0.1uF"
+                onChange={(e) => updateComponent({ ...comp, value: e.target.value })}
+              />
+            </div>
+
+            <div className="cad-inspector-row">
+              <label className="cad-inspector-label">Корпус (Footprint)</label>
+              <span style={{ fontSize: 12, color: "#38bdf8", fontWeight: "bold" }}>
+                {pkg?.name || comp.packageId}
+              </span>
+            </div>
+
+            {pkg && (
+              <div style={{ fontSize: 11, color: "#64748b", marginTop: -4 }}>
+                Контактов: {pkg.pads.length} | {pkg.mountType.toUpperCase()} | {pkg.bodyWidth}×{pkg.bodyHeight} мм
+              </div>
+            )}
+          </div>
+
+          {/* Сторона монтажа */}
+          <div className="cad-inspector-section">
+            <div className="cad-inspector-section-title">Слой размещения</div>
+            <div style={{ display: "flex", gap: 8 }}>
+              <button
+                className={`cad-btn-secondary ${isCompTop ? "active" : ""}`}
+                style={{
+                  flex: 1,
+                  padding: "6px 8px",
+                  fontSize: 12,
+                  background: isCompTop ? "#1e3a8a" : "#1e293b",
+                  color: isCompTop ? "#60a5fa" : "#94a3b8",
+                  border: isCompTop ? "1px solid #3b82f6" : "1px solid #334155",
+                }}
+                onClick={() => updateComponent({ ...comp, layer: "top", side: "top", mirrored: false })}
+              >
+                Top (Лицевая)
+              </button>
+              <button
+                className={`cad-btn-secondary ${!isCompTop ? "active" : ""}`}
+                style={{
+                  flex: 1,
+                  padding: "6px 8px",
+                  fontSize: 12,
+                  background: !isCompTop ? "#1e3a8a" : "#1e293b",
+                  color: !isCompTop ? "#60a5fa" : "#94a3b8",
+                  border: !isCompTop ? "1px solid #3b82f6" : "1px solid #334155",
+                }}
+                onClick={() => updateComponent({ ...comp, layer: "bottom", side: "bottom", mirrored: true })}
+              >
+                Bottom (Оборотная)
+              </button>
+            </div>
+          </div>
+
+          {/* Координаты и Поворот */}
+          <div className="cad-inspector-section">
+            <div className="cad-inspector-section-title">Положение и угол</div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div>
+                <label className="cad-inspector-label">X (мм)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  className="cad-inspector-input"
+                  value={comp.xMm ?? comp.x}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    updateComponent({ ...comp, x: val, xMm: val });
+                  }}
+                />
+              </div>
+              <div>
+                <label className="cad-inspector-label">Y (мм)</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  className="cad-inspector-input"
+                  value={comp.yMm ?? comp.y}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value) || 0;
+                    updateComponent({ ...comp, y: val, yMm: val });
+                  }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginTop: 10 }}>
+              <label className="cad-inspector-label">Поворот: {comp.rotationDeg ?? comp.rotation ?? 0}°</label>
+              <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                <button
+                  className="cad-btn-secondary btn-sm"
+                  style={{ flex: 1 }}
+                  onClick={() => {
+                    const cur = comp.rotationDeg ?? comp.rotation ?? 0;
+                    const next = (cur - 90 + 360) % 360;
+                    updateComponent({ ...comp, rotation: next, rotationDeg: next });
+                  }}
+                  title="Повернуть на 90° против часовой стрелки"
+                >
+                  <RotateCcw size={13} />
+                  <span>-90°</span>
+                </button>
+                <button
+                  className="cad-btn-secondary btn-sm"
+                  style={{ flex: 1 }}
+                  onClick={() => {
+                    const cur = comp.rotationDeg ?? comp.rotation ?? 0;
+                    const next = (cur + 90) % 360;
+                    updateComponent({ ...comp, rotation: next, rotationDeg: next });
+                  }}
+                  title="Повернуть на 90° по часовой стрелке"
+                >
+                  <RotateCw size={13} />
+                  <span>+90°</span>
+                </button>
+                <button
+                  className="cad-btn-secondary btn-sm"
+                  style={{ flex: 1 }}
+                  onClick={() => {
+                    const cur = comp.rotationDeg ?? comp.rotation ?? 0;
+                    const next = (cur + 180) % 360;
+                    updateComponent({ ...comp, rotation: next, rotationDeg: next });
+                  }}
+                  title="Повернуть на 180°"
+                >
+                  <span>180°</span>
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Вариант исполнения графики корпуса */}
+          {variants.length > 0 && (
+            <div className="cad-inspector-section">
+              <div className="cad-inspector-section-title">Вариант шелкографии корпуса</div>
+              <select
+                className="cad-inspector-input"
+                value={comp.selectedVariantId || variants[0]?.id}
+                onChange={(e) =>
+                  updateComponent({
+                    ...comp,
+                    selectedVariantId: e.target.value,
+                  })
+                }
+              >
+                {variants.map((v) => (
+                  <option key={v.id} value={v.id}>
+                    {v.name} ({v.keyType})
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Быстрые действия */}
+          <div className="cad-inspector-section" style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+            {pkg && (
+              <button
+                className="cad-btn-secondary"
+                style={{ width: "100%", justifyContent: "center" }}
+                onClick={() => {
+                  setEditingPackage(pkg);
+                  openModal("packageEditor");
+                }}
+              >
+                <Edit2 size={13} />
+                <span>Открыть корпус в CAD-редакторе</span>
+              </button>
+            )}
+
+            <button
+              className="cad-btn-danger"
+              style={{ width: "100%", justifyContent: "center" }}
+              onClick={() => deleteComponent(comp.id)}
+            >
+              <Trash2 size={13} />
+              <span>Удалить компонент с платы</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   // Strictly single image selection
   const imgLayer =

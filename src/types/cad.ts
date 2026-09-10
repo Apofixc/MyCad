@@ -1,3 +1,5 @@
+import { PlacedComponent } from "./componentLibrary";
+
 export type ToolMode =
   | "select"
   | "transform"
@@ -82,7 +84,7 @@ export interface BoardData {
   name: string;
   bgTop: ImageLayerGroup;
   bgBottom: ImageLayerGroup;
-  components?: BoardComponent[];
+  components?: PlacedComponent[];
   traces?: any[];
   vias?: any[];
 }

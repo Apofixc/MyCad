@@ -11,6 +11,7 @@ import {
   Grid,
   ImagePlus,
   Maximize2,
+  Cpu,
 } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
 import { ToolMode } from "../../types/cad";
@@ -23,6 +24,7 @@ export const ToolBar: React.FC = () => {
     showGrid,
     toggleGrid,
     toggleLoupe,
+    openModal,
     setPendingPreprocess,
     setPendingBatchImport,
     fitAllImages,
@@ -174,6 +176,16 @@ export const ToolBar: React.FC = () => {
         title="Координатная сетка платы (G)"
       >
         <Grid size={16} />
+      </button>
+
+      {/* Библиотека компонентов */}
+      <button
+        className="cad-tool-btn"
+        onClick={() => openModal("componentLibrary")}
+        title="Библиотека компонентов и корпусов"
+        style={{ color: "#38bdf8" }}
+      >
+        <Cpu size={16} />
       </button>
 
       {/* Вписать все изображения */}

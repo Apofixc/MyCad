@@ -16,6 +16,7 @@ import {
 import { notifySuccess, notifyWarning, reportError } from "../../utils/errorHandler";
 import { Target, X, Check, RotateCcw, Zap, Play, Pause, Compass } from "lucide-react";
 import { BoardImageLayer } from "../../types/cad";
+import { PlacedComponent } from "../../types/componentLibrary";
 
 export type TransformHandleType =
   | "nw"
@@ -36,6 +37,9 @@ export const BoardCanvas: React.FC = () => {
     selectedImageId,
     selectImage,
     updateImageLayer,
+    selectedComponentId,
+    selectComponent,
+    updateComponent,
   } = useProjectStore();
 
   const {
@@ -53,12 +57,24 @@ export const BoardCanvas: React.FC = () => {
     setShowTopLayer,
     showBottomLayer,
     setShowBottomLayer,
+    showTopComponents,
+    showBottomComponents,
     curtainPosition,
     curtainVertical,
     activeWorkLayer,
     setPendingPreprocess,
     setPendingBatchImport,
   } = useUiStore();
+
+  const compDragRef = useRef<{
+    isDragging: boolean;
+    hasMoved: boolean;
+    startMouseMm: { x: number; y: number };
+    targetComp: PlacedComponent;
+    initialX: number;
+    initialY: number;
+  } | null>(null);
+  const compDragOffsetRef = useRef<{ id: string; dxMm: number; dyMm: number } | null>(null);
 
   // Dragging / Panning state
   const [isPanning, setIsPanning] = useState(false);
@@ -297,7 +313,12 @@ export const BoardCanvas: React.FC = () => {
     let animId: number;
 
     const render = () => {
-      const isActivelyMoving = Boolean(dragRef.current?.isDragging || gizmoDragRef.current || isPanning);
+      const isActivelyMoving = Boolean(
+        dragRef.current?.isDragging ||
+        compDragRef.current?.isDragging ||
+        gizmoDragRef.current ||
+        isPanning
+      );
       if (!dirtyRef.current && !isActivelyMoving) {
         animId = requestAnimationFrame(render);
         return;
@@ -387,6 +408,22 @@ export const BoardCanvas: React.FC = () => {
           ctx.restore();
         }
 
+        // 2.5. Draw Placed Components
+        const components = board.data.components || [];
+        if (components.length > 0 && (showTopComponents || showBottomComponents)) {
+          drawPlacedComponents(
+            ctx,
+            components,
+            boardMmToScreen,
+            zoomFactor,
+            MM_TO_PX,
+            showTopComponents,
+            showBottomComponents,
+            selectedComponentId,
+            compDragOffsetRef.current
+          );
+        }
+
         // 3. Draw Selection Box & Handles strictly for the single selected image
         const allBoardImages = [...board.data.bgBottom.images, ...board.data.bgTop.images];
         const selectedLayer = allBoardImages.find((l) => l.id === selectedImageId);
@@ -428,6 +465,9 @@ export const BoardCanvas: React.FC = () => {
     gridStepMm,
     showTopLayer,
     showBottomLayer,
+    showTopComponents,
+    showBottomComponents,
+    selectedComponentId,
     activeTool,
     strobePhase,
     curtainPosition,
@@ -694,6 +734,36 @@ export const BoardCanvas: React.FC = () => {
         }
       }
 
+      // Check if clicked on any placed component
+      const components = board?.data?.components || [];
+      let hitComp: PlacedComponent | null = null;
+      for (let i = components.length - 1; i >= 0; i--) {
+        const c = components[i];
+        const isTop = c.layer !== "bottom";
+        if ((isTop && showTopComponents) || (!isTop && showBottomComponents)) {
+          if (isPointInComponent(mouseMm, c)) {
+            hitComp = c;
+            break;
+          }
+        }
+      }
+
+      if (hitComp) {
+        selectComponent(hitComp.id);
+        if (!hitComp.locked) {
+          compDragRef.current = {
+            isDragging: true,
+            hasMoved: false,
+            startMouseMm: mouseMm,
+            targetComp: hitComp,
+            initialX: hitComp.xMm ?? hitComp.x ?? 0,
+            initialY: hitComp.yMm ?? hitComp.y ?? 0,
+          };
+          compDragOffsetRef.current = null;
+        }
+        return;
+      }
+
       // Check if clicked on any image to select and drag
       const activeSide = activeWorkLayer.type === "underlay" ? activeWorkLayer.side : "top";
       const topImages = (showTopLayer ? board?.data?.bgTop?.images || [] : []).filter((l) => l.visible);
@@ -730,6 +800,7 @@ export const BoardCanvas: React.FC = () => {
 
       // Clicked on empty canvas: Clear selection and start pan
       selectImage(null);
+      selectComponent(null);
       setIsPanning(true);
       setPanStart({ x: e.clientX - viewportPan.x, y: e.clientY - viewportPan.y });
     }
@@ -863,6 +934,28 @@ export const BoardCanvas: React.FC = () => {
       return;
     }
 
+    // 1.5. Dragging placed component
+    if (compDragRef.current?.isDragging) {
+      const d = compDragRef.current;
+      let dx = mouseMm.x - d.startMouseMm.x;
+      let dy = mouseMm.y - d.startMouseMm.y;
+
+      if (showGrid && gridStepMm > 0) {
+        const targetX = Math.round((d.initialX + dx) / gridStepMm) * gridStepMm;
+        const targetY = Math.round((d.initialY + dy) / gridStepMm) * gridStepMm;
+        dx = targetX - d.initialX;
+        dy = targetY - d.initialY;
+      }
+
+      compDragOffsetRef.current = { id: d.targetComp.id, dxMm: dx, dyMm: dy };
+      d.hasMoved = true;
+      dirtyRef.current = true;
+      if (canvasRef.current && canvasRef.current.style.cursor !== "move") {
+        canvasRef.current.style.cursor = "move";
+      }
+      return;
+    }
+
     // 2. Dragging selected image
     if (dragRef.current?.isDragging) {
       const dist = Math.hypot(
@@ -970,6 +1063,19 @@ export const BoardCanvas: React.FC = () => {
       updateImageLayer(gizmoDragRef.current.layer);
       gizmoDragRef.current = null;
       setLiveHud(null);
+    }
+
+    // 1.5. Finish component move drag
+    if (compDragRef.current?.isDragging) {
+      const d = compDragRef.current;
+      if (d.hasMoved && compDragOffsetRef.current) {
+        const newX = Math.round((d.initialX + compDragOffsetRef.current.dxMm) * 100) / 100;
+        const newY = Math.round((d.initialY + compDragOffsetRef.current.dyMm) * 100) / 100;
+        updateComponent({ ...d.targetComp, x: newX, y: newY, xMm: newX, yMm: newY });
+      }
+      compDragRef.current = null;
+      compDragOffsetRef.current = null;
+      dirtyRef.current = true;
     }
 
     // 2. Finish image move drag
@@ -1333,6 +1439,232 @@ function isPointInImage(
   const localY = dy + hMm / 2;
 
   return localX >= 0 && localX <= wMm && localY >= 0 && localY <= hMm;
+}
+
+function isPointInComponent(
+  ptMm: { x: number; y: number },
+  comp: PlacedComponent
+): boolean {
+  const compX = comp.xMm ?? comp.x ?? 0;
+  const compY = comp.yMm ?? comp.y ?? 0;
+  const dx = ptMm.x - compX;
+  const dy = ptMm.y - compY;
+  const rot = comp.rotationDeg ?? comp.rotation ?? 0;
+  const rad = (-rot * Math.PI) / 180;
+  const cos = Math.cos(rad);
+  const sin = Math.sin(rad);
+  const localX = dx * cos - dy * sin;
+  const localY = dx * sin + dy * cos;
+
+  const w = comp.packageDef?.bodyWidth || 5;
+  const h = comp.packageDef?.bodyHeight || 5;
+  const halfW = Math.max(1.8, w / 2 + 0.8);
+  const halfH = Math.max(1.8, h / 2 + 0.8);
+
+  return Math.abs(localX) <= halfW && Math.abs(localY) <= halfH;
+}
+
+function drawPlacedComponents(
+  ctx: CanvasRenderingContext2D,
+  components: PlacedComponent[],
+  boardMmToScreen: (x: number, y: number) => { x: number; y: number },
+  zoomFactor: number,
+  mmToPx: number,
+  showTop: boolean,
+  showBottom: boolean,
+  selectedId: string | null,
+  dragOffset: { id: string; dxMm: number; dyMm: number } | null
+) {
+  if (!components || components.length === 0) return;
+
+  const pxPerMm = mmToPx * zoomFactor;
+
+  for (const comp of components) {
+    const isTop = (comp.layer || comp.side) !== "bottom";
+    if (isTop && !showTop) continue;
+    if (!isTop && !showBottom) continue;
+
+    const isSelected = comp.id === selectedId;
+    let effX = comp.xMm ?? comp.x ?? 0;
+    let effY = comp.yMm ?? comp.y ?? 0;
+    if (dragOffset && dragOffset.id === comp.id) {
+      effX += dragOffset.dxMm;
+      effY += dragOffset.dyMm;
+    }
+
+    const screenPos = boardMmToScreen(effX, effY);
+    const compRot = comp.rotationDeg ?? comp.rotation ?? 0;
+
+    ctx.save();
+    ctx.translate(screenPos.x, screenPos.y);
+    ctx.rotate((compRot * Math.PI) / 180);
+    if (!isTop || comp.mirrored) {
+      ctx.scale(-1, 1);
+    }
+
+    const pkg = comp.packageDef;
+    const bodyW = (pkg?.bodyWidth || 4) * pxPerMm;
+    const bodyH = (pkg?.bodyHeight || 4) * pxPerMm;
+
+    // 1. Silkscreen Graphics (Lines, Arcs, Rects, D-shape)
+    const silkColor = isTop ? "#e2e8f0" : "#93c5fd";
+    ctx.strokeStyle = silkColor;
+    ctx.lineWidth = Math.max(1, 0.15 * pxPerMm);
+
+    if (pkg && pkg.graphics && pkg.graphics.length > 0) {
+      for (const g of pkg.graphics) {
+        if (g.kind === "line") {
+          ctx.beginPath();
+          ctx.moveTo(g.x1 * pxPerMm, g.y1 * pxPerMm);
+          ctx.lineTo(g.x2 * pxPerMm, g.y2 * pxPerMm);
+          ctx.stroke();
+        } else if (g.kind === "rect") {
+          ctx.strokeRect(
+            (g.x - g.width / 2) * pxPerMm,
+            (g.y - g.height / 2) * pxPerMm,
+            g.width * pxPerMm,
+            g.height * pxPerMm
+          );
+        } else if (g.kind === "circle") {
+          ctx.beginPath();
+          ctx.arc(g.cx * pxPerMm, g.cy * pxPerMm, g.radius * pxPerMm, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (g.kind === "arc") {
+          ctx.beginPath();
+          ctx.arc(
+            g.cx * pxPerMm,
+            g.cy * pxPerMm,
+            g.radius * pxPerMm,
+            (g.startAngle * Math.PI) / 180,
+            (g.endAngle * Math.PI) / 180
+          );
+          ctx.stroke();
+        } else if (g.kind === "d_shape") {
+          const r = (g.diameter / 2) * pxPerMm;
+          ctx.beginPath();
+          ctx.arc(g.cx * pxPerMm, g.cy * pxPerMm, r, -Math.PI / 2, Math.PI / 2, false);
+          ctx.lineTo((g.cx - g.diameter / 2 + g.cutDepth) * pxPerMm, g.cy * pxPerMm + r);
+          ctx.lineTo((g.cx - g.diameter / 2 + g.cutDepth) * pxPerMm, g.cy * pxPerMm - r);
+          ctx.closePath();
+          ctx.stroke();
+        } else if (g.kind === "capsule") {
+          const w = g.width * pxPerMm;
+          const h = g.height * pxPerMm;
+          ctx.strokeRect((g.cx - g.width / 2) * pxPerMm, (g.cy - g.height / 2) * pxPerMm, w, h);
+        }
+      }
+    } else {
+      ctx.strokeRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH);
+    }
+
+    // 2. Copper Pads
+    if (pkg && pkg.pads && pkg.pads.length > 0) {
+      for (const pad of pkg.pads) {
+        const padX = pad.x * pxPerMm;
+        const padY = pad.y * pxPerMm;
+        const padW = Math.max(2, pad.width * pxPerMm);
+        const padH = Math.max(2, pad.height * pxPerMm);
+        const isTht = Boolean(pad.drillDiameter && pad.drillDiameter > 0);
+
+        ctx.fillStyle = isTht ? "#10b981" : isTop ? "#f59e0b" : "#3b82f6";
+
+        if (pad.shape === "circle") {
+          ctx.beginPath();
+          ctx.arc(padX, padY, padW / 2, 0, Math.PI * 2);
+          ctx.fill();
+        } else if (pad.shape === "rounded_rect") {
+          const r = Math.min(padW, padH) * 0.25;
+          if (typeof (ctx as any).roundRect === "function") {
+            (ctx as any).roundRect(padX - padW / 2, padY - padH / 2, padW, padH, r);
+          } else {
+            ctx.rect(padX - padW / 2, padY - padH / 2, padW, padH);
+          }
+          ctx.fill();
+        } else if (pad.shape === "chamfered_rect") {
+          const ch = Math.min(padW, padH) * 0.25;
+          const left = padX - padW / 2;
+          const top = padY - padH / 2;
+          const right = padX + padW / 2;
+          const bot = padY + padH / 2;
+          ctx.beginPath();
+          ctx.moveTo(left + ch, top);
+          ctx.lineTo(right, top);
+          ctx.lineTo(right, bot);
+          ctx.lineTo(left, bot);
+          ctx.lineTo(left, top + ch);
+          ctx.closePath();
+          ctx.fill();
+        } else if (pad.shape === "d_shape") {
+          const r = padW / 2;
+          ctx.beginPath();
+          ctx.arc(padX, padY, r, -Math.PI / 2, Math.PI / 2, false);
+          ctx.lineTo(padX - padW / 2, padY + padH / 2);
+          ctx.lineTo(padX - padW / 2, padY - padH / 2);
+          ctx.closePath();
+          ctx.fill();
+        } else {
+          ctx.fillRect(padX - padW / 2, padY - padH / 2, padW, padH);
+        }
+
+        // Drill hole
+        if (isTht) {
+          const drillD = Math.max(1.5, (pad.drillDiameter || 0.8) * pxPerMm);
+          ctx.fillStyle = "#0c101d";
+          ctx.beginPath();
+          ctx.arc(padX, padY, drillD / 2, 0, Math.PI * 2);
+          ctx.fill();
+        }
+
+        // Pad number label
+        if (padW >= 12 && padH >= 10 && pad.padNum) {
+          ctx.fillStyle = "#000000";
+          ctx.font = `bold ${Math.max(7, Math.min(11, padH * 0.45))}px monospace`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillText(String(pad.padNum), padX, padY);
+        }
+      }
+    }
+
+    // 3. RefDes and Value text
+    ctx.fillStyle = silkColor;
+    const refDesFontPx = Math.max(9, Math.min(16, 1.8 * pxPerMm));
+    ctx.font = `bold ${refDesFontPx}px sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "bottom";
+    const labelY = -bodyH / 2 - 4;
+    ctx.fillText(comp.refDes, 0, labelY);
+
+    if (comp.value) {
+      const valFontPx = Math.max(8, Math.min(13, 1.2 * pxPerMm));
+      ctx.font = `${valFontPx}px sans-serif`;
+      ctx.fillStyle = "#94a3b8";
+      ctx.fillText(comp.value, 0, labelY - refDesFontPx - 2);
+    }
+
+    // 4. Selection Highlight
+    if (isSelected) {
+      ctx.strokeStyle = "#38bdf8";
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4, 4]);
+      const selPad = 4;
+      ctx.strokeRect(-bodyW / 2 - selPad, -bodyH / 2 - selPad, bodyW + selPad * 2, bodyH + selPad * 2);
+      ctx.setLineDash([]);
+
+      ctx.fillStyle = "#38bdf8";
+      const corners = [
+        [-bodyW / 2 - selPad, -bodyH / 2 - selPad],
+        [bodyW / 2 + selPad, -bodyH / 2 - selPad],
+        [bodyW / 2 + selPad, bodyH / 2 + selPad],
+        [-bodyW / 2 - selPad, bodyH / 2 + selPad],
+      ];
+      for (const [cx, cy] of corners) {
+        ctx.fillRect(cx - 3, cy - 3, 6, 6);
+      }
+    }
+
+    ctx.restore();
+  }
 }
 
 function drawGrid(

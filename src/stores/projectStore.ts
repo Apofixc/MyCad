@@ -6,6 +6,7 @@ import {
   ProjectManifest,
   SchematicDocument,
 } from "../types/cad";
+import { PlacedComponent } from "../types/componentLibrary";
 import { engineClient } from "../api/engineClient";
 import { reportError, notifySuccess } from "../utils/errorHandler";
 import { useUiStore } from "./uiStore";
@@ -20,6 +21,7 @@ interface ProjectStore {
   schematic: SchematicDocument | null;
   selectedImageId: string | null;
   selectedImageIds: string[];
+  selectedComponentId: string | null;
   isDirty: boolean;
   isLoading: boolean;
   error: string | null;
@@ -41,6 +43,10 @@ interface ProjectStore {
   toggleSelectImage: (id: string) => void;
   selectAllImages: (ids: string[]) => void;
   clearSelectedImages: () => void;
+  selectComponent: (id: string | null) => void;
+  addComponent: (component: PlacedComponent) => Promise<void>;
+  updateComponent: (component: PlacedComponent) => Promise<void>;
+  deleteComponent: (componentId: string) => Promise<void>;
   updateImageLayer: (layer: BoardImageLayer) => Promise<void>;
   updateImageLayers: (layers: BoardImageLayer[]) => Promise<void>;
   batchSetVisibility: (layerIds: string[], visible: boolean) => Promise<void>;
@@ -59,6 +65,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   schematic: null,
   selectedImageId: null,
   selectedImageIds: [],
+  selectedComponentId: null,
   isDirty: false,
   isLoading: false,
   error: null,
@@ -147,6 +154,8 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       board: null,
       schematic: null,
       selectedImageId: null,
+      selectedImageIds: [],
+      selectedComponentId: null,
       isDirty: false,
       error: null,
     });
@@ -233,9 +242,10 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       set({
         selectedImageIds: next,
         selectedImageId: next.length > 0 ? next[next.length - 1] : null,
+        selectedComponentId: null,
       });
     } else {
-      set({ selectedImageId: id, selectedImageIds: [id] });
+      set({ selectedImageId: id, selectedImageIds: [id], selectedComponentId: null });
     }
   },
 
@@ -246,6 +256,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({
       selectedImageIds: next,
       selectedImageId: next.length > 0 ? next[next.length - 1] : null,
+      selectedComponentId: null,
     });
   },
 
@@ -253,6 +264,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     set({
       selectedImageIds: ids,
       selectedImageId: ids[0] || null,
+      selectedComponentId: null,
     });
   },
 
@@ -261,6 +273,59 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
       selectedImageIds: [],
       selectedImageId: null,
     });
+  },
+
+  selectComponent: (id) => {
+    if (!id) {
+      set({ selectedComponentId: null });
+      return;
+    }
+    const uiState = useUiStore.getState();
+    if (uiState.rightSidebarCollapsed) {
+      useUiStore.setState({ rightSidebarCollapsed: false });
+    }
+    set({ selectedComponentId: id, selectedImageId: null, selectedImageIds: [] });
+  },
+
+  addComponent: async (component: PlacedComponent) => {
+    const { board } = get();
+    if (!board) return;
+    try {
+      const fullState = await engineClient.boardAddComponent(board.id, component);
+      get().applyFullState(fullState);
+      set({ isDirty: true, selectedComponentId: component.id, selectedImageId: null });
+      notifySuccess(`Компонент "${component.refDes}" добавлен на плату`);
+    } catch (e: any) {
+      reportError(e, "Ошибка добавления компонента на плату", { source: "tauri" });
+    }
+  },
+
+  updateComponent: async (component: PlacedComponent) => {
+    const { board } = get();
+    if (!board) return;
+    try {
+      const fullState = await engineClient.boardUpdateComponent(board.id, component);
+      get().applyFullState(fullState);
+      set({ isDirty: true });
+    } catch (e: any) {
+      reportError(e, "Ошибка обновления компонента", { source: "tauri" });
+    }
+  },
+
+  deleteComponent: async (componentId: string) => {
+    const { board, selectedComponentId } = get();
+    if (!board) return;
+    try {
+      const fullState = await engineClient.boardDeleteComponent(board.id, componentId);
+      get().applyFullState(fullState);
+      set({
+        isDirty: true,
+        selectedComponentId: selectedComponentId === componentId ? null : selectedComponentId,
+      });
+      notifySuccess("Компонент удален с платы");
+    } catch (e: any) {
+      reportError(e, "Ошибка удаления компонента", { source: "tauri" });
+    }
   },
 
   updateImageLayer: async (layer) => {

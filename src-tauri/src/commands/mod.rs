@@ -13,6 +13,7 @@ use crate::project::archive::{self, ProjectSession};
 pub struct AppState {
     pub session: Mutex<Option<ProjectSession>>,
     pub global_db: Mutex<GlobalDb>,
+    pub library: Mutex<crate::library::storage::LibraryService>,
 }
 
 fn build_full_state(session: &ProjectSession) -> ProjectFullState {
@@ -522,6 +523,145 @@ pub fn image_convert_tiff_bytes(bytes: Vec<u8>) -> Result<String, String> {
         .map_err(|e| format!("Не удалось декодировать TIFF: {}", e))?;
     let data_url = pipeline::encode_to_data_url(&img, "image/png", 90)?;
     Ok(data_url)
+}
+
+// ---------------------------------------------------------
+// Команды библиотеки посадочных мест и радиокомпонентов
+// ---------------------------------------------------------
+
+#[tauri::command]
+pub fn library_load_all(state: State<AppState>) -> Result<crate::library::model::ComponentLibraryPayload, String> {
+    let mut lib = state.library.lock().map_err(|e| e.to_string())?;
+    lib.load_all()
+}
+
+#[tauri::command]
+pub fn library_list_packages(state: State<AppState>) -> Result<Vec<crate::cad::footprint::PackageDefinition>, String> {
+    let lib = state.library.lock().map_err(|e| e.to_string())?;
+    Ok(lib.list_packages())
+}
+
+#[tauri::command]
+pub fn library_get_package(state: State<AppState>, id: String) -> Result<Option<crate::cad::footprint::PackageDefinition>, String> {
+    let lib = state.library.lock().map_err(|e| e.to_string())?;
+    Ok(lib.get_package(&id))
+}
+
+#[tauri::command]
+pub fn library_save_package(state: State<AppState>, package: crate::cad::footprint::PackageDefinition) -> Result<(), String> {
+    let mut lib = state.library.lock().map_err(|e| e.to_string())?;
+    lib.save_package(package)
+}
+
+#[tauri::command]
+pub fn library_delete_package(state: State<AppState>, id: String) -> Result<(), String> {
+    let mut lib = state.library.lock().map_err(|e| e.to_string())?;
+    lib.delete_package(&id)
+}
+
+#[tauri::command]
+pub fn library_list_devices(state: State<AppState>) -> Result<Vec<crate::library::model::DeviceDefinition>, String> {
+    let lib = state.library.lock().map_err(|e| e.to_string())?;
+    Ok(lib.list_devices())
+}
+
+#[tauri::command]
+pub fn library_get_device(state: State<AppState>, id: String) -> Result<Option<crate::library::model::DeviceDefinition>, String> {
+    let lib = state.library.lock().map_err(|e| e.to_string())?;
+    Ok(lib.get_device(&id))
+}
+
+#[tauri::command]
+pub fn library_save_device(state: State<AppState>, device: crate::library::model::DeviceDefinition) -> Result<(), String> {
+    let mut lib = state.library.lock().map_err(|e| e.to_string())?;
+    lib.save_device(device)
+}
+
+#[tauri::command]
+pub fn library_delete_device(state: State<AppState>, id: String) -> Result<(), String> {
+    let mut lib = state.library.lock().map_err(|e| e.to_string())?;
+    lib.delete_device(&id)
+}
+
+#[tauri::command]
+pub fn library_search_devices(
+    state: State<AppState>,
+    query: String,
+    category: Option<String>,
+    subcategory: Option<String>,
+    tag: Option<String>,
+) -> Result<Vec<crate::library::model::DeviceDefinition>, String> {
+    let lib = state.library.lock().map_err(|e| e.to_string())?;
+    Ok(lib.search_devices(&query, category.as_deref(), subcategory.as_deref(), tag.as_deref()))
+}
+
+#[tauri::command]
+pub fn library_export_json(state: State<AppState>) -> Result<String, String> {
+    let lib = state.library.lock().map_err(|e| e.to_string())?;
+    lib.export_json()
+}
+
+#[tauri::command]
+pub fn library_import_json(state: State<AppState>, json_str: String) -> Result<usize, String> {
+    let mut lib = state.library.lock().map_err(|e| e.to_string())?;
+    lib.import_json(&json_str)
+}
+
+// ---------------------------------------------------------
+// Команды управления размещенными компонентами платы
+// ---------------------------------------------------------
+
+#[tauri::command]
+pub fn board_add_component(
+    state: State<AppState>,
+    board_id: String,
+    component: crate::library::model::PlacedComponent,
+) -> Result<ProjectFullState, String> {
+    let mut session_guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = session_guard.as_mut().ok_or("Нет открытого проекта")?;
+
+    let board = session.boards.iter_mut().find(|b| b.id == board_id)
+        .ok_or(format!("Плата с id {} не найдена", board_id))?;
+
+    board.data.components.push(component);
+    Ok(build_full_state(session))
+}
+
+#[tauri::command]
+pub fn board_update_component(
+    state: State<AppState>,
+    board_id: String,
+    component: crate::library::model::PlacedComponent,
+) -> Result<ProjectFullState, String> {
+    let mut session_guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = session_guard.as_mut().ok_or("Нет открытого проекта")?;
+
+    let board = session.boards.iter_mut().find(|b| b.id == board_id)
+        .ok_or(format!("Плата с id {} не найдена", board_id))?;
+
+    if let Some(existing) = board.data.components.iter_mut().find(|c| c.id == component.id) {
+        *existing = component;
+    } else {
+        return Err(format!("Компонент с id {} не найден на плате", component.id));
+    }
+
+    Ok(build_full_state(session))
+}
+
+#[tauri::command]
+pub fn board_delete_component(
+    state: State<AppState>,
+    board_id: String,
+    component_id: String,
+) -> Result<ProjectFullState, String> {
+    let mut session_guard = state.session.lock().map_err(|e| e.to_string())?;
+    let session = session_guard.as_mut().ok_or("Нет открытого проекта")?;
+
+    let board = session.boards.iter_mut().find(|b| b.id == board_id)
+        .ok_or(format!("Плата с id {} не найдена", board_id))?;
+
+    board.data.components.retain(|c| c.id != component_id);
+    Ok(build_full_state(session))
 }
 
 

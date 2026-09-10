@@ -1,0 +1,5199 @@
+{
+  "categories": [
+    {
+      "id": "passives",
+      "name": "Пассивные компоненты",
+      "icon": "Layers",
+      "description": "Резисторы, конденсаторы, индуктивности, защита цепей",
+      "subcategories": [
+        {
+          "id": "resistors",
+          "name": "Резисторы и триммеры",
+          "description": "Постоянные, подстроечные, потенциометры, сборки"
+        },
+        {
+          "id": "capacitors",
+          "name": "Конденсаторы",
+          "description": "Керамические MLCC, электролитические, танталовые, пленочные"
+        },
+        {
+          "id": "inductors",
+          "name": "Индуктивности и дроссели",
+          "description": "SMD и выводные дроссели, синфазные фильтры, ферритовые бусины"
+        },
+        {
+          "id": "protection",
+          "name": "Защита цепей",
+          "description": "Варисторы, самовосстанавливающиеся Polyfuse, плавкие предохранители, супрессоры"
+        }
+      ]
+    },
+    {
+      "id": "semiconductors",
+      "name": "Полупроводники",
+      "icon": "Zap",
+      "description": "Диоды, транзисторы, стабилизаторы, оптоэлектроника, тиристоры",
+      "subcategories": [
+        {
+          "id": "diodes",
+          "name": "Диоды и выпрямители",
+          "description": "Выпрямительные, импульсные, Шоттки, стабилитроны, диодные мосты"
+        },
+        {
+          "id": "transistors",
+          "name": "Транзисторы",
+          "description": "Биполярные NPN/PNP, полевые MOSFET (N/P-канал), IGBT"
+        },
+        {
+          "id": "thyristors",
+          "name": "Тиристоры и симисторы",
+          "description": "Симисторы BT136/BTA16, тиристоры MCR100, динисторы DB3"
+        },
+        {
+          "id": "voltage_regulators",
+          "name": "Стабилизаторы напряжения",
+          "description": "Линейные LDO, стабилизаторы 78xx/79xx, LM317, опорные TL431, DC-DC"
+        },
+        {
+          "id": "optoelectronics",
+          "name": "Оптоэлектроника и индикация",
+          "description": "Светодиоды, адресные WS2812B, OLED экраны, семисегментные индикаторы, оптопары"
+        }
+      ]
+    },
+    {
+      "id": "ics",
+      "name": "Интегральные микросхемы (IC)",
+      "icon": "Cpu",
+      "description": "Аналоговые, цифровые, микроконтроллеры, память",
+      "subcategories": [
+        {
+          "id": "opamps",
+          "name": "Операционные усилители и УНЧ",
+          "description": "Прецизионные, скоростные ОУ, компараторы, УНЧ LM386"
+        },
+        {
+          "id": "timers_pwm",
+          "name": "Таймеры и ШИМ",
+          "description": "Таймеры 555, ШИМ-контроллеры UC3843, TL494"
+        },
+        {
+          "id": "logic",
+          "name": "Цифровая логика 74xx",
+          "description": "Сдвиговые регистры, логические вентили, инверторы, буферы"
+        },
+        {
+          "id": "interfaces",
+          "name": "Интерфейсы и драйверы",
+          "description": "RS-485, USB-UART, изоляторы шин, сборки Дарлингтона, АЦП"
+        },
+        {
+          "id": "memory",
+          "name": "Память",
+          "description": "Энергонезависимая I2C EEPROM и SPI Flash"
+        },
+        {
+          "id": "mcu",
+          "name": "Микроконтроллеры (MCU)",
+          "description": "AVR ATmega, STM32 ARM, ESP32 SoC, PIC"
+        }
+      ]
+    },
+    {
+      "id": "connectors",
+      "name": "Разъемы и коммутация",
+      "icon": "Plug",
+      "description": "Клеммники, штыревые разъемы, USB, кнопки, реле, модули",
+      "subcategories": [
+        {
+          "id": "terminal_blocks",
+          "name": "Винтовые клеммники",
+          "description": "Шаг 5.08мм и 3.81мм 2P/3P/4P"
+        },
+        {
+          "id": "headers",
+          "name": "Штыревые линейки и модули",
+          "description": "Разъемы 2.54мм, дисплейные шлейфы, радиомодули NRF24L01"
+        },
+        {
+          "id": "ports_power",
+          "name": "Порты, питание и память",
+          "description": "USB Type-C, Micro-USB, DC Jack, Audio 3.5mm, CR2032, MicroSD, RJ45"
+        },
+        {
+          "id": "switches_relays",
+          "name": "Кнопки, переключатели и реле",
+          "description": "Тактовые кнопки, тумблеры, энкодеры EC11, реле SRD и HK19F"
+        }
+      ]
+    },
+    {
+      "id": "hardware",
+      "name": "Служебные, механика и датчики",
+      "icon": "Crosshair",
+      "description": "Кварцы, контрольные точки, отверстия, акустика, датчики",
+      "subcategories": [
+        {
+          "id": "crystals",
+          "name": "Кварцы и генераторы",
+          "description": "Кварцевые резонаторы, часовые кварцы, генераторы, керамические резонаторы"
+        },
+        {
+          "id": "sensors",
+          "name": "Датчики и измерительные модули",
+          "description": "Термометры DS18B20, влажность DHT11, барометры BMP280, ток ACS712, IMU MPU6050"
+        },
+        {
+          "id": "testpoints",
+          "name": "Контрольные точки (TP)",
+          "description": "Тестовые контактные площадки"
+        },
+        {
+          "id": "mounting_holes",
+          "name": "Крепежные отверстия",
+          "description": "Монтажные отверстия под винты M2, M3, M4"
+        },
+        {
+          "id": "audio_buzzers",
+          "name": "Акустика и индикация",
+          "description": "Пьезозуммеры, ИК-приемники, фоторезисторы"
+        }
+      ]
+    }
+  ],
+  "packages": [
+    {
+      "id": "PKG_CRYSTAL_HC49U",
+      "name": "HC-49U (Высокий кварц, шаг 4.88мм, THT)",
+      "standard": "JEDEC HC-49/U",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 4.8,
+      "bodyHeight": 11.5,
+      "pitch": 4.88,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -2.44,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 2.44,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6.5,
+        "courtyardHeight": 13,
+        "maxHeight": 13.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_can",
+      "variants": [
+        {
+          "id": "metal_can",
+          "name": "Металлический корпус",
+          "bodyColor": "#94a3b8",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "none",
+          "silkscreenColor": "#f8fafc"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CRYSTAL_THT_32K",
+      "name": "Часовой кварц 32.768 кГц (цилиндр 2x6мм, шаг 1.5мм)",
+      "standard": "TC-26 / Cylinder 2x6",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 2.2,
+      "bodyHeight": 6.2,
+      "pitch": 1.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -0.75,
+          "y": 0,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.7
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0.75,
+          "y": 0,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.7
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 3.5,
+        "courtyardHeight": 7.5,
+        "maxHeight": 2.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_silver",
+      "variants": [
+        {
+          "id": "metal_silver",
+          "name": "Серебристый цилиндр",
+          "bodyColor": "#94a3b8",
+          "bodyBorderColor": "#64748b",
+          "keyType": "none",
+          "silkscreenColor": "#f8fafc"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CRYSTAL_SMD_5032",
+      "name": "SMD Crystal 5032 (5.0x3.2мм, 4 вывода)",
+      "standard": "IPC-7351",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 5,
+      "bodyHeight": 3.2,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -1.9,
+          "y": -1.1,
+          "width": 1.4,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 1.9,
+          "y": -1.1,
+          "width": 1.4,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 1.9,
+          "y": 1.1,
+          "width": 1.4,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -1.9,
+          "y": 1.1,
+          "width": 1.4,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 5.8,
+        "courtyardHeight": 4,
+        "maxHeight": 1.3,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "ceramic_metal",
+      "variants": [
+        {
+          "id": "ceramic_metal",
+          "name": "Керамика с металлической крышкой",
+          "bodyColor": "#334155",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "chamfer",
+          "silkscreenColor": "#f8fafc"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CRYSTAL_SMD_3215_2P",
+      "name": "SMD Часовой кварц 3215 (3.2x1.5мм, 2 вывода)",
+      "standard": "IPC-7351",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 3.2,
+      "bodyHeight": 1.5,
+      "pitch": 2.2,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -1.25,
+          "y": 0,
+          "width": 1.1,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 1.25,
+          "y": 0,
+          "width": 1.1,
+          "height": 1.8,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 4,
+        "courtyardHeight": 2.2,
+        "maxHeight": 0.9,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_gold",
+      "variants": [
+        {
+          "id": "black_gold",
+          "name": "Керамический черный",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#e2e8f0",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_RESONATOR_3P",
+      "name": "Керамический резонатор 3-pin (со встроенными емкостями, шаг 2.54мм)",
+      "standard": "Murata CSTCE Style THT",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 3,
+      "bodyHeight": 8,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 0,
+          "y": 2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 4.5,
+        "courtyardHeight": 9.5,
+        "maxHeight": 6,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "blue_orange",
+      "variants": [
+        {
+          "id": "blue_orange",
+          "name": "Синяя капля",
+          "bodyColor": "#1d4ed8",
+          "bodyBorderColor": "#60a5fa",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_OSC_SMD_5032",
+      "name": "Активный кварцевый генератор SMD 5032 (4 вывода: VCC/GND/OUT/OE)",
+      "standard": "IPC-7351",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 5,
+      "bodyHeight": 3.2,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -1.9,
+          "y": -1.1,
+          "width": 1.5,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 1.9,
+          "y": -1.1,
+          "width": 1.5,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 1.9,
+          "y": 1.1,
+          "width": 1.5,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -1.9,
+          "y": 1.1,
+          "width": 1.5,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 5.8,
+        "courtyardHeight": 4,
+        "maxHeight": 1.4,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_can",
+      "variants": [
+        {
+          "id": "metal_can",
+          "name": "Металлическая крышка с точкой 1-го вывода",
+          "bodyColor": "#334155",
+          "bodyBorderColor": "#94a3b8",
+          "keyType": "dot",
+          "keyColor": "#ef4444"
+        }
+      ]
+    },
+    {
+      "id": "PKG_VARISTOR_DISC_07D",
+      "name": "Варистор дисковый 07D (шаг 5.08мм)",
+      "standard": "MOV 07D",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 3,
+      "bodyHeight": 7.5,
+      "pitch": 5.08,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -2.54,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 2.54,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 4.5,
+        "courtyardHeight": 9,
+        "maxHeight": 11,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "blue_disc",
+      "variants": [
+        {
+          "id": "blue_disc",
+          "name": "Синий дисковый",
+          "bodyColor": "#2563eb",
+          "bodyBorderColor": "#1d4ed8",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_VARISTOR_DISC_10D",
+      "name": "Варистор дисковый 10D (шаг 7.5мм, 10D471K)",
+      "standard": "MOV 10D",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 3.5,
+      "bodyHeight": 11,
+      "pitch": 7.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -3.75,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 3.75,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 5,
+        "courtyardHeight": 12.5,
+        "maxHeight": 14,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "blue_disc",
+      "variants": [
+        {
+          "id": "blue_disc",
+          "name": "Синий дисковый",
+          "bodyColor": "#1d4ed8",
+          "bodyBorderColor": "#1e40af",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_VARISTOR_DISC_14D",
+      "name": "Варистор силовой 14D (шаг 7.5мм, 14D471K)",
+      "standard": "MOV 14D",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 4,
+      "bodyHeight": 15,
+      "pitch": 7.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -3.75,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.1
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 3.75,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 5.5,
+        "courtyardHeight": 17,
+        "maxHeight": 18,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "blue_disc",
+      "variants": [
+        {
+          "id": "blue_disc",
+          "name": "Синий дисковый силовой",
+          "bodyColor": "#1e3a8a",
+          "bodyBorderColor": "#172554",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_FUSE_5X20_THT",
+      "name": "Предохранитель 5x20мм в держателе (шаг 22.5мм, THT)",
+      "standard": "IEC 60127-2 Clip Holder",
+      "family": "axial",
+      "mountType": "tht",
+      "bodyWidth": 6.5,
+      "bodyHeight": 22,
+      "pitch": 22.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -11.25,
+          "width": 2.6,
+          "height": 2.6,
+          "shape": "circle",
+          "drillDiameter": 1.5
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 11.25,
+          "width": 2.6,
+          "height": 2.6,
+          "shape": "circle",
+          "drillDiameter": 1.5
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 8,
+        "courtyardHeight": 25,
+        "maxHeight": 9,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "glass_cartridge",
+      "variants": [
+        {
+          "id": "glass_cartridge",
+          "name": "Стеклянный цилиндр с клипсами",
+          "bodyColor": "#64748b",
+          "bodyBorderColor": "#e2e8f0",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_FUSE_SMD_1812",
+      "name": "SMD Polyfuse 1812 (4532 Metric)",
+      "standard": "IPC-7351",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 4.5,
+      "bodyHeight": 3.2,
+      "pitch": 3.4,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -1.7,
+          "y": 0,
+          "width": 1.2,
+          "height": 3.2,
+          "shape": "rect"
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 1.7,
+          "y": 0,
+          "width": 1.2,
+          "height": 3.2,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 5.4,
+        "courtyardHeight": 3.8,
+        "maxHeight": 1.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "green_polyfuse",
+      "variants": [
+        {
+          "id": "green_polyfuse",
+          "name": "Зеленый полимерный чип",
+          "bodyColor": "#15803d",
+          "bodyBorderColor": "#86efac",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_DO_35",
+      "name": "DO-35 (Стеклянный диод, 1N4148 / BZX55, шаг 7.62мм)",
+      "standard": "JEDEC DO-35",
+      "family": "axial",
+      "mountType": "tht",
+      "bodyWidth": 2,
+      "bodyHeight": 4.2,
+      "pitch": 7.62,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "A",
+          "x": 0,
+          "y": -3.81,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "K",
+          "x": 0,
+          "y": 3.81,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 3,
+        "courtyardHeight": 9.5,
+        "maxHeight": 2.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "glass_orange",
+      "variants": [
+        {
+          "id": "glass_orange",
+          "name": "Оранжевое стекло с черной полосой катода",
+          "bodyColor": "#ea580c",
+          "bodyBorderColor": "#fdba74",
+          "keyType": "stripe",
+          "keyColor": "#0f172a",
+          "hasPolarityMark": true
+        }
+      ]
+    },
+    {
+      "id": "PKG_DO_41",
+      "name": "DO-41 (Выпрямительный диод 1N4007, шаг 10.16мм)",
+      "standard": "JEDEC DO-41",
+      "family": "axial",
+      "mountType": "tht",
+      "bodyWidth": 2.8,
+      "bodyHeight": 5.2,
+      "pitch": 10.16,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "A",
+          "x": 0,
+          "y": -5.08,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 2,
+          "name": "K",
+          "x": 0,
+          "y": 5.08,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.9
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 4,
+        "courtyardHeight": 12,
+        "maxHeight": 3.2,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_silver_band",
+      "variants": [
+        {
+          "id": "black_silver_band",
+          "name": "Черный с серебристой полосой",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#475569",
+          "keyType": "stripe",
+          "keyColor": "#e2e8f0",
+          "hasPolarityMark": true
+        }
+      ]
+    },
+    {
+      "id": "PKG_LED_3MM",
+      "name": "LED 3мм THT (шаг 2.54мм)",
+      "standard": "Radial 3mm T-1",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 3.8,
+      "bodyHeight": 3.8,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "A",
+          "x": 0,
+          "y": -1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "K",
+          "x": 0,
+          "y": 1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 4.5,
+        "courtyardHeight": 4.5,
+        "maxHeight": 6,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "red_diffused",
+      "variants": [
+        {
+          "id": "red_diffused",
+          "name": "Красный матовый",
+          "bodyColor": "#ef4444",
+          "bodyBorderColor": "#b91c1c",
+          "keyType": "chamfer",
+          "hasPolarityMark": true
+        },
+        {
+          "id": "green_diffused",
+          "name": "Зеленый матовый",
+          "bodyColor": "#22c55e",
+          "bodyBorderColor": "#15803d",
+          "keyType": "chamfer",
+          "hasPolarityMark": true
+        },
+        {
+          "id": "blue_diffused",
+          "name": "Синий матовый",
+          "bodyColor": "#3b82f6",
+          "bodyBorderColor": "#1d4ed8",
+          "keyType": "chamfer",
+          "hasPolarityMark": true
+        }
+      ]
+    },
+    {
+      "id": "PKG_LED_5MM",
+      "name": "LED 5мм THT (шаг 2.54мм)",
+      "standard": "Radial 5mm T-1 3/4",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 5.8,
+      "bodyHeight": 5.8,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "A",
+          "x": 0,
+          "y": -1.27,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.85
+        },
+        {
+          "padNum": 2,
+          "name": "K",
+          "x": 0,
+          "y": 1.27,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.85
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6.5,
+        "courtyardHeight": 6.5,
+        "maxHeight": 9,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "green_5mm",
+      "variants": [
+        {
+          "id": "green_5mm",
+          "name": "Зеленый 5мм",
+          "bodyColor": "#10b981",
+          "bodyBorderColor": "#047857",
+          "keyType": "chamfer",
+          "hasPolarityMark": true
+        },
+        {
+          "id": "red_5mm",
+          "name": "Красный 5мм",
+          "bodyColor": "#dc2626",
+          "bodyBorderColor": "#991b1b",
+          "keyType": "chamfer",
+          "hasPolarityMark": true
+        },
+        {
+          "id": "blue_5mm",
+          "name": "Синий 5мм",
+          "bodyColor": "#2563eb",
+          "bodyBorderColor": "#1e40af",
+          "keyType": "chamfer",
+          "hasPolarityMark": true
+        }
+      ]
+    },
+    {
+      "id": "PKG_LED_5050_RGB",
+      "name": "LED 5050 RGB (5.0x5.0мм, 6 SMD выводов)",
+      "standard": "IPC-7351",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 5,
+      "bodyHeight": 5,
+      "pitch": 1.75,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -2.4,
+          "y": -1.75,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rect"
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -2.4,
+          "y": 0,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rect"
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -2.4,
+          "y": 1.75,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rect"
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": 2.4,
+          "y": 1.75,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rect"
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": 2.4,
+          "y": 0,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rect"
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": 2.4,
+          "y": -1.75,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6,
+        "courtyardHeight": 6,
+        "maxHeight": 1.6,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "white_pkg",
+      "variants": [
+        {
+          "id": "white_pkg",
+          "name": "Белый пластик со скосом 1-го вывода",
+          "bodyColor": "#f8fafc",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "chamfer"
+        }
+      ]
+    },
+    {
+      "id": "PKG_LED_7SEG_056_DIP10",
+      "name": "Семисегментный индикатор 0.56\" (1 разряд, DIP-10, шаг 2.54мм)",
+      "standard": "Standard 0.56\" 10-pin LED Display",
+      "family": "dip",
+      "mountType": "tht",
+      "bodyWidth": 12.6,
+      "bodyHeight": 19,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "e",
+          "x": -7.62,
+          "y": -5.08,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "d",
+          "x": -7.62,
+          "y": -2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 3,
+          "name": "COM1",
+          "x": -7.62,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 4,
+          "name": "c",
+          "x": -7.62,
+          "y": 2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 5,
+          "name": "DP",
+          "x": -7.62,
+          "y": 5.08,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 6,
+          "name": "b",
+          "x": 7.62,
+          "y": 5.08,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 7,
+          "name": "a",
+          "x": 7.62,
+          "y": 2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 8,
+          "name": "COM2",
+          "x": 7.62,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 9,
+          "name": "f",
+          "x": 7.62,
+          "y": -2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 10,
+          "name": "g",
+          "x": 7.62,
+          "y": -5.08,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 16,
+        "courtyardHeight": 21,
+        "maxHeight": 8,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "grey_face",
+      "variants": [
+        {
+          "id": "grey_face",
+          "name": "Серая панель с белыми сегментами",
+          "bodyColor": "#334155",
+          "bodyBorderColor": "#64748b",
+          "keyType": "dot",
+          "keyColor": "#ef4444"
+        }
+      ]
+    },
+    {
+      "id": "PKG_BRIDGE_MB6S",
+      "name": "Диодный мост MB6S (SOIC-4 SMD, 4 вывода)",
+      "standard": "SOIC-4",
+      "family": "soic",
+      "mountType": "smd",
+      "bodyWidth": 4.8,
+      "bodyHeight": 4,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "+",
+          "x": -2.6,
+          "y": -1.27,
+          "width": 1.6,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 2,
+          "name": "-",
+          "x": -2.6,
+          "y": 1.27,
+          "width": 1.6,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 3,
+          "name": "~1",
+          "x": 2.6,
+          "y": 1.27,
+          "width": 1.6,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 4,
+          "name": "~2",
+          "x": 2.6,
+          "y": -1.27,
+          "width": 1.6,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6.2,
+        "courtyardHeight": 5,
+        "maxHeight": 2.7,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_body",
+      "variants": [
+        {
+          "id": "black_body",
+          "name": "Черный корпус с ключом",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#475569",
+          "keyType": "notch"
+        }
+      ]
+    },
+    {
+      "id": "PKG_BRIDGE_DB107",
+      "name": "Диодный мост DB107 (DB-1 / DIP-4, THT)",
+      "standard": "DB-1",
+      "family": "dip",
+      "mountType": "tht",
+      "bodyWidth": 6.5,
+      "bodyHeight": 8.5,
+      "pitch": 5.08,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "+",
+          "x": -3.81,
+          "y": -2.54,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 2,
+          "name": "-",
+          "x": -3.81,
+          "y": 2.54,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 3,
+          "name": "~1",
+          "x": 3.81,
+          "y": 2.54,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 4,
+          "name": "~2",
+          "x": 3.81,
+          "y": -2.54,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 9.5,
+        "courtyardHeight": 10,
+        "maxHeight": 4,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_dip4",
+      "variants": [
+        {
+          "id": "black_dip4",
+          "name": "Черный корпус с вырезом",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#475569",
+          "keyType": "notch"
+        }
+      ]
+    },
+    {
+      "id": "PKG_POT_TRIMMER_3296W",
+      "name": "Подстроечный резистор 3296W (шаг 2.54мм в ряд, THT)",
+      "standard": "Bourns 3296W",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 4.8,
+      "bodyHeight": 9.5,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 0,
+          "y": 2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6,
+        "courtyardHeight": 11,
+        "maxHeight": 10,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "blue_cube",
+      "variants": [
+        {
+          "id": "blue_cube",
+          "name": "Синий кубический с винтом",
+          "bodyColor": "#2563eb",
+          "bodyBorderColor": "#1d4ed8",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_POT_TRIMMER_CA6V",
+      "name": "Подстроечник горизонтальный CA6V (шаг 5.0x5.0мм, треугольник)",
+      "standard": "Piher PT6 / CA6V",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 6.5,
+      "bodyHeight": 6.5,
+      "pitch": 5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -2.5,
+          "y": -2.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 2.5,
+          "y": 0,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -2.5,
+          "y": 2.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 8,
+        "courtyardHeight": 8,
+        "maxHeight": 5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "white_rotor",
+      "variants": [
+        {
+          "id": "white_rotor",
+          "name": "Белый корпус с крестовиной",
+          "bodyColor": "#f8fafc",
+          "bodyBorderColor": "#94a3b8",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_POT_WH148",
+      "name": "Потенциометр регулировочный WH148 (шаг 5.08мм, 3 вывода)",
+      "standard": "Alpha WH148-1",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 16.5,
+      "bodyHeight": 17,
+      "pitch": 5.08,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -5.08,
+          "y": -7,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.2
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": -7,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "rounded_rect",
+          "drillDiameter": 1.2
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 5.08,
+          "y": -7,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.2
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 18,
+        "courtyardHeight": 20,
+        "maxHeight": 25,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_shaft",
+      "variants": [
+        {
+          "id": "metal_shaft",
+          "name": "Металлический корпус с валом",
+          "bodyColor": "#94a3b8",
+          "bodyBorderColor": "#475569",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_RES_NET_SIP_8",
+      "name": "Резисторная сборка SIP-8 (8 выводов в ряд, шаг 2.54мм)",
+      "standard": "Bourns 4608X",
+      "family": "dip",
+      "mountType": "tht",
+      "bodyWidth": 2.5,
+      "bodyHeight": 20.32,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -8.89,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": -6.35,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 0,
+          "y": -3.81,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": 0,
+          "y": -1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": 0,
+          "y": 1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": 0,
+          "y": 3.81,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 7,
+          "name": "7",
+          "x": 0,
+          "y": 6.35,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 8,
+          "name": "8",
+          "x": 0,
+          "y": 8.89,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 4,
+        "courtyardHeight": 22,
+        "maxHeight": 6.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "yellow_sip",
+      "variants": [
+        {
+          "id": "yellow_sip",
+          "name": "Желтый SIP корпус с точкой 1-го вывода",
+          "bodyColor": "#eab308",
+          "bodyBorderColor": "#ca8a04",
+          "keyType": "dot",
+          "keyColor": "#0f172a"
+        }
+      ]
+    },
+    {
+      "id": "PKG_INDUCTOR_SMD_CD54",
+      "name": "Дроссель SMD CD54 (5.8x5.2мм, 2 площадки)",
+      "standard": "Sumida CD54 Style",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 5.8,
+      "bodyHeight": 5.2,
+      "pitch": 4.2,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -2.1,
+          "y": 0,
+          "width": 1.6,
+          "height": 4.5,
+          "shape": "rounded_rect",
+          "roundRadius": 0.3
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 2.1,
+          "y": 0,
+          "width": 1.6,
+          "height": 4.5,
+          "shape": "rounded_rect",
+          "roundRadius": 0.3
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6.5,
+        "courtyardHeight": 6,
+        "maxHeight": 4.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "ferrite_black",
+      "variants": [
+        {
+          "id": "ferrite_black",
+          "name": "Черный феррит с медной обмоткой",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#d97706",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_INDUCTOR_SMD_CD75",
+      "name": "Дроссель силовой SMD CD75 (7.8x7.0мм)",
+      "standard": "Sumida CD75 Style",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 7.8,
+      "bodyHeight": 7,
+      "pitch": 5.8,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -2.9,
+          "y": 0,
+          "width": 2,
+          "height": 6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.4
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 2.9,
+          "y": 0,
+          "width": 2,
+          "height": 6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.4
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 8.5,
+        "courtyardHeight": 8,
+        "maxHeight": 5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "ferrite_black",
+      "variants": [
+        {
+          "id": "ferrite_black",
+          "name": "Черный силовой феррит",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#b45309",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_INDUCTOR_SMD_CD127",
+      "name": "Дроссель силовой экранированный SMD CD127 (12x12мм)",
+      "standard": "Bourns SRR1260",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 12,
+      "bodyHeight": 12,
+      "pitch": 9,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -4.5,
+          "y": 0,
+          "width": 3,
+          "height": 5,
+          "shape": "rounded_rect",
+          "roundRadius": 0.5
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 4.5,
+          "y": 0,
+          "width": 3,
+          "height": 5,
+          "shape": "rounded_rect",
+          "roundRadius": 0.5
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 13,
+        "courtyardHeight": 13,
+        "maxHeight": 8,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "shielded_black",
+      "variants": [
+        {
+          "id": "shielded_black",
+          "name": "Экранированный кубический корпус",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#475569",
+          "keyType": "dot",
+          "keyColor": "#cbd5e1"
+        }
+      ]
+    },
+    {
+      "id": "PKG_INDUCTOR_RADIAL_D6",
+      "name": "Дроссель выводной радиальный D6мм (шаг 3.5мм)",
+      "standard": "Radial Choke D6mm",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 6.5,
+      "bodyHeight": 6.5,
+      "pitch": 3.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -1.75,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 1.75,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 7.5,
+        "courtyardHeight": 7.5,
+        "maxHeight": 8.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_heatshrink",
+      "variants": [
+        {
+          "id": "black_heatshrink",
+          "name": "В черной термоусадке",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#334155",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_INDUCTOR_AXIAL_0410",
+      "name": "Дроссель осевой 0410 (в стиле резистора, шаг 10.16мм)",
+      "standard": "Axial Choke 0410",
+      "family": "axial",
+      "mountType": "tht",
+      "bodyWidth": 3.8,
+      "bodyHeight": 9.5,
+      "pitch": 10.16,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -5.08,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 5.08,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 4.5,
+        "courtyardHeight": 12,
+        "maxHeight": 4,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "green_inductor",
+      "variants": [
+        {
+          "id": "green_inductor",
+          "name": "Зеленое покрытие с полосами",
+          "bodyColor": "#15803d",
+          "bodyBorderColor": "#86efac",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CHOKE_CMC_UU98",
+      "name": "Синфазный фильтр питания UU9.8 (4 вывода THT)",
+      "standard": "UU9.8 Line Filter",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 12,
+      "bodyHeight": 16,
+      "pitch": 7,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "L1_IN",
+          "x": -3.5,
+          "y": -4,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 2,
+          "name": "L1_OUT",
+          "x": -3.5,
+          "y": 4,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 3,
+          "name": "L2_OUT",
+          "x": 3.5,
+          "y": 4,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 4,
+          "name": "L2_IN",
+          "x": 3.5,
+          "y": -4,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 14,
+        "courtyardHeight": 18,
+        "maxHeight": 17,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "ferrite_bracket",
+      "variants": [
+        {
+          "id": "ferrite_bracket",
+          "name": "Ферритовый сердечник в пластиковом каркасе",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#64748b",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_OPTO_DIP_4",
+      "name": "Оптопара DIP-4 (PC817 / EL817, шаг 2.54мм)",
+      "standard": "DIP-4",
+      "family": "dip",
+      "mountType": "tht",
+      "bodyWidth": 6.5,
+      "bodyHeight": 4.6,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "A",
+          "x": -3.81,
+          "y": -1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "K",
+          "x": -3.81,
+          "y": 1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 3,
+          "name": "E",
+          "x": 3.81,
+          "y": 1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 4,
+          "name": "C",
+          "x": 3.81,
+          "y": -1.27,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 9.5,
+        "courtyardHeight": 6,
+        "maxHeight": 4.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_notch",
+      "variants": [
+        {
+          "id": "black_notch",
+          "name": "Черный корпус с точкой",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#475569",
+          "keyType": "dot",
+          "keyColor": "#ef4444"
+        }
+      ]
+    },
+    {
+      "id": "PKG_OPTO_SOP_4",
+      "name": "Оптопара SOP-4 SMD (PC817 SMD)",
+      "standard": "SOP-4",
+      "family": "soic",
+      "mountType": "smd",
+      "bodyWidth": 4.4,
+      "bodyHeight": 4.6,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "A",
+          "x": -3.2,
+          "y": -1.27,
+          "width": 1.8,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 2,
+          "name": "K",
+          "x": -3.2,
+          "y": 1.27,
+          "width": 1.8,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 3,
+          "name": "E",
+          "x": 3.2,
+          "y": 1.27,
+          "width": 1.8,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 4,
+          "name": "C",
+          "x": 3.2,
+          "y": -1.27,
+          "width": 1.8,
+          "height": 1.2,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 7.5,
+        "courtyardHeight": 6,
+        "maxHeight": 2.2,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_dot",
+      "variants": [
+        {
+          "id": "black_dot",
+          "name": "SMD черный с точкой",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#334155",
+          "keyType": "dot",
+          "keyColor": "#38bdf8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_OPTO_DIP_6",
+      "name": "Оптосимистор DIP-6 (MOC3041 / MOC3063, шаг 2.54мм)",
+      "standard": "DIP-6",
+      "family": "dip",
+      "mountType": "tht",
+      "bodyWidth": 6.5,
+      "bodyHeight": 7.3,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "A",
+          "x": -3.81,
+          "y": -2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "K",
+          "x": -3.81,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 3,
+          "name": "NC",
+          "x": -3.81,
+          "y": 2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 4,
+          "name": "MT1",
+          "x": 3.81,
+          "y": 2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 5,
+          "name": "NC2",
+          "x": 3.81,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 6,
+          "name": "MT2",
+          "x": 3.81,
+          "y": -2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 9.5,
+        "courtyardHeight": 8.5,
+        "maxHeight": 4.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "white_dip6",
+      "variants": [
+        {
+          "id": "white_dip6",
+          "name": "Белый корпус оптосимистора",
+          "bodyColor": "#f8fafc",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "notch"
+        }
+      ]
+    },
+    {
+      "id": "PKG_RELAY_SRD",
+      "name": "Реле Songle SRD (5 выводов SPDT, 19x15.5мм, THT)",
+      "standard": "Songle SRD-05VDC-SL-C",
+      "family": "switch",
+      "mountType": "tht",
+      "bodyWidth": 15.5,
+      "bodyHeight": 19,
+      "pitch": 2,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "COIL1",
+          "x": -6,
+          "y": -6,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 2,
+          "name": "COM",
+          "x": 6,
+          "y": -6,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 3,
+          "name": "NO",
+          "x": -6,
+          "y": 6,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 4,
+          "name": "NC",
+          "x": 6,
+          "y": 6,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 5,
+          "name": "COIL2",
+          "x": 0,
+          "y": -8,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 17,
+        "courtyardHeight": 20.5,
+        "maxHeight": 15.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "blue_box",
+      "variants": [
+        {
+          "id": "blue_box",
+          "name": "Синий герметичный куб",
+          "bodyColor": "#1d4ed8",
+          "bodyBorderColor": "#1e40af",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SENSOR_VS1838B",
+      "name": "ИК-приемник VS1838B (3 вывода THT, шаг 2.54мм)",
+      "standard": "VS1838B IR Receiver",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 5,
+      "bodyHeight": 6,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "OUT",
+          "x": 0,
+          "y": -2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "GND",
+          "x": 0,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 3,
+          "name": "VCC",
+          "x": 0,
+          "y": 2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6,
+        "courtyardHeight": 7.5,
+        "maxHeight": 10,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_screen",
+      "variants": [
+        {
+          "id": "metal_screen",
+          "name": "Черный корпус с металлической сеткой",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#94a3b8",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_BUZZER_D12",
+      "name": "Пьезозуммер D12мм (шаг 7.62мм, THT)",
+      "standard": "Buzzer 12mm",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 12,
+      "bodyHeight": 12,
+      "pitch": 7.62,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "+",
+          "x": 0,
+          "y": -3.81,
+          "width": 2,
+          "height": 2,
+          "shape": "rounded_rect",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 2,
+          "name": "-",
+          "x": 0,
+          "y": 3.81,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 13,
+        "courtyardHeight": 13,
+        "maxHeight": 9.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_cylinder",
+      "variants": [
+        {
+          "id": "black_cylinder",
+          "name": "Черный пластиковый цилиндр с плюсом",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#334155",
+          "keyType": "chamfer",
+          "hasPolarityMark": true
+        }
+      ]
+    },
+    {
+      "id": "PKG_TACT_SMD_3X6",
+      "name": "Кнопка тактовая SMD 3x6мм (2 площадки)",
+      "standard": "Tact Switch 3x6mm SMD",
+      "family": "switch",
+      "mountType": "smd",
+      "bodyWidth": 3.5,
+      "bodyHeight": 6,
+      "pitch": 4.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -2.25,
+          "width": 1.4,
+          "height": 2,
+          "shape": "rect"
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 2.25,
+          "width": 1.4,
+          "height": 2,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 4.5,
+        "courtyardHeight": 7.5,
+        "maxHeight": 2.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "white_button",
+      "variants": [
+        {
+          "id": "white_button",
+          "name": "Белый пластик с кнопкой",
+          "bodyColor": "#f8fafc",
+          "bodyBorderColor": "#64748b",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_TACT_THT_12X12",
+      "name": "Кнопка тактовая 12x12мм (шаг 12.5x5.0мм, THT)",
+      "standard": "Omron B3F-4000 Style",
+      "family": "switch",
+      "mountType": "tht",
+      "bodyWidth": 12,
+      "bodyHeight": 12,
+      "pitch": 5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -6.25,
+          "y": -2.5,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1.1
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 6.25,
+          "y": -2.5,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1.1
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -6.25,
+          "y": 2.5,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1.1
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": 6.25,
+          "y": 2.5,
+          "width": 2,
+          "height": 2,
+          "shape": "circle",
+          "drillDiameter": 1.1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 14,
+        "courtyardHeight": 14,
+        "maxHeight": 7.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_square",
+      "variants": [
+        {
+          "id": "black_square",
+          "name": "Черный квадрат с круглым толкателем",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#475569",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SWITCH_SLIDE_SS12D00",
+      "name": "Движковый переключатель SPDT (SS12D00, шаг 2.54мм, THT)",
+      "standard": "SS12D00G",
+      "family": "switch",
+      "mountType": "tht",
+      "bodyWidth": 4.5,
+      "bodyHeight": 8.5,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": 0,
+          "y": -2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 0,
+          "y": 2.54,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6,
+        "courtyardHeight": 10,
+        "maxHeight": 8,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_lever",
+      "variants": [
+        {
+          "id": "metal_lever",
+          "name": "Металлический рычажок",
+          "bodyColor": "#64748b",
+          "bodyBorderColor": "#94a3b8",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CONN_MICRO_USB",
+      "name": "Micro-USB Type-B 5-pin SMD (с 4 крепежными выводами)",
+      "standard": "Micro-USB B Receptacle",
+      "family": "connector",
+      "mountType": "smd",
+      "bodyWidth": 7.5,
+      "bodyHeight": 5,
+      "pitch": 0.65,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "VBUS",
+          "x": -1.3,
+          "y": 2.5,
+          "width": 0.4,
+          "height": 1.35,
+          "shape": "rect"
+        },
+        {
+          "padNum": 2,
+          "name": "D-",
+          "x": -0.65,
+          "y": 2.5,
+          "width": 0.4,
+          "height": 1.35,
+          "shape": "rect"
+        },
+        {
+          "padNum": 3,
+          "name": "D+",
+          "x": 0,
+          "y": 2.5,
+          "width": 0.4,
+          "height": 1.35,
+          "shape": "rect"
+        },
+        {
+          "padNum": 4,
+          "name": "ID",
+          "x": 0.65,
+          "y": 2.5,
+          "width": 0.4,
+          "height": 1.35,
+          "shape": "rect"
+        },
+        {
+          "padNum": 5,
+          "name": "GND",
+          "x": 1.3,
+          "y": 2.5,
+          "width": 0.4,
+          "height": 1.35,
+          "shape": "rect"
+        },
+        {
+          "padNum": 6,
+          "name": "SHIELD1",
+          "x": -3.5,
+          "y": 2,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rounded_rect",
+          "roundRadius": 0.3
+        },
+        {
+          "padNum": 7,
+          "name": "SHIELD2",
+          "x": 3.5,
+          "y": 2,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rounded_rect",
+          "roundRadius": 0.3
+        },
+        {
+          "padNum": 8,
+          "name": "SHIELD3",
+          "x": -3.5,
+          "y": -2,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rounded_rect",
+          "roundRadius": 0.3
+        },
+        {
+          "padNum": 9,
+          "name": "SHIELD4",
+          "x": 3.5,
+          "y": -2,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rounded_rect",
+          "roundRadius": 0.3
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 9.5,
+        "courtyardHeight": 6.5,
+        "maxHeight": 3,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_shield",
+      "variants": [
+        {
+          "id": "metal_shield",
+          "name": "Металлический экран SMD",
+          "bodyColor": "#94a3b8",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CONN_USB_A_FEMALE",
+      "name": "USB Type-A Female THT (4 контакта + 2 крепежных)",
+      "standard": "USB Type-A Receptacle",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 14.5,
+      "bodyHeight": 14,
+      "pitch": 2.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "VBUS",
+          "x": -3.5,
+          "y": 6.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rounded_rect",
+          "drillDiameter": 0.95
+        },
+        {
+          "padNum": 2,
+          "name": "D-",
+          "x": -1,
+          "y": 6.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.95
+        },
+        {
+          "padNum": 3,
+          "name": "D+",
+          "x": 1,
+          "y": 6.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.95
+        },
+        {
+          "padNum": 4,
+          "name": "GND",
+          "x": 3.5,
+          "y": 6.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 0.95
+        },
+        {
+          "padNum": 5,
+          "name": "SH1",
+          "x": -6.56,
+          "y": 3.8,
+          "width": 3.2,
+          "height": 3.2,
+          "shape": "oval",
+          "drillDiameter": 2.3
+        },
+        {
+          "padNum": 6,
+          "name": "SH2",
+          "x": 6.56,
+          "y": 3.8,
+          "width": 3.2,
+          "height": 3.2,
+          "shape": "oval",
+          "drillDiameter": 2.3
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 16,
+        "courtyardHeight": 16,
+        "maxHeight": 7.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_case",
+      "variants": [
+        {
+          "id": "metal_case",
+          "name": "Стальной разъем USB-A",
+          "bodyColor": "#cbd5e1",
+          "bodyBorderColor": "#64748b",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CONN_AUDIO_35_PJ307",
+      "name": "Аудиогнездо 3.5мм PJ-307 (5 выводов THT)",
+      "standard": "PJ-307 Stereo Jack",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 6,
+      "bodyHeight": 14,
+      "pitch": 2.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "GND",
+          "x": -2.5,
+          "y": -5,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "rounded_rect",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 2,
+          "name": "LEFT",
+          "x": 2.5,
+          "y": -2.5,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 3,
+          "name": "RIGHT",
+          "x": 2.5,
+          "y": 4,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 4,
+          "name": "SW_L",
+          "x": -2.5,
+          "y": 2,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 5,
+          "name": "SW_R",
+          "x": -2.5,
+          "y": 6,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 8,
+        "courtyardHeight": 16,
+        "maxHeight": 6,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_audio",
+      "variants": [
+        {
+          "id": "black_audio",
+          "name": "Черный пластик с металлической гильзой",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#94a3b8",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_BATT_CR2032_THT",
+      "name": "Держатель батарейки CR2032 (шаг 20мм, THT)",
+      "standard": "CR2032 Battery Holder",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 20.5,
+      "bodyHeight": 22,
+      "pitch": 20,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "+",
+          "x": 0,
+          "y": -10,
+          "width": 2.6,
+          "height": 2.6,
+          "shape": "rounded_rect",
+          "drillDiameter": 1.4
+        },
+        {
+          "padNum": 2,
+          "name": "-",
+          "x": 0,
+          "y": 10,
+          "width": 2.6,
+          "height": 2.6,
+          "shape": "circle",
+          "drillDiameter": 1.4
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 22,
+        "courtyardHeight": 24,
+        "maxHeight": 5.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_holder",
+      "variants": [
+        {
+          "id": "black_holder",
+          "name": "Черный пластиковый слот с пружиной",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "none",
+          "hasPolarityMark": true
+        }
+      ]
+    },
+    {
+      "id": "PKG_ESP32_WROOM_32",
+      "name": "ESP32-WROOM-32 (38 SMD выводов, 18.0x25.5мм)",
+      "standard": "Espressif ESP32-WROOM",
+      "family": "qfp",
+      "mountType": "smd",
+      "bodyWidth": 18,
+      "bodyHeight": 25.5,
+      "pitch": 1.27,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -9,
+          "y": -8.255,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -9,
+          "y": -6.985,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -9,
+          "y": -5.715,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -9,
+          "y": -4.445,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": -9,
+          "y": -3.175,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": -9,
+          "y": -1.905,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 7,
+          "name": "7",
+          "x": -9,
+          "y": -0.635,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 8,
+          "name": "8",
+          "x": -9,
+          "y": 0.635,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 9,
+          "name": "9",
+          "x": -9,
+          "y": 1.905,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 10,
+          "name": "10",
+          "x": -9,
+          "y": 3.175,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 11,
+          "name": "11",
+          "x": -9,
+          "y": 4.445,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 12,
+          "name": "12",
+          "x": -9,
+          "y": 5.715,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 13,
+          "name": "13",
+          "x": -9,
+          "y": 6.985,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 14,
+          "name": "14",
+          "x": -9,
+          "y": 8.255,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 15,
+          "name": "15",
+          "x": -5.715,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 16,
+          "name": "16",
+          "x": -4.445,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 17,
+          "name": "17",
+          "x": -3.175,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 18,
+          "name": "18",
+          "x": -1.905,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 19,
+          "name": "19",
+          "x": -0.635,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 20,
+          "name": "20",
+          "x": 0.635,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 21,
+          "name": "21",
+          "x": 1.905,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 22,
+          "name": "22",
+          "x": 3.175,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 23,
+          "name": "23",
+          "x": 4.445,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 24,
+          "name": "24",
+          "x": 5.715,
+          "y": 12.75,
+          "width": 0.9,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 25,
+          "name": "25",
+          "x": 9,
+          "y": 8.255,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 26,
+          "name": "26",
+          "x": 9,
+          "y": 6.985,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 27,
+          "name": "27",
+          "x": 9,
+          "y": 5.715,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 28,
+          "name": "28",
+          "x": 9,
+          "y": 4.445,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 29,
+          "name": "29",
+          "x": 9,
+          "y": 3.175,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 30,
+          "name": "30",
+          "x": 9,
+          "y": 1.905,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 31,
+          "name": "31",
+          "x": 9,
+          "y": 0.635,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 32,
+          "name": "32",
+          "x": 9,
+          "y": -0.635,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 33,
+          "name": "33",
+          "x": 9,
+          "y": -1.905,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 34,
+          "name": "34",
+          "x": 9,
+          "y": -3.175,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 35,
+          "name": "35",
+          "x": 9,
+          "y": -4.445,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 36,
+          "name": "36",
+          "x": 9,
+          "y": -5.715,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 37,
+          "name": "37",
+          "x": 9,
+          "y": -6.985,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 38,
+          "name": "38",
+          "x": 9,
+          "y": -8.255,
+          "width": 1.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": 39,
+          "name": "EP",
+          "x": 0,
+          "y": 1.5,
+          "width": 5,
+          "height": 5,
+          "shape": "rounded_rect",
+          "roundRadius": 0.5
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 19.5,
+        "courtyardHeight": 27,
+        "maxHeight": 3.2,
+        "hasThermalPad": true,
+        "thermalPadNum": "39"
+      },
+      "defaultVariantId": "metal_shield",
+      "variants": [
+        {
+          "id": "metal_shield",
+          "name": "Модуль с антенной на плате и экраном",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "dot",
+          "keyColor": "#ef4444"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SOIC_8_208",
+      "name": "SOIC-8 Wide 208mil (SPI Flash W25Q32, шаг 1.27мм)",
+      "standard": "EIAJ SOIC-8 208mil",
+      "family": "soic",
+      "mountType": "smd",
+      "bodyWidth": 5.3,
+      "bodyHeight": 5.3,
+      "pitch": 1.27,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -3.7,
+          "y": -1.905,
+          "width": 1.8,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -3.7,
+          "y": -0.635,
+          "width": 1.8,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -3.7,
+          "y": 0.635,
+          "width": 1.8,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -3.7,
+          "y": 1.905,
+          "width": 1.8,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": 3.7,
+          "y": 1.905,
+          "width": 1.8,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": 3.7,
+          "y": 0.635,
+          "width": 1.8,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 7,
+          "name": "7",
+          "x": 3.7,
+          "y": -0.635,
+          "width": 1.8,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 8,
+          "name": "8",
+          "x": 3.7,
+          "y": -1.905,
+          "width": 1.8,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 8.5,
+        "courtyardHeight": 6.5,
+        "maxHeight": 2,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_dot",
+      "variants": [
+        {
+          "id": "black_dot",
+          "name": "Черный широкий корпус с точкой",
+          "bodyColor": "#181f2c",
+          "bodyBorderColor": "#334155",
+          "keyType": "dot",
+          "keyColor": "#38bdf8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SOIC_20",
+      "name": "SOIC-20 Wide (шаг 1.27мм, ширина 7.5мм, 74HC245)",
+      "standard": "JEDEC MS-013AC",
+      "family": "soic",
+      "mountType": "smd",
+      "bodyWidth": 7.5,
+      "bodyHeight": 12.8,
+      "pitch": 1.27,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -4.65,
+          "y": -5.715,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -4.65,
+          "y": -4.445,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -4.65,
+          "y": -3.175,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -4.65,
+          "y": -1.905,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": -4.65,
+          "y": -0.635,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": -4.65,
+          "y": 0.635,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 7,
+          "name": "7",
+          "x": -4.65,
+          "y": 1.905,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 8,
+          "name": "8",
+          "x": -4.65,
+          "y": 3.175,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 9,
+          "name": "9",
+          "x": -4.65,
+          "y": 4.445,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 10,
+          "name": "10",
+          "x": -4.65,
+          "y": 5.715,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 20,
+          "name": "20",
+          "x": 4.65,
+          "y": -5.715,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 19,
+          "name": "19",
+          "x": 4.65,
+          "y": -4.445,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 18,
+          "name": "18",
+          "x": 4.65,
+          "y": -3.175,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 17,
+          "name": "17",
+          "x": 4.65,
+          "y": -1.905,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 16,
+          "name": "16",
+          "x": 4.65,
+          "y": -0.635,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 15,
+          "name": "15",
+          "x": 4.65,
+          "y": 0.635,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 14,
+          "name": "14",
+          "x": 4.65,
+          "y": 1.905,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 13,
+          "name": "13",
+          "x": 4.65,
+          "y": 3.175,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 12,
+          "name": "12",
+          "x": 4.65,
+          "y": 4.445,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 11,
+          "name": "11",
+          "x": 4.65,
+          "y": 5.715,
+          "width": 1.9,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 11,
+        "courtyardHeight": 14,
+        "maxHeight": 2.65,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_notch",
+      "variants": [
+        {
+          "id": "black_notch",
+          "name": "Черный корпус с вырезом и точкой",
+          "bodyColor": "#181f2c",
+          "bodyBorderColor": "#334155",
+          "keyType": "notch"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CONN_381_3P",
+      "name": "Клеммник винтовой 3-pin (шаг 3.81мм)",
+      "standard": "Terminal Block 3.81mm",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 12,
+      "bodyHeight": 8.5,
+      "pitch": 3.81,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -3.81,
+          "y": 0,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "rect",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 0,
+          "y": 0,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": 3.81,
+          "y": 0,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "circle",
+          "drillDiameter": 1.3
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 13,
+        "courtyardHeight": 10,
+        "maxHeight": 9.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "green_block",
+      "variants": [
+        {
+          "id": "green_block",
+          "name": "Зеленый пластик",
+          "bodyColor": "#15803d",
+          "bodyBorderColor": "#166534",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_DO35",
+      "name": "DO-35 (Стеклянный диод / динистор DB3, шаг 7.62мм)",
+      "standard": "JEDEC DO-204AH",
+      "family": "axial",
+      "mountType": "tht",
+      "bodyWidth": 4,
+      "bodyHeight": 2,
+      "pitch": 7.62,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -3.81,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "rect",
+          "drillDiameter": 0.8
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": 3.81,
+          "y": 0,
+          "width": 1.6,
+          "height": 1.6,
+          "shape": "circle",
+          "drillDiameter": 0.8
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 9.5,
+        "courtyardHeight": 3.2,
+        "maxHeight": 2.2,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "glass_orange",
+      "variants": [
+        {
+          "id": "glass_orange",
+          "name": "Оранжевое стекло с полосой",
+          "bodyColor": "#ea580c",
+          "bodyBorderColor": "#c2410c",
+          "keyType": "stripe",
+          "keyColor": "#0f172a"
+        }
+      ]
+    },
+    {
+      "id": "PKG_ENCODER_EC11_THT",
+      "name": "Инкрементальный энкодер EC11 с кнопкой (THT)",
+      "standard": "ALPS EC11E Series",
+      "family": "switch",
+      "mountType": "tht",
+      "bodyWidth": 12,
+      "bodyHeight": 12.5,
+      "pitch": 2.5,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "A",
+          "x": -2.5,
+          "y": 7,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 2,
+          "name": "C",
+          "x": 0,
+          "y": 7,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 3,
+          "name": "B",
+          "x": 2.5,
+          "y": 7,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 4,
+          "name": "SW1",
+          "x": -2.5,
+          "y": -7,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 5,
+          "name": "SW2",
+          "x": 2.5,
+          "y": -7,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 14.5,
+        "courtyardHeight": 16.5,
+        "maxHeight": 25,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_shaft",
+      "variants": [
+        {
+          "id": "metal_shaft",
+          "name": "Металлический вал с резьбой",
+          "bodyColor": "#334155",
+          "bodyBorderColor": "#64748b",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_MODULE_OLED_096_I2C",
+      "name": "Модуль OLED 0.96\" 128x64 I2C (4-pin, 27x28мм)",
+      "standard": "OLED SSD1306 Module",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 27.3,
+      "bodyHeight": 27.8,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "GND",
+          "x": -3.81,
+          "y": 11.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rect",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 2,
+          "name": "VCC",
+          "x": -1.27,
+          "y": 11.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 3,
+          "name": "SCL",
+          "x": 1.27,
+          "y": 11.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 4,
+          "name": "SDA",
+          "x": 3.81,
+          "y": 11.5,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 29.5,
+        "courtyardHeight": 30,
+        "maxHeight": 4.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "blue_glass",
+      "variants": [
+        {
+          "id": "blue_glass",
+          "name": "Синий дисплей на плате",
+          "bodyColor": "#090d16",
+          "bodyBorderColor": "#1e293b",
+          "keyType": "none",
+          "silkscreenColor": "#38bdf8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_LED_SMD_5050_4P",
+      "name": "SMD LED 5050 4-pin (WS2812B Neopixel, 5.0x5.0мм)",
+      "standard": "Worldsemi WS2812B",
+      "family": "smd_discrete",
+      "mountType": "smd",
+      "bodyWidth": 5,
+      "bodyHeight": 5,
+      "pitch": 3.2,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "VDD",
+          "x": -2.3,
+          "y": -1.6,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 2,
+          "name": "DOUT",
+          "x": -2.3,
+          "y": 1.6,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 3,
+          "name": "VSS",
+          "x": 2.3,
+          "y": 1.6,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        },
+        {
+          "padNum": 4,
+          "name": "DIN",
+          "x": 2.3,
+          "y": -1.6,
+          "width": 1.5,
+          "height": 1,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6.2,
+        "courtyardHeight": 6.2,
+        "maxHeight": 1.6,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "white_lens",
+      "variants": [
+        {
+          "id": "white_lens",
+          "name": "Белый корпус со скосом",
+          "bodyColor": "#f8fafc",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "chamfer"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SENSOR_DHT11",
+      "name": "Датчик влажности и температуры DHT11 (4-pin THT)",
+      "standard": "Aosong DHT11",
+      "family": "radial",
+      "mountType": "tht",
+      "bodyWidth": 12,
+      "bodyHeight": 15.5,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "VCC",
+          "x": -3.81,
+          "y": 0,
+          "width": 1.7,
+          "height": 1.7,
+          "shape": "rect",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 2,
+          "name": "DATA",
+          "x": -1.27,
+          "y": 0,
+          "width": 1.7,
+          "height": 1.7,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 3,
+          "name": "NC",
+          "x": 1.27,
+          "y": 0,
+          "width": 1.7,
+          "height": 1.7,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 4,
+          "name": "GND",
+          "x": 3.81,
+          "y": 0,
+          "width": 1.7,
+          "height": 1.7,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 13.5,
+        "courtyardHeight": 17.5,
+        "maxHeight": 5.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "blue_plastic",
+      "variants": [
+        {
+          "id": "blue_plastic",
+          "name": "Синий ребристый корпус",
+          "bodyColor": "#0284c7",
+          "bodyBorderColor": "#0369a1",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SOIC_8_EP",
+      "name": "SOIC-8-EP (шаг 1.27мм, с теплоотводом PowerPad, TP4056)",
+      "standard": "JEDEC MS-012 Exposed Pad",
+      "family": "soic",
+      "mountType": "smd",
+      "bodyWidth": 3.9,
+      "bodyHeight": 4.9,
+      "pitch": 1.27,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -2.7,
+          "y": -1.905,
+          "width": 1.6,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -2.7,
+          "y": -0.635,
+          "width": 1.6,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -2.7,
+          "y": 0.635,
+          "width": 1.6,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -2.7,
+          "y": 1.905,
+          "width": 1.6,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": 2.7,
+          "y": 1.905,
+          "width": 1.6,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": 2.7,
+          "y": 0.635,
+          "width": 1.6,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 7,
+          "name": "7",
+          "x": 2.7,
+          "y": -0.635,
+          "width": 1.6,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 8,
+          "name": "8",
+          "x": 2.7,
+          "y": -1.905,
+          "width": 1.6,
+          "height": 0.6,
+          "shape": "rounded_rect",
+          "roundRadius": 0.15
+        },
+        {
+          "padNum": 9,
+          "name": "EP",
+          "x": 0,
+          "y": 0,
+          "width": 2.4,
+          "height": 3.1,
+          "shape": "rounded_rect",
+          "roundRadius": 0.2
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 6.8,
+        "courtyardHeight": 5.8,
+        "maxHeight": 1.75,
+        "hasThermalPad": true
+      },
+      "defaultVariantId": "black_notch",
+      "variants": [
+        {
+          "id": "black_notch",
+          "name": "Черный корпус с вырезом и термопадом",
+          "bodyColor": "#181f2c",
+          "bodyBorderColor": "#334155",
+          "keyType": "dot",
+          "keyColor": "#38bdf8"
+        }
+      ]
+    },
+    {
+      "id": "PKG_TO263_5",
+      "name": "TO-263-5 / D2PAK-5 (5 выводов, шаг 1.7мм, LM2596 SMD)",
+      "standard": "JEDEC TO-263-5",
+      "family": "to",
+      "mountType": "smd",
+      "bodyWidth": 10.2,
+      "bodyHeight": 9.2,
+      "pitch": 1.7,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "VIN",
+          "x": -3.4,
+          "y": -6.5,
+          "width": 1,
+          "height": 2.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 2,
+          "name": "OUT",
+          "x": -1.7,
+          "y": -6.5,
+          "width": 1,
+          "height": 2.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 3,
+          "name": "GND",
+          "x": 0,
+          "y": -6.5,
+          "width": 1,
+          "height": 2.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 4,
+          "name": "FB",
+          "x": 1.7,
+          "y": -6.5,
+          "width": 1,
+          "height": 2.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 5,
+          "name": "ON/OFF",
+          "x": 3.4,
+          "y": -6.5,
+          "width": 1,
+          "height": 2.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": 6,
+          "name": "TAB",
+          "x": 0,
+          "y": 1.5,
+          "width": 10.5,
+          "height": 9,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 12,
+        "courtyardHeight": 16,
+        "maxHeight": 4.6,
+        "hasThermalPad": true
+      },
+      "defaultVariantId": "black_tab",
+      "variants": [
+        {
+          "id": "black_tab",
+          "name": "Черный корпус со скосом и теплоотводом",
+          "bodyColor": "#181f2c",
+          "bodyBorderColor": "#64748b",
+          "keyType": "chamfer"
+        }
+      ]
+    },
+    {
+      "id": "PKG_RELAY_HK19F_DIP8",
+      "name": "Сигнальное реле DPDT 8-pin (HK19F / HFD2 / G5V-2)",
+      "standard": "Subminiature DIP Relay",
+      "family": "switch",
+      "mountType": "tht",
+      "bodyWidth": 10.2,
+      "bodyHeight": 20.2,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -3.81,
+          "y": -6.35,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -3.81,
+          "y": -3.81,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -3.81,
+          "y": 1.27,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -3.81,
+          "y": 6.35,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": 3.81,
+          "y": 6.35,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": 3.81,
+          "y": 1.27,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 7,
+          "name": "7",
+          "x": 3.81,
+          "y": -3.81,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 8,
+          "name": "8",
+          "x": 3.81,
+          "y": -6.35,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 11.5,
+        "courtyardHeight": 21.5,
+        "maxHeight": 10.5,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "yellow_case",
+      "variants": [
+        {
+          "id": "yellow_case",
+          "name": "Желтый герметичный корпус",
+          "bodyColor": "#eab308",
+          "bodyBorderColor": "#ca8a04",
+          "keyType": "dot"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CONN_MICROSD_SMD",
+      "name": "Слот MicroSD / TF Card (SMD Push-Pull, 8+4 pin)",
+      "standard": "MicroSD Socket SMD",
+      "family": "connector",
+      "mountType": "smd",
+      "bodyWidth": 14,
+      "bodyHeight": 14.5,
+      "pitch": 1.1,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "DAT2",
+          "x": -4.4,
+          "y": -6,
+          "width": 0.8,
+          "height": 1.5,
+          "shape": "rect"
+        },
+        {
+          "padNum": 2,
+          "name": "CD/DAT3",
+          "x": -3.3,
+          "y": -6,
+          "width": 0.8,
+          "height": 1.5,
+          "shape": "rect"
+        },
+        {
+          "padNum": 3,
+          "name": "CMD",
+          "x": -2.2,
+          "y": -6,
+          "width": 0.8,
+          "height": 1.5,
+          "shape": "rect"
+        },
+        {
+          "padNum": 4,
+          "name": "VDD",
+          "x": -1.1,
+          "y": -6,
+          "width": 0.8,
+          "height": 1.5,
+          "shape": "rect"
+        },
+        {
+          "padNum": 5,
+          "name": "CLK",
+          "x": 0,
+          "y": -6,
+          "width": 0.8,
+          "height": 1.5,
+          "shape": "rect"
+        },
+        {
+          "padNum": 6,
+          "name": "VSS",
+          "x": 1.1,
+          "y": -6,
+          "width": 0.8,
+          "height": 1.5,
+          "shape": "rect"
+        },
+        {
+          "padNum": 7,
+          "name": "DAT0",
+          "x": 2.2,
+          "y": -6,
+          "width": 0.8,
+          "height": 1.5,
+          "shape": "rect"
+        },
+        {
+          "padNum": 8,
+          "name": "DAT1",
+          "x": 3.3,
+          "y": -6,
+          "width": 0.8,
+          "height": 1.5,
+          "shape": "rect"
+        },
+        {
+          "padNum": 9,
+          "name": "SH1",
+          "x": -6.8,
+          "y": -4,
+          "width": 1.6,
+          "height": 2.2,
+          "shape": "rect"
+        },
+        {
+          "padNum": 10,
+          "name": "SH2",
+          "x": 6.8,
+          "y": -4,
+          "width": 1.6,
+          "height": 2.2,
+          "shape": "rect"
+        },
+        {
+          "padNum": 11,
+          "name": "SH3",
+          "x": -6.8,
+          "y": 4,
+          "width": 1.6,
+          "height": 2.2,
+          "shape": "rect"
+        },
+        {
+          "padNum": 12,
+          "name": "SH4",
+          "x": 6.8,
+          "y": 4,
+          "width": 1.6,
+          "height": 2.2,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 15.5,
+        "courtyardHeight": 16,
+        "maxHeight": 1.9,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "metal_shield",
+      "variants": [
+        {
+          "id": "metal_shield",
+          "name": "Металлический экран",
+          "bodyColor": "#94a3b8",
+          "bodyBorderColor": "#cbd5e1",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CONN_RJ45_THT",
+      "name": "Разъем RJ45 с трансформатором MagJack (Ethernet 8P8C)",
+      "standard": "HanRun HR911105A",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 16,
+      "bodyHeight": 21.5,
+      "pitch": 1.27,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "1",
+          "x": -4.445,
+          "y": 4.45,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 2,
+          "name": "2",
+          "x": -3.175,
+          "y": 6.35,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 3,
+          "name": "3",
+          "x": -1.905,
+          "y": 4.45,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 4,
+          "name": "4",
+          "x": -0.635,
+          "y": 6.35,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 5,
+          "name": "5",
+          "x": 0.635,
+          "y": 4.45,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 6,
+          "name": "6",
+          "x": 1.905,
+          "y": 6.35,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 7,
+          "name": "7",
+          "x": 3.175,
+          "y": 4.45,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 8,
+          "name": "8",
+          "x": 4.445,
+          "y": 6.35,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 9,
+          "name": "SH1",
+          "x": -7.75,
+          "y": 1.5,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "rect",
+          "drillDiameter": 1.6
+        },
+        {
+          "padNum": 10,
+          "name": "SH2",
+          "x": 7.75,
+          "y": 1.5,
+          "width": 2.2,
+          "height": 2.2,
+          "shape": "rect",
+          "drillDiameter": 1.6
+        },
+        {
+          "padNum": 11,
+          "name": "L1A",
+          "x": -6.35,
+          "y": -9,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 12,
+          "name": "L1K",
+          "x": -4.35,
+          "y": -9,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 13,
+          "name": "L2A",
+          "x": 4.35,
+          "y": -9,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        },
+        {
+          "padNum": 14,
+          "name": "L2K",
+          "x": 6.35,
+          "y": -9,
+          "width": 1.4,
+          "height": 1.4,
+          "shape": "circle",
+          "drillDiameter": 0.9
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 18,
+        "courtyardHeight": 23.5,
+        "maxHeight": 13.8,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_shield",
+      "variants": [
+        {
+          "id": "black_shield",
+          "name": "Металлический экранированный разъем",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#94a3b8",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_MODULE_NRF24L01",
+      "name": "Радиомодуль NRF24L01+ 2.4GHz (разъем 2x4 шаг 2.54мм)",
+      "standard": "NRF24L01+ Standard Module",
+      "family": "connector",
+      "mountType": "tht",
+      "bodyWidth": 15.2,
+      "bodyHeight": 29,
+      "pitch": 2.54,
+      "pads": [
+        {
+          "padNum": 1,
+          "name": "GND",
+          "x": -1.27,
+          "y": -11.43,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "rect",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 2,
+          "name": "VCC",
+          "x": 1.27,
+          "y": -11.43,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 3,
+          "name": "CE",
+          "x": -1.27,
+          "y": -8.89,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 4,
+          "name": "CSN",
+          "x": 1.27,
+          "y": -8.89,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 5,
+          "name": "SCK",
+          "x": -1.27,
+          "y": -6.35,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 6,
+          "name": "MOSI",
+          "x": 1.27,
+          "y": -6.35,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 7,
+          "name": "MISO",
+          "x": -1.27,
+          "y": -3.81,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        },
+        {
+          "padNum": 8,
+          "name": "IRQ",
+          "x": 1.27,
+          "y": -3.81,
+          "width": 1.8,
+          "height": 1.8,
+          "shape": "circle",
+          "drillDiameter": 1
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 16.5,
+        "courtyardHeight": 30.5,
+        "maxHeight": 12,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_pcb",
+      "variants": [
+        {
+          "id": "black_pcb",
+          "name": "Черная плата со змейковой антенной",
+          "bodyColor": "#020617",
+          "bodyBorderColor": "#334155",
+          "keyType": "dot",
+          "silkscreenColor": "#facc15"
+        }
+      ]
+    }
+  ],
+  "devices": [
+    {
+      "id": "DEV_LED_3MM_RED",
+      "name": "Светодиод 3мм (Красный)",
+      "category": "Полупроводники",
+      "description": "Индикаторный выводной светодиод 3мм, красный (Vf=2.0V, If=20mA)",
+      "designatorPrefix": "HL",
+      "symbolType": "led",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_LED_3MM",
+          "pinMapping": {
+            "A": "1",
+            "K": "2"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "Red (630nm)",
+        "voltage": "2.0V",
+        "current": "20mA"
+      },
+      "pins": [
+        {
+          "id": "A",
+          "name": "Анод",
+          "pinType": "passive"
+        },
+        {
+          "id": "K",
+          "name": "Катод",
+          "pinType": "passive"
+        }
+      ]
+    },
+    {
+      "id": "DEV_LED_5MM_GREEN",
+      "name": "Светодиод 5мм (Зеленый)",
+      "category": "Полупроводники",
+      "description": "Индикаторный выводной светодиод 5мм, зеленый (Vf=2.2V, If=20mA)",
+      "designatorPrefix": "HL",
+      "symbolType": "led",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_LED_5MM",
+          "pinMapping": {
+            "A": "1",
+            "K": "2"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "Green (525nm)",
+        "voltage": "2.2V",
+        "current": "20mA"
+      },
+      "pins": [
+        {
+          "id": "A",
+          "name": "Анод",
+          "pinType": "passive"
+        },
+        {
+          "id": "K",
+          "name": "Катод",
+          "pinType": "passive"
+        }
+      ]
+    },
+    {
+      "id": "DEV_DIODE_1N4148",
+      "name": "Диод 1N4148 (Импульсный)",
+      "category": "Полупроводники",
+      "description": "Быстродействующий кремниевый диод, 100V 150mA, 4ns",
+      "designatorPrefix": "VD",
+      "symbolType": "diode",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_DO_35",
+          "pinMapping": {
+            "A": "1",
+            "K": "2"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "1N4148",
+        "voltage": "100V",
+        "current": "150mA"
+      },
+      "pins": [
+        {
+          "id": "A",
+          "name": "Анод",
+          "pinType": "passive"
+        },
+        {
+          "id": "K",
+          "name": "Катод",
+          "pinType": "passive"
+        }
+      ]
+    },
+    {
+      "id": "DEV_DIODE_1N4007",
+      "name": "Диод 1N4007 (Выпрямительный)",
+      "category": "Полупроводники",
+      "description": "Силовой выпрямительный диод 1000V 1A",
+      "designatorPrefix": "VD",
+      "symbolType": "diode",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_DO_41",
+          "pinMapping": {
+            "A": "1",
+            "K": "2"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "1N4007",
+        "voltage": "1000V",
+        "current": "1A"
+      },
+      "pins": [
+        {
+          "id": "A",
+          "name": "Анод",
+          "pinType": "passive"
+        },
+        {
+          "id": "K",
+          "name": "Катод",
+          "pinType": "passive"
+        }
+      ]
+    },
+    {
+      "id": "DEV_POT_WH148_10K",
+      "name": "Потенциометр WH148 10 кОм",
+      "category": "Пассивные компоненты",
+      "description": "Переменный резистор с круглой ручкой, линейная характеристика B10K",
+      "designatorPrefix": "R",
+      "symbolType": "potentiometer",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_POT_WH148",
+          "pinMapping": {
+            "1": "1",
+            "2": "3",
+            "W": "2"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "10 kOhm",
+        "tolerance": "20%",
+        "power": "0.125W"
+      },
+      "pins": [
+        {
+          "id": "1",
+          "name": "Вывод 1",
+          "pinType": "passive"
+        },
+        {
+          "id": "W",
+          "name": "Ползунок",
+          "pinType": "passive"
+        },
+        {
+          "id": "2",
+          "name": "Вывод 2",
+          "pinType": "passive"
+        }
+      ]
+    },
+    {
+      "id": "DEV_TRIMMER_3296W_10K",
+      "name": "Подстроечный резистор 3296W 10 кОм",
+      "category": "Пассивные компоненты",
+      "description": "Многооборотный высокоточный подстроечный резистор",
+      "designatorPrefix": "R",
+      "symbolType": "potentiometer",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_POT_TRIMMER_3296W",
+          "pinMapping": {
+            "1": "1",
+            "2": "3",
+            "W": "2"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "10 kOhm",
+        "tolerance": "10%",
+        "power": "0.5W"
+      },
+      "pins": [
+        {
+          "id": "1",
+          "name": "Вывод 1",
+          "pinType": "passive"
+        },
+        {
+          "id": "W",
+          "name": "Ползунок",
+          "pinType": "passive"
+        },
+        {
+          "id": "2",
+          "name": "Вывод 2",
+          "pinType": "passive"
+        }
+      ]
+    },
+    {
+      "id": "DEV_CRYSTAL_16MHZ",
+      "name": "Кварцевый резонатор 16 МГц (HC-49U)",
+      "category": "Пассивные компоненты",
+      "description": "Прецизионный кварцевый резонатор 16.000 МГц, 20pF",
+      "designatorPrefix": "ZQ",
+      "symbolType": "crystal",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_CRYSTAL_HC49U",
+          "pinMapping": {
+            "1": "1",
+            "2": "2"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "16.000 MHz",
+        "tolerance": "20ppm"
+      },
+      "pins": [
+        {
+          "id": "1",
+          "name": "XTAL1",
+          "pinType": "passive"
+        },
+        {
+          "id": "2",
+          "name": "XTAL2",
+          "pinType": "passive"
+        }
+      ]
+    },
+    {
+      "id": "DEV_BUZZER_5V",
+      "name": "Пьезозуммер 5V активный",
+      "category": "Пассивные компоненты",
+      "description": "Электромагнитный/пьезоэлектрический звуковой излучатель со встроенным генератором",
+      "designatorPrefix": "HA",
+      "symbolType": "buzzer",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_BUZZER_D12",
+          "pinMapping": {
+            "+": "1",
+            "-": "2"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "5V 2.3kHz",
+        "voltage": "5V",
+        "current": "30mA"
+      },
+      "pins": [
+        {
+          "id": "+",
+          "name": "Плюс (VCC)",
+          "pinType": "power"
+        },
+        {
+          "id": "-",
+          "name": "Минус (GND)",
+          "pinType": "power"
+        }
+      ]
+    },
+    {
+      "id": "DEV_BUTTON_12X12",
+      "name": "Тактовая кнопка 12x12мм",
+      "category": "Электромеханика",
+      "description": "Миниатюрная нормально-разомкнутая тактовая кнопка",
+      "designatorPrefix": "SW",
+      "symbolType": "switch",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_TACT_THT_12X12",
+          "pinMapping": {
+            "1": "1",
+            "2": "2",
+            "3": "3",
+            "4": "4"
+          }
+        }
+      ],
+      "parameters": {
+        "voltage": "12V",
+        "current": "50mA"
+      },
+      "pins": [
+        {
+          "id": "1",
+          "name": "Контакт 1",
+          "pinType": "passive"
+        },
+        {
+          "id": "2",
+          "name": "Контакт 2",
+          "pinType": "passive"
+        },
+        {
+          "id": "3",
+          "name": "Контакт 3",
+          "pinType": "passive"
+        },
+        {
+          "id": "4",
+          "name": "Контакт 4",
+          "pinType": "passive"
+        }
+      ]
+    },
+    {
+      "id": "DEV_RELAY_SRD_05V",
+      "name": "Реле 5V Songle SRD-05VDC-SL-C",
+      "category": "Электромеханика",
+      "description": "Миниатюрное силовое реле 10A 250VAC / 30VDC, катушка 5V",
+      "designatorPrefix": "K",
+      "symbolType": "relay",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_RELAY_SRD",
+          "pinMapping": {
+            "COIL1": "1",
+            "COIL2": "2",
+            "COM": "3",
+            "NO": "4",
+            "NC": "5"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "5VDC / 10A 250VAC",
+        "voltage": "5V"
+      },
+      "pins": [
+        {
+          "id": "COIL1",
+          "name": "Катушка +",
+          "pinType": "power"
+        },
+        {
+          "id": "COIL2",
+          "name": "Катушка -",
+          "pinType": "power"
+        },
+        {
+          "id": "COM",
+          "name": "Общий (COM)",
+          "pinType": "passive"
+        },
+        {
+          "id": "NO",
+          "name": "Норм. Разомкн. (NO)",
+          "pinType": "passive"
+        },
+        {
+          "id": "NC",
+          "name": "Норм. Замкн. (NC)",
+          "pinType": "passive"
+        }
+      ]
+    },
+    {
+      "id": "DEV_ESP32_WROOM_32",
+      "name": "Wi-Fi / Bluetooth модуль ESP32-WROOM-32",
+      "category": "Микроконтроллеры и ИМС",
+      "description": "Двухъядерный 32-битный микроконтроллер Xtensa LX6 с Wi-Fi 802.11 b/g/n и Bluetooth v4.2 BR/EDR/BLE",
+      "designatorPrefix": "U",
+      "symbolType": "ic",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_ESP32_WROOM_32",
+          "pinMapping": {
+            "GND": "1",
+            "3V3": "2",
+            "EN": "3",
+            "SENSOR_VP": "4",
+            "SENSOR_VN": "5",
+            "IO34": "6",
+            "IO35": "7",
+            "IO32": "8",
+            "IO33": "9",
+            "IO25": "10",
+            "IO26": "11",
+            "IO27": "12",
+            "IO14": "13",
+            "IO12": "14",
+            "GND2": "15",
+            "IO13": "16",
+            "IO9": "17",
+            "IO10": "18",
+            "IO11": "19",
+            "IO6": "20",
+            "IO7": "21",
+            "IO8": "22",
+            "IO15": "23",
+            "IO2": "24",
+            "IO0": "25",
+            "IO4": "26",
+            "IO16": "27",
+            "IO17": "28",
+            "IO5": "29",
+            "IO18": "30",
+            "IO19": "31",
+            "NC": "32",
+            "IO21": "33",
+            "RXD0": "34",
+            "TXD0": "35",
+            "IO22": "36",
+            "IO23": "37",
+            "GND3": "38",
+            "EP": "39"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "ESP32-WROOM-32 (4MB Flash)",
+        "voltage": "3.3V"
+      },
+      "pins": [
+        {
+          "id": "GND",
+          "name": "GND",
+          "pinType": "power"
+        },
+        {
+          "id": "3V3",
+          "name": "3V3",
+          "pinType": "power"
+        },
+        {
+          "id": "EN",
+          "name": "EN",
+          "pinType": "input"
+        },
+        {
+          "id": "RXD0",
+          "name": "RXD0",
+          "pinType": "input"
+        },
+        {
+          "id": "TXD0",
+          "name": "TXD0",
+          "pinType": "output"
+        }
+      ]
+    },
+    {
+      "id": "DEV_SENSOR_DHT11",
+      "name": "Датчик температуры и влажности DHT11",
+      "category": "Датчики и измерительные модули",
+      "description": "Цифровой датчик относительной влажности (20-90%) и температуры (0-50°C)",
+      "designatorPrefix": "U",
+      "symbolType": "sensor",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_SENSOR_DHT11",
+          "pinMapping": {
+            "VCC": "1",
+            "DATA": "2",
+            "NC": "3",
+            "GND": "4"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "DHT11",
+        "voltage": "3.3V - 5.5V"
+      },
+      "pins": [
+        {
+          "id": "VCC",
+          "name": "VCC",
+          "pinType": "power"
+        },
+        {
+          "id": "DATA",
+          "name": "DATA",
+          "pinType": "bidirectional"
+        },
+        {
+          "id": "NC",
+          "name": "NC",
+          "pinType": "not_connected"
+        },
+        {
+          "id": "GND",
+          "name": "GND",
+          "pinType": "power"
+        }
+      ]
+    },
+    {
+      "id": "DEV_BATTERY_CR2032",
+      "name": "Держатель батарейки CR2032 3V",
+      "category": "Источники питания",
+      "description": "Батарейный отсек для литиевого дискового элемента CR2032 3V",
+      "designatorPrefix": "GB",
+      "symbolType": "battery",
+      "supportedPackages": [
+        {
+          "packageId": "PKG_BATT_CR2032_THT",
+          "pinMapping": {
+            "+": "1",
+            "-": "2"
+          }
+        }
+      ],
+      "parameters": {
+        "value": "CR2032 3V 220mAh",
+        "voltage": "3.0V"
+      },
+      "pins": [
+        {
+          "id": "+",
+          "name": "+3V",
+          "pinType": "power"
+        },
+        {
+          "id": "-",
+          "name": "GND",
+          "pinType": "power"
+        }
+      ]
+    }
+  ]
+}

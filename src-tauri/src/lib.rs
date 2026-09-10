@@ -2,6 +2,7 @@ pub mod cad;
 pub mod commands;
 pub mod db;
 pub mod image;
+pub mod library;
 pub mod models;
 pub mod project;
 
@@ -12,10 +13,13 @@ use db::global::GlobalDb;
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let global_db = GlobalDb::init().expect("Не удалось инициализировать global.db");
+    let library_dir = library::storage::LibraryService::default_dir();
+    let library_service = library::storage::LibraryService::new(&library_dir);
 
     let app_state = AppState {
         session: Mutex::new(None),
         global_db: Mutex::new(global_db),
+        library: Mutex::new(library_service),
     };
 
     tauri::Builder::default()
@@ -49,6 +53,23 @@ pub fn run() {
             commands::image_read_bytes,
             commands::image_prepare_display,
             commands::image_convert_tiff_bytes,
+            // Команды библиотеки компонентов и посадочных мест
+            commands::library_load_all,
+            commands::library_list_packages,
+            commands::library_get_package,
+            commands::library_save_package,
+            commands::library_delete_package,
+            commands::library_list_devices,
+            commands::library_get_device,
+            commands::library_save_device,
+            commands::library_delete_device,
+            commands::library_search_devices,
+            commands::library_export_json,
+            commands::library_import_json,
+            // Команды компонентов на плате
+            commands::board_add_component,
+            commands::board_update_component,
+            commands::board_delete_component,
         ])
         .run(tauri::generate_context!())
         .expect("Ошибка запуска приложения Tauri");

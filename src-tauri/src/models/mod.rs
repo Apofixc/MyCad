@@ -76,7 +76,7 @@ pub struct BoardData {
     #[serde(default)]
     pub bg_bottom: ImageLayerGroup,
     #[serde(default)]
-    pub components: Vec<serde_json::Value>,
+    pub components: Vec<crate::library::model::PlacedComponent>,
     #[serde(default)]
     pub traces: Vec<serde_json::Value>,
     #[serde(default)]

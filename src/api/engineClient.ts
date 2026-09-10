@@ -7,6 +7,7 @@ import {
   RegistrationResult,
   SchematicDocument,
 } from "../types/cad";
+import { PlacedComponent } from "../types/componentLibrary";
 
 // Safe wrapper around window.__TAURI__
 function isTauri(): boolean {
@@ -139,6 +140,18 @@ export const engineClient = {
     return invokeTauri<string>("image_convert_tiff_bytes", {
       bytes: Array.from(bytes),
     });
+  },
+
+  async boardAddComponent(boardId: string, component: PlacedComponent): Promise<ProjectFullState> {
+    return invokeTauri<ProjectFullState>("board_add_component", { boardId, component });
+  },
+
+  async boardUpdateComponent(boardId: string, component: PlacedComponent): Promise<ProjectFullState> {
+    return invokeTauri<ProjectFullState>("board_update_component", { boardId, component });
+  },
+
+  async boardDeleteComponent(boardId: string, componentId: string): Promise<ProjectFullState> {
+    return invokeTauri<ProjectFullState>("board_delete_component", { boardId, componentId });
   },
 };
 
@@ -389,6 +402,32 @@ async function mockInvoke<T>(cmd: string, args?: any): Promise<T> {
         mockBoard.data.bgBottom.images = mockBoard.data.bgBottom.images.filter((img) => img.id !== args.layerId);
       }
       return undefined as unknown as T;
+    }
+
+    case "board_add_component": {
+      if (mockBoard && mockBoard.id === args.boardId) {
+        if (!mockBoard.data.components) mockBoard.data.components = [];
+        mockBoard.data.components.push(args.component as PlacedComponent);
+      }
+      return getMockFullState() as unknown as T;
+    }
+
+    case "board_update_component": {
+      if (mockBoard && mockBoard.id === args.boardId && mockBoard.data.components) {
+        const comp = args.component as PlacedComponent;
+        const idx = mockBoard.data.components.findIndex((c: any) => c.id === comp.id);
+        if (idx >= 0) {
+          mockBoard.data.components[idx] = comp;
+        }
+      }
+      return getMockFullState() as unknown as T;
+    }
+
+    case "board_delete_component": {
+      if (mockBoard && mockBoard.id === args.boardId && mockBoard.data.components) {
+        mockBoard.data.components = mockBoard.data.components.filter((c: any) => c.id !== args.componentId);
+      }
+      return getMockFullState() as unknown as T;
     }
 
     case "schematic_get_active":

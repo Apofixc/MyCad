@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { ToolMode, ActiveWorkLayer, BoardImageLayer } from "../types/cad";
+import { PackageDefinition, DeviceDefinition } from "../types/componentLibrary";
 import { useProjectStore } from "./projectStore";
 
 interface UiStore {
@@ -46,7 +47,14 @@ interface UiStore {
     preprocess: boolean;
     batchImport: boolean;
     confirmClose: boolean;
+    componentLibrary: boolean;
+    packageEditor: boolean;
+    deviceEditor: boolean;
   };
+  editingPackage: PackageDefinition | null;
+  editingDevice: DeviceDefinition | null;
+  setEditingPackage: (pkg: PackageDefinition | null) => void;
+  setEditingDevice: (dev: DeviceDefinition | null) => void;
   preprocessSide: "top" | "bottom";
 
   pendingPreprocess: {
@@ -139,7 +147,14 @@ export const useUiStore = create<UiStore>((set) => ({
     preprocess: false,
     batchImport: false,
     confirmClose: false,
+    componentLibrary: false,
+    packageEditor: false,
+    deviceEditor: false,
   },
+  editingPackage: null,
+  editingDevice: null,
+  setEditingPackage: (pkg) => set({ editingPackage: pkg }),
+  setEditingDevice: (dev) => set({ editingDevice: dev }),
   preprocessSide: "top",
   pendingPreprocess: null,
   pendingBatchImport: null,

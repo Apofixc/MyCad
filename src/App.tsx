@@ -13,20 +13,32 @@ import { NewProjectModal } from "./components/Modals/NewProjectModal";
 import { NewDocumentModal } from "./components/Modals/NewDocumentModal";
 import { ImagePreprocessModal } from "./components/Modals/ImagePreprocessModal";
 import { BatchImageImportModal } from "./components/Modals/BatchImageImportModal";
+import { ComponentLibraryModal } from "./components/Modals/ComponentLibraryModal";
+import { PackageEditorModal } from "./components/Modals/PackageEditorModal";
+import { DeviceEditorModal } from "./components/Modals/DeviceEditorModal";
+import { useLibraryStore } from "./stores/libraryStore";
+import { DeviceDefinition, PackageDefinition, PlacedComponent } from "./types/componentLibrary";
 import { ErrorDialog } from "./components/Common/ErrorDialog";
 import { ErrorBoundary } from "./components/Common/ErrorBoundary";
 
 export const App: React.FC = () => {
-  const { manifest, saveProject, activeFileType, board, schematic } = useProjectStore();
+  const { manifest, saveProject, activeFileType, board, schematic, addComponent } = useProjectStore();
   const {
     leftSidebarCollapsed,
     rightSidebarCollapsed,
     toggleLeftSidebar,
+    modals,
     openModal,
+    closeModal,
+    editingPackage,
+    editingDevice,
+    setEditingPackage,
+    setEditingDevice,
     setActiveTool,
     toggleGrid,
     fitAllImages,
   } = useUiStore();
+  const { packages, savePackage, saveDevice } = useLibraryStore();
 
   // Global Keyboard Shortcuts
   useEffect(() => {
@@ -91,12 +103,49 @@ export const App: React.FC = () => {
         case "0":
           fitAllImages();
           break;
+        case "f2":
+          e.preventDefault();
+          openModal("componentLibrary");
+          break;
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [saveProject, openModal, toggleLeftSidebar, setActiveTool, toggleGrid, fitAllImages]);
+
+  const handlePlaceOnBoard = async (device: DeviceDefinition, packageDef: PackageDefinition) => {
+    const existing = board?.data?.components || [];
+    const prefix = device.designatorPrefix || "U";
+    let index = 1;
+    while (existing.some((c) => c.refDes === `${prefix}${index}`)) {
+      index++;
+    }
+    const posX = 20 + (existing.length % 5) * 15;
+    const posY = 20 + Math.floor(existing.length / 5) * 15;
+    const newComp: PlacedComponent = {
+      id: `comp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
+      refDes: `${prefix}${index}`,
+      deviceId: device.id,
+      packageId: packageDef.id,
+      selectedVariantId: packageDef.variants?.[0]?.id,
+      value: device.parameters?.value || device.name,
+      name: device.name,
+      package: packageDef.name,
+      x: posX,
+      y: posY,
+      xMm: posX,
+      yMm: posY,
+      rotation: 0,
+      rotationDeg: 0,
+      layer: "top",
+      side: "top",
+      mirrored: false,
+      locked: false,
+      packageDef: packageDef,
+    };
+    await addComponent(newComp);
+  };
 
   return (
     <div className="cad-app-container">
@@ -130,6 +179,46 @@ export const App: React.FC = () => {
       <NewDocumentModal />
       <ImagePreprocessModal />
       <BatchImageImportModal />
+
+      {/* Component Library & CAD Package/Device Editors */}
+      <ComponentLibraryModal
+        isOpen={modals.componentLibrary}
+        onClose={() => closeModal("componentLibrary")}
+        onOpenPackageEditor={(pkg) => {
+          setEditingPackage(pkg || null);
+          openModal("packageEditor");
+        }}
+        onOpenDeviceEditor={(dev) => {
+          setEditingDevice(dev || null);
+          openModal("deviceEditor");
+        }}
+        onPlaceOnBoard={handlePlaceOnBoard}
+      />
+
+      <PackageEditorModal
+        isOpen={modals.packageEditor}
+        initialPackage={editingPackage}
+        onClose={() => closeModal("packageEditor")}
+        onSave={async (pkg) => {
+          await savePackage(pkg);
+          closeModal("packageEditor");
+        }}
+      />
+
+      <DeviceEditorModal
+        isOpen={modals.deviceEditor}
+        initialDevice={editingDevice}
+        availablePackages={packages}
+        onClose={() => closeModal("deviceEditor")}
+        onSave={async (dev) => {
+          await saveDevice(dev);
+          closeModal("deviceEditor");
+        }}
+        onCreateNewPackage={() => {
+          setEditingPackage(null);
+          openModal("packageEditor");
+        }}
+      />
 
       {/* Error & Action Dialog */}
       <ErrorDialog />
