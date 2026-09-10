@@ -28,16 +28,17 @@ import {
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
-import { BoardImageLayer } from "../../types/cad";
+import { BoardImageLayer, PlacedComponent } from "../../types/cad";
 import { resolveImageUrl } from "../../api/engineClient";
 
 interface ContextMenuState {
   x: number;
   y: number;
   targetImage?: BoardImageLayer;
-  allSideImages: BoardImageLayer[];
-  targetIds: string[];
-  groupTitle: string;
+  targetComponent?: PlacedComponent;
+  allSideImages?: BoardImageLayer[];
+  targetIds?: string[];
+  groupTitle?: string;
 }
 
 interface HoverPreviewState {
@@ -80,6 +81,8 @@ export const ProjectTree: React.FC = () => {
     updateImageLayer,
     selectedComponentId,
     selectComponent,
+    updateComponent,
+    deleteComponent,
     updateImageLayers,
     batchSetVisibility,
     batchSetLocked,
@@ -120,7 +123,9 @@ export const ProjectTree: React.FC = () => {
     activeWorkLayer,
     setActiveWorkLayer,
     focusImageLayer,
+    focusComponent,
     fitAllImages,
+    setEditingPackage,
   } = useUiStore();
 
   const handlePickAndAddImages = async (side: "top" | "bottom") => {
@@ -1357,6 +1362,16 @@ export const ProjectTree: React.FC = () => {
                                     >
                                       {isAllComponentsVisible ? <Eye size={12} /> : <EyeOff size={12} />}
                                     </button>
+                                    <button
+                                      className="cad-tree-icon-btn"
+                                      onClick={() => {
+                                        if (!isActive) setActiveFile(file.id);
+                                        openModal("componentLibrary");
+                                      }}
+                                      title="Добавить компонент из библиотеки"
+                                    >
+                                      <Plus size={12} />
+                                    </button>
                                   </div>
                                 </div>
                               );
@@ -1368,6 +1383,8 @@ export const ProjectTree: React.FC = () => {
                                 <div>
                                   {(() => {
                                     const isTopCompActive = isActive && activeWorkLayer?.type === "components" && activeWorkLayer.side === "top";
+                                    const isAllTopCompVisible = topComponents.length > 0 ? topComponents.every((c) => c.visible !== false) && showTopComponents : showTopComponents;
+                                    const isAllTopCompLocked = topComponents.length > 0 && topComponents.every((c) => c.locked);
                                     return (
                                       <div
                                         className={`cad-tree-item ${isTopCompActive ? "sublayer-active" : ""}`}
@@ -1390,14 +1407,38 @@ export const ProjectTree: React.FC = () => {
 
                                         <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                           <button
-                                            className={`cad-tree-icon-btn ${showTopComponents ? "active" : ""}`}
+                                            className={`cad-tree-icon-btn ${isAllTopCompVisible ? "active" : ""}`}
                                             onClick={() => {
                                               if (!isActive) setActiveFile(file.id);
-                                              setShowTopComponents(!showTopComponents);
+                                              const next = !isAllTopCompVisible;
+                                              setShowTopComponents(next);
+                                              topComponents.forEach((c) => updateComponent({ ...c, visible: next }));
                                             }}
-                                            title={showTopComponents ? "Скрыть компоненты Top" : "Показать компоненты Top"}
+                                            title={isAllTopCompVisible ? "Скрыть компоненты Top" : "Показать компоненты Top"}
                                           >
-                                            {showTopComponents ? <Eye size={12} /> : <EyeOff size={12} />}
+                                            {isAllTopCompVisible ? <Eye size={12} /> : <EyeOff size={12} />}
+                                          </button>
+                                          <button
+                                            className="cad-tree-icon-btn"
+                                            onClick={() => {
+                                              if (!isActive) setActiveFile(file.id);
+                                              const next = !isAllTopCompLocked;
+                                              topComponents.forEach((c) => updateComponent({ ...c, locked: next }));
+                                            }}
+                                            title={isAllTopCompLocked ? "Разблокировать компоненты Top" : "Заблокировать компоненты Top"}
+                                          >
+                                            {isAllTopCompLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
+                                          </button>
+                                          <button
+                                            className="cad-tree-icon-btn"
+                                            onClick={() => {
+                                              if (!isActive) setActiveFile(file.id);
+                                              setActiveWorkLayer({ type: "components", side: "top" });
+                                              openModal("componentLibrary");
+                                            }}
+                                            title="Добавить компонент Top из библиотеки"
+                                          >
+                                            <Plus size={12} />
                                           </button>
                                         </div>
                                       </div>
@@ -1407,20 +1448,48 @@ export const ProjectTree: React.FC = () => {
                                   {isTopCompOpen && (
                                     <div className="cad-tree-subbranch">
                                       {topComponents.length === 0 ? (
-                                        <div style={{ padding: "3px 12px", fontSize: "10.5px", color: "#64748b", fontStyle: "italic" }}>
-                                          (нет компонентов)
-                                        </div>
+                                        <button
+                                          className="cad-tree-ghost-btn"
+                                          onClick={() => {
+                                            if (!isActive) setActiveFile(file.id);
+                                            setActiveWorkLayer({ type: "components", side: "top" });
+                                            openModal("componentLibrary");
+                                          }}
+                                        >
+                                          <Plus size={11} />
+                                          <span>Добавить компонент Top</span>
+                                        </button>
                                       ) : (
                                         topComponents.map((comp) => {
                                           const isSelected = selectedComponentId === comp.id;
                                           const label = comp.value ? `${comp.value}` : comp.name || comp.packageDef?.name || "";
+                                          const isHidden = comp.visible === false;
                                           return (
                                             <div
                                               key={comp.id}
-                                              className={`cad-tree-item ${isSelected ? "sublayer-active" : ""}`}
+                                              className={`cad-tree-item ${isSelected ? "sublayer-active selected" : ""} ${isHidden ? "is-hidden" : ""}`}
                                               onClick={() => {
                                                 if (!isActive) setActiveFile(file.id);
+                                                setActiveWorkLayer({ type: "components", side: "top" });
                                                 selectComponent(comp.id);
+                                              }}
+                                              onDoubleClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!isActive) setActiveFile(file.id);
+                                                setActiveWorkLayer({ type: "components", side: "top" });
+                                                if (comp.visible === false) updateComponent({ ...comp, visible: true });
+                                                selectComponent(comp.id);
+                                                focusComponent(comp);
+                                              }}
+                                              onContextMenu={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (!isActive) setActiveFile(file.id);
+                                                setContextMenu({
+                                                  x: e.clientX,
+                                                  y: e.clientY,
+                                                  targetComponent: comp,
+                                                });
                                               }}
                                               style={{ fontSize: "11px", cursor: "pointer" }}
                                               title={`${comp.refDes} (${comp.packageDef?.name || comp.packageId})`}
@@ -1429,6 +1498,56 @@ export const ProjectTree: React.FC = () => {
                                                 <CircleDot size={10} color={isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f87171"} style={{ flexShrink: 0 }} />
                                                 <span style={{ fontWeight: 600, color: isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f1f5f9" }}>{comp.refDes}</span>
                                                 {label && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>}
+                                                <div className="cad-tree-status-indicators">
+                                                  {isHidden && <EyeOff size={11} color="var(--cad-text-dim)" />}
+                                                  {comp.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
+                                                </div>
+                                              </div>
+
+                                              <div className="cad-tree-actions" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (!isActive) setActiveFile(file.id);
+                                                    if (comp.visible === false) updateComponent({ ...comp, visible: true });
+                                                    selectComponent(comp.id);
+                                                    focusComponent(comp);
+                                                  }}
+                                                  title="Фокус: центрировать компонент на холсте (двойной клик)"
+                                                >
+                                                  <Target size={11} color="#60a5fa" />
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    updateComponent({ ...comp, visible: comp.visible === false ? true : false });
+                                                  }}
+                                                  title={comp.visible === false ? "Показать компонент" : "Скрыть компонент"}
+                                                >
+                                                  {comp.visible === false ? <EyeOff size={11} /> : <Eye size={11} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    updateComponent({ ...comp, locked: !comp.locked });
+                                                  }}
+                                                  title={comp.locked ? "Разблокировать перемещение" : "Заблокировать перемещение"}
+                                                >
+                                                  {comp.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn danger"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteComponent(comp.id);
+                                                  }}
+                                                  title="Удалить компонент с платы"
+                                                >
+                                                  <Trash2 size={11} />
+                                                </button>
                                               </div>
                                             </div>
                                           );
@@ -1442,6 +1561,8 @@ export const ProjectTree: React.FC = () => {
                                 <div>
                                   {(() => {
                                     const isBotCompActive = isActive && activeWorkLayer?.type === "components" && activeWorkLayer.side === "bottom";
+                                    const isAllBotCompVisible = botComponents.length > 0 ? botComponents.every((c) => c.visible !== false) && showBottomComponents : showBottomComponents;
+                                    const isAllBotCompLocked = botComponents.length > 0 && botComponents.every((c) => c.locked);
                                     return (
                                       <div
                                         className={`cad-tree-item ${isBotCompActive ? "sublayer-active" : ""}`}
@@ -1464,14 +1585,38 @@ export const ProjectTree: React.FC = () => {
 
                                         <div className="cad-tree-group-actions" onClick={(e) => e.stopPropagation()}>
                                           <button
-                                            className={`cad-tree-icon-btn ${showBottomComponents ? "active" : ""}`}
+                                            className={`cad-tree-icon-btn ${isAllBotCompVisible ? "active" : ""}`}
                                             onClick={() => {
                                               if (!isActive) setActiveFile(file.id);
-                                              setShowBottomComponents(!showBottomComponents);
+                                              const next = !isAllBotCompVisible;
+                                              setShowBottomComponents(next);
+                                              botComponents.forEach((c) => updateComponent({ ...c, visible: next }));
                                             }}
-                                            title={showBottomComponents ? "Скрыть компоненты Bottom" : "Показать компоненты Bottom"}
+                                            title={isAllBotCompVisible ? "Скрыть компоненты Bottom" : "Показать компоненты Bottom"}
                                           >
-                                            {showBottomComponents ? <Eye size={12} /> : <EyeOff size={12} />}
+                                            {isAllBotCompVisible ? <Eye size={12} /> : <EyeOff size={12} />}
+                                          </button>
+                                          <button
+                                            className="cad-tree-icon-btn"
+                                            onClick={() => {
+                                              if (!isActive) setActiveFile(file.id);
+                                              const next = !isAllBotCompLocked;
+                                              botComponents.forEach((c) => updateComponent({ ...c, locked: next }));
+                                            }}
+                                            title={isAllBotCompLocked ? "Разблокировать компоненты Bottom" : "Заблокировать компоненты Bottom"}
+                                          >
+                                            {isAllBotCompLocked ? <Lock size={12} color="#f59e0b" /> : <Unlock size={12} />}
+                                          </button>
+                                          <button
+                                            className="cad-tree-icon-btn"
+                                            onClick={() => {
+                                              if (!isActive) setActiveFile(file.id);
+                                              setActiveWorkLayer({ type: "components", side: "bottom" });
+                                              openModal("componentLibrary");
+                                            }}
+                                            title="Добавить компонент Bottom из библиотеки"
+                                          >
+                                            <Plus size={12} />
                                           </button>
                                         </div>
                                       </div>
@@ -1481,20 +1626,48 @@ export const ProjectTree: React.FC = () => {
                                   {isBotCompOpen && (
                                     <div className="cad-tree-subbranch">
                                       {botComponents.length === 0 ? (
-                                        <div style={{ padding: "3px 12px", fontSize: "10.5px", color: "#64748b", fontStyle: "italic" }}>
-                                          (нет компонентов)
-                                        </div>
+                                        <button
+                                          className="cad-tree-ghost-btn"
+                                          onClick={() => {
+                                            if (!isActive) setActiveFile(file.id);
+                                            setActiveWorkLayer({ type: "components", side: "bottom" });
+                                            openModal("componentLibrary");
+                                          }}
+                                        >
+                                          <Plus size={11} />
+                                          <span>Добавить компонент Bottom</span>
+                                        </button>
                                       ) : (
                                         botComponents.map((comp) => {
                                           const isSelected = selectedComponentId === comp.id;
                                           const label = comp.value ? `${comp.value}` : comp.name || comp.packageDef?.name || "";
+                                          const isHidden = comp.visible === false;
                                           return (
                                             <div
                                               key={comp.id}
-                                              className={`cad-tree-item ${isSelected ? "sublayer-active" : ""}`}
+                                              className={`cad-tree-item ${isSelected ? "sublayer-active selected" : ""} ${isHidden ? "is-hidden" : ""}`}
                                               onClick={() => {
                                                 if (!isActive) setActiveFile(file.id);
+                                                setActiveWorkLayer({ type: "components", side: "bottom" });
                                                 selectComponent(comp.id);
+                                              }}
+                                              onDoubleClick={(e) => {
+                                                e.stopPropagation();
+                                                if (!isActive) setActiveFile(file.id);
+                                                setActiveWorkLayer({ type: "components", side: "bottom" });
+                                                if (comp.visible === false) updateComponent({ ...comp, visible: true });
+                                                selectComponent(comp.id);
+                                                focusComponent(comp);
+                                              }}
+                                              onContextMenu={(e) => {
+                                                e.preventDefault();
+                                                e.stopPropagation();
+                                                if (!isActive) setActiveFile(file.id);
+                                                setContextMenu({
+                                                  x: e.clientX,
+                                                  y: e.clientY,
+                                                  targetComponent: comp,
+                                                });
                                               }}
                                               style={{ fontSize: "11px", cursor: "pointer" }}
                                               title={`${comp.refDes} (${comp.packageDef?.name || comp.packageId})`}
@@ -1503,6 +1676,56 @@ export const ProjectTree: React.FC = () => {
                                                 <CircleDot size={10} color={isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#38bdf8"} style={{ flexShrink: 0 }} />
                                                 <span style={{ fontWeight: 600, color: isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#f1f5f9" }}>{comp.refDes}</span>
                                                 {label && <span style={{ color: "#94a3b8", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{label}</span>}
+                                                <div className="cad-tree-status-indicators">
+                                                  {isHidden && <EyeOff size={11} color="var(--cad-text-dim)" />}
+                                                  {comp.locked && <Lock size={10} color="#f59e0b" style={{ flexShrink: 0 }} />}
+                                                </div>
+                                              </div>
+
+                                              <div className="cad-tree-actions" onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    if (!isActive) setActiveFile(file.id);
+                                                    if (comp.visible === false) updateComponent({ ...comp, visible: true });
+                                                    selectComponent(comp.id);
+                                                    focusComponent(comp);
+                                                  }}
+                                                  title="Фокус: центрировать компонент на холсте (двойной клик)"
+                                                >
+                                                  <Target size={11} color="#60a5fa" />
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    updateComponent({ ...comp, visible: comp.visible === false ? true : false });
+                                                  }}
+                                                  title={comp.visible === false ? "Показать компонент" : "Скрыть компонент"}
+                                                >
+                                                  {comp.visible === false ? <EyeOff size={11} /> : <Eye size={11} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    updateComponent({ ...comp, locked: !comp.locked });
+                                                  }}
+                                                  title={comp.locked ? "Разблокировать перемещение" : "Заблокировать перемещение"}
+                                                >
+                                                  {comp.locked ? <Lock size={11} color="#f59e0b" /> : <Unlock size={11} />}
+                                                </button>
+                                                <button
+                                                  className="cad-tree-icon-btn danger"
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    deleteComponent(comp.id);
+                                                  }}
+                                                  title="Удалить компонент с платы"
+                                                >
+                                                  <Trash2 size={11} />
+                                                </button>
                                               </div>
                                             </div>
                                           );
@@ -1744,12 +1967,105 @@ export const ProjectTree: React.FC = () => {
         <div
           className="cad-context-menu"
           style={{
-            top: `${Math.min(window.innerHeight - 220, Math.max(10, contextMenu.y))}px`,
-            left: `${Math.min(window.innerWidth - 230, Math.max(10, contextMenu.x))}px`,
+            top: `${Math.min(window.innerHeight - 250, Math.max(10, contextMenu.y))}px`,
+            left: `${Math.min(window.innerWidth - 250, Math.max(10, contextMenu.x))}px`,
           }}
           onClick={(e) => e.stopPropagation()}
         >
-          {contextMenu.targetImage && (
+          {/* Контекстное меню компонента */}
+          {contextMenu.targetComponent && (
+            <>
+              <div
+                className="cad-context-item"
+                onClick={() => {
+                  const c = contextMenu.targetComponent!;
+                  if (c.visible === false) updateComponent({ ...c, visible: true });
+                  selectComponent(c.id);
+                  focusComponent(c);
+                  setContextMenu(null);
+                }}
+              >
+                <Target size={12} color="#60a5fa" />
+                <span>Фокус / Центрировать на холсте</span>
+              </div>
+              <div
+                className="cad-context-item"
+                onClick={() => {
+                  const c = contextMenu.targetComponent!;
+                  const cur = c.rotationDeg ?? c.rotation ?? 0;
+                  const next = (cur + 90) % 360;
+                  updateComponent({ ...c, rotation: next, rotationDeg: next });
+                  setContextMenu(null);
+                }}
+              >
+                <RotateCw size={12} color="#60a5fa" />
+                <span>Повернуть на +90°</span>
+              </div>
+              <div
+                className="cad-context-item"
+                onClick={() => {
+                  const c = contextMenu.targetComponent!;
+                  const isTop = (c.layer || c.side || "top") !== "bottom";
+                  const nextSide = isTop ? "bottom" : "top";
+                  updateComponent({ ...c, layer: nextSide, side: nextSide, mirrored: nextSide === "bottom" });
+                  setContextMenu(null);
+                }}
+              >
+                <Layers size={12} color="#60a5fa" />
+                <span>Перенести на {(contextMenu.targetComponent.layer || "top") === "top" ? "Bottom (оборот)" : "Top (лицо)"}</span>
+              </div>
+              {contextMenu.targetComponent.packageDef && (
+                <div
+                  className="cad-context-item"
+                  onClick={() => {
+                    setEditingPackage(contextMenu.targetComponent!.packageDef!);
+                    openModal("packageEditor");
+                    setContextMenu(null);
+                  }}
+                >
+                  <Edit2 size={12} color="#60a5fa" />
+                  <span>Открыть корпус в CAD-редакторе</span>
+                </div>
+              )}
+              <div className="cad-context-divider" />
+              <div
+                className="cad-context-item"
+                onClick={() => {
+                  const c = contextMenu.targetComponent!;
+                  updateComponent({ ...c, visible: c.visible === false ? true : false });
+                  setContextMenu(null);
+                }}
+              >
+                {contextMenu.targetComponent.visible === false ? <Eye size={12} /> : <EyeOff size={12} />}
+                <span>{contextMenu.targetComponent.visible === false ? "Показать компонент" : "Скрыть компонент"}</span>
+              </div>
+              <div
+                className="cad-context-item"
+                onClick={() => {
+                  const c = contextMenu.targetComponent!;
+                  updateComponent({ ...c, locked: !c.locked });
+                  setContextMenu(null);
+                }}
+              >
+                {contextMenu.targetComponent.locked ? <Unlock size={12} color="#10b981" /> : <Lock size={12} color="#f59e0b" />}
+                <span>{contextMenu.targetComponent.locked ? "Разблокировать перемещение" : "Заблокировать перемещение"}</span>
+              </div>
+              <div className="cad-context-divider" />
+              <div
+                className="cad-context-item danger"
+                onClick={() => {
+                  deleteComponent(contextMenu.targetComponent!.id);
+                  setContextMenu(null);
+                }}
+              >
+                <Trash2 size={12} color="#ef4444" />
+                <span>Удалить с платы</span>
+              </div>
+            </>
+          )}
+
+          {/* Контекстное меню скана/изображения */}
+          {!contextMenu.targetComponent && contextMenu.targetImage && (
             <>
               <div
                 className="cad-context-item"
@@ -1778,7 +2094,7 @@ export const ProjectTree: React.FC = () => {
                 className="cad-context-item"
                 onClick={() => {
                   const img = contextMenu.targetImage!;
-                  const side = contextMenu.groupTitle.toLowerCase().includes("top") ? "top" : "bottom";
+                  const side = (contextMenu.groupTitle || "").toLowerCase().includes("top") ? "top" : "bottom";
                   setPendingPreprocess({
                     filePath: img.cachedUrl,
                     name: img.name,
@@ -1794,7 +2110,7 @@ export const ProjectTree: React.FC = () => {
               <div
                 className="cad-context-item"
                 onClick={async () => {
-                  const others = contextMenu.allSideImages.filter((i) => i.id !== contextMenu.targetImage!.id);
+                  const others = (contextMenu.allSideImages || []).filter((i) => i.id !== contextMenu.targetImage!.id);
                   if (others.length > 0) {
                     await batchSetVisibility(others.map((i) => i.id), false);
                   }
@@ -1807,53 +2123,59 @@ export const ProjectTree: React.FC = () => {
               </div>
             </>
           )}
-          <div
-            className="cad-context-item"
-            onClick={async () => {
-              await batchSetVisibility(contextMenu.targetIds, true);
-              setContextMenu(null);
-            }}
-          >
-            <Eye size={12} />
-            <span>Показать {contextMenu.targetIds.length > 1 ? `выбранные (${contextMenu.targetIds.length})` : "этот слой"}</span>
-          </div>
-          <div
-            className="cad-context-item"
-            onClick={async () => {
-              await batchSetVisibility(contextMenu.targetIds, false);
-              setContextMenu(null);
-            }}
-          >
-            <EyeOff size={12} />
-            <span>Скрыть {contextMenu.targetIds.length > 1 ? `выбранные (${contextMenu.targetIds.length})` : "этот слой"}</span>
-          </div>
-          <div className="cad-context-divider" />
-          <div
-            className="cad-context-item"
-            onClick={async () => {
-              await batchSetLocked(contextMenu.targetIds, true);
-              setContextMenu(null);
-            }}
-          >
-            <Lock size={12} color="#f59e0b" />
-            <span>Заблокировать {contextMenu.targetIds.length > 1 ? `выбранные (${contextMenu.targetIds.length})` : "этот слой"}</span>
-          </div>
-          <div
-            className="cad-context-item"
-            onClick={async () => {
-              await batchSetLocked(contextMenu.targetIds, false);
-              setContextMenu(null);
-            }}
-          >
-            <Unlock size={12} color="#10b981" />
-            <span>Разблокировать {contextMenu.targetIds.length > 1 ? `выбранные (${contextMenu.targetIds.length})` : "этот слой"}</span>
-          </div>
-          <div className="cad-context-divider" />
-          {contextMenu.allSideImages.length > 0 && (
+
+          {!contextMenu.targetComponent && contextMenu.targetIds && contextMenu.targetIds.length > 0 && (
+            <>
+              <div
+                className="cad-context-item"
+                onClick={async () => {
+                  await batchSetVisibility(contextMenu.targetIds!, true);
+                  setContextMenu(null);
+                }}
+              >
+                <Eye size={12} />
+                <span>Показать {contextMenu.targetIds.length > 1 ? `выбранные (${contextMenu.targetIds.length})` : "этот слой"}</span>
+              </div>
+              <div
+                className="cad-context-item"
+                onClick={async () => {
+                  await batchSetVisibility(contextMenu.targetIds!, false);
+                  setContextMenu(null);
+                }}
+              >
+                <EyeOff size={12} />
+                <span>Скрыть {contextMenu.targetIds.length > 1 ? `выбранные (${contextMenu.targetIds.length})` : "этот слой"}</span>
+              </div>
+              <div className="cad-context-divider" />
+              <div
+                className="cad-context-item"
+                onClick={async () => {
+                  await batchSetLocked(contextMenu.targetIds!, true);
+                  setContextMenu(null);
+                }}
+              >
+                <Lock size={12} color="#f59e0b" />
+                <span>Заблокировать {contextMenu.targetIds.length > 1 ? `выбранные (${contextMenu.targetIds.length})` : "этот слой"}</span>
+              </div>
+              <div
+                className="cad-context-item"
+                onClick={async () => {
+                  await batchSetLocked(contextMenu.targetIds!, false);
+                  setContextMenu(null);
+                }}
+              >
+                <Unlock size={12} color="#10b981" />
+                <span>Разблокировать {contextMenu.targetIds.length > 1 ? `выбранные (${contextMenu.targetIds.length})` : "этот слой"}</span>
+              </div>
+              <div className="cad-context-divider" />
+            </>
+          )}
+
+          {!contextMenu.targetComponent && contextMenu.allSideImages && contextMenu.allSideImages.length > 0 && (
             <div
               className="cad-context-item"
               onClick={() => {
-                selectAllImages(contextMenu.allSideImages.map((i) => i.id));
+                selectAllImages(contextMenu.allSideImages!.map((i) => i.id));
                 setContextMenu(null);
               }}
             >
@@ -1861,18 +2183,18 @@ export const ProjectTree: React.FC = () => {
               <span>Выбрать все в «{contextMenu.groupTitle}»</span>
             </div>
           )}
-          {contextMenu.targetIds.length > 1 && (
+          {!contextMenu.targetComponent && contextMenu.targetIds && contextMenu.targetIds.length > 1 && (
             <div
               className="cad-context-item danger"
               onClick={async () => {
-                if (window.confirm(`Удалить ${contextMenu.targetIds.length} выбранных слоев?`)) {
-                  await batchDeleteLayers(contextMenu.targetIds);
+                if (window.confirm(`Удалить ${contextMenu.targetIds!.length} выбранных слоев?`)) {
+                  await batchDeleteLayers(contextMenu.targetIds!);
                 }
                 setContextMenu(null);
               }}
             >
               <Trash2 size={12} color="#ef4444" />
-              <span>Удалить выбранные ({contextMenu.targetIds.length})</span>
+              <span>Удалить выбранные ({contextMenu.targetIds!.length})</span>
             </div>
           )}
         </div>

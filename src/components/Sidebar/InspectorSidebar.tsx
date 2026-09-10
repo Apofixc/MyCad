@@ -98,97 +98,141 @@ export const InspectorSidebar: React.FC = () => {
           }}
         />
 
-        {/* Заголовок */}
-        <div className="cad-inspector-header">
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <Cpu size={16} color="#38bdf8" />
-            <span style={{ fontWeight: "bold", fontSize: 13, color: "#f8fafc" }}>
+        {/* Заголовок в едином CAD стиле */}
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 12px",
+            borderBottom: "1px solid var(--cad-border)",
+            gap: "8px",
+            background: "var(--cad-bg-surface)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", flex: 1, minWidth: 0 }}>
+            <Cpu size={15} color="#38bdf8" style={{ flexShrink: 0 }} />
+            <span style={{ fontWeight: 600, fontSize: "12.5px", color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               Компонент: {comp.refDes}
             </span>
+            {comp.value && (
+              <span className="cad-badge-dim" style={{ maxWidth: "120px", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {comp.value}
+              </span>
+            )}
           </div>
-          <button
-            className="cad-panel-btn-icon"
-            onClick={() => selectComponent(null)}
-            title="Снять выделение"
-          >
-            <X size={15} />
-          </button>
+          <div style={{ display: "flex", alignItems: "center", gap: "3px", flexShrink: 0 }}>
+            <button
+              className="cad-tool-btn"
+              style={{ width: "26px", height: "26px" }}
+              onClick={() => selectComponent(null)}
+              title="Закрыть панель свойств (снять выделение)"
+            >
+              <X size={14} />
+            </button>
+          </div>
         </div>
 
-        <div className="cad-inspector-body">
-          {/* Основные свойства */}
-          <div className="cad-inspector-section">
-            <div className="cad-inspector-section-title">Параметры компонента</div>
-
-            <div className="cad-inspector-row">
-              <label className="cad-inspector-label">Позиционное обозначение</label>
-              <input
-                type="text"
-                className="cad-inspector-input"
-                value={comp.refDes}
-                onChange={(e) => updateComponent({ ...comp, refDes: e.target.value })}
-              />
+        {/* Тело инспектора с единой структурой карточек */}
+        <div
+          className="cad-sidebar-content"
+          style={{
+            padding: "10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "9px",
+            overflowY: "auto",
+            flex: 1,
+          }}
+        >
+          {/* Card: Основные параметры компонента */}
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Cpu size={13} />
+              <span>Параметры компонента</span>
             </div>
 
-            <div className="cad-inspector-row">
-              <label className="cad-inspector-label">Номинал / Значение</label>
-              <input
-                type="text"
-                className="cad-inspector-input"
-                value={comp.value || ""}
-                placeholder="например, 10k, 0.1uF"
-                onChange={(e) => updateComponent({ ...comp, value: e.target.value })}
-              />
-            </div>
-
-            <div className="cad-inspector-row">
-              <label className="cad-inspector-label">Корпус (Footprint)</label>
-              <div style={{ background: "var(--cad-bg-deep, #0c0e12)", border: "1px solid var(--cad-border, #283344)", borderRadius: "6px", padding: "8px 10px" }}>
-                <div style={{ fontSize: 12, color: "var(--cad-accent-hover, #60a5fa)", fontWeight: 600, lineHeight: 1.3 }}>
-                  {pkg?.name || comp.packageId}
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+              {/* Позиционное обозначение (RefDes) */}
+              <div>
+                <label style={{ display: "block", fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "4px" }}>
+                  Позиционное обозначение
+                </label>
+                <div className="cad-field-wrap">
+                  <span className="cad-field-prefix">ID</span>
+                  <input
+                    type="text"
+                    className="cad-modern-input"
+                    value={comp.refDes}
+                    onChange={(e) => updateComponent({ ...comp, refDes: e.target.value })}
+                  />
                 </div>
-                {pkg && (
-                  <div style={{ fontSize: 10.5, color: "var(--cad-text-muted, #94a3b8)", marginTop: 4, display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center" }}>
-                    <span>Выводов: {pkg.pads.length}</span>
-                    <span>•</span>
-                    <span>{pkg.mountType.toUpperCase()}</span>
-                    <span>•</span>
-                    <span>{pkg.bodyWidth}×{pkg.bodyHeight} мм</span>
-                    {pkg.pitch ? <span>• Шаг: {pkg.pitch} мм</span> : null}
+              </div>
+
+              {/* Номинал / Значение */}
+              <div>
+                <label style={{ display: "block", fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "4px" }}>
+                  Номинал / Значение
+                </label>
+                <div className="cad-field-wrap">
+                  <span className="cad-field-prefix">VAL</span>
+                  <input
+                    type="text"
+                    className="cad-modern-input"
+                    value={comp.value || ""}
+                    placeholder="например, 10k, 0.1uF"
+                    onChange={(e) => updateComponent({ ...comp, value: e.target.value })}
+                  />
+                </div>
+              </div>
+
+              {/* Корпус (Footprint Info Card) */}
+              <div>
+                <label style={{ display: "block", fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "4px" }}>
+                  Корпус (Footprint)
+                </label>
+                <div
+                  style={{
+                    background: "var(--cad-bg-deep)",
+                    border: "1px solid var(--cad-border)",
+                    borderRadius: "6px",
+                    padding: "8px 10px",
+                  }}
+                >
+                  <div style={{ fontSize: "11.5px", color: "var(--cad-accent-hover, #60a5fa)", fontWeight: 600, lineHeight: 1.3 }}>
+                    {pkg?.name || comp.packageId}
                   </div>
-                )}
+                  {pkg && (
+                    <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", alignItems: "center", marginTop: "6px" }}>
+                      <span className="cad-badge-dim">Выводов: {pkg.pads.length}</span>
+                      <span className="cad-badge-dim">{pkg.mountType.toUpperCase()}</span>
+                      <span className="cad-badge-dim">{pkg.bodyWidth}×{pkg.bodyHeight} мм</span>
+                      {pkg.pitch ? <span className="cad-badge-dim">Шаг: {pkg.pitch} мм</span> : null}
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          {/* Сторона монтажа */}
-          <div className="cad-inspector-section">
-            <div className="cad-inspector-section-title">Слой размещения</div>
-            <div style={{ display: "flex", gap: 8 }}>
+          {/* Card: Слой размещения (Сегментированный переключатель) */}
+          <div className="cad-card-group" style={{ padding: "8px 10px" }}>
+            <div className="cad-card-header" style={{ marginBottom: "6px" }}>
+              <Layers size={13} />
+              <span>Слой размещения</span>
+            </div>
+
+            <div className="cad-side-toggle-group">
               <button
-                className={`cad-btn-secondary ${isCompTop ? "active" : ""}`}
-                style={{
-                  flex: 1,
-                  padding: "6px 8px",
-                  fontSize: 12,
-                  background: isCompTop ? "#1e3a8a" : "#1e293b",
-                  color: isCompTop ? "#60a5fa" : "#94a3b8",
-                  border: isCompTop ? "1px solid #3b82f6" : "1px solid #334155",
-                }}
+                type="button"
+                className={`cad-side-btn ${isCompTop ? "active" : ""}`}
                 onClick={() => updateComponent({ ...comp, layer: "top", side: "top", mirrored: false })}
               >
                 Top (Лицевая)
               </button>
               <button
-                className={`cad-btn-secondary ${!isCompTop ? "active" : ""}`}
-                style={{
-                  flex: 1,
-                  padding: "6px 8px",
-                  fontSize: 12,
-                  background: !isCompTop ? "#1e3a8a" : "#1e293b",
-                  color: !isCompTop ? "#60a5fa" : "#94a3b8",
-                  border: !isCompTop ? "1px solid #3b82f6" : "1px solid #334155",
-                }}
+                type="button"
+                className={`cad-side-btn ${!isCompTop ? "active" : ""}`}
                 onClick={() => updateComponent({ ...comp, layer: "bottom", side: "bottom", mirrored: true })}
               >
                 Bottom (Оборотная)
@@ -196,129 +240,157 @@ export const InspectorSidebar: React.FC = () => {
             </div>
           </div>
 
-          {/* Координаты и Поворот */}
-          <div className="cad-inspector-section">
-            <div className="cad-inspector-section-title">Положение и угол</div>
+          {/* Card: Положение и угол поворота */}
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Move size={13} />
+              <span>Положение и угол</span>
+            </div>
 
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-              <div>
-                <label className="cad-inspector-label">X (мм)</label>
+            {/* Координаты X / Y */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", marginBottom: "8px" }}>
+              <div className="cad-field-wrap">
+                <span className="cad-field-prefix">X</span>
                 <input
                   type="number"
-                  step="0.1"
-                  className="cad-inspector-input"
-                  value={comp.xMm ?? comp.x}
+                  step="0.5"
+                  className="cad-modern-input"
+                  value={comp.xMm ?? comp.x ?? 0}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value) || 0;
                     updateComponent({ ...comp, x: val, xMm: val });
                   }}
                 />
+                <span className="cad-field-suffix">мм</span>
               </div>
-              <div>
-                <label className="cad-inspector-label">Y (мм)</label>
+              <div className="cad-field-wrap">
+                <span className="cad-field-prefix">Y</span>
                 <input
                   type="number"
-                  step="0.1"
-                  className="cad-inspector-input"
-                  value={comp.yMm ?? comp.y}
+                  step="0.5"
+                  className="cad-modern-input"
+                  value={comp.yMm ?? comp.y ?? 0}
                   onChange={(e) => {
                     const val = parseFloat(e.target.value) || 0;
                     updateComponent({ ...comp, y: val, yMm: val });
                   }}
                 />
+                <span className="cad-field-suffix">мм</span>
               </div>
             </div>
 
-            <div style={{ marginTop: 10 }}>
-              <label className="cad-inspector-label">Поворот: {comp.rotationDeg ?? comp.rotation ?? 0}°</label>
-              <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
-                <button
-                  className="cad-btn-secondary btn-sm"
-                  style={{ flex: 1 }}
-                  onClick={() => {
-                    const cur = comp.rotationDeg ?? comp.rotation ?? 0;
-                    const next = (cur - 90 + 360) % 360;
-                    updateComponent({ ...comp, rotation: next, rotationDeg: next });
-                  }}
-                  title="Повернуть на 90° против часовой стрелки"
-                >
-                  <RotateCcw size={13} />
-                  <span>-90°</span>
-                </button>
-                <button
-                  className="cad-btn-secondary btn-sm"
-                  style={{ flex: 1 }}
-                  onClick={() => {
-                    const cur = comp.rotationDeg ?? comp.rotation ?? 0;
-                    const next = (cur + 90) % 360;
-                    updateComponent({ ...comp, rotation: next, rotationDeg: next });
-                  }}
-                  title="Повернуть на 90° по часовой стрелке"
-                >
-                  <RotateCw size={13} />
-                  <span>+90°</span>
-                </button>
-                <button
-                  className="cad-btn-secondary btn-sm"
-                  style={{ flex: 1 }}
-                  onClick={() => {
-                    const cur = comp.rotationDeg ?? comp.rotation ?? 0;
-                    const next = (cur + 180) % 360;
-                    updateComponent({ ...comp, rotation: next, rotationDeg: next });
-                  }}
-                  title="Повернуть на 180°"
-                >
-                  <span>180°</span>
-                </button>
-              </div>
+            {/* Заголовок угла */}
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
+              <span style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--cad-text-muted)" }}>Поворот:</span>
+              <span className="cad-badge-dim">{comp.rotationDeg ?? comp.rotation ?? 0}°</span>
+            </div>
+
+            {/* Быстрые кнопки поворота */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px" }}>
+              <button
+                type="button"
+                className="cad-btn cad-btn-secondary"
+                style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }}
+                onClick={() => {
+                  const cur = comp.rotationDeg ?? comp.rotation ?? 0;
+                  const next = (cur - 90 + 360) % 360;
+                  updateComponent({ ...comp, rotation: next, rotationDeg: next });
+                }}
+                title="Повернуть на 90° против часовой стрелки"
+              >
+                <RotateCcw size={12} style={{ marginRight: "3px" }} />
+                <span>-90°</span>
+              </button>
+              <button
+                type="button"
+                className="cad-btn cad-btn-secondary"
+                style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }}
+                onClick={() => {
+                  const cur = comp.rotationDeg ?? comp.rotation ?? 0;
+                  const next = (cur + 90) % 360;
+                  updateComponent({ ...comp, rotation: next, rotationDeg: next });
+                }}
+                title="Повернуть на 90° по часовой стрелке"
+              >
+                <RotateCw size={12} style={{ marginRight: "3px" }} />
+                <span>+90°</span>
+              </button>
+              <button
+                type="button"
+                className="cad-btn cad-btn-secondary"
+                style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }}
+                onClick={() => {
+                  const cur = comp.rotationDeg ?? comp.rotation ?? 0;
+                  const next = (cur + 180) % 360;
+                  updateComponent({ ...comp, rotation: next, rotationDeg: next });
+                }}
+                title="Повернуть на 180°"
+              >
+                <span>180°</span>
+              </button>
             </div>
           </div>
 
-          {/* Вариант исполнения графики корпуса */}
+          {/* Card: Вариант шелкографии корпуса */}
           {variants.length > 0 && (
-            <div className="cad-inspector-section">
-              <div className="cad-inspector-section-title">Вариант шелкографии корпуса</div>
-              <select
-                className="cad-inspector-select"
-                value={comp.selectedVariantId || variants[0]?.id}
-                onChange={(e) =>
-                  updateComponent({
-                    ...comp,
-                    selectedVariantId: e.target.value,
-                  })
-                }
-              >
-                {variants.map((v) => (
-                  <option key={v.id} value={v.id}>
-                    {v.name} ({v.keyType})
-                  </option>
-                ))}
-              </select>
+            <div className="cad-card-group">
+              <div className="cad-card-header">
+                <Compass size={13} />
+                <span>Вариант шелкографии корпуса</span>
+              </div>
+              <div className="cad-field-wrap">
+                <select
+                  className="cad-modern-input"
+                  style={{ cursor: "pointer", background: "transparent" }}
+                  value={comp.selectedVariantId || variants[0]?.id}
+                  onChange={(e) =>
+                    updateComponent({
+                      ...comp,
+                      selectedVariantId: e.target.value,
+                    })
+                  }
+                >
+                  {variants.map((v) => (
+                    <option key={v.id} value={v.id} style={{ background: "var(--cad-bg-panel)", color: "var(--cad-text-main)" }}>
+                      {v.name} ({v.keyType})
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
           )}
 
           {/* Быстрые действия */}
-          <div className="cad-inspector-section" style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "8px", paddingTop: "8px" }}>
             {pkg && (
               <button
-                className="cad-btn-secondary"
-                style={{ width: "100%", justifyContent: "center" }}
+                type="button"
+                className="cad-btn cad-btn-secondary"
+                style={{ width: "100%", justifyContent: "center", padding: "7px 10px", fontSize: "11.5px" }}
                 onClick={() => {
                   setEditingPackage(pkg);
                   openModal("packageEditor");
                 }}
               >
-                <Edit2 size={13} />
+                <Edit2 size={13} style={{ marginRight: "4px" }} />
                 <span>Открыть корпус в CAD-редакторе</span>
               </button>
             )}
 
             <button
-              className="cad-btn-danger"
-              style={{ width: "100%", justifyContent: "center" }}
+              type="button"
+              className="cad-btn cad-btn-secondary"
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                padding: "7px 10px",
+                fontSize: "11.5px",
+                color: "#f87171",
+                borderColor: "rgba(239, 68, 68, 0.25)",
+              }}
               onClick={() => deleteComponent(comp.id)}
             >
-              <Trash2 size={13} />
+              <Trash2 size={13} style={{ marginRight: "4px" }} />
               <span>Удалить компонент с платы</span>
             </button>
           </div>

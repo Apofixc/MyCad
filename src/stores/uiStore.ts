@@ -1,6 +1,6 @@
 import { create } from "zustand";
 import { ToolMode, ActiveWorkLayer, BoardImageLayer } from "../types/cad";
-import { PackageDefinition, DeviceDefinition } from "../types/componentLibrary";
+import { PackageDefinition, DeviceDefinition, PlacedComponent } from "../types/componentLibrary";
 import { useProjectStore } from "./projectStore";
 
 interface UiStore {
@@ -11,6 +11,7 @@ interface UiStore {
   viewportZoom: number; // in %
   viewportPan: { x: number; y: number };
   focusImageLayer: (imgLayer: BoardImageLayer) => void;
+  focusComponent: (comp: PlacedComponent) => void;
   fitAllImages: (images?: BoardImageLayer[]) => void;
   gridStepMm: number;
   showGrid: boolean;
@@ -225,6 +226,35 @@ export const useUiStore = create<UiStore>((set) => ({
     const newPanY = Math.round(viewportH / 2 - centerMmY * MM_TO_PX * zoomFactor);
 
     nextUpdates.viewportZoom = newZoom;
+    nextUpdates.viewportPan = { x: newPanX, y: newPanY };
+    set(nextUpdates);
+  },
+  focusComponent: (comp: PlacedComponent) => {
+    const isTop = (comp.layer || comp.side || "top") !== "bottom";
+    const state = useUiStore.getState();
+    const nextUpdates: Partial<UiStore> = {};
+    if (isTop && !state.showTopComponents) {
+      nextUpdates.showTopComponents = true;
+    } else if (!isTop && !state.showBottomComponents) {
+      nextUpdates.showBottomComponents = true;
+    }
+
+    const compX = comp.xMm ?? comp.x ?? 0;
+    const compY = comp.yMm ?? comp.y ?? 0;
+
+    const leftW = state.leftSidebarCollapsed ? 0 : state.leftSidebarWidth;
+    const rightW = state.rightSidebarCollapsed ? 0 : state.rightSidebarWidth;
+    const viewportW = Math.max(300, (typeof window !== "undefined" ? window.innerWidth : 1200) - leftW - rightW);
+    const viewportH = Math.max(300, (typeof window !== "undefined" ? window.innerHeight : 800) - 80);
+
+    const MM_TO_PX = 10;
+    const targetZoom = Math.max(state.viewportZoom, 180);
+    const zoomFactor = targetZoom / 100;
+
+    const newPanX = Math.round(viewportW / 2 - compX * MM_TO_PX * zoomFactor);
+    const newPanY = Math.round(viewportH / 2 - compY * MM_TO_PX * zoomFactor);
+
+    nextUpdates.viewportZoom = targetZoom;
     nextUpdates.viewportPan = { x: newPanX, y: newPanY };
     set(nextUpdates);
   },

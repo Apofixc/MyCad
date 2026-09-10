@@ -1,4 +1,5 @@
 import { PlacedComponent } from "./componentLibrary";
+export type { PlacedComponent };
 
 export type ToolMode =
   | "select"

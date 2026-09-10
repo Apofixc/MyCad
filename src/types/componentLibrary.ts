@@ -248,6 +248,7 @@ export interface PlacedComponent {
   value?: string;
   mirrored?: boolean;
   locked?: boolean;
+  visible?: boolean;
   packageDef?: PackageDefinition;
 }
 
