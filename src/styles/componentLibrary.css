@@ -2204,3 +2204,193 @@
   background: rgba(59, 130, 246, 0.12);
 }
 
+/* ==========================================================================
+   Library Navigation Tree & Sidebar Styles
+   ========================================================================== */
+.lib-tree-sidebar {
+  width: 260px;
+  min-width: 260px;
+  max-width: 260px;
+  background: var(--cad-bg-panel, #181d26);
+  border-right: 1px solid var(--cad-border, #283344);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  user-select: none;
+}
+
+.lib-tree-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 8px 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.lib-tree-section {
+  margin-top: 10px;
+  margin-bottom: 2px;
+}
+
+.lib-tree-section:first-child {
+  margin-top: 0;
+}
+
+.lib-tree-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 5px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--cad-text-dim, #64748b);
+  cursor: pointer;
+  border-radius: 5px;
+  transition: all 0.12s ease;
+}
+
+.lib-tree-section-header:hover {
+  color: var(--cad-text-muted, #94a3b8);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.lib-tree-node {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 9px;
+  border-radius: 6px;
+  font-size: 11.5px;
+  font-weight: 500;
+  color: var(--cad-text-muted, #94a3b8);
+  background: transparent;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.lib-tree-node:hover {
+  background: var(--cad-bg-hover, #273042);
+  color: var(--cad-text-main, #f1f5f9);
+}
+
+.lib-tree-node.active {
+  background: rgba(59, 130, 246, 0.15);
+  border-color: rgba(59, 130, 246, 0.4);
+  color: var(--cad-accent-hover, #60a5fa);
+  font-weight: 600;
+}
+
+.lib-tree-subnode {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px 4px 24px;
+  border-radius: 5px;
+  font-size: 11px;
+  color: var(--cad-text-muted, #94a3b8);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.lib-tree-subnode:hover {
+  background: var(--cad-bg-hover, #273042);
+  color: var(--cad-text-main, #f1f5f9);
+}
+
+.lib-tree-subnode.active {
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--cad-accent-hover, #60a5fa);
+  font-weight: 600;
+}
+
+.lib-tree-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-family: var(--cad-font-mono, monospace);
+  padding: 1px 6px;
+  border-radius: 10px;
+  background: var(--cad-bg-surface, #141820);
+  border: 1px solid var(--cad-border, #283344);
+  color: var(--cad-text-dim, #64748b);
+  flex-shrink: 0;
+}
+
+.lib-tree-node.active .lib-tree-badge,
+.lib-tree-subnode.active .lib-tree-badge {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: rgba(59, 130, 246, 0.5);
+  color: var(--cad-accent-hover, #60a5fa);
+}
+
+.lib-tree-stats {
+  padding: 10px 12px;
+  background: var(--cad-bg-surface, #141820);
+  border-top: 1px solid var(--cad-border, #283344);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.lib-tree-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+}
+
+.lib-tree-stat-item {
+  background: var(--cad-bg-panel, #181d26);
+  border: 1px solid var(--cad-border, #283344);
+  border-radius: 5px;
+  padding: 5px 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.lib-tree-stat-label {
+  font-size: 10px;
+  color: var(--cad-text-dim, #64748b);
+}
+
+.lib-tree-stat-value {
+  font-size: 11px;
+  font-weight: 700;
+  font-family: var(--cad-font-mono, monospace);
+  color: var(--cad-text-main, #f1f5f9);
+}
+
+.lib-tree-quick-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 5px 8px;
+  border-radius: 5px;
+  font-size: 10.5px;
+  font-weight: 500;
+  background: var(--cad-bg-panel, #181d26);
+  border: 1px solid var(--cad-border, #283344);
+  color: var(--cad-text-muted, #94a3b8);
+  cursor: pointer;
+  transition: all 0.12s ease;
+  flex: 1;
+}
+
+.lib-tree-quick-btn:hover {
+  background: var(--cad-bg-hover, #273042);
+  color: var(--cad-accent-hover, #60a5fa);
+  border-color: var(--cad-accent, #3b82f6);
+}
