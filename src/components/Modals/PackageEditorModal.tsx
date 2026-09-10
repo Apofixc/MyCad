@@ -1,8 +1,8 @@
 // src/components/Modals/PackageEditorModal.tsx
 // Полнофункциональный векторный CAD-редактор посадочных мест (Footprint Editor)
-// Свободное векторное черчение, D-образные контуры, генераторы массивов, точный инспектор свойств и варианты исполнения
+// Свободное черчение, D-образные контуры, генераторы массивов, точный инспектор свойств и варианты исполнения
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect } from "react";
 import {
   PackageDefinition,
   PackagePad,
@@ -19,7 +19,6 @@ import {
 import { PadArrayModal } from "./PadArrayModal";
 import {
   centerPads,
-  alignPads,
   generateAutoSilkscreen,
 } from "../../utils/footprintGenerator";
 import {
@@ -27,9 +26,7 @@ import {
   Save,
   MousePointer,
   Plus,
-  Minus,
   Trash2,
-  Maximize2,
   Ruler,
   Layers,
   Circle,
@@ -42,6 +39,10 @@ import {
   Crosshair,
   Wand2,
   Box,
+  Settings,
+  Sparkles,
+  Palette,
+  Magnet,
 } from "lucide-react";
 
 interface PackageEditorModalProps {
@@ -62,7 +63,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   const [name, setName] = useState<string>("");
   const [standard, setStandard] = useState<string>("");
   const [mountType, setMountType] = useState<MountType>("smd");
-  const [bodyWidth, setBodyWidth] = useState<number>(5.0);
+  const [bodyWidth, setBodyWidth] = useState<number>(6.0);
   const [bodyHeight, setBodyHeight] = useState<number>(4.0);
   const [bodyShape, setBodyShape] = useState<string>("rect");
   const [dShapeCut, setDShapeCut] = useState<string>("right");
@@ -76,7 +77,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
 
   // Состояние редактора
   const [activeTool, setActiveTool] = useState<EditorTool>("select");
-  const [gridStep, setGridStep] = useState<number>(0.5); // мм
+  const [gridStep, setGridStep] = useState<number>(1.27); // мм
   const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
   const [selectedPadNum, setSelectedPadNum] = useState<string | null>(null);
   const [selectedGraphicId, setSelectedGraphicId] = useState<string | null>(null);
@@ -113,7 +114,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       setName(initialPackage.name);
       setStandard(initialPackage.standard || "");
       setMountType(initialPackage.mountType || "smd");
-      setBodyWidth(initialPackage.bodyWidth || 5.0);
+      setBodyWidth(initialPackage.bodyWidth || 6.0);
       setBodyHeight(initialPackage.bodyHeight || 4.0);
       setBodyShape(initialPackage.bodyShape || "rect");
       setDShapeCut(initialPackage.dShapeCut || "right");
@@ -136,7 +137,6 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       );
       setDefaultVariantId(initialPackage.defaultVariantId || "standard");
     } else {
-      // Создание нового корпуса с чистого листа
       const newId = `pkg_custom_${Date.now()}`;
       setId(newId);
       setName("Новое посадочное место");
@@ -162,14 +162,13 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       setDefaultVariantId("standard");
     }
 
-    // Сброс истории
     setHistory([]);
     setHistoryIndex(-1);
     setSelectedPadNum(null);
     setSelectedGraphicId(null);
   }, [isOpen, initialPackage]);
 
-  // Запись в историю
+  // Запись в историю изменений
   const pushHistory = (newPads: PackagePad[], newGraphics: GraphicItem[]) => {
     const nextHistory = history.slice(0, historyIndex + 1);
     nextHistory.push({ pads: newPads, graphics: newGraphics });
@@ -229,7 +228,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
     setGraphics(shiftedGraphics);
   };
 
-  // Центрировать в (0,0)
+  // Центрировать все выводы в (0,0)
   const handleCenterAll = () => {
     if (pads.length === 0) return;
     pushHistory(pads, graphics);
@@ -248,6 +247,27 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   const handleApplyArrayPads = (newPads: PackagePad[]) => {
     pushHistory(pads, graphics);
     setPads([...pads, ...newPads]);
+  };
+
+  // Быстрое применение пресетов площадок
+  const applyPadPreset = (preset: "0603" | "0805" | "soic" | "qfp" | "tht") => {
+    switch (preset) {
+      case "0603":
+        setPadTemplate({ shape: "rect", width: 1.0, height: 0.8, drillDiameter: 0 });
+        break;
+      case "0805":
+        setPadTemplate({ shape: "rounded_rect", width: 1.3, height: 1.2, drillDiameter: 0, roundRadius: 0.1 });
+        break;
+      case "soic":
+        setPadTemplate({ shape: "rounded_rect", width: 1.6, height: 0.6, drillDiameter: 0, roundRadius: 0.1 });
+        break;
+      case "qfp":
+        setPadTemplate({ shape: "rounded_rect", width: 1.5, height: 0.35, drillDiameter: 0, roundRadius: 0.05 });
+        break;
+      case "tht":
+        setPadTemplate({ shape: "circle", width: 1.6, height: 1.6, drillDiameter: 0.8 });
+        break;
+    }
   };
 
   // Сохранение корпуса
@@ -287,6 +307,21 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   const selectedPad = pads.find((p) => p.padNum === selectedPadNum);
   const selectedGraphic = graphics.find((g) => g.id === selectedGraphicId);
 
+  // Вычисление габаритов охватывающей рамки (Bounding Box)
+  let bboxW = bodyWidth;
+  let bboxH = bodyHeight;
+  if (pads.length > 0) {
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    pads.forEach((p) => {
+      minX = Math.min(minX, p.x - p.width / 2);
+      maxX = Math.max(maxX, p.x + p.width / 2);
+      minY = Math.min(minY, p.y - p.height / 2);
+      maxY = Math.max(maxY, p.y + p.height / 2);
+    });
+    bboxW = Math.max(bboxW, maxX - minX);
+    bboxH = Math.max(bboxH, maxY - minY);
+  }
+
   return (
     <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={onClose}>
       <div
@@ -300,59 +335,60 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
         }}
       >
         {/* ============================================================ */}
-        {/* ЕДИНАЯ ШАПКА CAD-МОДАЛЬНОГО ОКНА (MYCAD DESIGN SYSTEM)         */}
+        {/* ШАПКА РЕДАКТОРА КОРПУСОВ: ЧИСТАЯ, СТРОГАЯ, ИНЖЕНЕРНАЯ       */}
         {/* ============================================================ */}
-        <div className="cad-modal-header">
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <div className="cad-modal-icon-badge">
-              <Box size={18} color="#60a5fa" />
+        <div className="cad-modal-header" style={{ padding: "10px 18px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <div className="cad-modal-icon-badge" style={{ width: 34, height: 34, borderRadius: 8 }}>
+              <Box size={18} color="var(--cad-accent-hover)" />
             </div>
-            <div>
-              <div style={{ fontSize: "15px", fontWeight: 600, color: "#fff", display: "flex", alignItems: "center", gap: 8 }}>
-                <span>{name || "Новое посадочное место (Footprint)"}</span>
-                <span style={{ fontSize: "10px", background: "rgba(59, 130, 246, 0.15)", color: "#60a5fa", border: "1px solid rgba(59, 130, 246, 0.3)", padding: "1px 6px", borderRadius: 4, fontWeight: 700 }}>
-                  {mountType.toUpperCase()}
-                </span>
-              </div>
-              <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginTop: "1px" }}>
-                Векторный CAD-редактор посадочных мест • Площадки, шелкография, вырезы и графика
-              </div>
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="SOIC-8, DIP-8, 0805..."
+                className="cad-input"
+                style={{
+                  width: 250,
+                  fontWeight: 700,
+                  fontSize: 13,
+                  background: "var(--cad-bg-deep)",
+                  padding: "5px 10px",
+                }}
+              />
+              <select
+                value={mountType}
+                onChange={(e) => setMountType(e.target.value as MountType)}
+                className="cad-input"
+                style={{ fontSize: 11, padding: "5px 8px" }}
+              >
+                <option value="smd">SMD (Поверхностный)</option>
+                <option value="tht">THT (Выводной)</option>
+                <option value="mixed">Смешанный</option>
+              </select>
+            </div>
+            <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginLeft: 6 }}>
+              Площадок: <strong style={{ color: "var(--cad-accent-hover)" }}>{pads.length}</strong> • Графика: <strong style={{ color: "var(--cad-text-muted)" }}>{graphics.length}</strong>
             </div>
           </div>
 
-          {/* Быстрое редактирование имени и типа монтажа прямо в шапке */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Название корпуса (напр. SOIC-8, TO-92)"
-              className="cad-input"
-              style={{ width: 220, fontWeight: 600, fontSize: 12 }}
-            />
-            <select
-              value={mountType}
-              onChange={(e) => setMountType(e.target.value as MountType)}
-              className="cad-input"
-              style={{ fontSize: 12 }}
-            >
-              <option value="smd">SMD (Поверхн.)</option>
-              <option value="tht">THT (Выводной)</option>
-              <option value="mixed">Смешанный</option>
-            </select>
-          </div>
-
-          {/* Кнопки действий */}
+          {/* Кнопки действий справа */}
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
             <button
               className="cad-btn-secondary btn-sm"
               onClick={() => setIsArrayModalOpen(true)}
-              title="Параметрический генератор массивов выводов (DIP, QFP, BGA)"
+              title="Параметрический генератор массивов площадок (DIP, QFP, BGA)"
+              style={{ gap: 5 }}
             >
               <Layers size={13} />
               <span>Массив площадок</span>
             </button>
-            <button className="cad-btn-primary btn-sm" onClick={handleSave}>
+            <button
+              className="cad-btn-primary btn-sm"
+              onClick={handleSave}
+              style={{ gap: 5 }}
+            >
               <Save size={13} />
               <span>Сохранить корпус</span>
             </button>
@@ -363,47 +399,37 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
         </div>
 
         {/* ============================================================ */}
-        {/* ПАНЕЛЬ CAD-ИНСТРУМЕНТОВ: СЕТКА, ПРИВЯЗКА, UNDO/REDO           */}
+        {/* ВТОРАЯ ПАНЕЛЬ: СЕТКА, ПРИВЯЗКА, UNDO/REDO, БЫСТРЫЕ ДЕЙСТВИЯ */}
         {/* ============================================================ */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "6px 16px",
-            background: "var(--cad-bg-surface, #141820)",
-            borderBottom: "1px solid var(--cad-border, #283344)",
-            gap: 12,
-            fontSize: 12,
-            flexShrink: 0,
-          }}
-        >
-          {/* Инструменты координатной сетки и CAD-привязок */}
+        <div className="pkg-editor-subbar">
           <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+            {/* Селектор шага сетки */}
             <div
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 4,
-                background: "var(--cad-bg-panel, #181d26)",
-                padding: "2px 6px",
+                gap: 2,
+                background: "var(--cad-bg-card)",
+                padding: "2px 4px",
                 borderRadius: 6,
-                border: "1px solid var(--cad-border, #283344)",
+                border: "1px solid var(--cad-border)",
               }}
             >
-              <Grid size={14} color="var(--cad-text-muted, #94a3b8)" />
-              <span style={{ fontSize: 11, color: "var(--cad-text-muted, #94a3b8)" }}>Сетка:</span>
+              <Grid size={13} color="var(--cad-text-dim)" style={{ margin: "0 4px" }} />
+              <span style={{ fontSize: 10, color: "var(--cad-text-dim)", marginRight: 4 }}>Сетка:</span>
               {[0.1, 0.5, 1.27, 2.54].map((step) => (
                 <button
                   key={step}
                   onClick={() => setGridStep(step)}
-                  className={`cad-btn-secondary ${gridStep === step ? "active-filter-tab" : ""}`}
                   style={{
-                    padding: "3px 7px",
-                    fontSize: 11,
-                    background: gridStep === step ? "var(--cad-accent, #3b82f6)" : "transparent",
-                    color: gridStep === step ? "#ffffff" : "var(--cad-text-muted, #94a3b8)",
-                    border: "none",
+                    padding: "2px 6px",
+                    fontSize: 10,
+                    borderRadius: 4,
+                    background: gridStep === step ? "var(--cad-bg-panel)" : "transparent",
+                    color: gridStep === step ? "var(--cad-accent-hover)" : "var(--cad-text-muted)",
+                    border: gridStep === step ? "1px solid var(--cad-accent)" : "1px solid transparent",
+                    cursor: "pointer",
+                    fontWeight: gridStep === step ? 700 : 400,
                   }}
                 >
                   {step} мм
@@ -411,106 +437,144 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
               ))}
             </div>
 
+            {/* Привязка к сетке (Magnet Snap) */}
             <button
               onClick={() => setSnapToGrid(!snapToGrid)}
               className="cad-btn-secondary btn-sm"
               style={{
-                color: snapToGrid ? "var(--cad-accent, #38bdf8)" : "var(--cad-text-muted, #94a3b8)",
-                borderColor: snapToGrid ? "var(--cad-accent, #38bdf8)" : "var(--cad-border, #283344)",
+                fontSize: 11,
+                padding: "3px 8px",
+                gap: 5,
+                color: snapToGrid ? "var(--cad-accent-hover)" : "var(--cad-text-dim)",
+                borderColor: snapToGrid ? "var(--cad-accent)" : "var(--cad-border)",
               }}
+              title="Включить/отключить магнитную привязку курсора к координатной сетке"
             >
-              Привязка: {snapToGrid ? "ВКЛ" : "ВЫКЛ"}
+              <Magnet size={12} />
+              <span>Привязка: {snapToGrid ? "ВКЛ" : "ВЫКЛ"}</span>
             </button>
 
-            {/* Undo / Redo */}
-            <div style={{ display: "flex", gap: 2, marginLeft: 6 }}>
+            {/* Отмена и повтор */}
+            <div style={{ display: "flex", gap: 2, marginLeft: 4 }}>
               <button
                 onClick={handleUndo}
                 disabled={historyIndex <= 0}
                 className="cad-modal-close-btn"
                 title="Отменить (Ctrl+Z)"
-                style={{ opacity: historyIndex <= 0 ? 0.4 : 1 }}
+                style={{ width: 28, height: 28, opacity: historyIndex <= 0 ? 0.35 : 1 }}
               >
-                <Undo2 size={15} />
+                <Undo2 size={13} />
               </button>
               <button
                 onClick={handleRedo}
                 disabled={historyIndex >= history.length - 1}
                 className="cad-modal-close-btn"
                 title="Повторить (Ctrl+Y)"
-                style={{ opacity: historyIndex >= history.length - 1 ? 0.4 : 1 }}
+                style={{ width: 28, height: 28, opacity: historyIndex >= history.length - 1 ? 0.35 : 1 }}
               >
-                <Redo2 size={15} />
+                <Redo2 size={13} />
               </button>
             </div>
           </div>
 
-          {/* Быстрые CAD-действия */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {/* Быстрые действия по чертежу */}
+          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
             <button
               onClick={handleAutoSilk}
               className="cad-btn-secondary btn-sm"
-              title="Создать аккуратный контур шелкографии вокруг выводов"
+              title="Сгенерировать контур шелкографии вокруг выводов"
+              style={{ fontSize: 11, gap: 5 }}
             >
-              <Wand2 size={13} />
+              <Wand2 size={12} color="#38bdf8" />
               <span>Авто-шелкография</span>
             </button>
             <button
               onClick={handleCenterAll}
               className="cad-btn-secondary btn-sm"
-              title="Центрировать все выводы относительно начала координат (0,0)"
+              title="Центрировать все площадки относительно начала координат (0,0)"
+              style={{ fontSize: 11, gap: 5 }}
             >
-              <RotateCcw size={13} />
+              <RotateCcw size={12} />
               <span>Центрировать (0,0)</span>
             </button>
           </div>
         </div>
 
         {/* ============================================================ */}
-        {/* ОСНОВНОЕ РАБОЧЕЕ ПРОСТРАНСТВО (TOOLS | CANVAS | INSPECTOR)   */}
+        {/* ОСНОВНОЕ ПРОСТРАНСТВО: TOOL PALETTE | CANVAS | INSPECTOR     */}
         {/* ============================================================ */}
         <div style={{ display: "flex", flex: 1, minHeight: 0, overflow: "hidden" }}>
-          {/* ЛЕВАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ ЧЕРЧЕНИЯ */}
-          <div
-            style={{
-              width: 58,
-              background: "var(--cad-bg-surface, #141820)",
-              borderRight: "1px solid var(--cad-border, #283344)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              padding: "10px 0",
-              gap: 6,
-              flexShrink: 0,
-            }}
-          >
+          {/* ЛЕВАЯ ВЕРТИКАЛЬНАЯ ПАНЕЛЬ ИНСТРУМЕНТОВ */}
+          <div className="pkg-tool-palette">
             {[
-              { id: "select", icon: <MousePointer size={18} />, label: "Выделение (V)" },
-              { id: "pad", icon: <Plus size={18} />, label: "Контактная площадка (P)" },
-              { id: "line", icon: <Slash size={18} />, label: "Линия шелкографии (L)" },
-              { id: "rect", icon: <Square size={18} />, label: "Прямоугольник (R)" },
-              { id: "circle", icon: <Circle size={18} />, label: "Окружность (C)" },
-              { id: "d_shape", icon: <span style={{ fontWeight: "bold", fontSize: 14 }}>D</span>, label: "D-образный контур (TO-92)" },
-              { id: "capsule", icon: <span style={{ fontWeight: "bold", fontSize: 11 }}>Caps</span>, label: "Капсула (HC-49)" },
-              { id: "measure", icon: <Ruler size={18} />, label: "Линейка / Измерение (M)" },
-              { id: "set_origin", icon: <Crosshair size={18} />, label: "Установить начало координат (0,0)" },
+              {
+                id: "select",
+                icon: <MousePointer size={16} />,
+                label: "Выделение (V)",
+              },
+              {
+                id: "pad",
+                icon: (
+                  <svg width="17" height="17" viewBox="0 0 18 18" fill="none">
+                    <rect x="2.5" y="2.5" width="13" height="13" rx="2" stroke="currentColor" strokeWidth="1.5" />
+                    <circle cx="9" cy="9" r="2.2" fill="currentColor" />
+                  </svg>
+                ),
+                label: "Контактная площадка (P)",
+              },
+              {
+                id: "line",
+                icon: <Slash size={16} />,
+                label: "Линия шелкографии (L)",
+              },
+              {
+                id: "rect",
+                icon: <Square size={16} />,
+                label: "Прямоугольник (R)",
+              },
+              {
+                id: "circle",
+                icon: <Circle size={16} />,
+                label: "Окружность (C)",
+              },
+              {
+                id: "d_shape",
+                icon: (
+                  <svg width="17" height="17" viewBox="0 0 18 18" fill="none">
+                    <path
+                      d="M4 3h5a6 6 0 0 1 6 6 6 6 0 0 1-6 6H4V3z"
+                      stroke="currentColor"
+                      strokeWidth="1.5"
+                      strokeLinejoin="round"
+                    />
+                  </svg>
+                ),
+                label: "D-образный контур (TO-92)",
+              },
+              {
+                id: "capsule",
+                icon: (
+                  <svg width="17" height="17" viewBox="0 0 18 18" fill="none">
+                    <rect x="2.5" y="5" width="13" height="8" rx="4" stroke="currentColor" strokeWidth="1.5" />
+                  </svg>
+                ),
+                label: "Капсула (HC-49)",
+              },
+              {
+                id: "measure",
+                icon: <Ruler size={16} />,
+                label: "Линейка / Измерение (M)",
+              },
+              {
+                id: "set_origin",
+                icon: <Crosshair size={16} />,
+                label: "Установить начало координат (0,0)",
+              },
             ].map((tool) => (
               <button
                 key={tool.id}
                 onClick={() => setActiveTool(tool.id as EditorTool)}
-                style={{
-                  width: 42,
-                  height: 42,
-                  borderRadius: 8,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  background: activeTool === tool.id ? "var(--cad-accent, #3b82f6)" : "transparent",
-                  color: activeTool === tool.id ? "#ffffff" : "var(--cad-text-muted, #94a3b8)",
-                  border: activeTool === tool.id ? "1px solid rgba(255, 255, 255, 0.2)" : "1px solid transparent",
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                }}
+                className={`pkg-tool-btn ${activeTool === tool.id ? "active" : ""}`}
                 title={tool.label}
               >
                 {tool.icon}
@@ -519,19 +583,17 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
 
             <div style={{ flex: 1 }} />
 
-            {/* Быстрое центрирование в (0,0) */}
             <button
               onClick={handleCenterAll}
-              className="cad-modal-close-btn"
-              title="Центрировать все выводы в начало координат (0,0)"
-              style={{ width: 40, height: 40 }}
+              className="pkg-tool-btn"
+              title="Центрировать все площадки (0,0)"
             >
-              <RotateCcw size={17} />
+              <RotateCcw size={16} />
             </button>
           </div>
 
-          {/* ЦЕНТРАЛЬНЫЙ ИНТЕРАКТИВНЫЙ ВЕКТОРНЫЙ ХОЛСТ */}
-          <div style={{ flex: 1, minWidth: 0, position: "relative", background: "var(--cad-bg-deep, #0c0e12)" }}>
+          {/* ЦЕНТРАЛЬНЫЙ ВЕКТОРНЫЙ ХОЛСТ */}
+          <div style={{ flex: 1, minWidth: 0, position: "relative", background: "#060911" }}>
             <InteractiveFootprintCanvas
               pads={pads}
               graphics={graphics}
@@ -550,55 +612,48 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
             />
           </div>
 
-          {/* ПРАВАЯ ПАНЕЛЬ: ИНСПЕКТОР СВОЙСТВ И ТАБЛИЦА ВЫВОДОВ */}
-          <div
-            style={{
-              width: 380,
-              background: "var(--cad-bg-panel, #181d26)",
-              borderLeft: "1px solid var(--cad-border, #283344)",
-              display: "flex",
-              flexDirection: "column",
-              overflowY: "auto",
-              flexShrink: 0,
-            }}
-          >
-            {/* Переключатель вкладок инспектора */}
-            <div style={{ display: "flex", borderBottom: "1px solid var(--cad-border, #283344)" }}>
-              {[
-                { id: "props", label: "Свойства" },
-                { id: "pads", label: `Площадки (${pads.length})` },
-                { id: "variants", label: "Варианты" },
-              ].map((tab) => (
-                <button
-                  key={tab.id}
-                  onClick={() => setInspectorTab(tab.id as any)}
-                  style={{
-                    flex: 1,
-                    padding: "10px 4px",
-                    fontSize: 12,
-                    background: inspectorTab === tab.id ? "var(--cad-bg-card, #1e2532)" : "transparent",
-                    color: inspectorTab === tab.id ? "var(--cad-accent, #3b82f6)" : "var(--cad-text-muted, #94a3b8)",
-                    border: "none",
-                    borderBottom: inspectorTab === tab.id ? "2px solid var(--cad-accent, #3b82f6)" : "none",
-                    fontWeight: inspectorTab === tab.id ? "bold" : "normal",
-                    cursor: "pointer",
-                    transition: "all 0.15s ease",
-                  }}
-                >
-                  {tab.label}
-                </button>
-              ))}
+          {/* ПРАВАЯ ПАНЕЛЬ: ИНСПЕКТОР СВОЙСТВ И ТАБЛИЦА ПЛОЩАДОК */}
+          <div className="pkg-inspector">
+            {/* Вкладки инспектора */}
+            <div className="pkg-inspector-tabs">
+              <button
+                onClick={() => setInspectorTab("props")}
+                className={`pkg-inspector-tab ${inspectorTab === "props" ? "active" : ""}`}
+              >
+                <Settings size={13} />
+                <span>Свойства</span>
+              </button>
+              <button
+                onClick={() => setInspectorTab("pads")}
+                className={`pkg-inspector-tab ${inspectorTab === "pads" ? "active" : ""}`}
+              >
+                <Layers size={13} />
+                <span>Площадки ({pads.length})</span>
+              </button>
+              <button
+                onClick={() => setInspectorTab("variants")}
+                className={`pkg-inspector-tab ${inspectorTab === "variants" ? "active" : ""}`}
+              >
+                <Palette size={13} />
+                <span>Стили ({variants.length})</span>
+              </button>
             </div>
 
-            <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 14 }}>
-              {/* ВКЛАДКА 1: СВОЙСТВА ВЫБРАННОГО ОБЪЕКТА ИЛИ КОРПУСА */}
+            {/* Содержимое вкладок */}
+            <div className="pkg-inspector-content">
+              {/* ============================================================ */}
+              {/* ВКЛАДКА 1: СВОЙСТВА ОБЪЕКТА ИЛИ ОБЩАЯ ГЕОМЕТРИЯ КОРПУСА      */}
+              {/* ============================================================ */}
               {inspectorTab === "props" && (
                 <>
                   {selectedPad ? (
-                    /* Инспектор выделенной площадки */
-                    <div className="form-section">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span className="section-title">Площадка #{selectedPad.padNum}</span>
+                    /* ИНСПЕКТОР ВЫДЕЛЕННОЙ ПЛОЩАДКИ */
+                    <div className="pkg-card">
+                      <div className="pkg-card-header">
+                        <div className="pkg-card-title">
+                          <Box size={13} />
+                          <span>Площадка #{selectedPad.padNum}</span>
+                        </div>
                         <button
                           className="cad-icon-btn danger"
                           onClick={() => {
@@ -606,50 +661,60 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             setSelectedPadNum(null);
                           }}
                           title="Удалить площадку"
+                          style={{ width: 22, height: 22 }}
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={12} />
                         </button>
                       </div>
 
-                      <div className="form-group">
-                        <label className="form-label">Номер вывода:</label>
-                        <input
-                          type="text"
-                          value={selectedPad.padNum}
-                          onChange={(e) => {
-                            const newNum = e.target.value;
-                            handlePadsChange(
-                              pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, padNum: newNum, name: newNum } : p))
-                            );
-                            setSelectedPadNum(newNum);
-                          }}
-                          className="cad-input"
-                        />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div>
+                          <label className="form-label">Номер вывода:</label>
+                          <input
+                            type="text"
+                            value={selectedPad.padNum}
+                            onChange={(e) => {
+                              const newNum = e.target.value;
+                              handlePadsChange(
+                                pads.map((p) =>
+                                  p.padNum === selectedPad.padNum
+                                    ? { ...p, padNum: newNum, name: newNum }
+                                    : p
+                                )
+                              );
+                              setSelectedPadNum(newNum);
+                            }}
+                            className="cad-input"
+                            style={{ width: "100%", padding: "4px 8px", fontSize: 11, fontWeight: "bold" }}
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label">Форма:</label>
+                          <select
+                            value={selectedPad.shape}
+                            onChange={(e) => {
+                              const newShape = e.target.value as PadShape;
+                              handlePadsChange(
+                                pads.map((p) =>
+                                  p.padNum === selectedPad.padNum ? { ...p, shape: newShape } : p
+                                )
+                              );
+                            }}
+                            className="cad-input"
+                            style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                          >
+                            <option value="rounded_rect">Скруглённый прямоуг.</option>
+                            <option value="rect">Прямоугольник</option>
+                            <option value="circle">Круг</option>
+                            <option value="oval">Овал</option>
+                            <option value="d_shape">D-образная</option>
+                          </select>
+                        </div>
                       </div>
 
-                      <div className="form-group">
-                        <label className="form-label">Форма площадки:</label>
-                        <select
-                          value={selectedPad.shape}
-                          onChange={(e) => {
-                            const newShape = e.target.value as PadShape;
-                            handlePadsChange(
-                              pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, shape: newShape } : p))
-                            );
-                          }}
-                          className="cad-input"
-                        >
-                          <option value="rounded_rect">Скругленный прямоуг.</option>
-                          <option value="rect">Прямоугольник</option>
-                          <option value="circle">Круг</option>
-                          <option value="oval">Овал</option>
-                          <option value="d_shape">D-образная (срез справа)</option>
-                        </select>
-                      </div>
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        <div className="form-group">
-                          <label className="form-label">Позиция X (мм):</label>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div>
+                          <label className="form-label">Координата X (мм):</label>
                           <input
                             type="number"
                             step="0.05"
@@ -661,10 +726,11 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                               );
                             }}
                             className="cad-input"
+                            style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                           />
                         </div>
-                        <div className="form-group">
-                          <label className="form-label">Позиция Y (мм):</label>
+                        <div>
+                          <label className="form-label">Координата Y (мм):</label>
                           <input
                             type="number"
                             step="0.05"
@@ -676,12 +742,13 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                               );
                             }}
                             className="cad-input"
+                            style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                           />
                         </div>
                       </div>
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        <div className="form-group">
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div>
                           <label className="form-label">Ширина W (мм):</label>
                           <input
                             type="number"
@@ -694,9 +761,10 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                               );
                             }}
                             className="cad-input"
+                            style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                           />
                         </div>
-                        <div className="form-group">
+                        <div>
                           <label className="form-label">Высота H (мм):</label>
                           <input
                             type="number"
@@ -709,35 +777,62 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                               );
                             }}
                             className="cad-input"
+                            style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                           />
                         </div>
                       </div>
 
-                      <div className="form-group">
-                        <label className="form-label">Диаметр сверления (THT, 0 = SMD):</label>
-                        <input
-                          type="number"
-                          step="0.05"
-                          value={selectedPad.drillDiameter || 0}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0;
-                            handlePadsChange(
-                              pads.map((p) =>
-                                p.padNum === selectedPad.padNum
-                                  ? { ...p, drillDiameter: val > 0 ? val : undefined, plated: val > 0 ? true : undefined }
-                                  : p
-                              )
-                            );
-                          }}
-                          className="cad-input"
-                        />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div>
+                          <label className="form-label">Сверление Drill ⌀ (THT):</label>
+                          <input
+                            type="number"
+                            step="0.05"
+                            value={selectedPad.drillDiameter || 0}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0;
+                              handlePadsChange(
+                                pads.map((p) =>
+                                  p.padNum === selectedPad.padNum
+                                    ? { ...p, drillDiameter: val > 0 ? val : undefined, plated: val > 0 ? true : undefined }
+                                    : p
+                                )
+                              );
+                            }}
+                            className="cad-input"
+                            style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                            placeholder="0 — SMD"
+                          />
+                        </div>
+                        <div>
+                          <label className="form-label">Поворот (°):</label>
+                          <select
+                            value={selectedPad.rotation || 0}
+                            onChange={(e) => {
+                              const rot = parseInt(e.target.value) || 0;
+                              handlePadsChange(
+                                pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, rotation: rot } : p))
+                              );
+                            }}
+                            className="cad-input"
+                            style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                          >
+                            <option value="0">0°</option>
+                            <option value="90">90°</option>
+                            <option value="180">180°</option>
+                            <option value="270">270°</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                   ) : selectedGraphic ? (
-                    /* Инспектор векторного элемента */
-                    <div className="form-section">
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span className="section-title">Векторный элемент ({selectedGraphic.kind})</span>
+                    /* ИНСПЕКТОР ВЫДЕЛЕННОГО ГРАФИЧЕСКОГО ЭЛЕМЕНТА */
+                    <div className="pkg-card">
+                      <div className="pkg-card-header">
+                        <div className="pkg-card-title">
+                          <Slash size={13} />
+                          <span>Элемент ({selectedGraphic.kind})</span>
+                        </div>
                         <button
                           className="cad-icon-btn danger"
                           onClick={() => {
@@ -745,12 +840,13 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             setSelectedGraphicId(null);
                           }}
                           title="Удалить фигуру"
+                          style={{ width: 22, height: 22 }}
                         >
-                          <Trash2 size={13} />
+                          <Trash2 size={12} />
                         </button>
                       </div>
 
-                      <div className="form-group">
+                      <div>
                         <label className="form-label">Толщина линии (мм):</label>
                         <input
                           type="number"
@@ -763,138 +859,357 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             );
                           }}
                           className="cad-input"
+                          style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                         />
                       </div>
                     </div>
                   ) : (
-                    /* Общие свойства корпуса */
-                    <div className="form-section">
-                      <span className="section-title">Геометрия тела корпуса</span>
-                      <div className="form-group">
-                        <label className="form-label">Форма корпуса:</label>
-                        <select
-                          value={bodyShape}
-                          onChange={(e) => setBodyShape(e.target.value)}
-                          className="cad-input"
-                        >
-                          <option value="rect">Прямоугольный</option>
-                          <option value="circle">Круглый</option>
-                          <option value="d_shape">D-образный (TO-92, LED)</option>
-                          <option value="capsule">Капсула (HC-49)</option>
-                        </select>
+                    /* ОБЩИЕ ПАРАМЕТРЫ КОРПУСА */
+                    <>
+                      {/* Карточка 1: Геометрия тела корпуса */}
+                      <div className="pkg-card">
+                        <div className="pkg-card-header">
+                          <div className="pkg-card-title">
+                            <Box size={13} />
+                            <span>Геометрия тела корпуса</span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div>
+                            <label className="form-label">Форма корпуса:</label>
+                            <select
+                              value={bodyShape}
+                              onChange={(e) => setBodyShape(e.target.value)}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                            >
+                              <option value="rect">Прямоугольный</option>
+                              <option value="circle">Круглый</option>
+                              <option value="d_shape">D-образный (TO-92)</option>
+                              <option value="capsule">Капсула (HC-49)</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="form-label">Стандарт (Design):</label>
+                            <input
+                              type="text"
+                              value={standard}
+                              onChange={(e) => setStandard(e.target.value)}
+                              placeholder="напр. JEDEC, IPC-7351"
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                            />
+                          </div>
+                        </div>
+
+                        {bodyShape === "d_shape" && (
+                          <div>
+                            <label className="form-label">Сторона среза D-формы:</label>
+                            <select
+                              value={dShapeCut}
+                              onChange={(e) => setDShapeCut(e.target.value)}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                            >
+                              <option value="right">Срез справа</option>
+                              <option value="top">Срез сверху</option>
+                              <option value="bottom">Срез снизу</option>
+                              <option value="left">Срез слева</option>
+                            </select>
+                          </div>
+                        )}
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div>
+                            <label className="form-label">
+                              {bodyShape === "circle" || bodyShape === "d_shape" ? "Диаметр ⌀ (мм):" : "Ширина W (мм):"}
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={bodyWidth}
+                              onChange={(e) => setBodyWidth(parseFloat(e.target.value) || 1.0)}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label">
+                              {bodyShape === "circle" || bodyShape === "d_shape" ? "Высота (мм):" : "Высота H (мм):"}
+                            </label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={bodyHeight}
+                              onChange={(e) => setBodyHeight(parseFloat(e.target.value) || 1.0)}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="form-label">Шаг выводов (Pitch, мм):</label>
+                          <input
+                            type="number"
+                            step="0.05"
+                            value={pitch}
+                            onChange={(e) => setPitch(parseFloat(e.target.value) || 0)}
+                            className="cad-input"
+                            style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                            placeholder="1.27, 2.54, 0.8..."
+                          />
+                        </div>
                       </div>
 
-                      {bodyShape === "d_shape" && (
-                        <div className="form-group">
-                          <label className="form-label">Сторона среза D-формы:</label>
-                          <select
-                            value={dShapeCut}
-                            onChange={(e) => setDShapeCut(e.target.value)}
-                            className="cad-input"
+                      {/* Карточка 2: Шаблон новой площадки (инструмент P) */}
+                      <div className="pkg-card">
+                        <div className="pkg-card-header">
+                          <div className="pkg-card-title">
+                            <Sparkles size={13} />
+                            <span>Шаблон новой площадки (при P)</span>
+                          </div>
+                        </div>
+
+                        {/* Пресеты типовых площадок */}
+                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                          <button
+                            type="button"
+                            className="pkg-preset-btn"
+                            onClick={() => applyPadPreset("0603")}
                           >
-                            <option value="right">Срез справа</option>
-                            <option value="top">Срез сверху</option>
-                            <option value="bottom">Срез снизу</option>
-                            <option value="left">Срез слева</option>
-                          </select>
+                            0603
+                          </button>
+                          <button
+                            type="button"
+                            className="pkg-preset-btn"
+                            onClick={() => applyPadPreset("0805")}
+                          >
+                            0805
+                          </button>
+                          <button
+                            type="button"
+                            className="pkg-preset-btn"
+                            onClick={() => applyPadPreset("soic")}
+                          >
+                            SOIC (1.6×0.6)
+                          </button>
+                          <button
+                            type="button"
+                            className="pkg-preset-btn"
+                            onClick={() => applyPadPreset("qfp")}
+                          >
+                            QFP (1.5×0.35)
+                          </button>
+                          <button
+                            type="button"
+                            className="pkg-preset-btn"
+                            onClick={() => applyPadPreset("tht")}
+                          >
+                            THT ⌀1.6
+                          </button>
                         </div>
-                      )}
 
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-                        <div className="form-group">
-                          <label className="form-label">{bodyShape === "circle" || bodyShape === "d_shape" ? "Диаметр ⌀ (мм):" : "Ширина W (мм):"}</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={bodyWidth}
-                            onChange={(e) => setBodyWidth(parseFloat(e.target.value) || 1.0)}
-                            className="cad-input"
-                          />
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div>
+                            <label className="form-label">Ширина:</label>
+                            <input
+                              type="number"
+                              step="0.05"
+                              value={padTemplate.width}
+                              onChange={(e) =>
+                                setPadTemplate({ ...padTemplate, width: parseFloat(e.target.value) || 0.1 })
+                              }
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label">Высота:</label>
+                            <input
+                              type="number"
+                              step="0.05"
+                              value={padTemplate.height}
+                              onChange={(e) =>
+                                setPadTemplate({ ...padTemplate, height: parseFloat(e.target.value) || 0.1 })
+                              }
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                            />
+                          </div>
                         </div>
-                        <div className="form-group">
-                          <label className="form-label">{bodyShape === "circle" || bodyShape === "d_shape" ? "Высота (мм):" : "Высота H (мм):"}</label>
-                          <input
-                            type="number"
-                            step="0.1"
-                            value={bodyHeight}
-                            onChange={(e) => setBodyHeight(parseFloat(e.target.value) || 1.0)}
-                            className="cad-input"
-                          />
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div>
+                            <label className="form-label">Форма:</label>
+                            <select
+                              value={padTemplate.shape}
+                              onChange={(e) =>
+                                setPadTemplate({ ...padTemplate, shape: e.target.value as PadShape })
+                              }
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                            >
+                              <option value="rounded_rect">Скруглённый прямоуг.</option>
+                              <option value="rect">Прямоугольник</option>
+                              <option value="circle">Круг</option>
+                              <option value="oval">Овал</option>
+                              <option value="d_shape">D-образный</option>
+                            </select>
+                          </div>
+                          <div>
+                            <label className="form-label">Сверление ⌀ (THT):</label>
+                            <input
+                              type="number"
+                              step="0.05"
+                              value={padTemplate.drillDiameter || 0}
+                              onChange={(e) =>
+                                setPadTemplate({
+                                  ...padTemplate,
+                                  drillDiameter: parseFloat(e.target.value) || 0,
+                                })
+                              }
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              placeholder="0 — SMD"
+                            />
+                          </div>
                         </div>
                       </div>
 
-                      <div className="form-group">
-                        <label className="form-label">Шаг выводов (Pitch, мм):</label>
-                        <input
-                          type="number"
-                          step="0.05"
-                          value={pitch}
-                          onChange={(e) => setPitch(parseFloat(e.target.value) || 0)}
-                          className="cad-input"
-                        />
+                      {/* Карточка 3: Геометрическая сводка посадочного места */}
+                      <div className="pkg-card">
+                        <div className="pkg-card-header">
+                          <div className="pkg-card-title">
+                            <Ruler size={13} />
+                            <span>Геометрия и габариты</span>
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: 11, color: "var(--cad-text-muted)", display: "flex", flexDirection: "column", gap: 4 }}>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span>Габариты охвата (BBox):</span>
+                            <strong style={{ color: "var(--cad-text-main)" }}>{bboxW.toFixed(2)} × {bboxH.toFixed(2)} мм</strong>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span>Контактных площадок:</span>
+                            <strong style={{ color: "var(--cad-accent-hover)" }}>{pads.length} шт.</strong>
+                          </div>
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span>Графических линий:</span>
+                            <strong style={{ color: "var(--cad-text-main)" }}>{graphics.length} шт.</strong>
+                          </div>
+                        </div>
                       </div>
-                    </div>
+
+                      {/* Карточка 4: Технологические зазоры и ограничения */}
+                      <div className="pkg-card">
+                        <div className="pkg-card-header">
+                          <div className="pkg-card-title">
+                            <Settings size={13} />
+                            <span>Технологические зазоры (Masks & DRC)</span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div>
+                            <label className="form-label">Маска (Solder Mask):</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              defaultValue={0.05}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              placeholder="0.05 мм"
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label">Паста (Paste Mask):</label>
+                            <input
+                              type="number"
+                              step="0.01"
+                              defaultValue={0.00}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              placeholder="0.00 мм"
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          <div>
+                            <label className="form-label">Зазор дворика (Courtyard):</label>
+                            <input
+                              type="number"
+                              step="0.05"
+                              defaultValue={0.25}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              placeholder="0.25 мм"
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label">Высота макс. (Z, мм):</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              defaultValue={3.0}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              placeholder="3.0 мм"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Карточка 5: Быстрые инженерные действия */}
+                      <div className="pkg-card">
+                        <div className="pkg-card-header">
+                          <div className="pkg-card-title">
+                            <Wand2 size={13} />
+                            <span>Быстрые действия</span>
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                          <button
+                            type="button"
+                            className="cad-btn-secondary btn-sm"
+                            onClick={handleAutoSilk}
+                            style={{ width: "100%", justifyContent: "flex-start", gap: 8, fontSize: 11 }}
+                          >
+                            <Wand2 size={13} color="var(--cad-accent-hover)" />
+                            <span>Сгенерировать контур шелкографии</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="cad-btn-secondary btn-sm"
+                            onClick={handleCenterAll}
+                            style={{ width: "100%", justifyContent: "flex-start", gap: 8, fontSize: 11 }}
+                          >
+                            <RotateCcw size={13} />
+                            <span>Центрировать все выводы в (0,0)</span>
+                          </button>
+                        </div>
+                      </div>
+                    </>
                   )}
-
-                  {/* Шаблон для вставки новых площадок */}
-                  <div className="form-section">
-                    <span className="section-title">Шаблон новой площадки (при P)</span>
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                      <div className="form-group">
-                        <label className="form-label">Ширина:</label>
-                        <input
-                          type="number"
-                          step="0.05"
-                          value={padTemplate.width}
-                          onChange={(e) =>
-                            setPadTemplate({ ...padTemplate, width: parseFloat(e.target.value) || 0.1 })
-                          }
-                          className="cad-input"
-                        />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">Высота:</label>
-                        <input
-                          type="number"
-                          step="0.05"
-                          value={padTemplate.height}
-                          onChange={(e) =>
-                            setPadTemplate({ ...padTemplate, height: parseFloat(e.target.value) || 0.1 })
-                          }
-                          className="cad-input"
-                        />
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">Форма:</label>
-                      <select
-                        value={padTemplate.shape}
-                        onChange={(e) =>
-                          setPadTemplate({ ...padTemplate, shape: e.target.value as PadShape })
-                        }
-                        className="cad-input"
-                      >
-                        <option value="rounded_rect">Скругленный прямоуг.</option>
-                        <option value="rect">Прямоугольник</option>
-                        <option value="circle">Круг</option>
-                        <option value="oval">Овал</option>
-                        <option value="d_shape">D-образный</option>
-                      </select>
-                    </div>
-                  </div>
                 </>
               )}
 
-              {/* ВКЛАДКА 2: СПИСОК ВСЕХ ПЛОЩАДОК */}
+              {/* ============================================================ */}
+              {/* ВКЛАДКА 2: СПИСОК ВСЕХ КОНТАКТНЫХ ПЛОЩАДОК (PADS TABLE)     */}
+              {/* ============================================================ */}
               {inspectorTab === "pads" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, flex: 1, minHeight: 0 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span style={{ fontSize: 12, fontWeight: "bold", color: "#cbd5e1" }}>
-                      Всего площадок: {pads.length} шт.
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "#94a3b8", textTransform: "uppercase" }}>
+                      Список площадок ({pads.length})
                     </span>
                     <button
-                      className="cad-btn-secondary"
-                      style={{ fontSize: 11, padding: "3px 8px" }}
+                      className="cad-btn-secondary btn-sm"
+                      style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
                       onClick={() => {
                         const nextNum = String(pads.length + 1);
                         handlePadsChange([
@@ -914,88 +1229,103 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         setSelectedPadNum(nextNum);
                       }}
                     >
-                      <Plus size={12} /> Добавить
+                      <Plus size={11} /> Добавить
                     </button>
                   </div>
 
-                  <div style={{ maxHeight: "calc(94vh - 220px)", overflowY: "auto", display: "flex", flexDirection: "column", gap: 4 }}>
-                    {pads.map((p) => (
-                      <div
-                        key={p.padNum}
-                        onClick={() => setSelectedPadNum(p.padNum)}
-                        style={{
-                          display: "flex",
-                          alignItems: "center",
-                          justifyContent: "space-between",
-                          padding: "6px 10px",
-                          borderRadius: 6,
-                          background: selectedPadNum === p.padNum ? "#1e293b" : "#0c101d",
-                          border: selectedPadNum === p.padNum ? "1px solid #38bdf8" : "1px solid #1e293b",
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                          <span style={{ fontWeight: "bold", color: "#f59e0b", minWidth: 24 }}>
-                            #{p.padNum}
-                          </span>
-                          <span style={{ fontSize: 11, color: "#94a3b8" }}>
-                            ({p.x.toFixed(2)}, {p.y.toFixed(2)})
-                          </span>
-                          <span style={{ fontSize: 10, color: "#64748b" }}>
-                            {p.width}×{p.height}
-                          </span>
-                        </div>
-                        <button
-                          className="cad-icon-btn danger"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handlePadsChange(pads.filter((item) => item.padNum !== p.padNum));
-                            if (selectedPadNum === p.padNum) setSelectedPadNum(null);
-                          }}
-                        >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
+                  <div className="device-table-container" style={{ flex: 1 }}>
+                    <table className="device-table">
+                      <thead>
+                        <tr>
+                          <th style={{ width: 34, textAlign: "center" }}>#</th>
+                          <th>Координаты</th>
+                          <th>Размер</th>
+                          <th style={{ width: 28 }}></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {pads.length === 0 ? (
+                          <tr>
+                            <td colSpan={4} style={{ textAlign: "center", padding: "20px 10px", color: "#64748b" }}>
+                              Площадки не созданы. Нажмите «+ Добавить» или воспользуйтесь «Массивом площадок».
+                            </td>
+                          </tr>
+                        ) : (
+                          pads.map((p) => (
+                            <tr
+                              key={p.padNum}
+                              onClick={() => setSelectedPadNum(p.padNum)}
+                              style={{
+                                cursor: "pointer",
+                                background: selectedPadNum === p.padNum ? "rgba(59, 130, 246, 0.15)" : undefined,
+                              }}
+                            >
+                              <td style={{ textAlign: "center", fontWeight: "bold", color: "var(--cad-top-layer, #f59e0b)", fontFamily: "var(--cad-font-mono)" }}>
+                                #{p.padNum}
+                              </td>
+                              <td style={{ fontSize: 11, fontFamily: "var(--cad-font-mono)", color: "var(--cad-text-main)" }}>
+                                ({p.x.toFixed(2)}, {p.y.toFixed(2)})
+                              </td>
+                              <td style={{ fontSize: 10, color: "var(--cad-text-muted)" }}>
+                                {p.width}×{p.height} {p.drillDiameter ? `⌀${p.drillDiameter}` : ""}
+                              </td>
+                              <td style={{ textAlign: "center" }}>
+                                <button
+                                  className="cad-icon-btn danger"
+                                  style={{ width: 20, height: 20, padding: 0 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handlePadsChange(pads.filter((item) => item.padNum !== p.padNum));
+                                    if (selectedPadNum === p.padNum) setSelectedPadNum(null);
+                                  }}
+                                  title="Удалить площадку"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
 
-              {/* ВКЛАДКА 3: ВАРИАНТЫ ОФОРМЛЕНИЯ И КЛЮЧИ */}
+              {/* ============================================================ */}
+              {/* ВКЛАДКА 3: ВАРИАНТЫ ОФОРМЛЕНИЯ КОРПУСА                      */}
+              {/* ============================================================ */}
               {inspectorTab === "variants" && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                    <span className="section-title">Стили оформления корпуса</span>
+                    <span style={{ fontSize: 11, fontWeight: 700, color: "var(--cad-text-muted)", textTransform: "uppercase" }}>
+                      Стили оформления
+                    </span>
                     <button
-                      className="cad-btn-secondary"
-                      style={{ fontSize: 11, padding: "4px 8px" }}
+                      className="cad-btn-secondary btn-sm"
+                      style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
                       onClick={() => {
                         const newV: PackageVariant = {
                           id: `var_${Date.now()}`,
                           name: `Вариант ${variants.length + 1}`,
-                          bodyColor: "#1e293b",
-                          bodyBorderColor: "#475569",
+                          bodyColor: "var(--cad-bg-panel, #181d26)",
+                          bodyBorderColor: "var(--cad-border, #283344)",
                           keyType: "notch",
                           graphics: [],
                         };
                         setVariants([...variants, newV]);
                       }}
                     >
-                      <Plus size={12} /> Добавить стиль
+                      <Plus size={11} /> Добавить стиль
                     </button>
                   </div>
 
                   {variants.map((v) => (
                     <div
                       key={v.id}
+                      className="pkg-card"
                       style={{
-                        padding: 10,
-                        background: defaultVariantId === v.id ? "#0f172a" : "#0a0e18",
-                        border: defaultVariantId === v.id ? "1px solid #38bdf8" : "1px solid #1e293b",
-                        borderRadius: 8,
-                        display: "flex",
-                        flexDirection: "column",
-                        gap: 8,
+                        borderColor: defaultVariantId === v.id ? "var(--cad-accent)" : "var(--cad-border)",
                       }}
                     >
                       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -1007,52 +1337,62 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             setVariants(variants.map((item) => (item.id === v.id ? { ...item, name: val } : item)));
                           }}
                           className="cad-input"
-                          style={{ fontWeight: "bold", fontSize: 12 }}
+                          style={{ fontWeight: "bold", fontSize: 11, padding: "3px 6px" }}
                         />
                         <button
                           onClick={() => setDefaultVariantId(v.id)}
                           style={{
                             fontSize: 10,
-                            padding: "2px 6px",
+                            padding: "2px 7px",
                             borderRadius: 4,
                             border: "none",
-                            background: defaultVariantId === v.id ? "#2563eb" : "#1e293b",
-                            color: "#ffffff",
+                            background: defaultVariantId === v.id ? "var(--cad-accent)" : "var(--cad-bg-surface)",
+                            color: defaultVariantId === v.id ? "#ffffff" : "var(--cad-text-muted)",
                             cursor: "pointer",
+                            fontWeight: 600,
                           }}
                         >
-                          {defaultVariantId === v.id ? "Основной" : "Сделать осн."}
+                          {defaultVariantId === v.id ? "По умолчанию" : "Сделать осн."}
                         </button>
                       </div>
 
-                      <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                        <label style={{ fontSize: 11, color: "#94a3b8" }}>Цвет тела:</label>
-                        <input
-                          type="color"
-                          value={v.bodyColor}
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            setVariants(variants.map((item) => (item.id === v.id ? { ...item, bodyColor: val } : item)));
-                          }}
-                          style={{ width: 28, height: 24, border: "none", cursor: "pointer", background: "none" }}
-                        />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div>
+                          <label className="form-label">Цвет тела:</label>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <input
+                              type="color"
+                              value={v.bodyColor}
+                              onChange={(e) => {
+                                const val = e.target.value;
+                                setVariants(variants.map((item) => (item.id === v.id ? { ...item, bodyColor: val } : item)));
+                              }}
+                              style={{ width: 26, height: 24, border: "none", cursor: "pointer", background: "none" }}
+                            />
+                            <span style={{ fontSize: 10, fontFamily: "var(--cad-font-mono)", color: "var(--cad-text-muted)" }}>
+                              {v.bodyColor}
+                            </span>
+                          </div>
+                        </div>
 
-                        <label style={{ fontSize: 11, color: "#94a3b8", marginLeft: 8 }}>Ключ:</label>
-                        <select
-                          value={v.keyType}
-                          onChange={(e) => {
-                            const val = e.target.value as PackageKeyType;
-                            setVariants(variants.map((item) => (item.id === v.id ? { ...item, keyType: val } : item)));
-                          }}
-                          className="cad-input"
-                          style={{ fontSize: 11, padding: "2px 6px" }}
-                        >
-                          <option value="none">Без ключа</option>
-                          <option value="notch">Вырез (Notch)</option>
-                          <option value="dot">Точка (Dot)</option>
-                          <option value="chamfer">Скос (Chamfer)</option>
-                          <option value="stripe">Полоса полярности</option>
-                        </select>
+                        <div>
+                          <label className="form-label">Тип ключа:</label>
+                          <select
+                            value={v.keyType}
+                            onChange={(e) => {
+                              const val = e.target.value as PackageKeyType;
+                              setVariants(variants.map((item) => (item.id === v.id ? { ...item, keyType: val } : item)));
+                            }}
+                            className="cad-input"
+                            style={{ width: "100%", fontSize: 11, padding: "3px 6px" }}
+                          >
+                            <option value="none">Без ключа</option>
+                            <option value="notch">Вырез (Notch)</option>
+                            <option value="dot">Точка (Dot)</option>
+                            <option value="chamfer">Скос (Chamfer)</option>
+                            <option value="stripe">Полоса полярности</option>
+                          </select>
+                        </div>
                       </div>
                     </div>
                   ))}

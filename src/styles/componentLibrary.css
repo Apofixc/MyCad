@@ -34,6 +34,12 @@
   max-height: 85vh;
 }
 
+.cad-modal-box.modal-array-generator {
+  width: 92vw;
+  max-width: 640px;
+  max-height: 88vh;
+}
+
 /* Unified Form Section */
 .form-section {
   background: rgba(255, 255, 255, 0.02);
@@ -1838,4 +1844,363 @@
   box-shadow: 0 4px 12px rgba(2, 132, 199, 0.4);
 }
 
+/* ==========================================================================
+   Device Editor Modal: Aligned with MyCad Core Design System
+   ========================================================================== */
+.device-editor-box {
+  width: 1040px;
+  max-width: 95vw;
+  height: 720px;
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(180deg, var(--cad-bg-panel) 0%, #12161f 100%);
+  border: 1px solid var(--cad-border);
+  border-radius: 12px;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.8),
+              0 0 0 1px rgba(255, 255, 255, 0.05);
+  overflow: hidden;
+}
+
+.device-editor-grid {
+  display: grid;
+  grid-template-columns: 440px 1fr;
+  flex: 1;
+  min-height: 0;
+  gap: 16px;
+  padding: 16px 20px;
+  background: var(--cad-bg-deep);
+  overflow: hidden;
+}
+
+.device-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.device-card {
+  background: var(--cad-bg-panel);
+  border: 1px solid var(--cad-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+  min-height: 0;
+}
+
+.device-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.device-card-title {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cad-text-muted);
+}
+
+.device-card-title svg {
+  color: var(--cad-accent-hover);
+}
+
+.device-chip-count {
+  font-size: 10px;
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--cad-accent-hover);
+  border: 1px solid rgba(59, 130, 246, 0.3);
+  border-radius: 10px;
+  padding: 1px 7px;
+  font-weight: 600;
+}
+
+.device-table-container {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  border: 1px solid var(--cad-border);
+  border-radius: 6px;
+  background: var(--cad-bg-deep);
+}
+
+.device-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+  font-family: var(--cad-font-ui);
+}
+
+.device-table th {
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cad-text-dim);
+  padding: 6px 8px;
+  text-align: left;
+  background: var(--cad-bg-surface);
+  border-bottom: 1px solid var(--cad-border);
+  position: sticky;
+  top: 0;
+  z-index: 2;
+}
+
+.device-table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+  vertical-align: middle;
+}
+
+.device-table tr:hover td {
+  background: var(--cad-bg-hover);
+}
+
+.device-pkg-chips-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  max-height: 80px;
+  overflow-y: auto;
+}
+
+.device-pkg-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 9px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  border: 1px solid var(--cad-border);
+  background: var(--cad-bg-surface);
+  color: var(--cad-text-muted);
+  user-select: none;
+}
+
+.device-pkg-chip:hover {
+  border-color: var(--cad-accent);
+  color: var(--cad-text-main);
+  background: var(--cad-bg-hover);
+}
+
+.device-pkg-chip.active {
+  border-color: var(--cad-accent);
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--cad-accent-hover);
+  font-weight: 600;
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.2);
+}
+
+.device-pkg-chip-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  margin-left: 3px;
+  color: var(--cad-text-dim);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  transition: color 0.12s ease;
+}
+
+.device-pkg-chip-remove:hover {
+  color: var(--cad-vcc, #ef4444);
+}
+
+.pin-type-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--cad-border);
+}
+
+.pin-type-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  display: inline-block;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   Package Editor Modal: Aligned with MyCad Core Design System
+   ========================================================================== */
+.pkg-editor-subbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 14px;
+  background: var(--cad-bg-surface);
+  border-bottom: 1px solid var(--cad-border);
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.pkg-tool-palette {
+  width: 52px;
+  background: var(--cad-bg-surface);
+  border-right: 1px solid var(--cad-border);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 10px 0;
+  gap: 5px;
+  flex-shrink: 0;
+}
+
+.pkg-tool-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 7px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--cad-text-muted);
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.pkg-tool-btn:hover {
+  background: var(--cad-bg-hover);
+  color: var(--cad-text-main);
+  border-color: var(--cad-border);
+}
+
+.pkg-tool-btn.active {
+  background: rgba(59, 130, 246, 0.15);
+  color: var(--cad-accent-hover);
+  border-color: var(--cad-accent);
+  box-shadow: 0 0 12px rgba(59, 130, 246, 0.25);
+}
+
+.pkg-inspector {
+  width: 390px;
+  background: var(--cad-bg-panel);
+  border-left: 1px solid var(--cad-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  flex-shrink: 0;
+}
+
+.pkg-inspector-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--cad-border);
+  background: var(--cad-bg-surface);
+  padding: 4px 6px 0;
+  gap: 4px;
+}
+
+.pkg-inspector-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 8px 6px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cad-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-bottom: none;
+  border-top-left-radius: 6px;
+  border-top-right-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.pkg-inspector-tab:hover {
+  color: var(--cad-text-main);
+  background: var(--cad-bg-hover);
+}
+
+.pkg-inspector-tab.active {
+  color: var(--cad-accent-hover);
+  background: var(--cad-bg-card);
+  border-color: var(--cad-border);
+  font-weight: 600;
+  box-shadow: inset 0 2px 0 var(--cad-accent);
+}
+
+.pkg-inspector-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.pkg-card {
+  background: var(--cad-bg-card);
+  border: 1px solid var(--cad-border);
+  border-radius: 8px;
+  padding: 11px 13px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+}
+
+.pkg-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 6px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.pkg-card-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--cad-text-muted);
+}
+
+.pkg-card-title svg {
+  color: var(--cad-accent-hover);
+}
+
+.pkg-preset-btn {
+  padding: 3px 7px;
+  font-size: 10px;
+  border-radius: 4px;
+  background: var(--cad-bg-surface);
+  border: 1px solid var(--cad-border);
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.pkg-preset-btn:hover {
+  color: var(--cad-accent-hover);
+  border-color: var(--cad-accent);
+  background: rgba(59, 130, 246, 0.12);
+}
 
