@@ -1234,138 +1234,139 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
             {/* Вкладка 1: Параметры детали */}
             {activeLeftTab === "properties" ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 10, overflowY: "auto", paddingRight: 2 }}>
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 10 }}>
                 {/* Селектор назначения компонента: Базовый шаблон vs Готовая деталь */}
                 <div
                   style={{
                     display: "grid",
                     gridTemplateColumns: "1fr 1fr",
-                gap: 8,
-                background: "var(--cad-bg-panel, #181d26)",
-                border: "1px solid var(--cad-border, #283344)",
-                borderRadius: 8,
-                padding: "6px 8px",
-                marginBottom: 8,
-                flexShrink: 0,
-              }}
-            >
-              <button
-                type="button"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 12px",
-                  borderRadius: 6,
-                  border: isBase ? "1.5px solid var(--cad-accent, #3b82f6)" : "1px solid var(--cad-border, #283344)",
-                  background: isBase ? "rgba(59, 130, 246, 0.16)" : "var(--cad-bg-surface, #141820)",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "all 0.15s ease",
-                }}
-                onClick={() => {
-                  setIsBase(true);
-                  setActiveSubTab("info");
-                }}
-              >
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    background: isBase ? "var(--cad-accent, #3b82f6)" : "rgba(255, 255, 255, 0.05)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: isBase ? "#fff" : "var(--cad-text-muted)",
+                    gap: 8,
+                    background: "var(--cad-bg-panel, #181d26)",
+                    border: "1px solid var(--cad-border, #283344)",
+                    borderRadius: 8,
+                    padding: "6px 8px",
+                    marginBottom: 8,
                     flexShrink: 0,
                   }}
                 >
-                  <Box size={15} />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: isBase ? "#93c5fd" : "var(--cad-text-main)" }}>
-                    Базовый компонент (Generic)
-                  </span>
-                  <span style={{ fontSize: 9.5, color: "var(--cad-text-muted)", marginTop: 2, lineHeight: 1.25 }}>
-                    Шаблон для схемы (R, C, VT). Номинал задается по месту на плате
-                  </span>
-                </div>
-              </button>
-
-              <button
-                type="button"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 10,
-                  padding: "8px 12px",
-                  borderRadius: 6,
-                  border: !isBase ? "1.5px solid var(--cad-accent, #3b82f6)" : "1px solid var(--cad-border, #283344)",
-                  background: !isBase ? "rgba(59, 130, 246, 0.16)" : "var(--cad-bg-surface, #141820)",
-                  cursor: "pointer",
-                  textAlign: "left",
-                  transition: "all 0.15s ease",
-                }}
-                onClick={() => setIsBase(false)}
-              >
-                <div
-                  style={{
-                    width: 28,
-                    height: 28,
-                    borderRadius: 6,
-                    background: !isBase ? "var(--cad-accent, #3b82f6)" : "rgba(255, 255, 255, 0.05)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    color: !isBase ? "#fff" : "var(--cad-text-muted)",
-                    flexShrink: 0,
-                  }}
-                >
-                  <Tag size={15} />
-                </div>
-                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
-                  <span style={{ fontSize: 11.5, fontWeight: 700, color: !isBase ? "#93c5fd" : "var(--cad-text-main)" }}>
-                    Готовая деталь (BOM)
-                  </span>
-                  <span style={{ fontSize: 9.5, color: "var(--cad-text-muted)", marginTop: 2, lineHeight: 1.25 }}>
-                    Каталожная деталь: фиксированный артикул MPN и номинал
-                  </span>
-                </div>
-              </button>
-            </div>
-
-            {/* Карточка 1: Переключаемые вкладки «Основные & BOM» и «Электропараметры» */}
-            <div className="device-card" style={{ flexShrink: 0 }}>
-              <div className="device-card-header">
-                <div className="device-tab-group">
                   <button
                     type="button"
-                    className={`device-tab-btn ${activeSubTab === "info" ? "active" : ""}`}
-                    onClick={() => setActiveSubTab("info")}
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: isBase ? "1.5px solid var(--cad-accent, #3b82f6)" : "1px solid var(--cad-border, #283344)",
+                      background: isBase ? "rgba(59, 130, 246, 0.16)" : "var(--cad-bg-surface, #141820)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.15s ease",
+                    }}
+                    onClick={() => {
+                      setIsBase(true);
+                      setActiveSubTab("info");
+                    }}
                   >
-                    <Info size={12} />
-                    <span>{isBase ? "Основные параметры" : "Основные & BOM"}</span>
-                  </button>
-                  {!isBase && (
-                    <button
-                      type="button"
-                      className={`device-tab-btn ${activeSubTab === "specs" ? "active" : ""}`}
-                      onClick={() => setActiveSubTab("specs")}
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 6,
+                        background: isBase ? "var(--cad-accent, #3b82f6)" : "rgba(255, 255, 255, 0.05)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: isBase ? "#fff" : "var(--cad-text-muted)",
+                        flexShrink: 0,
+                      }}
                     >
-                      <Zap size={12} />
-                      <span>Паспортные электропараметры</span>
-                      {filledSpecsCount > 0 && (
-                        <span className="device-chip-count" style={{ marginLeft: 3 }}>
-                          {filledSpecsCount}
-                        </span>
-                      )}
-                    </button>
-                  )}
-                </div>
-              </div>
+                      <Box size={15} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: isBase ? "#93c5fd" : "var(--cad-text-main)" }}>
+                        Базовый компонент (Generic)
+                      </span>
+                      <span style={{ fontSize: 9.5, color: "var(--cad-text-muted)", marginTop: 2, lineHeight: 1.25 }}>
+                        Шаблон для схемы (R, C, VT). Номинал задается по месту на плате
+                      </span>
+                    </div>
+                  </button>
 
-              {activeSubTab === "info" ? (
+                  <button
+                    type="button"
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 10,
+                      padding: "8px 12px",
+                      borderRadius: 6,
+                      border: !isBase ? "1.5px solid var(--cad-accent, #3b82f6)" : "1px solid var(--cad-border, #283344)",
+                      background: !isBase ? "rgba(59, 130, 246, 0.16)" : "var(--cad-bg-surface, #141820)",
+                      cursor: "pointer",
+                      textAlign: "left",
+                      transition: "all 0.15s ease",
+                    }}
+                    onClick={() => setIsBase(false)}
+                  >
+                    <div
+                      style={{
+                        width: 28,
+                        height: 28,
+                        borderRadius: 6,
+                        background: !isBase ? "var(--cad-accent, #3b82f6)" : "rgba(255, 255, 255, 0.05)",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        color: !isBase ? "#fff" : "var(--cad-text-muted)",
+                        flexShrink: 0,
+                      }}
+                    >
+                      <Tag size={15} />
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                      <span style={{ fontSize: 11.5, fontWeight: 700, color: !isBase ? "#93c5fd" : "var(--cad-text-main)" }}>
+                        Готовая деталь (BOM)
+                      </span>
+                      <span style={{ fontSize: 9.5, color: "var(--cad-text-muted)", marginTop: 2, lineHeight: 1.25 }}>
+                        Каталожная деталь: фиксированный артикул MPN и номинал
+                      </span>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Карточка 1: Переключаемые вкладки «Основные & BOM» и «Электропараметры» */}
+                <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+                  <div className="device-card-header" style={{ flexShrink: 0 }}>
+                    <div className="device-tab-group">
+                      <button
+                        type="button"
+                        className={`device-tab-btn ${activeSubTab === "info" ? "active" : ""}`}
+                        onClick={() => setActiveSubTab("info")}
+                      >
+                        <Info size={12} />
+                        <span>{isBase ? "Основные параметры" : "Основные & BOM"}</span>
+                      </button>
+                      {!isBase && (
+                        <button
+                          type="button"
+                          className={`device-tab-btn ${activeSubTab === "specs" ? "active" : ""}`}
+                          onClick={() => setActiveSubTab("specs")}
+                        >
+                          <Zap size={12} />
+                          <span>Паспортные электропараметры</span>
+                          {filledSpecsCount > 0 && (
+                            <span className="device-chip-count" style={{ marginLeft: 3 }}>
+                              {filledSpecsCount}
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ flex: 1, overflowY: "auto", minHeight: 0, paddingRight: 4, display: "flex", flexDirection: "column", gap: 10 }}>
+                    {activeSubTab === "info" ? (
                 /* Вкладка 1: Основные метаданные и спецификация (BOM) */
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
@@ -1831,6 +1832,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   </div>
                 </div>
               )}
+            </div>
 
               {/* Навигационная плашка перехода к выводам внизу карточки параметров */}
               <div
