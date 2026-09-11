@@ -55,6 +55,197 @@ const ELECTRICAL_TYPES: ElectricalTypeConfig[] = [
   { value: "no_connect", label: "No Connect (Не подключен)", shortLabel: "NC", color: "#64748b" },
 ];
 
+export interface TaxonomySubcategory {
+  id: string;
+  name: string;
+  defaultPrefix: string;
+}
+
+export interface TaxonomyCategory {
+  id: string;
+  name: string;
+  defaultPrefix: string;
+  subcategories: TaxonomySubcategory[];
+}
+
+export const COMPONENT_TAXONOMY: TaxonomyCategory[] = [
+  {
+    id: "passives",
+    name: "Пассивные компоненты",
+    defaultPrefix: "R",
+    subcategories: [
+      { id: "resistors", name: "Резисторы и триммеры", defaultPrefix: "R" },
+      { id: "capacitors", name: "Конденсаторы", defaultPrefix: "C" },
+      { id: "inductors", name: "Индуктивности и дроссели", defaultPrefix: "L" },
+      { id: "protection", name: "Защита цепей (предохранители, варисторы)", defaultPrefix: "FU" },
+    ],
+  },
+  {
+    id: "semiconductors",
+    name: "Полупроводники (Дискретные)",
+    defaultPrefix: "VD",
+    subcategories: [
+      { id: "diodes", name: "Диоды и выпрямители", defaultPrefix: "VD" },
+      { id: "transistors", name: "Транзисторы (BJT, MOSFET, IGBT)", defaultPrefix: "VT" },
+      { id: "thyristors", name: "Тиристоры и симисторы", defaultPrefix: "VS" },
+      { id: "zener_tvs", name: "Стабилитроны и защитные диоды (TVS)", defaultPrefix: "VD" },
+    ],
+  },
+  {
+    id: "ics",
+    name: "Интегральные микросхемы (IC)",
+    defaultPrefix: "U",
+    subcategories: [
+      { id: "opamps", name: "Операционные усилители и компараторы", defaultPrefix: "DA" },
+      { id: "timers_pwm", name: "Таймеры и ШИМ-контроллеры", defaultPrefix: "DA" },
+      { id: "logic", name: "Цифровая логика 74xx / 40xx", defaultPrefix: "DD" },
+      { id: "interfaces", name: "Интерфейсы и драйверы (RS-485, CAN, USB)", defaultPrefix: "DA" },
+      { id: "memory", name: "Память EEPROM / Flash / SRAM", defaultPrefix: "DD" },
+    ],
+  },
+  {
+    id: "mcu",
+    name: "Микроконтроллеры, DSP и ПЛИС",
+    defaultPrefix: "U",
+    subcategories: [
+      { id: "wifi_bt", name: "Модули Wi-Fi / Bluetooth (ESP, NRF)", defaultPrefix: "U" },
+      { id: "arm_cortex", name: "Микроконтроллеры ARM Cortex (STM32, RP2040)", defaultPrefix: "DD" },
+      { id: "avr", name: "Микроконтроллеры 8-бит (AVR, PIC)", defaultPrefix: "DD" },
+      { id: "fpga", name: "ПЛИС, FPGA и CPLD", defaultPrefix: "DD" },
+      { id: "dev_boards", name: "Отладочные платы и модули", defaultPrefix: "MOD" },
+    ],
+  },
+  {
+    id: "power",
+    name: "Источники и управление питанием",
+    defaultPrefix: "DA",
+    subcategories: [
+      { id: "ldo", name: "Линейные стабилизаторы (LDO)", defaultPrefix: "DA" },
+      { id: "dcdc", name: "Импульсные DC-DC преобразователи", defaultPrefix: "DA" },
+      { id: "chargers", name: "Контроллеры заряда Li-Ion (BMS)", defaultPrefix: "DA" },
+      { id: "holders", name: "Держатели батарей и элементы", defaultPrefix: "GB" },
+    ],
+  },
+  {
+    id: "connectors",
+    name: "Разъемы и соединители",
+    defaultPrefix: "XP",
+    subcategories: [
+      { id: "headers", name: "Штыревые линейки (Pin Header)", defaultPrefix: "XP" },
+      { id: "terminals", name: "Винтовые и пружинные клеммники", defaultPrefix: "XT" },
+      { id: "usb_ports", name: "USB порты (Type-C, Micro)", defaultPrefix: "XS" },
+      { id: "dc_power", name: "Разъемы питания (DC Jack)", defaultPrefix: "XS" },
+      { id: "audio_signal", name: "Аудио и сигнальные порты (RJ45, Jack 3.5)", defaultPrefix: "XS" },
+    ],
+  },
+  {
+    id: "switches",
+    name: "Коммутация и электромеханика",
+    defaultPrefix: "SW",
+    subcategories: [
+      { id: "buttons", name: "Тактовые кнопки", defaultPrefix: "SW" },
+      { id: "relays", name: "Реле электромагнитные и твердотельные", defaultPrefix: "K" },
+      { id: "toggles", name: "Тумблеры и DIP-переключатели", defaultPrefix: "SA" },
+      { id: "encoders", name: "Энкодеры поворотные", defaultPrefix: "SW" },
+    ],
+  },
+  {
+    id: "opto",
+    name: "Оптоэлектроника и индикация",
+    defaultPrefix: "HL",
+    subcategories: [
+      { id: "leds", name: "Светодиоды (SMD / THT)", defaultPrefix: "HL" },
+      { id: "addressable_leds", name: "Адресные светодиоды (WS2812)", defaultPrefix: "HL" },
+      { id: "displays", name: "Дисплеи (OLED, LCD 1602)", defaultPrefix: "HG" },
+      { id: "seven_segment", name: "Семисегментные индикаторы", defaultPrefix: "HG" },
+      { id: "optocouplers", name: "Оптопары и оптореле", defaultPrefix: "VU" },
+    ],
+  },
+  {
+    id: "sensors",
+    name: "Датчики и сенсоры",
+    defaultPrefix: "BK",
+    subcategories: [
+      { id: "temp_humidity", name: "Температура и влажность (DHT, DS18B20)", defaultPrefix: "BK" },
+      { id: "pressure_baro", name: "Давление и барометры (BMP280)", defaultPrefix: "BK" },
+      { id: "imu", name: "Акселерометры и IMU (MPU6050)", defaultPrefix: "BK" },
+      { id: "current_voltage", name: "Ток и напряжение (ACS712, INA219)", defaultPrefix: "DA" },
+      { id: "optical_magnetic", name: "Оптические датчики и датчики Холла", defaultPrefix: "BL" },
+    ],
+  },
+  {
+    id: "crystals",
+    name: "Кварцы и тактирование",
+    defaultPrefix: "ZQ",
+    subcategories: [
+      { id: "crystals_mhz", name: "Кварцевые резонаторы (MHz)", defaultPrefix: "ZQ" },
+      { id: "crystals_watch", name: "Часовые кварцы (32.768 kHz)", defaultPrefix: "ZQ" },
+      { id: "oscillators", name: "Активные генераторы (OSC, TCXO)", defaultPrefix: "G" },
+    ],
+  },
+  {
+    id: "audio",
+    name: "Акустика и звук",
+    defaultPrefix: "HA",
+    subcategories: [
+      { id: "buzzers", name: "Пьезозуммеры (Buzzer 5V/12V)", defaultPrefix: "HA" },
+      { id: "speakers", name: "Динамики миниатюрные", defaultPrefix: "BA" },
+      { id: "microphones", name: "Микрофоны (Электретные, MEMS)", defaultPrefix: "BM" },
+    ],
+  },
+  {
+    id: "rf_wireless",
+    name: "ВЧ, СВЧ и беспроводная связь",
+    defaultPrefix: "WA",
+    subcategories: [
+      { id: "antennas", name: "Антенны (Chip, PCB, SMA)", defaultPrefix: "WA" },
+      { id: "rf_modules", name: "Радиомодули (LoRa, GNSS/GPS, LTE)", defaultPrefix: "MOD" },
+      { id: "rf_filters", name: "ВЧ фильтры и балуны (SAW, Balun)", defaultPrefix: "ZF" },
+      { id: "rf_amps", name: "ВЧ усилители (LNA, PA)", defaultPrefix: "DA" },
+    ],
+  },
+  {
+    id: "transformers",
+    name: "Трансформаторы и моточные узлы",
+    defaultPrefix: "T",
+    subcategories: [
+      { id: "pulse_trans", name: "Импульсные трансформаторы (Flyback)", defaultPrefix: "T" },
+      { id: "mains_trans", name: "Сетевые трансформаторы 50/60 Гц", defaultPrefix: "T" },
+      { id: "current_trans", name: "Токовые трансформаторы", defaultPrefix: "TA" },
+      { id: "lan_magnetics", name: "Ethernet LAN Magnetics", defaultPrefix: "T" },
+    ],
+  },
+  {
+    id: "emi_filtering",
+    name: "ЭМС и фильтрация помех (EMI/RFI)",
+    defaultPrefix: "L",
+    subcategories: [
+      { id: "chokes", name: "Синфазные дроссели (Common Mode)", defaultPrefix: "L" },
+      { id: "ferrite", name: "Ферритовые бусины (Ferrite Beads)", defaultPrefix: "FB" },
+      { id: "filters", name: "Сетевые фильтры ЭМС", defaultPrefix: "FL" },
+    ],
+  },
+  {
+    id: "modules",
+    name: "Модули и мезонины",
+    defaultPrefix: "MOD",
+    subcategories: [
+      { id: "functional", name: "Готовые функциональные модули", defaultPrefix: "MOD" },
+      { id: "mezzanine", name: "Мезонинные платы", defaultPrefix: "A" },
+    ],
+  },
+  {
+    id: "mechanical",
+    name: "Служебные, крепеж и механика",
+    defaultPrefix: "MH",
+    subcategories: [
+      { id: "holes", name: "Крепежные отверстия", defaultPrefix: "MH" },
+      { id: "testpoints", name: "Контрольные точки (Testpoint)", defaultPrefix: "TP" },
+      { id: "heatsinks", name: "Радиаторы охлаждения", defaultPrefix: "HS" },
+    ],
+  },
+];
+
 export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   isOpen,
   initialDevice,
@@ -69,9 +260,11 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   // Идентификация и метаданные
   const [id, setId] = useState<string>("");
   const [name, setName] = useState<string>("");
-  const [category, setCategory] = useState<string>("ICs");
-  const [subcategory, setSubcategory] = useState<string>("Microcontrollers");
-  const [designatorPrefix, setDesignatorPrefix] = useState<string>("U");
+  const [category, setCategory] = useState<string>("Пассивные компоненты");
+  const [subcategory, setSubcategory] = useState<string>("Резисторы и триммеры");
+  const [isCustomCategory, setIsCustomCategory] = useState<boolean>(false);
+  const [isCustomSubcategory, setIsCustomSubcategory] = useState<boolean>(false);
+  const [designatorPrefix, setDesignatorPrefix] = useState<string>("R");
   const [description, setDescription] = useState<string>("");
   const [datasheet, setDatasheet] = useState<string>("");
   const [manufacturer, setManufacturer] = useState<string>("");
@@ -101,8 +294,17 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (initialDevice) {
       setId(initialDevice.id);
       setName(initialDevice.name);
-      setCategory(initialDevice.category || "ICs");
-      setSubcategory(initialDevice.subcategory || "");
+
+      const initCat = initialDevice.category || "Интегральные микросхемы (IC)";
+      const initSub = initialDevice.subcategory || "";
+      setCategory(initCat);
+      setSubcategory(initSub);
+
+      const catMatch = COMPONENT_TAXONOMY.find((c) => c.name === initCat);
+      setIsCustomCategory(!catMatch);
+      const subMatch = catMatch?.subcategories.find((s) => s.name === initSub);
+      setIsCustomSubcategory(!subMatch && !catMatch);
+
       setDesignatorPrefix(initialDevice.designatorPrefix || "U");
       setDescription(initialDevice.description || "");
       setDatasheet(initialDevice.datasheet || "");
@@ -136,9 +338,14 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       const newId = `dev_${Date.now()}`;
       setId(newId);
       setName("Новый компонент");
-      setCategory("ICs");
-      setSubcategory("General");
-      setDesignatorPrefix("U");
+
+      const defCat = COMPONENT_TAXONOMY[0];
+      const defSub = defCat.subcategories[0];
+      setCategory(defCat.name);
+      setSubcategory(defSub.name);
+      setDesignatorPrefix(defSub.defaultPrefix);
+      setIsCustomCategory(false);
+      setIsCustomSubcategory(false);
       setDescription("");
       setDatasheet("");
       setManufacturer("");
@@ -507,46 +714,137 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   </div>
 
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    {/* Выбор категории */}
                     <div>
-                      <label className="form-label" style={{ fontSize: 10 }}>Категория:</label>
-                      <input
-                        type="text"
-                        list="cad-category-datalist"
-                        value={category}
-                        onChange={(e) => setCategory(e.target.value)}
-                        placeholder="Выберите или введите..."
-                        className="cad-input"
-                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
-                      />
-                      <datalist id="cad-category-datalist">
-                        <option value="Пассивные компоненты" />
-                        <option value="Полупроводники (Дискретные)" />
-                        <option value="Интегральные микросхемы (IC)" />
-                        <option value="Микроконтроллеры, DSP и ПЛИС" />
-                        <option value="Источники и управление питанием" />
-                        <option value="Разъемы и соединители" />
-                        <option value="Коммутация и электромеханика" />
-                        <option value="Оптоэлектроника и индикация" />
-                        <option value="Датчики и сенсоры" />
-                        <option value="Кварцы и тактирование" />
-                        <option value="Акустика и звук" />
-                        <option value="ВЧ, СВЧ и беспроводная связь" />
-                        <option value="Трансформаторы и моточные узлы" />
-                        <option value="ЭМС и фильтрация помех (EMI/RFI)" />
-                        <option value="Модули и мезонины" />
-                        <option value="Служебные, крепеж и механика" />
-                      </datalist>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                        <label className="form-label" style={{ fontSize: 10, margin: 0 }}>Категория:</label>
+                        <button
+                          type="button"
+                          style={{
+                            fontSize: 9.5,
+                            color: "var(--cad-accent-hover)",
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            padding: 0,
+                          }}
+                          onClick={() => setIsCustomCategory(!isCustomCategory)}
+                          title="Переключить между готовым списком категорий и ручным вводом"
+                        >
+                          {isCustomCategory ? "← Из каталога" : "Ввести вручную"}
+                        </button>
+                      </div>
+
+                      {isCustomCategory ? (
+                        <input
+                          type="text"
+                          value={category}
+                          onChange={(e) => setCategory(e.target.value)}
+                          placeholder="Введите категорию..."
+                          className="cad-input"
+                          style={{ width: "100%", padding: "4px 8px", fontSize: 11, height: 26 }}
+                        />
+                      ) : (
+                        <select
+                          value={category}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "__custom__") {
+                              setIsCustomCategory(true);
+                              setIsCustomSubcategory(true);
+                            } else {
+                              setIsCustomCategory(false);
+                              setCategory(val);
+                              const foundCat = COMPONENT_TAXONOMY.find((c) => c.name === val);
+                              if (foundCat && foundCat.subcategories.length > 0) {
+                                setIsCustomSubcategory(false);
+                                const firstSub = foundCat.subcategories[0];
+                                setSubcategory(firstSub.name);
+                                setDesignatorPrefix(firstSub.defaultPrefix);
+                              }
+                            }
+                          }}
+                          className="cad-input"
+                          style={{ width: "100%", padding: "4px 8px", fontSize: 11, height: 26 }}
+                        >
+                          {COMPONENT_TAXONOMY.map((c) => (
+                            <option key={c.id} value={c.name}>
+                              {c.name}
+                            </option>
+                          ))}
+                          <option value="__custom__">+ Другая (ввести вручную)...</option>
+                        </select>
+                      )}
                     </div>
+
+                    {/* Выбор подкатегории */}
                     <div>
-                      <label className="form-label" style={{ fontSize: 10 }}>Подкатегория:</label>
-                      <input
-                        type="text"
-                        value={subcategory}
-                        onChange={(e) => setSubcategory(e.target.value)}
-                        placeholder="Резисторы, ОУ, LDO, MCU..."
-                        className="cad-input"
-                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
-                      />
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 2 }}>
+                        <label className="form-label" style={{ fontSize: 10, margin: 0 }}>Подкатегория:</label>
+                        {!isCustomCategory && (
+                          <button
+                            type="button"
+                            style={{
+                              fontSize: 9.5,
+                              color: "var(--cad-accent-hover)",
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              padding: 0,
+                            }}
+                            onClick={() => setIsCustomSubcategory(!isCustomSubcategory)}
+                            title="Переключить между списком подкатегорий и ручным вводом"
+                          >
+                            {isCustomSubcategory ? "← Из каталога" : "Ввести вручную"}
+                          </button>
+                        )}
+                      </div>
+
+                      {isCustomSubcategory || isCustomCategory ? (
+                        <input
+                          type="text"
+                          value={subcategory}
+                          onChange={(e) => setSubcategory(e.target.value)}
+                          placeholder="Введите подкатегорию..."
+                          className="cad-input"
+                          style={{ width: "100%", padding: "4px 8px", fontSize: 11, height: 26 }}
+                        />
+                      ) : (
+                        <select
+                          value={subcategory}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "__custom__") {
+                              setIsCustomSubcategory(true);
+                            } else {
+                              setIsCustomSubcategory(false);
+                              setSubcategory(val);
+                              const curCat = COMPONENT_TAXONOMY.find((c) => c.name === category);
+                              const subDef = curCat?.subcategories.find((s) => s.name === val);
+                              if (subDef) {
+                                setDesignatorPrefix(subDef.defaultPrefix);
+                              }
+                            }
+                          }}
+                          className="cad-input"
+                          style={{ width: "100%", padding: "4px 8px", fontSize: 11, height: 26 }}
+                        >
+                          {(() => {
+                            const curCat = COMPONENT_TAXONOMY.find((c) => c.name === category);
+                            const list = curCat?.subcategories || [];
+                            return (
+                              <>
+                                {list.map((s) => (
+                                  <option key={s.id} value={s.name}>
+                                    {s.name} ({s.defaultPrefix})
+                                  </option>
+                                ))}
+                                <option value="__custom__">+ Другая (ввести вручную)...</option>
+                              </>
+                            );
+                          })()}
+                        </select>
+                      )}
                     </div>
                   </div>
 
