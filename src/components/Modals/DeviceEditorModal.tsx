@@ -36,6 +36,8 @@ import {
   ChevronDown,
   Check,
   RefreshCw,
+  FileText,
+  Download,
 } from "lucide-react";
 import { FootprintPreview } from "../SvgRenderer/FootprintPreview";
 
@@ -58,22 +60,22 @@ interface ElectricalTypeConfig {
 const ELECTRICAL_TYPES: ElectricalTypeConfig[] = [
   { value: "power_in", label: "Power In (Питание VCC)", shortLabel: "Питание", color: "#ef4444" },
   { value: "ground", label: "Ground (Земля GND)", shortLabel: "Земля", color: "#10b981" },
-  { value: "input", label: "Input (Вход)", shortLabel: "Вход", color: "#38bdf8" },
-  { value: "output", label: "Output (Выход)", shortLabel: "Выход", color: "#c084fc" },
-  { value: "bidirectional", label: "Bidirectional (Двунаправл.)", shortLabel: "Двунапр.", color: "#fbbf24" },
+  { value: "input", label: "Input (Вход)", shortLabel: "Вход", color: "#3b82f6" },
+  { value: "output", label: "Output (Выход)", shortLabel: "Выход", color: "#f59e0b" },
+  { value: "bidirectional", label: "Bidirectional (Двунаправл.)", shortLabel: "Двунапр.", color: "#8b5cf6" },
   { value: "passive", label: "Passive (Пассивный)", shortLabel: "Пассив.", color: "#94a3b8" },
-  { value: "open_collector", label: "Open Collector (Откр. колл.)", shortLabel: "Откр. колл.", color: "#f97316" },
-  { value: "power_out", label: "Power Out (Выход питания)", shortLabel: "Вых. пит.", color: "#f43f5e" },
+  { value: "power_out", label: "Power Out (Выход питания)", shortLabel: "Вых.пит.", color: "#ec4899" },
+  { value: "open_collector", label: "Open Collector (Откр. колл.)", shortLabel: "ОК", color: "#d97706" },
   { value: "no_connect", label: "No Connect (Не подключен)", shortLabel: "NC", color: "#64748b" },
 ];
 
-export interface TaxonomySubcategory {
+interface TaxonomySubcategory {
   id: string;
   name: string;
   defaultPrefix: string;
 }
 
-export interface TaxonomyCategory {
+interface TaxonomyCategory {
   id: string;
   name: string;
   defaultPrefix: string;
@@ -308,6 +310,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [activePadNum, setActivePadNum] = useState<string | null>(null);
   const [pinSearchQuery, setPinSearchQuery] = useState<string>("");
   const [pinUnitFilter, setPinUnitFilter] = useState<string>("all");
+
+  // Вкладка левой панели: "properties" (Параметры и BOM) или "pins" (Выводы схемы)
+  const [activeLeftTab, setActiveLeftTab] = useState<"properties" | "pins">("properties");
+  const [quickPinName, setQuickPinName] = useState<string>("");
 
   // Визуальный диалог добавления корпуса из библиотеки
   const [isPkgPickerOpen, setIsPkgPickerOpen] = useState<boolean>(false);
@@ -660,6 +666,66 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (newItems.length > 0) {
       setLogicalPins([...logicalPins, ...newItems]);
       setSelectedPinId(newItems[0].id);
+    }
+  };
+
+  // Быстрое добавление одного вывода
+  const handleQuickAddPin = () => {
+    const trimmed = quickPinName.trim();
+    const pinName = trimmed || `${logicalPins.length + 1}`;
+    const newPin: LogicalPin = {
+      id: `pin_${Date.now()}_${logicalPins.length + 1}`,
+      name: pinName,
+      electricalType: "passive",
+    };
+    setLogicalPins((prev) => [...prev, newPin]);
+    setSelectedPinId(newPin.id);
+    setQuickPinName("");
+  };
+
+  // Импорт логических выводов схемы из контактных площадок выбранного корпуса
+  const handleImportPinsFromPackage = () => {
+    if (!currentPkgDef || !currentPkgDef.pads || currentPkgDef.pads.length === 0) return;
+    if (logicalPins.length > 0) {
+      if (
+        !window.confirm(
+          `Заменить текущие выводы (${logicalPins.length} шт.) выводами из контактных площадок корпуса ${currentPkgDef.name} (${currentPkgDef.pads.length} шт.)?`
+        )
+      ) {
+        return;
+      }
+    }
+    const newPins: LogicalPin[] = currentPkgDef.pads.map((pad, idx) => ({
+      id: `pin_${Date.now()}_${idx}`,
+      name: pad.name && pad.name.trim() ? pad.name.trim() : pad.padNum,
+      electricalType: "passive" as PinElectricalType,
+      description: pad.name && pad.name.trim() !== pad.padNum ? `Площадка #${pad.padNum}` : undefined,
+    }));
+    setLogicalPins(newPins);
+
+    // Если активен корпус, сразу сопоставляем 1:1 с площадками
+    if (activePackageId) {
+      const autoMap: Record<string, string> = {};
+      newPins.forEach((p, idx) => {
+        const pad = currentPkgDef.pads[idx];
+        if (pad) {
+          autoMap[p.name] = pad.padNum;
+        }
+      });
+      setSupportedPackages((prev) =>
+        prev.map((item) =>
+          item.packageId === activePackageId ? { ...item, pinMap: autoMap } : item
+        )
+      );
+    }
+  };
+
+  // Очистка всех выводов схемы
+  const handleClearAllPins = () => {
+    if (logicalPins.length === 0) return;
+    if (window.confirm("Удалить все выводы схемы?")) {
+      setLogicalPins([]);
+      handleClearMapping();
     }
   };
 
@@ -1095,13 +1161,85 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
         {/* Тело модального окна: двухколоночная CAD-сетка */}
         <div className="device-editor-grid">
-          {/* Левая колонка: Параметры радиодетали и таблица логических выводов схемы */}
+          {/* Левая колонка: Переключаемые вкладки «Параметры детали» и «Выводы схемы (Pins)» */}
           <div className="device-col">
-            {/* Селектор назначения компонента: Базовый шаблон vs Готовая деталь */}
+            {/* Вкладки переключения левой панели */}
             <div
               style={{
-                display: "grid",
-                gridTemplateColumns: "1fr 1fr",
+                display: "flex",
+                gap: 6,
+                background: "var(--cad-bg-panel, #181d26)",
+                border: "1px solid var(--cad-border, #283344)",
+                borderRadius: 8,
+                padding: "4px 6px",
+                flexShrink: 0,
+              }}
+            >
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 7,
+                  padding: "7px 12px",
+                  borderRadius: 6,
+                  border: activeLeftTab === "properties" ? "1px solid var(--cad-accent, #3b82f6)" : "1px solid transparent",
+                  background: activeLeftTab === "properties" ? "rgba(59, 130, 246, 0.16)" : "transparent",
+                  color: activeLeftTab === "properties" ? "#93c5fd" : "var(--cad-text-muted)",
+                  fontWeight: activeLeftTab === "properties" ? 700 : 500,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+                onClick={() => setActiveLeftTab("properties")}
+              >
+                <FileText size={14} />
+                <span>Параметры детали</span>
+              </button>
+              <button
+                type="button"
+                style={{
+                  flex: 1,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 7,
+                  padding: "7px 12px",
+                  borderRadius: 6,
+                  border: activeLeftTab === "pins" ? "1px solid var(--cad-accent, #3b82f6)" : "1px solid transparent",
+                  background: activeLeftTab === "pins" ? "rgba(59, 130, 246, 0.16)" : "transparent",
+                  color: activeLeftTab === "pins" ? "#93c5fd" : "var(--cad-text-muted)",
+                  fontWeight: activeLeftTab === "pins" ? 700 : 500,
+                  fontSize: 12,
+                  cursor: "pointer",
+                  transition: "all 0.15s ease",
+                }}
+                onClick={() => setActiveLeftTab("pins")}
+              >
+                <Sparkles size={14} />
+                <span>Выводы схемы (Pins)</span>
+                <span className="device-chip-count">{logicalPins.length} шт.</span>
+                {duplicatePinNames.size > 0 && (
+                  <span
+                    style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: 2 }}
+                    title="Обнаружены одинаковые имена выводов!"
+                  >
+                    <AlertTriangle size={12} />
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {/* Вкладка 1: Параметры детали */}
+            {activeLeftTab === "properties" ? (
+              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 10, overflowY: "auto", paddingRight: 2 }}>
+                {/* Селектор назначения компонента: Базовый шаблон vs Готовая деталь */}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
                 gap: 8,
                 background: "var(--cad-bg-panel, #181d26)",
                 border: "1px solid var(--cad-border, #283344)",
@@ -1693,143 +1831,193 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   </div>
                 </div>
               )}
-            </div>
 
-            {/* Карточка 2: Логические выводы схемы (Logical Pins) */}
-            <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-              <div className="device-card-header">
-                <div className="device-card-title">
-                  <Sparkles size={13} />
-                  <span>Выводы схемы (Pins)</span>
-                  <span className="device-chip-count">{logicalPins.length} шт.</span>
-                  {duplicatePinNames.size > 0 && (
-                    <span
-                      style={{
-                        fontSize: 10,
-                        color: "#ef4444",
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: 3,
-                        fontWeight: 600,
-                      }}
-                      title="Обнаружены одинаковые имена выводов! Рекомендуется сделать их уникальными."
-                    >
-                      <AlertTriangle size={11} /> Дубликаты!
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
-                  <select
-                    className="cad-input"
-                    style={{ fontSize: 10, padding: "2px 6px", height: 24, maxWidth: 130, cursor: "pointer" }}
-                    defaultValue=""
-                    onChange={(e) => {
-                      const val = e.target.value;
-                      if (!val) return;
-                      applyPinPreset(val);
-                      e.target.value = "";
-                    }}
-                    title="Готовые шаблоны выводов для полупроводников и базовых компонентов"
-                  >
-                    <option value="" disabled>⚡ Пресет...</option>
-                    <option value="rlc">Пассивный 2-pin (1, 2)</option>
-                    <option value="diode">Диод (Анод A, Катод K)</option>
-                    <option value="bjt_npn">BJT NPN (B, C, E)</option>
-                    <option value="mosfet_n">MOSFET N-Ch (G, D, S)</option>
-                    <option value="ldo3">LDO 3-pin (VIN, VOUT, GND)</option>
-                    <option value="opamp_single">ОУ одиночный (IN+, IN-, OUT...)</option>
-                    <option value="opamp_dual">ОУ сдвоенный (Unit A, B + PWR)</option>
-                    <option value="header_1x4">Штыревой разъем (1..4)</option>
-                    <option value="pwr_logic">ИМС логики (VCC, GND, IN, OUT)</option>
-                  </select>
-                  <button
-                    type="button"
-                    className="cad-btn-secondary"
-                    style={{ fontSize: 10, padding: "2px 6px", height: 24 }}
-                    onClick={() => setIsPinGenOpen(true)}
-                    title="Генератор шин и серий выводов (D0..D7, 1..16, список)"
-                  >
-                    <ListPlus size={11} color="var(--cad-accent-hover)" /> Серия...
-                  </button>
-                  <button
-                    type="button"
-                    className="cad-btn-secondary"
-                    style={{ fontSize: 10, padding: "2px 6px", height: 24 }}
-                    onClick={handleAddPowerPins}
-                    title="Быстро добавить VCC и GND"
-                  >
-                    + PWR
-                  </button>
-                  <button
-                    type="button"
-                    className="cad-btn-secondary"
-                    style={{ fontSize: 10, padding: "2px 7px", height: 24 }}
-                    onClick={handleAddPin}
-                  >
-                    <Plus size={11} /> Пин
-                  </button>
-                </div>
-              </div>
-
-              {/* Панель поиска и фильтрации выводов */}
+              {/* Навигационная плашка перехода к выводам внизу карточки параметров */}
               <div
                 style={{
+                  marginTop: "auto",
+                  paddingTop: 12,
+                  borderTop: "1px solid rgba(255, 255, 255, 0.06)",
                   display: "flex",
                   alignItems: "center",
-                  gap: 6,
-                  padding: "4px 0",
+                  justifyContent: "space-between",
                   flexShrink: 0,
                 }}
               >
-                <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center" }}>
-                  <Search size={11} style={{ position: "absolute", left: 6, color: "var(--cad-text-dim)" }} />
-                  <input
-                    type="text"
-                    value={pinSearchQuery}
-                    onChange={(e) => setPinSearchQuery(e.target.value)}
-                    placeholder="Быстрый поиск вывода..."
-                    className="cad-input"
-                    style={{ width: "100%", padding: "2px 6px 2px 22px", fontSize: 10.5, height: 22 }}
-                  />
-                  {pinSearchQuery && (
-                    <button
-                      type="button"
-                      onClick={() => setPinSearchQuery("")}
-                      style={{ position: "absolute", right: 4, background: "none", border: "none", color: "var(--cad-text-dim)", cursor: "pointer" }}
-                    >
-                      <X size={10} />
-                    </button>
-                  )}
-                </div>
-
-                {availableUnits.length > 0 && (
-                  <select
-                    value={pinUnitFilter}
-                    onChange={(e) => setPinUnitFilter(e.target.value)}
-                    className="cad-input"
-                    style={{ fontSize: 10, padding: "2px 6px", height: 22, maxWidth: 100 }}
+                <span style={{ fontSize: 11, color: "var(--cad-text-muted)" }}>
+                  Выводов схемы: <strong style={{ color: "var(--cad-text-main)" }}>{logicalPins.length} шт.</strong>
+                </span>
+                <button
+                  type="button"
+                  className="cad-btn-primary"
+                  style={{ fontSize: 11, padding: "5px 12px", gap: 6 }}
+                  onClick={() => setActiveLeftTab("pins")}
+                >
+                  <span>Настроить выводы схемы</span>
+                  <ArrowRight size={13} />
+                </button>
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* Вкладка 2: Логические выводы схемы (Logical Pins) - НА ВСЮ ВЫСОТУ */
+          <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+            <div className="device-card-header">
+              <div className="device-card-title">
+                <Sparkles size={13} />
+                <span>Выводы схемы (Pins)</span>
+                <span className="device-chip-count">{logicalPins.length} шт.</span>
+                {duplicatePinNames.size > 0 && (
+                  <span
+                    style={{
+                      fontSize: 10,
+                      color: "#ef4444",
+                      display: "inline-flex",
+                      alignItems: "center",
+                      gap: 3,
+                      fontWeight: 600,
+                    }}
+                    title="Обнаружены одинаковые имена выводов! Рекомендуется сделать их уникальными."
                   >
-                    <option value="all">Все секции</option>
-                    {availableUnits.map((u) => (
-                      <option key={u} value={u}>
-                        Секция {u}
-                      </option>
-                    ))}
-                  </select>
+                    <AlertTriangle size={11} /> Дубликаты!
+                  </span>
                 )}
-
-                {logicalPins.length >= 2 && (
+              </div>
+              <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                <select
+                  className="cad-input"
+                  style={{ fontSize: 10, padding: "2px 6px", height: 24, maxWidth: 130, cursor: "pointer" }}
+                  defaultValue=""
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (!val) return;
+                    applyPinPreset(val);
+                    e.target.value = "";
+                  }}
+                  title="Готовые шаблоны выводов для полупроводников и базовых компонентов"
+                >
+                  <option value="" disabled>⚡ Пресет...</option>
+                  <option value="rlc">Пассивный 2-pin (1, 2)</option>
+                  <option value="diode">Диод (Анод A, Катод K)</option>
+                  <option value="bjt_npn">BJT NPN (B, C, E)</option>
+                  <option value="mosfet_n">MOSFET N-Ch (G, D, S)</option>
+                  <option value="ldo3">LDO 3-pin (VIN, VOUT, GND)</option>
+                  <option value="opamp_single">ОУ одиночный (IN+, IN-, OUT...)</option>
+                  <option value="opamp_dual">ОУ сдвоенный (Unit A, B + PWR)</option>
+                  <option value="header_1x4">Штыревой разъем (1..4)</option>
+                  <option value="pwr_logic">ИМС логики (VCC, GND, IN, OUT)</option>
+                </select>
+                <button
+                  type="button"
+                  className="cad-btn-secondary"
+                  style={{ fontSize: 10, padding: "2px 6px", height: 24 }}
+                  onClick={() => setIsPinGenOpen(true)}
+                  title="Генератор шин и серий выводов (D0..D7, 1..16, список)"
+                >
+                  <ListPlus size={11} color="var(--cad-accent-hover)" /> Серия...
+                </button>
+                <button
+                  type="button"
+                  className="cad-btn-secondary"
+                  style={{ fontSize: 10, padding: "2px 6px", height: 24 }}
+                  onClick={handleAddPowerPins}
+                  title="Быстро добавить VCC и GND"
+                >
+                  + PWR
+                </button>
+                {currentPkgDef && currentPkgDef.pads && currentPkgDef.pads.length > 0 && (
                   <button
                     type="button"
                     className="cad-btn-secondary"
-                    style={{ fontSize: 10, padding: "1px 6px", height: 22 }}
-                    onClick={handleSwapFirstTwoPins}
-                    title="Поменять местами выводы 1 и 2 (Swap 1↔2)"
+                    style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
+                    onClick={handleImportPinsFromPackage}
+                    title={`Импортировать выводы из площадок корпуса ${currentPkgDef.name} (${currentPkgDef.pads.length} площадок)`}
                   >
-                    <ArrowUpDown size={10} /> 1↔2
+                    <Download size={11} color="#10b981" /> Из корпуса ({currentPkgDef.pads.length})
+                  </button>
+                )}
+                <button
+                  type="button"
+                  className="cad-btn-primary"
+                  style={{ fontSize: 10, padding: "2px 8px", height: 24, gap: 3 }}
+                  onClick={handleAddPin}
+                >
+                  <Plus size={11} /> Пин
+                </button>
+              </div>
+            </div>
+
+            {/* Панель поиска и фильтрации выводов */}
+            <div
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "4px 0",
+                flexShrink: 0,
+              }}
+            >
+              <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center" }}>
+                <Search size={11} style={{ position: "absolute", left: 6, color: "var(--cad-text-dim)" }} />
+                <input
+                  type="text"
+                  value={pinSearchQuery}
+                  onChange={(e) => setPinSearchQuery(e.target.value)}
+                  placeholder="Быстрый поиск вывода..."
+                  className="cad-input"
+                  style={{ width: "100%", padding: "2px 6px 2px 22px", fontSize: 10.5, height: 24 }}
+                />
+                {pinSearchQuery && (
+                  <button
+                    type="button"
+                    onClick={() => setPinSearchQuery("")}
+                    style={{ position: "absolute", right: 4, background: "none", border: "none", color: "var(--cad-text-dim)", cursor: "pointer" }}
+                  >
+                    <X size={10} />
                   </button>
                 )}
               </div>
+
+              {availableUnits.length > 0 && (
+                <select
+                  value={pinUnitFilter}
+                  onChange={(e) => setPinUnitFilter(e.target.value)}
+                  className="cad-input"
+                  style={{ fontSize: 10, padding: "2px 6px", height: 24, maxWidth: 100 }}
+                >
+                  <option value="all">Все секции</option>
+                  {availableUnits.map((u) => (
+                    <option key={u} value={u}>
+                      Секция {u}
+                    </option>
+                  ))}
+                </select>
+              )}
+
+              {logicalPins.length >= 2 && (
+                <button
+                  type="button"
+                  className="cad-btn-secondary"
+                  style={{ fontSize: 10, padding: "1px 6px", height: 24 }}
+                  onClick={handleSwapFirstTwoPins}
+                  title="Поменять местами выводы 1 и 2 (Swap 1↔2)"
+                >
+                  <ArrowUpDown size={10} /> 1↔2
+                </button>
+              )}
+
+              {logicalPins.length > 0 && (
+                <button
+                  type="button"
+                  className="cad-btn-secondary"
+                  style={{ fontSize: 10, padding: "1px 6px", height: 24, color: "#ef4444" }}
+                  onClick={handleClearAllPins}
+                  title="Очистить все выводы"
+                >
+                  <Trash2 size={10} />
+                </button>
+              )}
+            </div>
 
               {/* Таблица логических выводов схемы */}
               <div className="device-table-container">
@@ -2027,10 +2215,46 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   </tbody>
                 </table>
               </div>
-            </div>
-          </div>
 
-          {/* Правая колонка: Привязанные корпуса и таблица сопоставления Pin-to-Pad */}
+              {/* Строка быстрого добавления вывода внизу таблицы */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  paddingTop: 8,
+                  borderTop: "1px solid rgba(255, 255, 255, 0.06)",
+                  flexShrink: 0,
+                }}
+              >
+                <input
+                  type="text"
+                  value={quickPinName}
+                  onChange={(e) => setQuickPinName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      handleQuickAddPin();
+                    }
+                  }}
+                  placeholder="Быстро добавить вывод: введите имя (напр. VCC, CLK, 3) и Enter..."
+                  className="cad-input"
+                  style={{ flex: 1, fontSize: 11, padding: "4px 8px", height: 26 }}
+                />
+                <button
+                  type="button"
+                  className="cad-btn-secondary"
+                  style={{ fontSize: 11, padding: "3px 10px", height: 26, gap: 4 }}
+                  onClick={handleQuickAddPin}
+                >
+                  <Plus size={11} /> Добавить
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Правая колонка: Привязанные корпуса и таблица сопоставления Pin-to-Pad */}
           <div className="device-col">
             {/* Карточка 1: Посадочные места (Footprints) */}
             <div className="device-card" style={{ flexShrink: 0 }}>
