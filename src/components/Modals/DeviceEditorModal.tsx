@@ -318,18 +318,28 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       setTagInput("");
 
       // Электропараметры
-      setParamValue(initialDevice.parameters?.value || "");
-      setTolerance(initialDevice.parameters?.tolerance || "");
-      setVoltageRating(initialDevice.parameters?.voltageRating || "");
-      setPowerRating(initialDevice.parameters?.powerRating || "");
-      setMaxCurrent(initialDevice.parameters?.maxCurrent || "");
-      setOperatingTemp(initialDevice.parameters?.operatingTemp || "");
-      setCustomParams(
-        Object.entries(initialDevice.parameters?.custom || {}).map(([k, v]) => ({
-          key: k,
-          value: v,
-        }))
-      );
+      if (initialDevice.isBase) {
+        setParamValue("");
+        setTolerance("");
+        setVoltageRating("");
+        setPowerRating("");
+        setMaxCurrent("");
+        setOperatingTemp("");
+        setCustomParams([]);
+      } else {
+        setParamValue(initialDevice.parameters?.value || "");
+        setTolerance(initialDevice.parameters?.tolerance || "");
+        setVoltageRating(initialDevice.parameters?.voltageRating || "");
+        setPowerRating(initialDevice.parameters?.powerRating || "");
+        setMaxCurrent(initialDevice.parameters?.maxCurrent || "");
+        setOperatingTemp(initialDevice.parameters?.operatingTemp || "");
+        setCustomParams(
+          Object.entries(initialDevice.parameters?.custom || {}).map(([k, v]) => ({
+            key: k,
+            value: v,
+          }))
+        );
+      }
 
       setLogicalPins(initialDevice.logicalPins || []);
       setSupportedPackages(initialDevice.supportedPackages || []);
@@ -715,12 +725,27 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     {designatorPrefix}
                   </span>
                 )}
-                {paramValue && (
+                {!isBase && paramValue && (
                   <span style={{ fontSize: "11px", color: "var(--cad-net-active, #10b981)", fontWeight: 500 }}>
                     • {paramValue}
                   </span>
                 )}
-                {mpn && (
+                {isBase && (
+                  <span
+                    style={{
+                      fontSize: "10px",
+                      background: "rgba(59, 130, 246, 0.15)",
+                      color: "#93c5fd",
+                      border: "1px solid rgba(59, 130, 246, 0.3)",
+                      padding: "1px 6px",
+                      borderRadius: 4,
+                      fontWeight: 600,
+                    }}
+                  >
+                    Шаблон (Generic)
+                  </span>
+                )}
+                {!isBase && mpn && (
                   <span style={{ fontSize: "11px", color: "var(--cad-text-dim)", fontWeight: 400 }}>
                     [{mpn}]
                   </span>
