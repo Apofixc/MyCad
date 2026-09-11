@@ -190,9 +190,16 @@ export const InspectorSidebar: React.FC = () => {
 
               {/* Номинал / Значение */}
               <div>
-                <label style={{ display: "block", fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "4px" }}>
-                  Номинал / Значение
-                </label>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                  <label style={{ fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
+                    Номинал / Значение
+                  </label>
+                  {linkedDevice?.isBase && (
+                    <span style={{ fontSize: "9.5px", color: "#60a5fa", fontWeight: 600 }}>
+                      [Базовый компонент]
+                    </span>
+                  )}
+                </div>
                 <div className="cad-field-wrap">
                   <span className="cad-field-prefix">VAL</span>
                   <input
@@ -203,6 +210,11 @@ export const InspectorSidebar: React.FC = () => {
                     onChange={(e) => updateComponent({ ...comp, value: e.target.value })}
                   />
                 </div>
+                {linkedDevice?.isBase && (
+                  <div style={{ fontSize: "10px", color: "var(--cad-text-dim)", marginTop: "3px" }}>
+                    Параметр задается индивидуально для этого компонента на плате
+                  </div>
+                )}
               </div>
 
               {/* Корпус (Footprint Info Card) */}
@@ -236,9 +248,26 @@ export const InspectorSidebar: React.FC = () => {
               {linkedDevice && (
                 <div style={{ marginTop: 2 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                    <label style={{ fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
-                      Паспорт радиодетали
-                    </label>
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                      <label style={{ fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
+                        Паспорт радиодетали
+                      </label>
+                      {linkedDevice.isBase && (
+                        <span
+                          style={{
+                            fontSize: "9px",
+                            fontWeight: 700,
+                            background: "rgba(59, 130, 246, 0.2)",
+                            color: "#60a5fa",
+                            border: "1px solid rgba(59, 130, 246, 0.4)",
+                            padding: "1px 4px",
+                            borderRadius: "3px",
+                          }}
+                        >
+                          Базовый
+                        </span>
+                      )}
+                    </div>
                     <button
                       type="button"
                       className="cad-tool-btn"

@@ -507,6 +507,7 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   // Фильтры дерева компонентов
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [selectedSubcategory, setSelectedSubcategory] = useState<string>("all");
+  const [deviceBaseFilter, setDeviceBaseFilter] = useState<"all" | "base" | "specific">("all");
 
   // Фильтры дерева корпусов
   const [selectedMount, setSelectedMount] = useState<string>("all");
@@ -589,6 +590,10 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   // Фильтрация радиокомпонентов
   const filteredDevices = useMemo(() => {
     return devices.filter((d) => {
+      // Фильтр по типу: Все / Только базовые / Только конкретные
+      if (deviceBaseFilter === "base" && !d.isBase) return false;
+      if (deviceBaseFilter === "specific" && d.isBase) return false;
+
       if (selectedCategory !== "all") {
         const catConfig = DEVICE_TREE_CATEGORIES.find((c) => c.id === selectedCategory);
         if (catConfig) {
@@ -609,10 +614,11 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
         d.name.toLowerCase().includes(q) ||
         d.id.toLowerCase().includes(q) ||
         (d.description && d.description.toLowerCase().includes(q)) ||
-        (d.parameters?.value && d.parameters.value.toLowerCase().includes(q))
+        (d.parameters?.value && d.parameters.value.toLowerCase().includes(q)) ||
+        (d.isBase && "базовый generic".includes(q))
       );
     });
-  }, [devices, selectedCategory, selectedSubcategory, searchQuery]);
+  }, [devices, selectedCategory, selectedSubcategory, searchQuery, deviceBaseFilter]);
 
   // Фильтрация корпусов
   const filteredPackages = useMemo(() => {
@@ -969,14 +975,84 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
             )}
 
             {activeTab === "devices" ? (
-              <button
-                className="cad-btn-primary"
-                onClick={() => onOpenDeviceEditor(null)}
-                style={{ fontSize: 12, padding: "6px 14px", display: "flex", alignItems: "center", gap: 6 }}
-              >
-                <Plus size={14} />
-                <span>Создать компонент</span>
-              </button>
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                {/* Переключатель: Все / Базовые / Конкретные */}
+                <div
+                  style={{
+                    display: "flex",
+                    background: "var(--cad-bg-surface, #141820)",
+                    borderRadius: 6,
+                    padding: 2,
+                    border: "1px solid var(--cad-border, #283344)",
+                    alignItems: "center",
+                  }}
+                >
+                  <button
+                    type="button"
+                    style={{
+                      padding: "3px 9px",
+                      fontSize: 11,
+                      fontWeight: deviceBaseFilter === "all" ? 700 : 500,
+                      background: deviceBaseFilter === "all" ? "var(--cad-accent, #3b82f6)" : "transparent",
+                      color: deviceBaseFilter === "all" ? "#fff" : "var(--cad-text-muted)",
+                      border: "none",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setDeviceBaseFilter("all")}
+                    title="Все компоненты каталога"
+                  >
+                    Все ({devices.length})
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: "3px 9px",
+                      fontSize: 11,
+                      fontWeight: deviceBaseFilter === "base" ? 700 : 500,
+                      background: deviceBaseFilter === "base" ? "var(--cad-accent, #3b82f6)" : "transparent",
+                      color: deviceBaseFilter === "base" ? "#fff" : "var(--cad-text-muted)",
+                      border: "none",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                    onClick={() => setDeviceBaseFilter("base")}
+                    title="Только базовые параметрические компоненты"
+                  >
+                    <Box size={11} />
+                    Базовые ({devices.filter((d) => d.isBase).length})
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: "3px 9px",
+                      fontSize: 11,
+                      fontWeight: deviceBaseFilter === "specific" ? 700 : 500,
+                      background: deviceBaseFilter === "specific" ? "var(--cad-accent, #3b82f6)" : "transparent",
+                      color: deviceBaseFilter === "specific" ? "#fff" : "var(--cad-text-muted)",
+                      border: "none",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setDeviceBaseFilter("specific")}
+                    title="Только конкретные заказные компоненты (BOM)"
+                  >
+                    Конкретные ({devices.filter((d) => !d.isBase).length})
+                  </button>
+                </div>
+
+                <button
+                  className="cad-btn-primary"
+                  onClick={() => onOpenDeviceEditor(null)}
+                  style={{ fontSize: 12, padding: "6px 14px", display: "flex", alignItems: "center", gap: 6 }}
+                >
+                  <Plus size={14} />
+                  <span>Создать компонент</span>
+                </button>
+              </div>
             ) : (
               <button
                 className="cad-btn-primary"
@@ -1461,7 +1537,25 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                         }}
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span style={{ fontWeight: "bold", color: "var(--cad-text-main)", fontSize: 13 }}>{dev.name}</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <span style={{ fontWeight: "bold", color: "var(--cad-text-main)", fontSize: 13 }}>{dev.name}</span>
+                            {dev.isBase && (
+                              <span
+                                style={{
+                                  fontSize: 9.5,
+                                  fontWeight: 700,
+                                  background: "rgba(59, 130, 246, 0.2)",
+                                  color: "#60a5fa",
+                                  border: "1px solid rgba(59, 130, 246, 0.4)",
+                                  padding: "1px 5px",
+                                  borderRadius: 3,
+                                }}
+                                title="Базовый компонент: характеристики настраиваются по месту в проекте"
+                              >
+                                Базовый
+                              </span>
+                            )}
+                          </div>
                           <span style={{ fontSize: 10, background: "var(--cad-bg-surface)", color: "var(--cad-accent-hover)", padding: "2px 6px", borderRadius: 4, fontWeight: "bold" }}>
                             {dev.designatorPrefix}
                           </span>
@@ -1799,6 +1893,23 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                           </a>
                         )}
                       </div>
+
+                      {activeDevice.isBase && (
+                        <div
+                          style={{
+                            padding: "6px 8px",
+                            borderRadius: 5,
+                            background: "rgba(59, 130, 246, 0.12)",
+                            border: "1px solid rgba(59, 130, 246, 0.3)",
+                            fontSize: 10.5,
+                            color: "#93c5fd",
+                            lineHeight: 1.35,
+                            margin: "4px 0 6px",
+                          }}
+                        >
+                          <span style={{ fontWeight: 700, color: "#60a5fa" }}>[Базовый компонент]</span> Номинал и характеристики настраиваются по месту в схеме или в Инспекторе на плате.
+                        </div>
+                      )}
 
                       <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>

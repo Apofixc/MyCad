@@ -97,6 +97,8 @@ pub struct DeviceDefinition {
     #[serde(default, alias = "pins")]
     pub logical_pins: Vec<LogicalPin>,
     #[serde(default)]
+    pub is_base: bool,
+    #[serde(default)]
     pub supported_packages: Vec<PackageMapping>,
 }
 

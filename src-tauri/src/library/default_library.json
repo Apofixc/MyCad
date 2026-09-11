@@ -4952,6 +4952,184 @@
   ],
   "devices": [
     {
+      "id": "DEV_BASE_RESISTOR",
+      "name": "Базовый резистор",
+      "category": "Пассивные компоненты",
+      "subcategory": "Резисторы и триммеры",
+      "description": "Базовый параметрический резистор. Номинал (Ом, кОм) и мощность задаются по месту на плате",
+      "designatorPrefix": "R",
+      "symbolType": "resistor",
+      "isBase": true,
+      "tags": ["resistor", "generic", "base", "smd", "tht"],
+      "parameters": {
+        "value": "10k",
+        "tolerance": "1%",
+        "powerRating": "0.125W"
+      },
+      "pins": [
+        {
+          "id": "1",
+          "name": "1",
+          "pinType": "passive"
+        },
+        {
+          "id": "2",
+          "name": "2",
+          "pinType": "passive"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_CRYSTAL_SMD_3215_2P",
+          "pinMapping": {
+            "1": "1",
+            "2": "2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_BASE_CAPACITOR",
+      "name": "Базовый конденсатор",
+      "category": "Пассивные компоненты",
+      "subcategory": "Конденсаторы",
+      "description": "Базовый параметрический конденсатор. Емкость (пФ, мкФ) и напряжение задаются по месту",
+      "designatorPrefix": "C",
+      "symbolType": "capacitor",
+      "isBase": true,
+      "tags": ["capacitor", "generic", "base", "smd", "ceramic"],
+      "parameters": {
+        "value": "0.1uF",
+        "voltageRating": "50V"
+      },
+      "pins": [
+        {
+          "id": "1",
+          "name": "1",
+          "pinType": "passive"
+        },
+        {
+          "id": "2",
+          "name": "2",
+          "pinType": "passive"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_CRYSTAL_SMD_3215_2P",
+          "pinMapping": {
+            "1": "1",
+            "2": "2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_BASE_DIODE",
+      "name": "Базовый диод",
+      "category": "Полупроводники (Дискретные)",
+      "subcategory": "Диоды и выпрямители",
+      "description": "Базовый полупроводниковый диод (Анод / Катод)",
+      "designatorPrefix": "VD",
+      "symbolType": "diode",
+      "isBase": true,
+      "tags": ["diode", "generic", "base", "semiconductor"],
+      "parameters": {
+        "value": "Standard Diode",
+        "voltageRating": "100V",
+        "maxCurrent": "1A"
+      },
+      "pins": [
+        {
+          "id": "A",
+          "name": "Анод",
+          "pinType": "passive"
+        },
+        {
+          "id": "K",
+          "name": "Катод",
+          "pinType": "passive"
+        }
+      ],
+      "supportedPackages": [
+        {
+          "packageId": "PKG_DO_35",
+          "pinMapping": {
+            "A": "1",
+            "K": "2"
+          }
+        }
+      ]
+    },
+    {
+      "id": "DEV_BASE_BJT_NPN",
+      "name": "Базовый NPN транзистор",
+      "category": "Полупроводники (Дискретные)",
+      "subcategory": "Транзисторы",
+      "description": "Базовый биполярный транзистор NPN (База, Коллектор, Эмиттер)",
+      "designatorPrefix": "VT",
+      "symbolType": "transistor_npn",
+      "isBase": true,
+      "tags": ["transistor", "bjt", "npn", "generic", "base"],
+      "parameters": {
+        "value": "NPN General Purpose",
+        "voltageRating": "45V",
+        "maxCurrent": "100mA"
+      },
+      "pins": [
+        {
+          "id": "B",
+          "name": "База (B)",
+          "pinType": "input"
+        },
+        {
+          "id": "C",
+          "name": "Коллектор (C)",
+          "pinType": "output"
+        },
+        {
+          "id": "E",
+          "name": "Эмиттер (E)",
+          "pinType": "passive"
+        }
+      ],
+      "supportedPackages": []
+    },
+    {
+      "id": "DEV_BASE_MOSFET_N",
+      "name": "Базовый N-канальный MOSFET",
+      "category": "Полупроводники (Дискретные)",
+      "subcategory": "Транзисторы",
+      "description": "Базовый полевой N-канальный транзистор (Затвор, Сток, Исток)",
+      "designatorPrefix": "VT",
+      "symbolType": "mosfet_n",
+      "isBase": true,
+      "tags": ["mosfet", "transistor", "n-channel", "generic", "base"],
+      "parameters": {
+        "value": "N-Ch MOSFET",
+        "voltageRating": "30V",
+        "maxCurrent": "2A"
+      },
+      "pins": [
+        {
+          "id": "G",
+          "name": "Затвор (G)",
+          "pinType": "input"
+        },
+        {
+          "id": "D",
+          "name": "Сток (D)",
+          "pinType": "output"
+        },
+        {
+          "id": "S",
+          "name": "Исток (S)",
+          "pinType": "passive"
+        }
+      ],
+      "supportedPackages": []
+    },
+    {
       "id": "DEV_LED_3MM_RED",
       "name": "Светодиод 3мм (Красный)",
       "category": "Оптоэлектроника и индикация",

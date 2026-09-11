@@ -284,6 +284,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   // Логические выводы схемы
   const [logicalPins, setLogicalPins] = useState<LogicalPin[]>([]);
 
+  // Тип компонента: Базовый (Generic / Шаблон) vs Конкретный (Фиксированный)
+  const [isBase, setIsBase] = useState<boolean>(false);
+
   // Поддерживаемые корпуса и маппинг
   const [supportedPackages, setSupportedPackages] = useState<PackageMapping[]>([]);
   const [activePackageId, setActivePackageId] = useState<string>("");
@@ -294,6 +297,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (initialDevice) {
       setId(initialDevice.id);
       setName(initialDevice.name);
+      setIsBase(Boolean(initialDevice.isBase));
 
       const initCat = initialDevice.category || "Интегральные микросхемы (IC)";
       const initSub = initialDevice.subcategory || "";
@@ -338,6 +342,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       const newId = `dev_${Date.now()}`;
       setId(newId);
       setName("Новый компонент");
+      setIsBase(false);
 
       const defCat = COMPONENT_TAXONOMY[0];
       const defSub = defCat.subcategories[0];
@@ -361,11 +366,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       setOperatingTemp("");
       setCustomParams([]);
 
+      // По умолчанию для пассивных 2-выводных компонентов — пины 1 и 2
       setLogicalPins([
-        { id: "pin_1", name: "VCC", electricalType: "power_in", description: "Напряжение питания" },
-        { id: "pin_2", name: "GND", electricalType: "ground", description: "Общий провод" },
-        { id: "pin_3", name: "IN", electricalType: "input", description: "Входной сигнал" },
-        { id: "pin_4", name: "OUT", electricalType: "output", description: "Выходной сигнал" },
+        { id: "pin_1", name: "1", electricalType: "passive", description: "Вывод 1" },
+        { id: "pin_2", name: "2", electricalType: "passive", description: "Вывод 2" },
       ]);
       const firstPkg = availablePackages[0];
       if (firstPkg) {
@@ -374,10 +378,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
             packageId: firstPkg.id,
             defaultVariantId: firstPkg.defaultVariantId,
             pinMap: {
-              VCC: firstPkg.pads[0]?.padNum || "1",
-              GND: firstPkg.pads[1]?.padNum || "2",
-              IN: firstPkg.pads[2]?.padNum || "3",
-              OUT: firstPkg.pads[3]?.padNum || "4",
+              "1": firstPkg.pads[0]?.padNum || "1",
+              "2": firstPkg.pads[1]?.padNum || "2",
             },
           },
         ]);
@@ -388,6 +390,84 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       }
     }
   }, [isOpen, initialDevice, availablePackages]);
+
+  // Пресеты распиновки для сложных полупроводников и базовых компонентов
+  const applyPinPreset = (presetKey: string) => {
+    switch (presetKey) {
+      case "rlc":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", description: "Вывод 1" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "passive", description: "Вывод 2" },
+        ]);
+        break;
+      case "diode":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_a`, name: "A", electricalType: "passive", description: "Анод" },
+          { id: `pin_${Date.now()}_k`, name: "K", electricalType: "passive", description: "Катод" },
+        ]);
+        break;
+      case "bjt_npn":
+      case "bjt_pnp":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_b`, name: "B", electricalType: "input", description: "База (Base)" },
+          { id: `pin_${Date.now()}_c`, name: "C", electricalType: "output", description: "Коллектор (Collector)" },
+          { id: `pin_${Date.now()}_e`, name: "E", electricalType: "passive", description: "Эмиттер (Emitter)" },
+        ]);
+        break;
+      case "mosfet_n":
+      case "mosfet_p":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_g`, name: "G", electricalType: "input", description: "Затвор (Gate)" },
+          { id: `pin_${Date.now()}_d`, name: "D", electricalType: "output", description: "Сток (Drain)" },
+          { id: `pin_${Date.now()}_s`, name: "S", electricalType: "passive", description: "Исток (Source)" },
+        ]);
+        break;
+      case "ldo3":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_in`, name: "VIN", electricalType: "power_in", description: "Вход (VIN)" },
+          { id: `pin_${Date.now()}_out`, name: "VOUT", electricalType: "power_out", description: "Выход (VOUT)" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий (GND/ADJ)" },
+        ]);
+        break;
+      case "opamp_single":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_inp`, name: "IN+", electricalType: "input", description: "Неинвертирующий вход +" },
+          { id: `pin_${Date.now()}_inm`, name: "IN-", electricalType: "input", description: "Инвертирующий вход -" },
+          { id: `pin_${Date.now()}_out`, name: "OUT", electricalType: "output", description: "Выход ОУ" },
+          { id: `pin_${Date.now()}_vp`, name: "V+", electricalType: "power_in", description: "Питание V+" },
+          { id: `pin_${Date.now()}_vm`, name: "V-", electricalType: "power_in", description: "Питание V- / GND" },
+        ]);
+        break;
+      case "opamp_dual":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1inp`, name: "1IN+", electricalType: "input", unit: "A", description: "Вход + (Unit A)" },
+          { id: `pin_${Date.now()}_1inm`, name: "1IN-", electricalType: "input", unit: "A", description: "Вход - (Unit A)" },
+          { id: `pin_${Date.now()}_1out`, name: "1OUT", electricalType: "output", unit: "A", description: "Выход (Unit A)" },
+          { id: `pin_${Date.now()}_2inp`, name: "2IN+", electricalType: "input", unit: "B", description: "Вход + (Unit B)" },
+          { id: `pin_${Date.now()}_2inm`, name: "2IN-", electricalType: "input", unit: "B", description: "Вход - (Unit B)" },
+          { id: `pin_${Date.now()}_2out`, name: "2OUT", electricalType: "output", unit: "B", description: "Выход (Unit B)" },
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Питание VCC" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Земля GND" },
+        ]);
+        break;
+      case "header_1x4":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", description: "Контакт 1" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "passive", description: "Контакт 2" },
+          { id: `pin_${Date.now()}_3`, name: "3", electricalType: "passive", description: "Контакт 3" },
+          { id: `pin_${Date.now()}_4`, name: "4", electricalType: "passive", description: "Контакт 4" },
+        ]);
+        break;
+      case "pwr_logic":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Питание VCC" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий GND" },
+          { id: `pin_${Date.now()}_in`, name: "IN", electricalType: "input", description: "Входной сигнал" },
+          { id: `pin_${Date.now()}_out`, name: "OUT", electricalType: "output", description: "Выходной сигнал" },
+        ]);
+        break;
+    }
+  };
 
   if (!isOpen) return null;
 
@@ -577,6 +657,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         operatingTemp: operatingTemp.trim() || undefined,
         custom: Object.keys(customRecord).length > 0 ? customRecord : undefined,
       },
+      isBase,
       logicalPins,
       supportedPackages,
     };
@@ -659,7 +740,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           <div className="device-col">
             {/* Карточка 1: Переключаемые вкладки «Основные & BOM» и «Электропараметры» */}
             <div className="device-card" style={{ flexShrink: 0 }}>
-              <div className="device-card-header">
+              <div className="device-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <div className="device-tab-group">
                   <button
                     type="button"
@@ -683,7 +764,82 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     )}
                   </button>
                 </div>
+
+                {/* Селектор типа компонента: Базовый (Generic) vs Конкретный (Фиксированный) */}
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 4,
+                    background: "var(--cad-bg-deep, #0b0e14)",
+                    padding: "2px 4px",
+                    borderRadius: 6,
+                    border: "1px solid var(--cad-border, #283344)",
+                  }}
+                >
+                  <span style={{ fontSize: 10, color: "var(--cad-text-muted)", paddingLeft: 4 }}>Тип:</span>
+                  <button
+                    type="button"
+                    style={{
+                      padding: "2px 8px",
+                      fontSize: 10,
+                      fontWeight: isBase ? 700 : 500,
+                      background: isBase ? "var(--cad-accent, #3b82f6)" : "transparent",
+                      color: isBase ? "#ffffff" : "var(--cad-text-muted)",
+                      border: "none",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                    onClick={() => setIsBase(true)}
+                    title="Базовый компонент: основа для схемы и платы (номиналы задаются по месту)"
+                  >
+                    <Box size={10} />
+                    Базовый (Generic)
+                  </button>
+                  <button
+                    type="button"
+                    style={{
+                      padding: "2px 8px",
+                      fontSize: 10,
+                      fontWeight: !isBase ? 700 : 500,
+                      background: !isBase ? "var(--cad-accent, #3b82f6)" : "transparent",
+                      color: !isBase ? "#ffffff" : "var(--cad-text-muted)",
+                      border: "none",
+                      borderRadius: 4,
+                      cursor: "pointer",
+                    }}
+                    onClick={() => setIsBase(false)}
+                    title="Конкретный компонент: жесткий номинал, производитель и артикул под заказ (BOM)"
+                  >
+                    Конкретный
+                  </button>
+                </div>
               </div>
+
+              {isBase && (
+                <div
+                  style={{
+                    margin: "6px 10px 0",
+                    padding: "5px 10px",
+                    borderRadius: 6,
+                    background: "rgba(59, 130, 246, 0.08)",
+                    border: "1px solid rgba(59, 130, 246, 0.25)",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 8,
+                    fontSize: 10.5,
+                    color: "#93c5fd",
+                  }}
+                >
+                  <Box size={13} style={{ flexShrink: 0, color: "#60a5fa" }} />
+                  <span>
+                    <strong>Базовый компонент:</strong> общая основа детали (выводы и корпуса). Номинал и характеристики настраиваются по месту в Инспекторе свойств.
+                  </span>
+                </div>
+              )}
 
               {activeSubTab === "info" ? (
                 /* Вкладка 1: Основные метаданные и закупка (BOM) */
@@ -1151,7 +1307,30 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   <span>Выводы схемы (Pins)</span>
                   <span className="device-chip-count">{logicalPins.length} шт.</span>
                 </div>
-                <div style={{ display: "flex", gap: 6 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <select
+                    className="cad-input"
+                    style={{ fontSize: 10, padding: "2px 6px", height: 24, maxWidth: 140, cursor: "pointer" }}
+                    defaultValue=""
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) return;
+                      applyPinPreset(val);
+                      e.target.value = "";
+                    }}
+                    title="Готовые шаблоны выводов для полупроводников и базовых компонентов"
+                  >
+                    <option value="" disabled>⚡ Пресет выводов...</option>
+                    <option value="rlc">Пассивный 2-pin (1, 2)</option>
+                    <option value="diode">Диод (Анод A, Катод K)</option>
+                    <option value="bjt_npn">BJT NPN (B, C, E)</option>
+                    <option value="mosfet_n">MOSFET N-Ch (G, D, S)</option>
+                    <option value="ldo3">LDO 3-pin (VIN, VOUT, GND)</option>
+                    <option value="opamp_single">ОУ одиночный (IN+, IN-, OUT, V+, V-)</option>
+                    <option value="opamp_dual">ОУ сдвоенный (Unit A, Unit B + PWR)</option>
+                    <option value="header_1x4">Штыревой разъем (1..4)</option>
+                    <option value="pwr_logic">ИМС логики (VCC, GND, IN, OUT)</option>
+                  </select>
                   <button
                     type="button"
                     className="cad-btn-secondary"

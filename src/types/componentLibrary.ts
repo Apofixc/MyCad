@@ -226,6 +226,7 @@ export interface DeviceDefinition {
   mpn?: string;
   tags: string[];
   parameters: ElectricalParameters;
+  isBase?: boolean;
   logicalPins: LogicalPin[];
   supportedPackages: PackageMapping[];
 }
