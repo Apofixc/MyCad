@@ -56,7 +56,7 @@ export const InspectorSidebar: React.FC = () => {
     setEditingDevice,
   } = useUiStore();
 
-  const { devices } = useLibraryStore();
+  const { devices, packages } = useLibraryStore();
 
   // Resize handler for right sidebar
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -217,107 +217,148 @@ export const InspectorSidebar: React.FC = () => {
                 )}
               </div>
 
-              {/* Корпус (Footprint Info Card) */}
+              {/* Корпус (Footprint) */}
               <div>
-                <label style={{ display: "block", fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "4px" }}>
-                  Корпус (Footprint)
-                </label>
-                <div
-                  style={{
-                    background: "var(--cad-bg-deep)",
-                    border: "1px solid var(--cad-border)",
-                    borderRadius: "6px",
-                    padding: "8px 10px",
-                  }}
-                >
-                  <div style={{ fontSize: "11.5px", color: "var(--cad-accent-hover, #60a5fa)", fontWeight: 600, lineHeight: 1.3 }}>
-                    {pkg?.name || comp.packageId}
-                  </div>
-                  {pkg && (
-                    <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", alignItems: "center", marginTop: "6px" }}>
-                      <span className="cad-badge-dim">Выводов: {pkg.pads.length}</span>
-                      <span className="cad-badge-dim">{pkg.mountType.toUpperCase()}</span>
-                      <span className="cad-badge-dim">{pkg.bodyWidth}×{pkg.bodyHeight} мм</span>
-                      {pkg.pitch ? <span className="cad-badge-dim">Шаг: {pkg.pitch} мм</span> : null}
-                    </div>
+                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                  <label style={{ fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
+                    Корпус (Footprint)
+                  </label>
+                  {linkedDevice?.supportedPackages && linkedDevice.supportedPackages.length > 1 && (
+                    <span style={{ fontSize: "9.5px", color: "var(--cad-text-dim)" }}>
+                      {linkedDevice.supportedPackages.length} варианта
+                    </span>
                   )}
                 </div>
-              </div>
 
-              {/* Радиодеталь (Device / BOM Card) */}
-              {linkedDevice && (
-                <div style={{ marginTop: 2 }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                      <label style={{ fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
-                        Паспорт радиодетали
-                      </label>
-                      {linkedDevice.isBase && (
-                        <span
-                          style={{
-                            fontSize: "9px",
-                            fontWeight: 700,
-                            background: "rgba(59, 130, 246, 0.2)",
-                            color: "#60a5fa",
-                            border: "1px solid rgba(59, 130, 246, 0.4)",
-                            padding: "1px 4px",
-                            borderRadius: "3px",
-                          }}
-                        >
-                          Базовый
-                        </span>
-                      )}
-                    </div>
-                    <button
-                      type="button"
-                      className="cad-tool-btn"
-                      style={{ width: "20px", height: "20px" }}
-                      onClick={() => {
-                        setEditingDevice(linkedDevice);
-                        openModal("deviceEditor");
-                      }}
-                      title="Редактировать спецификацию радиокомпонента"
-                    >
-                      <Edit2 size={11} />
-                    </button>
-                  </div>
+                {linkedDevice?.supportedPackages && linkedDevice.supportedPackages.length > 1 ? (
+                  <select
+                    className="cad-modern-select"
+                    style={{
+                      width: "100%",
+                      padding: "6px 8px",
+                      fontSize: "11px",
+                      background: "var(--cad-bg-deep)",
+                      border: "1px solid var(--cad-border)",
+                      borderRadius: "6px",
+                      color: "var(--cad-text-main)",
+                    }}
+                    value={comp.packageId}
+                    onChange={(e) => {
+                      const newPkgId = e.target.value;
+                      const newPkg = packages.find((p) => p.id === newPkgId);
+                      updateComponent({
+                        ...comp,
+                        packageId: newPkgId,
+                        package: newPkg?.name || newPkgId,
+                        packageDef: newPkg,
+                        selectedVariantId: newPkg?.variants?.[0]?.id,
+                      });
+                    }}
+                  >
+                    {linkedDevice.supportedPackages.map((sp) => {
+                      const p = packages.find((pkg) => pkg.id === sp.packageId);
+                      return (
+                        <option key={sp.packageId} value={sp.packageId}>
+                          {p ? p.name : sp.packageId}
+                        </option>
+                      );
+                    })}
+                  </select>
+                ) : (
                   <div
                     style={{
                       background: "var(--cad-bg-deep)",
                       border: "1px solid var(--cad-border)",
                       borderRadius: "6px",
-                      padding: "8px 10px",
-                      display: "flex",
-                      flexDirection: "column",
-                      gap: "4px",
-                      fontSize: "11px",
+                      padding: "7px 10px",
+                      fontSize: "11.5px",
+                      color: "var(--cad-accent-hover, #60a5fa)",
+                      fontWeight: 600,
                     }}
                   >
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <span style={{ fontWeight: 600, color: "var(--cad-text-main)" }}>{linkedDevice.name}</span>
-                      {linkedDevice.mpn && (
-                        <span style={{ fontSize: "10px", color: "var(--cad-accent-hover)", fontFamily: "var(--cad-font-mono)" }}>
-                          {linkedDevice.mpn}
-                        </span>
-                      )}
-                    </div>
-                    {linkedDevice.manufacturer && (
-                      <div style={{ color: "var(--cad-text-dim)", fontSize: "10.5px" }}>
-                        Производитель: <span style={{ color: "var(--cad-text-muted)" }}>{linkedDevice.manufacturer}</span>
-                      </div>
-                    )}
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "3px" }}>
-                      {linkedDevice.parameters?.tolerance && (
-                        <span className="cad-badge-dim">Допуск: {linkedDevice.parameters.tolerance}</span>
-                      )}
-                      {linkedDevice.parameters?.voltageRating && (
-                        <span className="cad-badge-dim">{linkedDevice.parameters.voltageRating}</span>
-                      )}
-                      {linkedDevice.parameters?.powerRating && (
-                        <span className="cad-badge-dim">{linkedDevice.parameters.powerRating}</span>
-                      )}
-                    </div>
+                    {pkg?.name || comp.packageId}
                   </div>
+                )}
+
+                {pkg && (
+                  <div style={{ display: "flex", gap: "5px", flexWrap: "wrap", alignItems: "center", marginTop: "6px" }}>
+                    <span className="cad-badge-dim">Выводов: {pkg.pads.length}</span>
+                    <span className="cad-badge-dim">{pkg.mountType.toUpperCase()}</span>
+                    <span className="cad-badge-dim">{pkg.bodyWidth}×{pkg.bodyHeight} мм</span>
+                    {pkg.pitch ? <span className="cad-badge-dim">Шаг: {pkg.pitch} мм</span> : null}
+                  </div>
+                )}
+              </div>
+
+              {/* Привязка к каталогу (Device definition) */}
+              {linkedDevice && (
+                <div>
+                  <label style={{ display: "block", fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "4px" }}>
+                    Компонент библиотеки
+                  </label>
+                  <div
+                    style={{
+                      background: "var(--cad-bg-deep)",
+                      border: "1px solid var(--cad-border)",
+                      borderRadius: "6px",
+                      padding: "6px 9px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: "8px",
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: "6px", minWidth: 0 }}>
+                      <span
+                        style={{
+                          fontSize: "9px",
+                          fontWeight: 700,
+                          background: linkedDevice.isBase ? "rgba(59, 130, 246, 0.2)" : "rgba(16, 185, 129, 0.15)",
+                          color: linkedDevice.isBase ? "#60a5fa" : "#10b981",
+                          border: `1px solid ${linkedDevice.isBase ? "rgba(59, 130, 246, 0.4)" : "rgba(16, 185, 129, 0.3)"}`,
+                          padding: "1px 5px",
+                          borderRadius: "3px",
+                          flexShrink: 0,
+                        }}
+                      >
+                        {linkedDevice.isBase ? "Базовый" : "BOM деталь"}
+                      </span>
+                      <span
+                        style={{
+                          fontSize: "11px",
+                          fontWeight: 600,
+                          color: "var(--cad-text-main)",
+                          overflow: "hidden",
+                          textOverflow: "ellipsis",
+                          whiteSpace: "nowrap",
+                        }}
+                        title={linkedDevice.name}
+                      >
+                        {linkedDevice.name}
+                      </span>
+                    </div>
+
+                    <button
+                      type="button"
+                      className="cad-tool-btn"
+                      style={{ width: "22px", height: "22px", flexShrink: 0 }}
+                      onClick={() => {
+                        setEditingDevice(linkedDevice);
+                        openModal("deviceEditor");
+                      }}
+                      title="Открыть компонент в редакторе"
+                    >
+                      <Edit2 size={11} />
+                    </button>
+                  </div>
+
+                  {/* Для конкретных покупных деталей показываем артикул и производителя */}
+                  {!linkedDevice.isBase && (linkedDevice.mpn || linkedDevice.manufacturer) && (
+                    <div style={{ display: "flex", gap: "8px", fontSize: "10px", color: "var(--cad-text-dim)", marginTop: "3px", paddingLeft: "2px" }}>
+                      {linkedDevice.manufacturer && <span>{linkedDevice.manufacturer}</span>}
+                      {linkedDevice.mpn && <span style={{ fontFamily: "var(--cad-font-mono)", color: "var(--cad-accent-hover)" }}>MPN: {linkedDevice.mpn}</span>}
+                    </div>
+                  )}
                 </div>
               )}
             </div>

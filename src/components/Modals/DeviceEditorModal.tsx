@@ -738,9 +738,106 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         <div className="device-editor-grid">
           {/* Левая колонка: Параметры радиодетали и таблица логических выводов схемы */}
           <div className="device-col">
+            {/* Селектор назначения компонента: Базовый шаблон vs Готовая деталь */}
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "1fr 1fr",
+                gap: 8,
+                background: "var(--cad-bg-panel, #181d26)",
+                border: "1px solid var(--cad-border, #283344)",
+                borderRadius: 8,
+                padding: "6px 8px",
+                marginBottom: 8,
+                flexShrink: 0,
+              }}
+            >
+              <button
+                type="button"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  border: isBase ? "1.5px solid var(--cad-accent, #3b82f6)" : "1px solid var(--cad-border, #283344)",
+                  background: isBase ? "rgba(59, 130, 246, 0.16)" : "var(--cad-bg-surface, #141820)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "all 0.15s ease",
+                }}
+                onClick={() => setIsBase(true)}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    background: isBase ? "var(--cad-accent, #3b82f6)" : "rgba(255, 255, 255, 0.05)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: isBase ? "#fff" : "var(--cad-text-muted)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Box size={15} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: isBase ? "#93c5fd" : "var(--cad-text-main)" }}>
+                    Базовый компонент (Generic)
+                  </span>
+                  <span style={{ fontSize: 9.5, color: "var(--cad-text-muted)", marginTop: 2, lineHeight: 1.25 }}>
+                    Шаблон для схемы (R, C, VT). Номинал задается по месту на плате
+                  </span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "8px 12px",
+                  borderRadius: 6,
+                  border: !isBase ? "1.5px solid var(--cad-accent, #3b82f6)" : "1px solid var(--cad-border, #283344)",
+                  background: !isBase ? "rgba(59, 130, 246, 0.16)" : "var(--cad-bg-surface, #141820)",
+                  cursor: "pointer",
+                  textAlign: "left",
+                  transition: "all 0.15s ease",
+                }}
+                onClick={() => setIsBase(false)}
+              >
+                <div
+                  style={{
+                    width: 28,
+                    height: 28,
+                    borderRadius: 6,
+                    background: !isBase ? "var(--cad-accent, #3b82f6)" : "rgba(255, 255, 255, 0.05)",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    color: !isBase ? "#fff" : "var(--cad-text-muted)",
+                    flexShrink: 0,
+                  }}
+                >
+                  <Tag size={15} />
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+                  <span style={{ fontSize: 11.5, fontWeight: 700, color: !isBase ? "#93c5fd" : "var(--cad-text-main)" }}>
+                    Готовая деталь (BOM)
+                  </span>
+                  <span style={{ fontSize: 9.5, color: "var(--cad-text-muted)", marginTop: 2, lineHeight: 1.25 }}>
+                    Спецификация под закупку: фиксированный артикул MPN и номинал
+                  </span>
+                </div>
+              </button>
+            </div>
+
             {/* Карточка 1: Переключаемые вкладки «Основные & BOM» и «Электропараметры» */}
             <div className="device-card" style={{ flexShrink: 0 }}>
-              <div className="device-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div className="device-card-header">
                 <div className="device-tab-group">
                   <button
                     type="button"
@@ -764,82 +861,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     )}
                   </button>
                 </div>
-
-                {/* Селектор типа компонента: Базовый (Generic) vs Конкретный (Фиксированный) */}
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                    background: "var(--cad-bg-deep, #0b0e14)",
-                    padding: "2px 4px",
-                    borderRadius: 6,
-                    border: "1px solid var(--cad-border, #283344)",
-                  }}
-                >
-                  <span style={{ fontSize: 10, color: "var(--cad-text-muted)", paddingLeft: 4 }}>Тип:</span>
-                  <button
-                    type="button"
-                    style={{
-                      padding: "2px 8px",
-                      fontSize: 10,
-                      fontWeight: isBase ? 700 : 500,
-                      background: isBase ? "var(--cad-accent, #3b82f6)" : "transparent",
-                      color: isBase ? "#ffffff" : "var(--cad-text-muted)",
-                      border: "none",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 4,
-                    }}
-                    onClick={() => setIsBase(true)}
-                    title="Базовый компонент: основа для схемы и платы (номиналы задаются по месту)"
-                  >
-                    <Box size={10} />
-                    Базовый (Generic)
-                  </button>
-                  <button
-                    type="button"
-                    style={{
-                      padding: "2px 8px",
-                      fontSize: 10,
-                      fontWeight: !isBase ? 700 : 500,
-                      background: !isBase ? "var(--cad-accent, #3b82f6)" : "transparent",
-                      color: !isBase ? "#ffffff" : "var(--cad-text-muted)",
-                      border: "none",
-                      borderRadius: 4,
-                      cursor: "pointer",
-                    }}
-                    onClick={() => setIsBase(false)}
-                    title="Конкретный компонент: жесткий номинал, производитель и артикул под заказ (BOM)"
-                  >
-                    Конкретный
-                  </button>
-                </div>
               </div>
-
-              {isBase && (
-                <div
-                  style={{
-                    margin: "6px 10px 0",
-                    padding: "5px 10px",
-                    borderRadius: 6,
-                    background: "rgba(59, 130, 246, 0.08)",
-                    border: "1px solid rgba(59, 130, 246, 0.25)",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 8,
-                    fontSize: 10.5,
-                    color: "#93c5fd",
-                  }}
-                >
-                  <Box size={13} style={{ flexShrink: 0, color: "#60a5fa" }} />
-                  <span>
-                    <strong>Базовый компонент:</strong> общая основа детали (выводы и корпуса). Номинал и характеристики настраиваются по месту в Инспекторе свойств.
-                  </span>
-                </div>
-              )}
 
               {activeSubTab === "info" ? (
                 /* Вкладка 1: Основные метаданные и закупка (BOM) */

@@ -461,6 +461,247 @@
   ],
   "packages": [
     {
+      "id": "PKG_CHIP_0805",
+      "name": "SMD 0805 (2012 Metric, 2.0x1.25мм)",
+      "standard": "IPC-7351 / EIA 0805",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 2.0,
+      "bodyHeight": 1.25,
+      "pitch": 1.9,
+      "pads": [
+        {
+          "padNum": "1",
+          "name": "1",
+          "x": -0.95,
+          "y": 0,
+          "width": 1.0,
+          "height": 1.3,
+          "shape": "rect"
+        },
+        {
+          "padNum": "2",
+          "name": "2",
+          "x": 0.95,
+          "y": 0,
+          "width": 1.0,
+          "height": 1.3,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 3.2,
+        "courtyardHeight": 1.8,
+        "maxHeight": 0.9,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "smd_chip",
+      "variants": [
+        {
+          "id": "smd_chip",
+          "name": "Стандартный чип",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#475569",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CHIP_0603",
+      "name": "SMD 0603 (1608 Metric, 1.6x0.8мм)",
+      "standard": "IPC-7351 / EIA 0603",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 1.6,
+      "bodyHeight": 0.8,
+      "pitch": 1.5,
+      "pads": [
+        {
+          "padNum": "1",
+          "name": "1",
+          "x": -0.75,
+          "y": 0,
+          "width": 0.8,
+          "height": 0.9,
+          "shape": "rect"
+        },
+        {
+          "padNum": "2",
+          "name": "2",
+          "x": 0.75,
+          "y": 0,
+          "width": 0.8,
+          "height": 0.9,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 2.6,
+        "courtyardHeight": 1.4,
+        "maxHeight": 0.7,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "smd_chip",
+      "variants": [
+        {
+          "id": "smd_chip",
+          "name": "Стандартный чип",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#475569",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_CHIP_1206",
+      "name": "SMD 1206 (3216 Metric, 3.2x1.6мм)",
+      "standard": "IPC-7351 / EIA 1206",
+      "family": "chip_2pin",
+      "mountType": "smd",
+      "bodyWidth": 3.2,
+      "bodyHeight": 1.6,
+      "pitch": 3.0,
+      "pads": [
+        {
+          "padNum": "1",
+          "name": "1",
+          "x": -1.5,
+          "y": 0,
+          "width": 1.2,
+          "height": 1.8,
+          "shape": "rect"
+        },
+        {
+          "padNum": "2",
+          "name": "2",
+          "x": 1.5,
+          "y": 0,
+          "width": 1.2,
+          "height": 1.8,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 4.6,
+        "courtyardHeight": 2.2,
+        "maxHeight": 1.0,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "smd_chip",
+      "variants": [
+        {
+          "id": "smd_chip",
+          "name": "Стандартный чип",
+          "bodyColor": "#1e293b",
+          "bodyBorderColor": "#475569",
+          "keyType": "none"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SOT23_3",
+      "name": "SOT-23 (TO-236AB, 3 вывода SMD)",
+      "standard": "JEDEC TO-236AB",
+      "family": "sot",
+      "mountType": "smd",
+      "bodyWidth": 2.9,
+      "bodyHeight": 1.3,
+      "pitch": 1.9,
+      "pads": [
+        {
+          "padNum": "1",
+          "name": "1",
+          "x": -0.95,
+          "y": -1.1,
+          "width": 0.8,
+          "height": 1.0,
+          "shape": "rect"
+        },
+        {
+          "padNum": "2",
+          "name": "2",
+          "x": 0.95,
+          "y": -1.1,
+          "width": 0.8,
+          "height": 1.0,
+          "shape": "rect"
+        },
+        {
+          "padNum": "3",
+          "name": "3",
+          "x": 0,
+          "y": 1.1,
+          "width": 0.8,
+          "height": 1.0,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 3.8,
+        "courtyardHeight": 3.4,
+        "maxHeight": 1.2,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_mold",
+      "variants": [
+        {
+          "id": "black_mold",
+          "name": "Черный пластиковый корпус",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#334155",
+          "keyType": "dot"
+        }
+      ]
+    },
+    {
+      "id": "PKG_SMA_DO214AC",
+      "name": "SMA / DO-214AC (SMD Диод)",
+      "standard": "JEDEC DO-214AC",
+      "family": "diode_smd",
+      "mountType": "smd",
+      "bodyWidth": 4.5,
+      "bodyHeight": 2.6,
+      "pitch": 3.8,
+      "pads": [
+        {
+          "padNum": "1",
+          "name": "1",
+          "x": -1.9,
+          "y": 0,
+          "width": 1.5,
+          "height": 1.7,
+          "shape": "rect"
+        },
+        {
+          "padNum": "2",
+          "name": "2",
+          "x": 1.9,
+          "y": 0,
+          "width": 1.5,
+          "height": 1.7,
+          "shape": "rect"
+        }
+      ],
+      "constraints": {
+        "courtyardWidth": 5.6,
+        "courtyardHeight": 3.2,
+        "maxHeight": 2.3,
+        "hasThermalPad": false
+      },
+      "defaultVariantId": "black_diode",
+      "variants": [
+        {
+          "id": "black_diode",
+          "name": "Черный корпус с полосой катода",
+          "bodyColor": "#0f172a",
+          "bodyBorderColor": "#334155",
+          "keyType": "stripe",
+          "keyColor": "#e2e8f0",
+          "hasPolarityMark": true
+        }
+      ]
+    },
+    {
       "id": "PKG_CRYSTAL_HC49U",
       "name": "HC-49U (Высокий кварц, шаг 4.88мм, THT)",
       "standard": "JEDEC HC-49/U",
@@ -4961,11 +5202,7 @@
       "symbolType": "resistor",
       "isBase": true,
       "tags": ["resistor", "generic", "base", "smd", "tht"],
-      "parameters": {
-        "value": "10k",
-        "tolerance": "1%",
-        "powerRating": "0.125W"
-      },
+      "parameters": {},
       "pins": [
         {
           "id": "1",
@@ -4980,7 +5217,21 @@
       ],
       "supportedPackages": [
         {
-          "packageId": "PKG_CRYSTAL_SMD_3215_2P",
+          "packageId": "PKG_CHIP_0805",
+          "pinMapping": {
+            "1": "1",
+            "2": "2"
+          }
+        },
+        {
+          "packageId": "PKG_CHIP_0603",
+          "pinMapping": {
+            "1": "1",
+            "2": "2"
+          }
+        },
+        {
+          "packageId": "PKG_CHIP_1206",
           "pinMapping": {
             "1": "1",
             "2": "2"
@@ -4998,10 +5249,7 @@
       "symbolType": "capacitor",
       "isBase": true,
       "tags": ["capacitor", "generic", "base", "smd", "ceramic"],
-      "parameters": {
-        "value": "0.1uF",
-        "voltageRating": "50V"
-      },
+      "parameters": {},
       "pins": [
         {
           "id": "1",
@@ -5016,7 +5264,14 @@
       ],
       "supportedPackages": [
         {
-          "packageId": "PKG_CRYSTAL_SMD_3215_2P",
+          "packageId": "PKG_CHIP_0805",
+          "pinMapping": {
+            "1": "1",
+            "2": "2"
+          }
+        },
+        {
+          "packageId": "PKG_CHIP_0603",
           "pinMapping": {
             "1": "1",
             "2": "2"
@@ -5034,11 +5289,7 @@
       "symbolType": "diode",
       "isBase": true,
       "tags": ["diode", "generic", "base", "semiconductor"],
-      "parameters": {
-        "value": "Standard Diode",
-        "voltageRating": "100V",
-        "maxCurrent": "1A"
-      },
+      "parameters": {},
       "pins": [
         {
           "id": "A",
@@ -5052,6 +5303,13 @@
         }
       ],
       "supportedPackages": [
+        {
+          "packageId": "PKG_SMA_DO214AC",
+          "pinMapping": {
+            "A": "1",
+            "K": "2"
+          }
+        },
         {
           "packageId": "PKG_DO_35",
           "pinMapping": {
@@ -5071,11 +5329,7 @@
       "symbolType": "transistor_npn",
       "isBase": true,
       "tags": ["transistor", "bjt", "npn", "generic", "base"],
-      "parameters": {
-        "value": "NPN General Purpose",
-        "voltageRating": "45V",
-        "maxCurrent": "100mA"
-      },
+      "parameters": {},
       "pins": [
         {
           "id": "B",
@@ -5093,7 +5347,16 @@
           "pinType": "passive"
         }
       ],
-      "supportedPackages": []
+      "supportedPackages": [
+        {
+          "packageId": "PKG_SOT23_3",
+          "pinMapping": {
+            "B": "1",
+            "E": "2",
+            "C": "3"
+          }
+        }
+      ]
     },
     {
       "id": "DEV_BASE_MOSFET_N",
@@ -5105,11 +5368,7 @@
       "symbolType": "mosfet_n",
       "isBase": true,
       "tags": ["mosfet", "transistor", "n-channel", "generic", "base"],
-      "parameters": {
-        "value": "N-Ch MOSFET",
-        "voltageRating": "30V",
-        "maxCurrent": "2A"
-      },
+      "parameters": {},
       "pins": [
         {
           "id": "G",
@@ -5127,7 +5386,16 @@
           "pinType": "passive"
         }
       ],
-      "supportedPackages": []
+      "supportedPackages": [
+        {
+          "packageId": "PKG_SOT23_3",
+          "pinMapping": {
+            "G": "1",
+            "S": "2",
+            "D": "3"
+          }
+        }
+      ]
     },
     {
       "id": "DEV_LED_3MM_RED",

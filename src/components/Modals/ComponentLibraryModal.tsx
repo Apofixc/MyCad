@@ -542,6 +542,7 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
 
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
+  const [selectedDevicePackageId, setSelectedDevicePackageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -674,7 +675,9 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   const activeDevice = devices.find((d) => d.id === selectedDeviceId) || filteredDevices[0];
   const activePackage =
     activeTab === "devices"
-      ? packages.find((p) => p.id === activeDevice?.supportedPackages?.[0]?.packageId) || packages[0]
+      ? (selectedDevicePackageId && packages.find((p) => p.id === selectedDevicePackageId)) ||
+        packages.find((p) => p.id === activeDevice?.supportedPackages?.[0]?.packageId) ||
+        packages[0]
       : packages.find((p) => p.id === selectedPackageId) || filteredPackages[0];
 
   if (!isOpen) return null;
@@ -1583,24 +1586,31 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                           </span>
                         )}
                         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
-                          {dev.parameters?.value && (
+                          {!dev.isBase && dev.parameters?.value && (
                             <span style={{ fontSize: 10, background: "rgba(16, 185, 129, 0.12)", color: "var(--cad-net-active, #10b981)", padding: "1px 5px", borderRadius: 3, fontWeight: "bold" }}>
                               {dev.parameters.value}
                             </span>
                           )}
-                          {dev.parameters?.tolerance && (
+                          {!dev.isBase && dev.parameters?.tolerance && (
                             <span style={{ fontSize: 10, background: "rgba(59, 130, 246, 0.12)", color: "var(--cad-accent-hover)", padding: "1px 5px", borderRadius: 3 }}>
                               {dev.parameters.tolerance}
                             </span>
                           )}
-                          {dev.parameters?.voltageRating && (
+                          {!dev.isBase && dev.parameters?.voltageRating && (
                             <span style={{ fontSize: 10, background: "rgba(245, 158, 11, 0.12)", color: "#f59e0b", padding: "1px 5px", borderRadius: 3 }}>
                               {dev.parameters.voltageRating}
                             </span>
                           )}
-                          {dev.parameters?.powerRating && (
+                          {!dev.isBase && dev.parameters?.powerRating && (
                             <span style={{ fontSize: 10, background: "rgba(168, 85, 247, 0.12)", color: "#c084fc", padding: "1px 5px", borderRadius: 3 }}>
                               {dev.parameters.powerRating}
+                            </span>
+                          )}
+                          {dev.isBase && (
+                            <span style={{ fontSize: 9.5, color: "var(--cad-text-dim)" }}>
+                              {dev.supportedPackages && dev.supportedPackages.length > 0
+                                ? `Корпусов: ${dev.supportedPackages.length}`
+                                : "Параметрический"}
                             </span>
                           )}
                         </div>
@@ -1784,6 +1794,34 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
           >
             {activePackage ? (
               <>
+                {activeTab === "devices" && activeDevice?.supportedPackages && activeDevice.supportedPackages.length > 1 && (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 2 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--cad-text-muted)" }}>
+                        Выбор корпуса (Footprint):
+                      </label>
+                      <span style={{ fontSize: 10, color: "var(--cad-accent-hover)" }}>
+                        {activeDevice.supportedPackages.length} варианта
+                      </span>
+                    </div>
+                    <select
+                      className="cad-input"
+                      style={{ fontSize: 11.5, padding: "5px 8px", background: "var(--cad-bg-surface, #141820)" }}
+                      value={activePackage?.id}
+                      onChange={(e) => setSelectedDevicePackageId(e.target.value)}
+                    >
+                      {activeDevice.supportedPackages.map((sp) => {
+                        const p = packages.find((pkg) => pkg.id === sp.packageId);
+                        return (
+                          <option key={sp.packageId} value={sp.packageId}>
+                            {p ? `${p.name} (${p.mountType.toUpperCase()})` : sp.packageId}
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
+
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span className="section-title">Предпросмотр посадочного места</span>
                   <span style={{ fontSize: 11, color: "var(--cad-accent-hover)", fontWeight: 600 }}>
@@ -1928,37 +1966,37 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                             <span style={{ color: "var(--cad-accent-hover)", fontFamily: "var(--cad-font-mono)", fontWeight: 600 }}>{activeDevice.mpn}</span>
                           </div>
                         )}
-                        {activeDevice.parameters?.value && (
+                        {!activeDevice.isBase && activeDevice.parameters?.value && (
                           <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <span style={{ color: "var(--cad-text-muted)" }}>Номинал:</span>
                             <span style={{ color: "var(--cad-net-active, #10b981)", fontWeight: "bold" }}>{activeDevice.parameters.value}</span>
                           </div>
                         )}
-                        {activeDevice.parameters?.tolerance && (
+                        {!activeDevice.isBase && activeDevice.parameters?.tolerance && (
                           <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <span style={{ color: "var(--cad-text-muted)" }}>Допуск:</span>
                             <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.tolerance}</span>
                           </div>
                         )}
-                        {activeDevice.parameters?.voltageRating && (
+                        {!activeDevice.isBase && activeDevice.parameters?.voltageRating && (
                           <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <span style={{ color: "var(--cad-text-muted)" }}>Напряжение:</span>
                             <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.voltageRating}</span>
                           </div>
                         )}
-                        {activeDevice.parameters?.powerRating && (
+                        {!activeDevice.isBase && activeDevice.parameters?.powerRating && (
                           <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <span style={{ color: "var(--cad-text-muted)" }}>Мощность:</span>
                             <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.powerRating}</span>
                           </div>
                         )}
-                        {activeDevice.parameters?.maxCurrent && (
+                        {!activeDevice.isBase && activeDevice.parameters?.maxCurrent && (
                           <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <span style={{ color: "var(--cad-text-muted)" }}>Макс. ток:</span>
                             <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.maxCurrent}</span>
                           </div>
                         )}
-                        {activeDevice.parameters?.operatingTemp && (
+                        {!activeDevice.isBase && activeDevice.parameters?.operatingTemp && (
                           <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <span style={{ color: "var(--cad-text-muted)" }}>Температура:</span>
                             <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.operatingTemp}</span>

@@ -129,7 +129,7 @@ export const App: React.FC = () => {
       deviceId: device.id,
       packageId: packageDef.id,
       selectedVariantId: packageDef.variants?.[0]?.id,
-      value: device.parameters?.value || device.name,
+      value: device.isBase ? "" : (device.parameters?.value || device.name),
       name: device.name,
       package: packageDef.name,
       x: posX,
