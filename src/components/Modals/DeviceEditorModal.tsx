@@ -644,19 +644,21 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       subcategory: subcategory.trim() || "",
       designatorPrefix: designatorPrefix.trim() || "U",
       description: description.trim(),
-      datasheet: datasheet.trim() || undefined,
-      manufacturer: manufacturer.trim() || undefined,
-      mpn: mpn.trim() || undefined,
+      datasheet: isBase ? undefined : (datasheet.trim() || undefined),
+      manufacturer: isBase ? undefined : (manufacturer.trim() || undefined),
+      mpn: isBase ? undefined : (mpn.trim() || undefined),
       tags: tags.filter((t) => t.trim().length > 0),
-      parameters: {
-        value: paramValue.trim() || undefined,
-        tolerance: tolerance.trim() || undefined,
-        voltageRating: voltageRating.trim() || undefined,
-        powerRating: powerRating.trim() || undefined,
-        maxCurrent: maxCurrent.trim() || undefined,
-        operatingTemp: operatingTemp.trim() || undefined,
-        custom: Object.keys(customRecord).length > 0 ? customRecord : undefined,
-      },
+      parameters: isBase
+        ? undefined
+        : {
+            value: paramValue.trim() || undefined,
+            tolerance: tolerance.trim() || undefined,
+            voltageRating: voltageRating.trim() || undefined,
+            powerRating: powerRating.trim() || undefined,
+            maxCurrent: maxCurrent.trim() || undefined,
+            operatingTemp: operatingTemp.trim() || undefined,
+            custom: Object.keys(customRecord).length > 0 ? customRecord : undefined,
+          },
       isBase,
       logicalPins,
       supportedPackages,
@@ -766,7 +768,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   textAlign: "left",
                   transition: "all 0.15s ease",
                 }}
-                onClick={() => setIsBase(true)}
+                onClick={() => {
+                  setIsBase(true);
+                  setActiveSubTab("info");
+                }}
               >
                 <div
                   style={{
@@ -845,21 +850,23 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     onClick={() => setActiveSubTab("info")}
                   >
                     <Info size={12} />
-                    <span>Основные & BOM</span>
+                    <span>{isBase ? "Основные параметры" : "Основные & BOM"}</span>
                   </button>
-                  <button
-                    type="button"
-                    className={`device-tab-btn ${activeSubTab === "specs" ? "active" : ""}`}
-                    onClick={() => setActiveSubTab("specs")}
-                  >
-                    <Zap size={12} />
-                    <span>Электропараметры</span>
-                    {filledSpecsCount > 0 && (
-                      <span className="device-chip-count" style={{ marginLeft: 3 }}>
-                        {filledSpecsCount}
-                      </span>
-                    )}
-                  </button>
+                  {!isBase && (
+                    <button
+                      type="button"
+                      className={`device-tab-btn ${activeSubTab === "specs" ? "active" : ""}`}
+                      onClick={() => setActiveSubTab("specs")}
+                    >
+                      <Zap size={12} />
+                      <span>Паспортные электропараметры</span>
+                      {filledSpecsCount > 0 && (
+                        <span className="device-chip-count" style={{ marginLeft: 3 }}>
+                          {filledSpecsCount}
+                        </span>
+                      )}
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -1026,32 +1033,34 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     </div>
                   </div>
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                    <div>
-                      <label className="form-label" style={{ fontSize: 10 }}>Производитель (Manufacturer):</label>
-                      <input
-                        type="text"
-                        value={manufacturer}
-                        onChange={(e) => setManufacturer(e.target.value)}
-                        placeholder="TI, ST, Microchip, Yageo..."
-                        className="cad-input"
-                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
-                      />
+                  {!isBase && (
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                      <div>
+                        <label className="form-label" style={{ fontSize: 10 }}>Производитель (Manufacturer):</label>
+                        <input
+                          type="text"
+                          value={manufacturer}
+                          onChange={(e) => setManufacturer(e.target.value)}
+                          placeholder="TI, ST, Microchip, Yageo..."
+                          className="cad-input"
+                          style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                        />
+                      </div>
+                      <div>
+                        <label className="form-label" style={{ fontSize: 10 }}>Артикул детали (MPN):</label>
+                        <input
+                          type="text"
+                          value={mpn}
+                          onChange={(e) => setMpn(e.target.value)}
+                          placeholder="STM32F103C8T6, NE555P..."
+                          className="cad-input"
+                          style={{ width: "100%", padding: "5px 8px", fontSize: 11, fontFamily: "var(--cad-font-mono)" }}
+                        />
+                      </div>
                     </div>
-                    <div>
-                      <label className="form-label" style={{ fontSize: 10 }}>Артикул детали (MPN):</label>
-                      <input
-                        type="text"
-                        value={mpn}
-                        onChange={(e) => setMpn(e.target.value)}
-                        placeholder="STM32F103C8T6, NE555P..."
-                        className="cad-input"
-                        style={{ width: "100%", padding: "5px 8px", fontSize: 11, fontFamily: "var(--cad-font-mono)" }}
-                      />
-                    </div>
-                  </div>
+                  )}
 
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: !isBase ? "1fr 1fr" : "1fr", gap: 8 }}>
                     <div>
                       <label className="form-label" style={{ fontSize: 10 }}>Описание (Description):</label>
                       <input
@@ -1063,31 +1072,39 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                         style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
                       />
                     </div>
-                    <div>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <label className="form-label" style={{ fontSize: 10 }}>Ссылка на Datasheet (URL):</label>
-                        {datasheet && (
-                          <a
-                            href={datasheet}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ fontSize: 10, color: "var(--cad-accent-hover)", display: "flex", alignItems: "center", gap: 2, textDecoration: "none" }}
-                            title="Открыть документацию в браузере"
-                          >
-                            <ExternalLink size={10} /> Открыть
-                          </a>
-                        )}
+                    {!isBase && (
+                      <div>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <label className="form-label" style={{ fontSize: 10 }}>Ссылка на Datasheet (URL):</label>
+                          {datasheet && (
+                            <a
+                              href={datasheet}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{ fontSize: 10, color: "var(--cad-accent-hover)", display: "flex", alignItems: "center", gap: 2, textDecoration: "none" }}
+                              title="Открыть документацию в браузере"
+                            >
+                              <ExternalLink size={10} /> Открыть
+                            </a>
+                          )}
+                        </div>
+                        <input
+                          type="text"
+                          value={datasheet}
+                          onChange={(e) => setDatasheet(e.target.value)}
+                          placeholder="https://... или pdf"
+                          className="cad-input"
+                          style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                        />
                       </div>
-                      <input
-                        type="text"
-                        value={datasheet}
-                        onChange={(e) => setDatasheet(e.target.value)}
-                        placeholder="https://... или pdf"
-                        className="cad-input"
-                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
-                      />
-                    </div>
+                    )}
                   </div>
+
+                  {isBase && (
+                    <div style={{ padding: "8px 10px", background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", borderRadius: 6, fontSize: 11, color: "#93c5fd", lineHeight: 1.4 }}>
+                      💡 <strong>Базовый компонент (Generic):</strong> это схемный шаблон (R, C, VT и др.). У него нет статического номинала, допуска, напряжения или артикула MPN — все характеристики и номинал задаются инженером индивидуально при установке на плату.
+                    </div>
+                  )}
 
                   {/* Теги компонента */}
                   <div>
