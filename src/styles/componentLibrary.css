@@ -2538,3 +2538,259 @@
 .cad-inspector-select:focus {
   border-color: var(--cad-accent, #3b82f6) !important;
 }
+
+/* ==========================================================================
+   Device Editor: Package Picker Modal & Pin Batch Generator & Mapping
+   ========================================================================== */
+
+/* Всплывающее окно выбора корпусов из библиотеки */
+.pkg-picker-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1200;
+  animation: cadFadeIn 0.15s ease;
+}
+
+.pkg-picker-box {
+  width: 780px;
+  max-width: 94vw;
+  height: 560px;
+  max-height: 85vh;
+  background: linear-gradient(180deg, var(--cad-bg-panel, #181d26) 0%, #10141d 100%);
+  border: 1px solid var(--cad-border, #283344);
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75), 0 0 0 1px rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pkg-picker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--cad-bg-surface, #141820);
+  border-bottom: 1px solid var(--cad-border, #283344);
+}
+
+.pkg-picker-searchbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--cad-bg-deep, #0c0e12);
+  border-bottom: 1px solid var(--cad-border, #283344);
+}
+
+.pkg-picker-filter-btn {
+  padding: 4px 10px;
+  border-radius: 5px;
+  font-size: 11px;
+  font-weight: 500;
+  border: 1px solid var(--cad-border, #283344);
+  background: var(--cad-bg-surface, #141820);
+  color: var(--cad-text-muted, #94a3b8);
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.pkg-picker-filter-btn:hover {
+  color: var(--cad-text-main, #f8fafc);
+  border-color: var(--cad-accent, #3b82f6);
+}
+
+.pkg-picker-filter-btn.active {
+  background: var(--cad-accent, #3b82f6);
+  border-color: var(--cad-accent, #3b82f6);
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.pkg-picker-grid {
+  flex: 1;
+  overflow-y: auto;
+  padding: 12px 16px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  align-content: start;
+}
+
+.pkg-picker-card {
+  background: var(--cad-bg-surface, #141820);
+  border: 1px solid var(--cad-border, #283344);
+  border-radius: 8px;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  position: relative;
+}
+
+.pkg-picker-card:hover {
+  border-color: var(--cad-accent, #3b82f6);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.4);
+}
+
+.pkg-picker-card.is-bound {
+  opacity: 0.55;
+  cursor: not-allowed;
+  border-style: dashed;
+}
+
+.pkg-picker-card-preview {
+  height: 90px;
+  background: var(--cad-bg-deep, #090d16);
+  border-radius: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pkg-picker-card-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--cad-text-main, #f8fafc);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.pkg-picker-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 10px;
+  color: var(--cad-text-muted, #94a3b8);
+}
+
+.pkg-picker-badge {
+  font-size: 9.5px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.pkg-picker-badge.smd {
+  background: rgba(56, 189, 248, 0.15);
+  color: #38bdf8;
+  border: 1px solid rgba(56, 189, 248, 0.3);
+}
+
+.pkg-picker-badge.tht {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Модальное окно пакетного генератора выводов */
+.pin-gen-box {
+  width: 500px;
+  max-width: 92vw;
+  background: linear-gradient(180deg, var(--cad-bg-panel, #181d26) 0%, #10141d 100%);
+  border: 1px solid var(--cad-border, #283344);
+  border-radius: 10px;
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.pin-gen-tab-btn {
+  flex: 1;
+  padding: 7px 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--cad-text-muted, #94a3b8);
+  cursor: pointer;
+  transition: all 0.15s ease;
+  text-align: center;
+}
+
+.pin-gen-tab-btn.active {
+  color: var(--cad-accent-hover, #60a5fa);
+  border-bottom-color: var(--cad-accent, #3b82f6);
+  background: rgba(59, 130, 246, 0.08);
+}
+
+/* Статусы в чипах корпусов */
+.pkg-status-badge {
+  font-size: 9px;
+  padding: 1px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.pkg-status-badge.complete {
+  background: rgba(16, 185, 129, 0.15);
+  color: #10b981;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.pkg-status-badge.partial {
+  background: rgba(245, 158, 11, 0.15);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+/* Интерактивное сопоставление в таблице */
+.device-table tr.active-mapping-row td {
+  background: rgba(59, 130, 246, 0.15) !important;
+  border-bottom-color: rgba(59, 130, 246, 0.3) !important;
+}
+
+.device-table tr.conflict-mapping-row td {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
+.unassigned-pads-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  padding: 5px 8px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  border: 1px dashed var(--cad-border, #283344);
+  font-size: 10.5px;
+}
+
+.unassigned-pad-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(245, 158, 11, 0.12);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  font-family: var(--cad-font-mono, monospace);
+  font-size: 10px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.unassigned-pad-tag:hover {
+  background: rgba(245, 158, 11, 0.25);
+  border-color: #f59e0b;
+  transform: translateY(-1px);
+}
+

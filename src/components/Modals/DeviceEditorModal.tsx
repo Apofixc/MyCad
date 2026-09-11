@@ -2,7 +2,7 @@
 // Модальное окно создания и редактирования радиокомпонента (Device / Component)
 // Управление логическими выводами схемы, спецификацией BOM, электрическими параметрами и сопоставлением Pin-to-Pad Mapping
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   DeviceDefinition,
   PackageDefinition,
@@ -24,6 +24,18 @@ import {
   Info,
   ExternalLink,
   Tag,
+  Star,
+  ArrowUpDown,
+  Search,
+  Filter,
+  AlertTriangle,
+  CheckCircle2,
+  ListPlus,
+  Copy,
+  ChevronUp,
+  ChevronDown,
+  Check,
+  RefreshCw,
 } from "lucide-react";
 import { FootprintPreview } from "../SvgRenderer/FootprintPreview";
 
@@ -291,6 +303,27 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [supportedPackages, setSupportedPackages] = useState<PackageMapping[]>([]);
   const [activePackageId, setActivePackageId] = useState<string>("");
 
+  // Выделение и интерактивность сопоставления
+  const [selectedPinId, setSelectedPinId] = useState<string | null>(null);
+  const [activePadNum, setActivePadNum] = useState<string | null>(null);
+  const [pinSearchQuery, setPinSearchQuery] = useState<string>("");
+  const [pinUnitFilter, setPinUnitFilter] = useState<string>("all");
+
+  // Визуальный диалог добавления корпуса из библиотеки
+  const [isPkgPickerOpen, setIsPkgPickerOpen] = useState<boolean>(false);
+  const [pkgPickerSearch, setPkgPickerSearch] = useState<string>("");
+  const [pkgPickerMountFilter, setPkgPickerMountFilter] = useState<"all" | "smd" | "tht">("all");
+
+  // Пакетный генератор выводов
+  const [isPinGenOpen, setIsPinGenOpen] = useState<boolean>(false);
+  const [pinGenMode, setPinGenMode] = useState<"range" | "list">("range");
+  const [pinGenPrefix, setPinGenPrefix] = useState<string>("D");
+  const [pinGenStart, setPinGenStart] = useState<number>(0);
+  const [pinGenEnd, setPinGenEnd] = useState<number>(7);
+  const [pinGenList, setPinGenList] = useState<string>("VCC, GND, IN, OUT");
+  const [pinGenType, setPinGenType] = useState<PinElectricalType>("passive");
+  const [pinGenUnit, setPinGenUnit] = useState<string>("");
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -479,10 +512,89 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   const currentPkgDef = availablePackages.find((p) => p.id === activePackageId);
   const currentMapping = supportedPackages.find((m) => m.packageId === activePackageId);
+
+  // Список всех уникальных секций схемы (Units: A, B, C...)
+  const availableUnits = useMemo(() => {
+    const set = new Set<string>();
+    logicalPins.forEach((p) => {
+      if (p.unit && p.unit.trim()) set.add(p.unit.trim().toUpperCase());
+    });
+    return Array.from(set).sort();
+  }, [logicalPins]);
+
+  // Фильтрация выводов по поисковому запросу и выбранной секции схемы
+  const filteredLogicalPins = useMemo(() => {
+    return logicalPins.filter((p) => {
+      if (pinUnitFilter !== "all") {
+        if ((p.unit || "").toUpperCase() !== pinUnitFilter) return false;
+      }
+      if (pinSearchQuery.trim()) {
+        const q = pinSearchQuery.trim().toLowerCase();
+        const matchesName = p.name.toLowerCase().includes(q);
+        const matchesDesc = (p.description || "").toLowerCase().includes(q);
+        const matchesType = p.electricalType.toLowerCase().includes(q);
+        if (!matchesName && !matchesDesc && !matchesType) return false;
+      }
+      return true;
+    });
+  }, [logicalPins, pinUnitFilter, pinSearchQuery]);
+
+  // Детектор дубликатов имен выводов (предупреждение при двух одинаковых именах)
+  const duplicatePinNames = useMemo(() => {
+    const counts: Record<string, number> = {};
+    logicalPins.forEach((p) => {
+      const n = p.name.trim().toUpperCase();
+      if (n) counts[n] = (counts[n] || 0) + 1;
+    });
+    const dupes = new Set<string>();
+    Object.entries(counts).forEach(([k, v]) => {
+      if (v > 1) dupes.add(k);
+    });
+    return dupes;
+  }, [logicalPins]);
+
+  // Статистика использования контактных площадок текущего корпуса (детектор конфликтов)
+  const padUsageCount = useMemo(() => {
+    const counts: Record<string, string[]> = {};
+    if (!currentMapping) return counts;
+    Object.entries(currentMapping.pinMap).forEach(([pinName, padNum]) => {
+      if (!padNum) return;
+      if (!counts[padNum]) counts[padNum] = [];
+      counts[padNum].push(pinName);
+    });
+    return counts;
+  }, [currentMapping]);
+
+  // Свободные (не сопоставленные) площадки текущего корпуса
+  const unassignedPads = useMemo(() => {
+    if (!currentPkgDef || !currentMapping) return [];
+    const usedPadNums = new Set(Object.values(currentMapping.pinMap).filter(Boolean));
+    return currentPkgDef.pads.filter((p) => !usedPadNums.has(p.padNum));
+  }, [currentPkgDef, currentMapping]);
+
+  // Полнота сопоставления текущего корпуса
+  const mappingCoverage = useMemo(() => {
+    if (!currentMapping || logicalPins.length === 0) return { mapped: 0, total: 0, percent: 0 };
+    const mappedCount = logicalPins.filter((p) => Boolean(currentMapping.pinMap[p.name])).length;
+    return {
+      mapped: mappedCount,
+      total: logicalPins.length,
+      percent: Math.round((mappedCount / logicalPins.length) * 100),
+    };
+  }, [currentMapping, logicalPins]);
+
+  // Оценка готовности распиновки для каждого привязанного корпуса
+  const getPackageReadiness = (pkgMapping: PackageMapping) => {
+    if (logicalPins.length === 0) return { mapped: 0, total: 0, isComplete: false };
+    const mapped = logicalPins.filter((p) => Boolean(pkgMapping.pinMap[p.name])).length;
+    return {
+      mapped,
+      total: logicalPins.length,
+      isComplete: mapped === logicalPins.length && mapped > 0,
+    };
+  };
 
   // Добавление / удаление тегов
   const handleAddTag = () => {
@@ -512,17 +624,16 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     setCustomParams(customParams.filter((_, i) => i !== index));
   };
 
-  // Управление выводами
+  // Управление выводами схемы
   const handleAddPin = () => {
     const nextNum = logicalPins.length + 1;
-    setLogicalPins([
-      ...logicalPins,
-      {
-        id: `pin_${Date.now()}_${nextNum}`,
-        name: `PIN${nextNum}`,
-        electricalType: "passive",
-      },
-    ]);
+    const newPin: LogicalPin = {
+      id: `pin_${Date.now()}_${nextNum}`,
+      name: `PIN${nextNum}`,
+      electricalType: "passive",
+    };
+    setLogicalPins([...logicalPins, newPin]);
+    setSelectedPinId(newPin.id);
   };
 
   const handleAddPowerPins = () => {
@@ -548,23 +659,131 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     }
     if (newItems.length > 0) {
       setLogicalPins([...logicalPins, ...newItems]);
+      setSelectedPinId(newItems[0].id);
     }
   };
 
+  // Каскадное удаление вывода из схемы и сопоставления всех корпусов
   const handleRemovePin = (pinId: string) => {
-    setLogicalPins(logicalPins.filter((p) => p.id !== pinId));
+    const targetPin = logicalPins.find((p) => p.id === pinId);
+    if (targetPin) {
+      const pinName = targetPin.name;
+      setSupportedPackages((prev) =>
+        prev.map((pkg) => {
+          if (pinName in pkg.pinMap) {
+            const nextPinMap = { ...pkg.pinMap };
+            delete nextPinMap[pinName];
+            return { ...pkg, pinMap: nextPinMap };
+          }
+          return pkg;
+        })
+      );
+    }
+    setLogicalPins((prev) => prev.filter((p) => p.id !== pinId));
+    if (selectedPinId === pinId) setSelectedPinId(null);
   };
 
+  // Каскадное обновление вывода (при переименовании обновляет ключи в pinMap всех корпусов)
   const handleUpdatePin = (pinId: string, updates: Partial<LogicalPin>) => {
-    setLogicalPins(
-      logicalPins.map((p) => (p.id === pinId ? { ...p, ...updates } : p))
+    const targetPin = logicalPins.find((p) => p.id === pinId);
+    if (!targetPin) return;
+
+    const oldName = targetPin.name;
+    const newName = updates.name !== undefined ? updates.name : oldName;
+
+    // Если имя изменилось — выполняем каскадное обновление в pinMap всех корпусов
+    if (updates.name !== undefined && oldName !== newName) {
+      setSupportedPackages((prev) =>
+        prev.map((pkg) => {
+          const nextPinMap = { ...pkg.pinMap };
+          if (oldName in nextPinMap) {
+            const val = nextPinMap[oldName];
+            delete nextPinMap[oldName];
+            if (newName.trim()) {
+              nextPinMap[newName.trim()] = val;
+            }
+          }
+          return { ...pkg, pinMap: nextPinMap };
+        })
+      );
+    }
+
+    setLogicalPins((prev) =>
+      prev.map((p) => (p.id === pinId ? { ...p, ...updates } : p))
     );
+  };
+
+  // Перемещение вывода вверх / вниз в списке УГО
+  const handleMovePin = (pinId: string, direction: "up" | "down") => {
+    const idx = logicalPins.findIndex((p) => p.id === pinId);
+    if (idx < 0) return;
+    if (direction === "up" && idx === 0) return;
+    if (direction === "down" && idx === logicalPins.length - 1) return;
+
+    const targetIdx = direction === "up" ? idx - 1 : idx + 1;
+    const nextList = [...logicalPins];
+    const [item] = nextList.splice(idx, 1);
+    nextList.splice(targetIdx, 0, item);
+    setLogicalPins(nextList);
+  };
+
+  // Быстрая смена местами первых двух выводов (Swap 1 ↔ 2)
+  const handleSwapFirstTwoPins = () => {
+    if (logicalPins.length < 2) return;
+    const nextList = [...logicalPins];
+    const temp = nextList[0];
+    nextList[0] = nextList[1];
+    nextList[1] = temp;
+    setLogicalPins(nextList);
+  };
+
+  // Пакетный генератор серий выводов
+  const handleExecutePinGen = () => {
+    const newPins: LogicalPin[] = [];
+    const timestamp = Date.now();
+
+    if (pinGenMode === "range") {
+      const minVal = Math.min(pinGenStart, pinGenEnd);
+      const maxVal = Math.max(pinGenStart, pinGenEnd);
+      for (let i = minVal; i <= maxVal; i++) {
+        const pinName = `${pinGenPrefix}${i}`;
+        newPins.push({
+          id: `pin_${timestamp}_${i}`,
+          name: pinName,
+          electricalType: pinGenType,
+          unit: pinGenUnit.trim() ? pinGenUnit.trim().toUpperCase() : undefined,
+          description: `${pinGenPrefix ? `Линия ${pinGenPrefix}` : "Вывод"} ${i}`,
+        });
+      }
+    } else {
+      const rawNames = pinGenList
+        .split(/[\n,;]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+
+      rawNames.forEach((pName, idx) => {
+        newPins.push({
+          id: `pin_${timestamp}_${idx}`,
+          name: pName,
+          electricalType: pinGenType,
+          unit: pinGenUnit.trim() ? pinGenUnit.trim().toUpperCase() : undefined,
+          description: `Вывод ${pName}`,
+        });
+      });
+    }
+
+    if (newPins.length > 0) {
+      setLogicalPins([...logicalPins, ...newPins]);
+      setSelectedPinId(newPins[0].id);
+    }
+    setIsPinGenOpen(false);
   };
 
   // Привязка корпусов и маппинг
   const handleAddPackageBinding = (pkgId: string) => {
     if (supportedPackages.some((p) => p.packageId === pkgId)) {
       setActivePackageId(pkgId);
+      setIsPkgPickerOpen(false);
       return;
     }
     const pkg = availablePackages.find((p) => p.id === pkgId);
@@ -584,6 +803,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
     setSupportedPackages([...supportedPackages, newBinding]);
     setActivePackageId(pkgId);
+    setIsPkgPickerOpen(false);
   };
 
   const handleRemovePackageBinding = (pkgId: string) => {
@@ -594,19 +814,100 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     }
   };
 
+  // Назначение корпуса основным по умолчанию (⭐ Primary Package)
+  const handleSetPrimaryPackage = (pkgId: string) => {
+    const idx = supportedPackages.findIndex((p) => p.packageId === pkgId);
+    if (idx <= 0) return;
+    const reordered = [...supportedPackages];
+    const [target] = reordered.splice(idx, 1);
+    reordered.unshift(target);
+    setSupportedPackages(reordered);
+    setActivePackageId(pkgId);
+  };
+
+  // Выбор варианта исполнения корпуса по умолчанию
+  const handleSelectDefaultVariant = (pkgId: string, variantId: string) => {
+    setSupportedPackages(
+      supportedPackages.map((p) =>
+        p.packageId === pkgId ? { ...p, defaultVariantId: variantId } : p
+      )
+    );
+  };
+
+  // Копирование сопоставления распиновки из другого привязанного корпуса
+  const handleCopyMappingFrom = (sourcePkgId: string) => {
+    const source = supportedPackages.find((p) => p.packageId === sourcePkgId);
+    if (!source || !activePackageId) return;
+    setSupportedPackages(
+      supportedPackages.map((item) =>
+        item.packageId === activePackageId
+          ? { ...item, pinMap: { ...source.pinMap } }
+          : item
+      )
+    );
+  };
+
   const handleUpdatePinMapping = (logicalPinName: string, padNum: string) => {
     if (!activePackageId) return;
     setSupportedPackages(
       supportedPackages.map((item) => {
         if (item.packageId !== activePackageId) return item;
+        const nextMap = { ...item.pinMap };
+        if (padNum) {
+          nextMap[logicalPinName] = padNum;
+        } else {
+          delete nextMap[logicalPinName];
+        }
         return {
           ...item,
-          pinMap: {
-            ...item.pinMap,
-            [logicalPinName]: padNum,
-          },
+          pinMap: nextMap,
         };
       })
+    );
+  };
+
+  // Умное авто-сопоставление: точное совпадение по имени/номеру площадки
+  const handleSmartAutoMap = () => {
+    if (!currentPkgDef || !activePackageId) return;
+    const newMap: Record<string, string> = {};
+    const usedPads = new Set<string>();
+
+    // 1. Точное совпадение: padNum === pin.name или pad.name === pin.name
+    logicalPins.forEach((pin) => {
+      const pinNameUpper = pin.name.trim().toUpperCase();
+      const exactPad = currentPkgDef.pads.find(
+        (p) =>
+          !usedPads.has(p.padNum) &&
+          (p.padNum.toUpperCase() === pinNameUpper || (p.name && p.name.toUpperCase() === pinNameUpper))
+      );
+      if (exactPad) {
+        newMap[pin.name] = exactPad.padNum;
+        usedPads.add(exactPad.padNum);
+      }
+    });
+
+    // 2. Для оставшихся — если в имени пина есть число (напр. "PIN 1" -> pad "1", "D2" -> pad "2")
+    logicalPins.forEach((pin) => {
+      if (newMap[pin.name]) return;
+      const match = pin.name.match(/\d+/);
+      if (match) {
+        const numStr = match[0];
+        const padMatch = currentPkgDef.pads.find(
+          (p) => !usedPads.has(p.padNum) && p.padNum === numStr
+        );
+        if (padMatch) {
+          newMap[pin.name] = padMatch.padNum;
+          usedPads.add(padMatch.padNum);
+        }
+      }
+    });
+
+    setSupportedPackages(
+      supportedPackages.map((item) =>
+        item.packageId === activePackageId
+          ? { ...item, pinMap: { ...item.pinMap, ...newMap } }
+          : item
+      )
     );
   };
 
@@ -632,6 +933,35 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         item.packageId === activePackageId ? { ...item, pinMap: {} } : item
       )
     );
+  };
+
+  // Интерактивный клик по контактной площадке в превью чертежа
+  const handlePadSelect = (padNum: string) => {
+    setActivePadNum(padNum);
+    if (selectedPinId) {
+      const targetPin = logicalPins.find((p) => p.id === selectedPinId);
+      if (targetPin) {
+        handleUpdatePinMapping(targetPin.name, padNum);
+        return;
+      }
+    }
+    // Если пин не выбран, проверяем, назначен ли padNum на какой-либо пин
+    if (currentMapping) {
+      const entry = Object.entries(currentMapping.pinMap).find(([_, num]) => num === padNum);
+      if (entry) {
+        const foundPin = logicalPins.find((p) => p.name === entry[0]);
+        if (foundPin) {
+          setSelectedPinId(foundPin.id);
+          return;
+        }
+      }
+      // Если площадка свободна, находим первый несопоставленный пин и связываем его
+      const firstUnmapped = logicalPins.find((p) => !currentMapping.pinMap[p.name]);
+      if (firstUnmapped) {
+        handleUpdatePinMapping(firstUnmapped.name, padNum);
+        setSelectedPinId(firstUnmapped.id);
+      }
+    }
   };
 
   const handleSave = () => {
@@ -687,6 +1017,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     maxCurrent,
     operatingTemp,
   ].filter(Boolean).length + customParams.filter((p) => p.key && p.value).length;
+
+  if (!isOpen) return null;
 
   return (
     <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={onClose}>
@@ -1364,17 +1696,32 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
             </div>
 
             {/* Карточка 2: Логические выводы схемы (Logical Pins) */}
-            <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
               <div className="device-card-header">
                 <div className="device-card-title">
                   <Sparkles size={13} />
                   <span>Выводы схемы (Pins)</span>
                   <span className="device-chip-count">{logicalPins.length} шт.</span>
+                  {duplicatePinNames.size > 0 && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        color: "#ef4444",
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: 3,
+                        fontWeight: 600,
+                      }}
+                      title="Обнаружены одинаковые имена выводов! Рекомендуется сделать их уникальными."
+                    >
+                      <AlertTriangle size={11} /> Дубликаты!
+                    </span>
+                  )}
                 </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
                   <select
                     className="cad-input"
-                    style={{ fontSize: 10, padding: "2px 6px", height: 24, maxWidth: 140, cursor: "pointer" }}
+                    style={{ fontSize: 10, padding: "2px 6px", height: 24, maxWidth: 130, cursor: "pointer" }}
                     defaultValue=""
                     onChange={(e) => {
                       const val = e.target.value;
@@ -1384,21 +1731,30 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     }}
                     title="Готовые шаблоны выводов для полупроводников и базовых компонентов"
                   >
-                    <option value="" disabled>⚡ Пресет выводов...</option>
+                    <option value="" disabled>⚡ Пресет...</option>
                     <option value="rlc">Пассивный 2-pin (1, 2)</option>
                     <option value="diode">Диод (Анод A, Катод K)</option>
                     <option value="bjt_npn">BJT NPN (B, C, E)</option>
                     <option value="mosfet_n">MOSFET N-Ch (G, D, S)</option>
                     <option value="ldo3">LDO 3-pin (VIN, VOUT, GND)</option>
-                    <option value="opamp_single">ОУ одиночный (IN+, IN-, OUT, V+, V-)</option>
-                    <option value="opamp_dual">ОУ сдвоенный (Unit A, Unit B + PWR)</option>
+                    <option value="opamp_single">ОУ одиночный (IN+, IN-, OUT...)</option>
+                    <option value="opamp_dual">ОУ сдвоенный (Unit A, B + PWR)</option>
                     <option value="header_1x4">Штыревой разъем (1..4)</option>
                     <option value="pwr_logic">ИМС логики (VCC, GND, IN, OUT)</option>
                   </select>
                   <button
                     type="button"
                     className="cad-btn-secondary"
-                    style={{ fontSize: 10, padding: "2px 7px", height: 24 }}
+                    style={{ fontSize: 10, padding: "2px 6px", height: 24 }}
+                    onClick={() => setIsPinGenOpen(true)}
+                    title="Генератор шин и серий выводов (D0..D7, 1..16, список)"
+                  >
+                    <ListPlus size={11} color="var(--cad-accent-hover)" /> Серия...
+                  </button>
+                  <button
+                    type="button"
+                    className="cad-btn-secondary"
+                    style={{ fontSize: 10, padding: "2px 6px", height: 24 }}
                     onClick={handleAddPowerPins}
                     title="Быстро добавить VCC и GND"
                   >
@@ -1407,69 +1763,155 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   <button
                     type="button"
                     className="cad-btn-secondary"
-                    style={{ fontSize: 10, padding: "2px 8px", height: 24 }}
+                    style={{ fontSize: 10, padding: "2px 7px", height: 24 }}
                     onClick={handleAddPin}
                   >
-                    <Plus size={11} /> Добавить
+                    <Plus size={11} /> Пин
                   </button>
                 </div>
               </div>
 
-              {/* Таблица логических выводов схемы с поддержкой Unit (секции) и описания */}
+              {/* Панель поиска и фильтрации выводов */}
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 6,
+                  padding: "4px 0",
+                  flexShrink: 0,
+                }}
+              >
+                <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center" }}>
+                  <Search size={11} style={{ position: "absolute", left: 6, color: "var(--cad-text-dim)" }} />
+                  <input
+                    type="text"
+                    value={pinSearchQuery}
+                    onChange={(e) => setPinSearchQuery(e.target.value)}
+                    placeholder="Быстрый поиск вывода..."
+                    className="cad-input"
+                    style={{ width: "100%", padding: "2px 6px 2px 22px", fontSize: 10.5, height: 22 }}
+                  />
+                  {pinSearchQuery && (
+                    <button
+                      type="button"
+                      onClick={() => setPinSearchQuery("")}
+                      style={{ position: "absolute", right: 4, background: "none", border: "none", color: "var(--cad-text-dim)", cursor: "pointer" }}
+                    >
+                      <X size={10} />
+                    </button>
+                  )}
+                </div>
+
+                {availableUnits.length > 0 && (
+                  <select
+                    value={pinUnitFilter}
+                    onChange={(e) => setPinUnitFilter(e.target.value)}
+                    className="cad-input"
+                    style={{ fontSize: 10, padding: "2px 6px", height: 22, maxWidth: 100 }}
+                  >
+                    <option value="all">Все секции</option>
+                    {availableUnits.map((u) => (
+                      <option key={u} value={u}>
+                        Секция {u}
+                      </option>
+                    ))}
+                  </select>
+                )}
+
+                {logicalPins.length >= 2 && (
+                  <button
+                    type="button"
+                    className="cad-btn-secondary"
+                    style={{ fontSize: 10, padding: "1px 6px", height: 22 }}
+                    onClick={handleSwapFirstTwoPins}
+                    title="Поменять местами выводы 1 и 2 (Swap 1↔2)"
+                  >
+                    <ArrowUpDown size={10} /> 1↔2
+                  </button>
+                )}
+              </div>
+
+              {/* Таблица логических выводов схемы */}
               <div className="device-table-container">
                 <table className="device-table">
                   <thead>
                     <tr>
-                      <th style={{ width: 24, textAlign: "center" }}>#</th>
-                      <th style={{ width: 95 }}>Имя вывода</th>
-                      <th style={{ width: 140 }}>Тип сигнала</th>
-                      <th style={{ width: 55, textAlign: "center" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секция</th>
+                      <th style={{ width: 34, textAlign: "center" }}>#</th>
+                      <th style={{ width: 100 }}>Имя вывода</th>
+                      <th style={{ width: 135 }}>Тип сигнала</th>
+                      <th style={{ width: 50, textAlign: "center" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секция</th>
                       <th>Назначение / Описание</th>
-                      <th style={{ width: 28, textAlign: "center" }}></th>
+                      <th style={{ width: 68, textAlign: "center" }}></th>
                     </tr>
                   </thead>
                   <tbody>
-                    {logicalPins.length === 0 ? (
+                    {filteredLogicalPins.length === 0 ? (
                       <tr>
                         <td colSpan={6} style={{ textAlign: "center", padding: "24px 10px", color: "#64748b" }}>
-                          Выводы не добавлены. Нажмите «+ Добавить» для создания логического вывода.
+                          {logicalPins.length === 0
+                            ? "Выводы не добавлены. Нажмите «+ Пин» или «Серия...» для добавления."
+                            : "Нет выводов, соответствующих поиску."}
                         </td>
                       </tr>
                     ) : (
-                      logicalPins.map((pin, idx) => {
+                      filteredLogicalPins.map((pin) => {
                         const typeCfg =
                           ELECTRICAL_TYPES.find((t) => t.value === pin.electricalType) ||
                           ELECTRICAL_TYPES[5];
+                        const isSelected = selectedPinId === pin.id;
+                        const isDupe = duplicatePinNames.has(pin.name.trim().toUpperCase());
+                        const pinGlobalIdx = logicalPins.findIndex((p) => p.id === pin.id);
 
                         return (
-                          <tr key={pin.id}>
+                          <tr
+                            key={pin.id}
+                            className={isSelected ? "active-mapping-row" : ""}
+                            onClick={() => {
+                              setSelectedPinId(pin.id);
+                              if (currentMapping && currentMapping.pinMap[pin.name]) {
+                                setActivePadNum(currentMapping.pinMap[pin.name]);
+                              }
+                            }}
+                            style={{ cursor: "pointer" }}
+                          >
                             <td
                               style={{
                                 textAlign: "center",
-                                color: "#64748b",
+                                color: isSelected ? "var(--cad-accent-hover)" : "#64748b",
                                 fontFamily: "monospace",
-                                fontSize: 11,
+                                fontSize: 10.5,
                               }}
                             >
-                              {idx + 1}
+                              {pinGlobalIdx + 1}
                             </td>
                             <td>
-                              <input
-                                type="text"
-                                value={pin.name}
-                                onChange={(e) =>
-                                  handleUpdatePin(pin.id, { name: e.target.value })
-                                }
-                                className="cad-input"
-                                style={{
-                                  padding: "3px 6px",
-                                  fontSize: 11,
-                                  fontFamily: "monospace",
-                                  fontWeight: "bold",
-                                  width: "100%",
-                                }}
-                                placeholder="PIN"
-                              />
+                              <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                                <input
+                                  type="text"
+                                  value={pin.name}
+                                  onChange={(e) =>
+                                    handleUpdatePin(pin.id, { name: e.target.value })
+                                  }
+                                  className="cad-input"
+                                  style={{
+                                    padding: "2px 5px",
+                                    fontSize: 11,
+                                    fontFamily: "monospace",
+                                    fontWeight: "bold",
+                                    width: "100%",
+                                    borderColor: isDupe ? "#ef4444" : undefined,
+                                  }}
+                                  placeholder="PIN"
+                                />
+                                {isDupe && (
+                                  <span
+                                    title="Имя вывода дублируется!"
+                                    style={{ position: "absolute", right: 4, display: "flex", alignItems: "center" }}
+                                  >
+                                    <AlertTriangle size={11} color="#ef4444" />
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td>
                               <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
@@ -1487,9 +1929,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                   className="cad-input"
                                   style={{
                                     flex: 1,
-                                    padding: "2px 4px",
-                                    fontSize: 10.5,
-                                    height: 24,
+                                    padding: "1px 4px",
+                                    fontSize: 10,
+                                    height: 22,
                                   }}
                                 >
                                   {ELECTRICAL_TYPES.map((t) => (
@@ -1511,8 +1953,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 maxLength={4}
                                 className="cad-input"
                                 style={{
-                                  padding: "3px 4px",
-                                  fontSize: 11,
+                                  padding: "2px 3px",
+                                  fontSize: 10.5,
                                   textAlign: "center",
                                   fontFamily: "monospace",
                                   width: "100%",
@@ -1527,25 +1969,56 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 onChange={(e) =>
                                   handleUpdatePin(pin.id, { description: e.target.value })
                                 }
-                                placeholder="Назначение пина"
+                                placeholder="Назначение"
                                 className="cad-input"
                                 style={{
-                                  padding: "3px 6px",
+                                  padding: "2px 5px",
                                   fontSize: 10.5,
                                   width: "100%",
                                 }}
                               />
                             </td>
-                            <td style={{ textAlign: "center" }}>
-                              <button
-                                type="button"
-                                className="cad-icon-btn danger"
-                                style={{ width: 22, height: 22, padding: 0 }}
-                                onClick={() => handleRemovePin(pin.id)}
-                                title="Удалить вывод"
-                              >
-                                <Trash2 size={12} />
-                              </button>
+                            <td style={{ textAlign: "center", whiteSpace: "nowrap" }}>
+                              <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                                <button
+                                  type="button"
+                                  className="cad-icon-btn"
+                                  style={{ width: 18, height: 18, padding: 0 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMovePin(pin.id, "up");
+                                  }}
+                                  disabled={pinGlobalIdx === 0}
+                                  title="Переместить вверх"
+                                >
+                                  <ChevronUp size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cad-icon-btn"
+                                  style={{ width: 18, height: 18, padding: 0 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleMovePin(pin.id, "down");
+                                  }}
+                                  disabled={pinGlobalIdx === logicalPins.length - 1}
+                                  title="Переместить вниз"
+                                >
+                                  <ChevronDown size={11} />
+                                </button>
+                                <button
+                                  type="button"
+                                  className="cad-icon-btn danger"
+                                  style={{ width: 18, height: 18, padding: 0 }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRemovePin(pin.id);
+                                  }}
+                                  title="Удалить вывод"
+                                >
+                                  <Trash2 size={11} />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         );
@@ -1567,81 +2040,210 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   <span>Привязанные корпуса</span>
                   <span className="device-chip-count">{supportedPackages.length}</span>
                 </div>
-                {onCreateNewPackage && (
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
                   <button
                     type="button"
-                    className="cad-btn-secondary"
-                    style={{ fontSize: 10, padding: "2px 8px", height: 24 }}
-                    onClick={onCreateNewPackage}
+                    className="cad-btn-primary"
+                    style={{ fontSize: 10, padding: "3px 10px", height: 24, gap: 4 }}
+                    onClick={() => {
+                      setPkgPickerSearch("");
+                      setPkgPickerMountFilter("all");
+                      setIsPkgPickerOpen(true);
+                    }}
+                    title="Открыть каталог библиотеки для выбора и привязки корпуса"
                   >
-                    <Plus size={11} /> Создать корпус
+                    <Plus size={12} /> Выбрать из библиотеки...
                   </button>
+                  {onCreateNewPackage && (
+                    <button
+                      type="button"
+                      className="cad-btn-secondary"
+                      style={{ fontSize: 10, padding: "3px 8px", height: 24 }}
+                      onClick={onCreateNewPackage}
+                      title="Создать новое посадочное место в редакторе корпусов"
+                    >
+                      Создать корпус
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Список привязанных корпусов в виде стильных CAD-чипов со статусом и основным корпусом ⭐ */}
+              <div className="device-pkg-chips-wrap">
+                {supportedPackages.length === 0 ? (
+                  <div style={{ fontSize: 11, color: "var(--cad-text-dim)", padding: "4px 0" }}>
+                    Корпуса не привязаны. Нажмите «Выбрать из библиотеки...», чтобы привязать посадочное место.
+                  </div>
+                ) : (
+                  supportedPackages.map((binding, idx) => {
+                    const pkg = availablePackages.find((p) => p.id === binding.packageId);
+                    const isSelected = activePackageId === binding.packageId;
+                    const isPrimary = idx === 0;
+                    const readiness = getPackageReadiness(binding);
+
+                    return (
+                      <div
+                        key={binding.packageId}
+                        className={`device-pkg-chip ${isSelected ? "active" : ""}`}
+                        onClick={() => setActivePackageId(binding.packageId)}
+                        title={`Нажмите для настройки сопоставления выводов для ${pkg?.name || binding.packageId}`}
+                      >
+                        {/* Кнопка назначения основного корпуса ⭐ */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetPrimaryPackage(binding.packageId);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: isPrimary ? "default" : "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            color: isPrimary ? "#fbbf24" : "var(--cad-text-dim)",
+                          }}
+                          title={isPrimary ? "Основной корпус детали (Primary ⭐)" : "Сделать основным корпусом (⭐)"}
+                        >
+                          <Star size={12} fill={isPrimary ? "#fbbf24" : "none"} />
+                        </button>
+
+                        <Box size={12} color={isSelected ? "var(--cad-accent-hover)" : "var(--cad-text-dim)"} />
+                        <span style={{ fontWeight: isSelected ? 600 : 500 }}>
+                          {pkg?.name || binding.packageId}
+                        </span>
+
+                        {pkg && (
+                          <span style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>
+                            ({pkg.pads.length}п.)
+                          </span>
+                        )}
+
+                        {/* Индикатор готовности распиновки */}
+                        <span className={`pkg-status-badge ${readiness.isComplete ? "complete" : "partial"}`}>
+                          {readiness.isComplete ? (
+                            <>
+                              <CheckCircle2 size={9} /> {readiness.mapped}/{readiness.total}
+                            </>
+                          ) : (
+                            <>
+                              {readiness.mapped}/{readiness.total}
+                            </>
+                          )}
+                        </span>
+
+                        <button
+                          type="button"
+                          className="device-pkg-chip-remove"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemovePackageBinding(binding.packageId);
+                          }}
+                          title="Отвязать этот корпус"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    );
+                  })
                 )}
               </div>
 
-              {/* Список привязанных корпусов в виде стильных CAD-чипов */}
-              <div className="device-pkg-chips-wrap">
-                {supportedPackages.map((binding) => {
-                  const pkg = availablePackages.find((p) => p.id === binding.packageId);
-                  const isSelected = activePackageId === binding.packageId;
-
-                  return (
-                    <div
-                      key={binding.packageId}
-                      className={`device-pkg-chip ${isSelected ? "active" : ""}`}
-                      onClick={() => setActivePackageId(binding.packageId)}
-                      title={`Нажмите для настройки сопоставления выводов для ${pkg?.name || binding.packageId}`}
-                    >
-                      <Box size={13} color={isSelected ? "var(--cad-accent-hover)" : "var(--cad-text-dim)"} />
-                      <span>{pkg?.name || binding.packageId}</span>
-                      {pkg && (
-                        <span style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>
-                          ({pkg.pads.length}п.)
-                        </span>
-                      )}
-                      <button
-                        type="button"
-                        className="device-pkg-chip-remove"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleRemovePackageBinding(binding.packageId);
-                        }}
-                        title="Отвязать этот корпус"
-                      >
-                        <X size={12} />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* Селектор привязки существующего корпуса */}
-              <div style={{ display: "flex", gap: 8, marginTop: 2 }}>
-                <select
-                  className="cad-input"
-                  style={{ flex: 1, fontSize: 11, padding: "5px 8px" }}
-                  defaultValue=""
-                  value=""
-                  onChange={(e) => {
-                    if (e.target.value) {
-                      handleAddPackageBinding(e.target.value);
-                    }
+              {/* Настройки выбранного корпуса: выбор варианта исполнения и копирование распиновки */}
+              {currentPkgDef && currentMapping && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    paddingTop: 6,
+                    borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+                    fontSize: 10.5,
                   }}
                 >
-                  <option value="" disabled>
-                    + Привязать корпус из библиотеки...
-                  </option>
-                  {availablePackages.map((pkg) => (
-                    <option key={pkg.id} value={pkg.id}>
-                      {pkg.name} ({pkg.mountType.toUpperCase()}, {pkg.pads.length} площадок)
-                    </option>
-                  ))}
-                </select>
-              </div>
+                  {/* Выбор варианта исполнения корпуса */}
+                  {currentPkgDef.variants && currentPkgDef.variants.length > 1 ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <label style={{ color: "var(--cad-text-muted)" }}>Вариант корпуса:</label>
+                      <select
+                        value={currentMapping.defaultVariantId || currentPkgDef.defaultVariantId}
+                        onChange={(e) => handleSelectDefaultVariant(currentPkgDef.id, e.target.value)}
+                        className="cad-input"
+                        style={{ fontSize: 10, padding: "2px 6px", height: 22 }}
+                      >
+                        {currentPkgDef.variants.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div style={{ color: "var(--cad-text-dim)" }}>
+                      Тип монтажа: <strong>{currentPkgDef.mountType.toUpperCase()}</strong> | Площадок: <strong>{currentPkgDef.pads.length}</strong>
+                    </div>
+                  )}
+
+                  {/* Копирование распиновки из другого привязанного корпуса */}
+                  {supportedPackages.length > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <Copy size={11} color="var(--cad-text-dim)" />
+                      <select
+                        defaultValue=""
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleCopyMappingFrom(e.target.value);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="cad-input"
+                        style={{ fontSize: 10, padding: "2px 6px", height: 22, maxWidth: 170 }}
+                        title="Скопировать распиновку из другого корпуса, если нумерация выводов совпадает"
+                      >
+                        <option value="" disabled>Скопировать распиновку из...</option>
+                        {supportedPackages
+                          .filter((p) => p.packageId !== activePackageId)
+                          .map((p) => {
+                            const otherPkg = availablePackages.find((ap) => ap.id === p.packageId);
+                            return (
+                              <option key={p.packageId} value={p.packageId}>
+                                {otherPkg?.name || p.packageId}
+                              </option>
+                            );
+                          })}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Предупреждение о нехватке контактных площадок у корпуса */}
+              {currentPkgDef && currentPkgDef.pads.length < logicalPins.length && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "4px 8px",
+                    borderRadius: 4,
+                    background: "rgba(239, 68, 68, 0.12)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: "#fca5a5",
+                    fontSize: 10.5,
+                  }}
+                >
+                  <AlertTriangle size={12} color="#ef4444" style={{ flexShrink: 0 }} />
+                  <span>
+                    Внимание: у корпуса площадок ({currentPkgDef.pads.length}) меньше, чем выводов схемы ({logicalPins.length}). Часть сигналов не сможет быть выведена на плату!
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Карточка 2: Таблица сопоставления выводов (Pin-to-Pad Mapping) */}
-            <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+            <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
               <div className="device-card-header">
                 <div className="device-card-title">
                   <ArrowRight size={13} />
@@ -1651,17 +2253,42 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                       ({currentPkgDef.name})
                     </span>
                   )}
+                  {currentMapping && (
+                    <span
+                      style={{
+                        fontSize: 10,
+                        padding: "1px 7px",
+                        borderRadius: 10,
+                        fontWeight: 700,
+                        background: mappingCoverage.percent === 100 ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
+                        color: mappingCoverage.percent === 100 ? "#10b981" : "#f59e0b",
+                        border: mappingCoverage.percent === 100 ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)",
+                      }}
+                    >
+                      {mappingCoverage.mapped}/{mappingCoverage.total} ({mappingCoverage.percent}%)
+                    </span>
+                  )}
                 </div>
+
                 {currentPkgDef && (
-                  <div style={{ display: "flex", gap: 6 }}>
+                  <div style={{ display: "flex", gap: 5 }}>
+                    <button
+                      type="button"
+                      className="cad-btn-secondary"
+                      style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
+                      onClick={handleSmartAutoMap}
+                      title="Умное сопоставление по совпадению имен и номеров выводов"
+                    >
+                      <Zap size={11} color="#38bdf8" /> По именам
+                    </button>
                     <button
                       type="button"
                       className="cad-btn-secondary"
                       style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
                       onClick={handleAutoMapSequential}
-                      title="Автоматически связать выводы с площадками 1:1 по порядку"
+                      title="Последовательно связать выводы с площадками 1:1 по порядку"
                     >
-                      <Zap size={11} color="var(--cad-top-layer, #f59e0b)" /> Авто 1:1
+                      1:1
                     </button>
                     <button
                       type="button"
@@ -1678,44 +2305,92 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
               {currentPkgDef && currentMapping ? (
                 <>
-                  {/* Компактный предпросмотр посадочного места */}
+                  {/* Интерактивный предпросмотр посадочного места */}
                   <div
                     style={{
-                      height: 125,
+                      height: 140,
                       borderRadius: 6,
                       border: "1px solid var(--cad-border)",
                       overflow: "hidden",
                       background: "var(--cad-bg-deep)",
                       flexShrink: 0,
+                      position: "relative",
                     }}
                   >
                     <FootprintPreview
                       packageDef={currentPkgDef}
+                      variant={currentPkgDef.variants?.find((v) => v.id === (currentMapping.defaultVariantId || currentPkgDef.defaultVariantId))}
                       showDimensions={false}
-                      interactive={false}
-                      height={125}
+                      interactive={true}
+                      selectedPadNum={activePadNum}
+                      onSelectPad={handlePadSelect}
+                      height={140}
                     />
+                    <div
+                      style={{
+                        position: "absolute",
+                        bottom: 4,
+                        left: 8,
+                        fontSize: 9.5,
+                        color: "var(--cad-text-dim)",
+                        pointerEvents: "none",
+                        background: "rgba(0, 0, 0, 0.6)",
+                        padding: "1px 6px",
+                        borderRadius: 3,
+                      }}
+                    >
+                      💡 Кликните по площадке чертежа для привязки к выбранному выводу
+                    </div>
                   </div>
 
-                  {/* Таблица маппинга выводов */}
+                  {/* Список свободных контактных площадок корпуса */}
+                  {unassignedPads.length > 0 && (
+                    <div className="unassigned-pads-bar" style={{ flexShrink: 0 }}>
+                      <span style={{ color: "var(--cad-text-muted)", fontSize: 10 }}>
+                        Свободные площадки ({unassignedPads.length}):
+                      </span>
+                      {unassignedPads.map((p) => (
+                        <span
+                          key={p.padNum}
+                          className="unassigned-pad-tag"
+                          onClick={() => handlePadSelect(p.padNum)}
+                          title={`Нажмите для привязки площадки #${p.padNum} к выбранному выводу`}
+                        >
+                          #{p.padNum}
+                          {p.name ? ` (${p.name})` : ""}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Таблица сопоставления выводов */}
                   <div className="device-table-container">
                     <table className="device-table">
                       <thead>
                         <tr>
-                          <th style={{ width: 155 }}>Вывод схемы (УГО)</th>
+                          <th style={{ width: 160 }}>Вывод схемы (УГО)</th>
                           <th style={{ width: 24, textAlign: "center" }}></th>
                           <th>Площадка корпуса (Pad)</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {logicalPins.map((pin) => {
+                        {filteredLogicalPins.map((pin) => {
                           const assignedPad = currentMapping.pinMap[pin.name] || "";
                           const typeCfg =
                             ELECTRICAL_TYPES.find((t) => t.value === pin.electricalType) ||
                             ELECTRICAL_TYPES[5];
+                          const isSelected = selectedPinId === pin.id;
+                          const hasConflict = assignedPad && (padUsageCount[assignedPad] || []).length > 1;
 
                           return (
-                            <tr key={pin.id}>
+                            <tr
+                              key={pin.id}
+                              className={`${isSelected ? "active-mapping-row" : ""} ${hasConflict ? "conflict-mapping-row" : ""}`}
+                              onClick={() => {
+                                setSelectedPinId(pin.id);
+                                if (assignedPad) setActivePadNum(assignedPad);
+                              }}
+                            >
                               <td>
                                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                   <span
@@ -1726,7 +2401,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                     style={{
                                       fontFamily: "var(--cad-font-mono)",
                                       fontWeight: "bold",
-                                      color: "var(--cad-text-main)",
+                                      color: isSelected ? "var(--cad-accent-hover)" : "var(--cad-text-main)",
                                       fontSize: 12,
                                     }}
                                   >
@@ -1765,38 +2440,69 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               </td>
 
                               <td>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                                  <select
-                                    value={assignedPad}
-                                    onChange={(e) =>
-                                      handleUpdatePinMapping(pin.name, e.target.value)
-                                    }
-                                    className="cad-input"
-                                    style={{
-                                      width: "100%",
-                                      padding: "3px 6px",
-                                      fontSize: 11,
-                                      height: 24,
-                                      borderColor: assignedPad ? "var(--cad-border)" : "rgba(245, 158, 11, 0.4)",
-                                    }}
-                                  >
-                                    <option value="">— Не подключен —</option>
-                                    {currentPkgDef.pads.map((pad) => (
-                                      <option key={pad.padNum} value={pad.padNum}>
-                                        Pad #{pad.padNum} {pad.name ? `(${pad.name})` : ""} [{pad.shape}]
-                                      </option>
-                                    ))}
-                                  </select>
-                                  <span
-                                    style={{
-                                      width: 6,
-                                      height: 6,
-                                      borderRadius: "50%",
-                                      backgroundColor: assignedPad ? "var(--cad-net-active, #10b981)" : "#f59e0b",
-                                      flexShrink: 0,
-                                    }}
-                                    title={assignedPad ? "Вывод подключен" : "Вывод не назначен"}
-                                  />
+                                <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                    <select
+                                      value={assignedPad}
+                                      onChange={(e) => {
+                                        handleUpdatePinMapping(pin.name, e.target.value);
+                                        setActivePadNum(e.target.value || null);
+                                      }}
+                                      className="cad-input"
+                                      style={{
+                                        width: "100%",
+                                        padding: "3px 6px",
+                                        fontSize: 11,
+                                        height: 24,
+                                        borderColor: hasConflict
+                                          ? "#ef4444"
+                                          : assignedPad
+                                          ? "var(--cad-border)"
+                                          : "rgba(245, 158, 11, 0.4)",
+                                      }}
+                                    >
+                                      <option value="">— Не подключен —</option>
+                                      {currentPkgDef.pads.map((pad) => {
+                                        const occupiedBy = Object.entries(currentMapping.pinMap).find(
+                                          ([pName, pNum]) => pNum === pad.padNum && pName !== pin.name
+                                        );
+                                        return (
+                                          <option key={pad.padNum} value={pad.padNum}>
+                                            Pad #{pad.padNum} {pad.name ? `(${pad.name})` : ""} [{pad.shape}]
+                                            {occupiedBy ? ` — занят выводом "${occupiedBy[0]}"` : ""}
+                                          </option>
+                                        );
+                                      })}
+                                    </select>
+                                    <span
+                                      style={{
+                                        width: 7,
+                                        height: 7,
+                                        borderRadius: "50%",
+                                        backgroundColor: hasConflict
+                                          ? "#ef4444"
+                                          : assignedPad
+                                          ? "var(--cad-net-active, #10b981)"
+                                          : "#f59e0b",
+                                        flexShrink: 0,
+                                      }}
+                                      title={
+                                        hasConflict
+                                          ? "Конфликт назначения площадки!"
+                                          : assignedPad
+                                          ? "Площадка подключена"
+                                          : "Вывод не назначен"
+                                      }
+                                    />
+                                  </div>
+
+                                  {/* Предупреждение о конфликте, если площадка назначена нескольким выводам */}
+                                  {hasConflict && (
+                                    <div style={{ fontSize: 9.5, color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
+                                      <AlertTriangle size={10} />
+                                      Площадка #{assignedPad} назначена нескольким выводам: {padUsageCount[assignedPad].join(", ")}
+                                    </div>
+                                  )}
                                 </div>
                               </td>
                             </tr>
@@ -1825,7 +2531,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     Корпус не выбран
                   </div>
                   <div style={{ fontSize: 11, maxWidth: 280 }}>
-                    Привяжите посадочное место из библиотеки выше для сопоставления сигналов схемы с физическими контактными площадками.
+                    Нажмите кнопку «Выбрать из библиотеки...» выше для добавления посадочного места и настройки сопоставления выводов.
                   </div>
                 </div>
               )}
@@ -1833,7 +2539,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           </div>
         </div>
 
-        {/* Подвал */}
+        {/* Подвал модального окна */}
         <div className="cad-modal-footer" style={{ padding: "10px 18px" }}>
           <button type="button" className="cad-btn-secondary" onClick={onClose}>
             Отмена
@@ -1844,6 +2550,294 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           </button>
         </div>
       </div>
+
+      {/* Модальный диалог: Визуальный выбор корпуса из библиотеки */}
+      {isPkgPickerOpen && (
+        <div className="pkg-picker-overlay" onClick={() => setIsPkgPickerOpen(false)}>
+          <div className="pkg-picker-box" onClick={(e) => e.stopPropagation()}>
+            <div className="pkg-picker-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <Box size={16} color="var(--cad-accent-hover)" />
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--cad-text-main)" }}>
+                  Библиотека посадочных мест (Footprints)
+                </span>
+                <span className="device-chip-count">{availablePackages.length} доступно</span>
+              </div>
+              <button
+                type="button"
+                className="cad-modal-close-btn"
+                onClick={() => setIsPkgPickerOpen(false)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Панель поиска и фильтров монтажа */}
+            <div className="pkg-picker-searchbar">
+              <div style={{ position: "relative", flex: 1, display: "flex", alignItems: "center" }}>
+                <Search size={12} style={{ position: "absolute", left: 8, color: "var(--cad-text-dim)" }} />
+                <input
+                  type="text"
+                  value={pkgPickerSearch}
+                  onChange={(e) => setPkgPickerSearch(e.target.value)}
+                  placeholder="Поиск по названию (SOIC, DIP, 0805, QFP, TO-220...)"
+                  className="cad-input"
+                  style={{ width: "100%", padding: "4px 8px 4px 26px", fontSize: 11 }}
+                  autoFocus
+                />
+              </div>
+
+              <div style={{ display: "flex", gap: 4 }}>
+                <button
+                  type="button"
+                  className={`pkg-picker-filter-btn ${pkgPickerMountFilter === "all" ? "active" : ""}`}
+                  onClick={() => setPkgPickerMountFilter("all")}
+                >
+                  Все
+                </button>
+                <button
+                  type="button"
+                  className={`pkg-picker-filter-btn ${pkgPickerMountFilter === "smd" ? "active" : ""}`}
+                  onClick={() => setPkgPickerMountFilter("smd")}
+                >
+                  SMD
+                </button>
+                <button
+                  type="button"
+                  className={`pkg-picker-filter-btn ${pkgPickerMountFilter === "tht" ? "active" : ""}`}
+                  onClick={() => setPkgPickerMountFilter("tht")}
+                >
+                  THT
+                </button>
+              </div>
+            </div>
+
+            {/* Сетка карточек доступных корпусов с мини-превью */}
+            <div className="pkg-picker-grid">
+              {availablePackages
+                .filter((pkg) => {
+                  if (pkgPickerMountFilter !== "all" && pkg.mountType !== pkgPickerMountFilter) {
+                    return false;
+                  }
+                  if (pkgPickerSearch.trim()) {
+                    const q = pkgPickerSearch.trim().toLowerCase();
+                    const matchName = pkg.name.toLowerCase().includes(q);
+                    const matchStd = (pkg.standard || "").toLowerCase().includes(q);
+                    const matchFam = (pkg.family || "").toLowerCase().includes(q);
+                    if (!matchName && !matchStd && !matchFam) return false;
+                  }
+                  return true;
+                })
+                .map((pkg) => {
+                  const isBound = supportedPackages.some((p) => p.packageId === pkg.id);
+                  const isPadMatch = pkg.pads.length === logicalPins.length;
+
+                  return (
+                    <div
+                      key={pkg.id}
+                      className={`pkg-picker-card ${isBound ? "is-bound" : ""}`}
+                      onClick={() => !isBound && handleAddPackageBinding(pkg.id)}
+                      title={isBound ? "Этот корпус уже привязан к детали" : `Привязать корпус ${pkg.name}`}
+                    >
+                      <div className="pkg-picker-card-preview">
+                        <FootprintPreview
+                          packageDef={pkg}
+                          height={90}
+                          showDimensions={false}
+                          interactive={false}
+                          showGrid={false}
+                        />
+                      </div>
+                      <div className="pkg-picker-card-title">{pkg.name}</div>
+                      <div className="pkg-picker-card-meta">
+                        <span className={`pkg-picker-badge ${pkg.mountType}`}>
+                          {pkg.mountType.toUpperCase()}
+                        </span>
+                        <span>
+                          {pkg.bodyWidth.toFixed(1)} × {pkg.bodyHeight.toFixed(1)} мм
+                        </span>
+                      </div>
+                      <div
+                        style={{
+                          fontSize: 10,
+                          fontWeight: 600,
+                          color: isBound
+                            ? "var(--cad-text-dim)"
+                            : isPadMatch
+                            ? "var(--cad-net-active, #10b981)"
+                            : "var(--cad-text-muted)",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "space-between",
+                        }}
+                      >
+                        <span>{pkg.pads.length} площадок</span>
+                        {isBound ? (
+                          <span style={{ color: "#38bdf8" }}>✓ Привязан</span>
+                        ) : isPadMatch ? (
+                          <span>🎯 Совпадает</span>
+                        ) : null}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальный диалог: Пакетный генератор выводов */}
+      {isPinGenOpen && (
+        <div className="pkg-picker-overlay" onClick={() => setIsPinGenOpen(false)}>
+          <div className="pin-gen-box" onClick={(e) => e.stopPropagation()}>
+            <div className="pkg-picker-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <ListPlus size={16} color="var(--cad-accent-hover)" />
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--cad-text-main)" }}>
+                  Генератор серий и шин выводов
+                </span>
+              </div>
+              <button
+                type="button"
+                className="cad-modal-close-btn"
+                onClick={() => setIsPinGenOpen(false)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            {/* Вкладки режима: диапазон vs список */}
+            <div style={{ display: "flex", borderBottom: "1px solid var(--cad-border)" }}>
+              <button
+                type="button"
+                className={`pin-gen-tab-btn ${pinGenMode === "range" ? "active" : ""}`}
+                onClick={() => setPinGenMode("range")}
+              >
+                Диапазон индексов (D0..D7, 1..16)
+              </button>
+              <button
+                type="button"
+                className={`pin-gen-tab-btn ${pinGenMode === "list" ? "active" : ""}`}
+                onClick={() => setPinGenMode("list")}
+              >
+                Вставка списка текстом
+              </button>
+            </div>
+
+            <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 12 }}>
+              {pinGenMode === "range" ? (
+                <>
+                  <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Префикс имени:</label>
+                      <input
+                        type="text"
+                        value={pinGenPrefix}
+                        onChange={(e) => setPinGenPrefix(e.target.value)}
+                        placeholder="D, A, GPIO, PIN, или пусто"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Начальный №:</label>
+                      <input
+                        type="number"
+                        value={pinGenStart}
+                        onChange={(e) => setPinGenStart(parseInt(e.target.value) || 0)}
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Конечный №:</label>
+                      <input
+                        type="number"
+                        value={pinGenEnd}
+                        onChange={(e) => setPinGenEnd(parseInt(e.target.value) || 0)}
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ fontSize: 11, color: "var(--cad-text-muted)", background: "rgba(0,0,0,0.25)", padding: "6px 10px", borderRadius: 6 }}>
+                    Будет сгенерировано: <strong>{Math.abs(pinGenEnd - pinGenStart) + 1}</strong> выводов:{" "}
+                    <span style={{ color: "var(--cad-accent-hover)", fontFamily: "monospace" }}>
+                      {Array.from(
+                        { length: Math.min(6, Math.abs(pinGenEnd - pinGenStart) + 1) },
+                        (_, i) => `${pinGenPrefix}${Math.min(pinGenStart, pinGenEnd) + i}`
+                      ).join(", ")}
+                      {Math.abs(pinGenEnd - pinGenStart) + 1 > 6 ? "..." : ""}
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <div>
+                  <label className="form-label" style={{ fontSize: 10 }}>Список выводов (через запятую или перевод строки):</label>
+                  <textarea
+                    value={pinGenList}
+                    onChange={(e) => setPinGenList(e.target.value)}
+                    placeholder="VCC, GND, TXD, RXD, CTS, RTS, DTR, DSR"
+                    className="cad-input"
+                    rows={4}
+                    style={{ width: "100%", padding: "6px 8px", fontSize: 11, resize: "vertical" }}
+                  />
+                </div>
+              )}
+
+              {/* Общие настройки для генерируемых выводов */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: 10 }}>Тип сигнала по умолчанию:</label>
+                  <select
+                    value={pinGenType}
+                    onChange={(e) => setPinGenType(e.target.value as PinElectricalType)}
+                    className="cad-input"
+                    style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                  >
+                    {ELECTRICAL_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: 10 }}>Секция УГО (Unit / Вентиль):</label>
+                  <input
+                    type="text"
+                    value={pinGenUnit}
+                    onChange={(e) => setPinGenUnit(e.target.value.toUpperCase())}
+                    placeholder="A, B или пусто"
+                    maxLength={4}
+                    className="cad-input"
+                    style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="cad-modal-footer" style={{ padding: "10px 16px" }}>
+              <button
+                type="button"
+                className="cad-btn-secondary"
+                onClick={() => setIsPinGenOpen(false)}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="cad-btn-primary"
+                onClick={handleExecutePinGen}
+              >
+                <Plus size={12} />
+                <span>Создать выводы</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
