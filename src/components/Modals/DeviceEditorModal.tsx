@@ -829,7 +829,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     Готовая деталь (BOM)
                   </span>
                   <span style={{ fontSize: 9.5, color: "var(--cad-text-muted)", marginTop: 2, lineHeight: 1.25 }}>
-                    Спецификация под закупку: фиксированный артикул MPN и номинал
+                    Каталожная деталь: фиксированный артикул MPN и номинал
                   </span>
                 </div>
               </button>
@@ -864,7 +864,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               </div>
 
               {activeSubTab === "info" ? (
-                /* Вкладка 1: Основные метаданные и закупка (BOM) */
+                /* Вкладка 1: Основные метаданные и спецификация (BOM) */
                 <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
                     <div>

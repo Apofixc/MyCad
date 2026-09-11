@@ -257,6 +257,7 @@ export interface PlacedComponent {
   manufacturer?: string;
   mpn?: string;
   description?: string;
+  note?: string;
 }
 
 export interface CatalogSubcategory {

@@ -135,6 +135,8 @@ pub struct PlacedComponent {
     pub mpn: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub note: Option<String>,
 }
 
 /// Подкатегория каталога
