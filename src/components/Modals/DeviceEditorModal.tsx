@@ -1,6 +1,6 @@
 // src/components/Modals/DeviceEditorModal.tsx
 // Модальное окно создания и редактирования радиокомпонента (Device / Component)
-// Управление логическими выводами схемы, привязка корпусов и сопоставление Pin-to-Pad Mapping
+// Управление логическими выводами схемы, спецификацией BOM, электрическими параметрами и сопоставлением Pin-to-Pad Mapping
 
 import React, { useState, useEffect } from "react";
 import {
@@ -22,6 +22,8 @@ import {
   RotateCcw,
   Sparkles,
   Info,
+  ExternalLink,
+  Tag,
 } from "lucide-react";
 import { FootprintPreview } from "../SvgRenderer/FootprintPreview";
 
@@ -61,6 +63,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   onSave,
   onCreateNewPackage,
 }) => {
+  // Активная вкладка в верхней карточке (Основные & BOM / Электропараметры)
+  const [activeSubTab, setActiveSubTab] = useState<"info" | "specs">("info");
+
+  // Идентификация и метаданные
   const [id, setId] = useState<string>("");
   const [name, setName] = useState<string>("");
   const [category, setCategory] = useState<string>("ICs");
@@ -68,7 +74,19 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [designatorPrefix, setDesignatorPrefix] = useState<string>("U");
   const [description, setDescription] = useState<string>("");
   const [datasheet, setDatasheet] = useState<string>("");
+  const [manufacturer, setManufacturer] = useState<string>("");
+  const [mpn, setMpn] = useState<string>("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState<string>("");
+
+  // Электрические параметры
   const [paramValue, setParamValue] = useState<string>("");
+  const [tolerance, setTolerance] = useState<string>("");
+  const [voltageRating, setVoltageRating] = useState<string>("");
+  const [powerRating, setPowerRating] = useState<string>("");
+  const [maxCurrent, setMaxCurrent] = useState<string>("");
+  const [operatingTemp, setOperatingTemp] = useState<string>("");
+  const [customParams, setCustomParams] = useState<Array<{ key: string; value: string }>>([]);
 
   // Логические выводы схемы
   const [logicalPins, setLogicalPins] = useState<LogicalPin[]>([]);
@@ -88,7 +106,25 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       setDesignatorPrefix(initialDevice.designatorPrefix || "U");
       setDescription(initialDevice.description || "");
       setDatasheet(initialDevice.datasheet || "");
+      setManufacturer(initialDevice.manufacturer || "");
+      setMpn(initialDevice.mpn || "");
+      setTags(initialDevice.tags || []);
+      setTagInput("");
+
+      // Электропараметры
       setParamValue(initialDevice.parameters?.value || "");
+      setTolerance(initialDevice.parameters?.tolerance || "");
+      setVoltageRating(initialDevice.parameters?.voltageRating || "");
+      setPowerRating(initialDevice.parameters?.powerRating || "");
+      setMaxCurrent(initialDevice.parameters?.maxCurrent || "");
+      setOperatingTemp(initialDevice.parameters?.operatingTemp || "");
+      setCustomParams(
+        Object.entries(initialDevice.parameters?.custom || {}).map(([k, v]) => ({
+          key: k,
+          value: v,
+        }))
+      );
+
       setLogicalPins(initialDevice.logicalPins || []);
       setSupportedPackages(initialDevice.supportedPackages || []);
       setActivePackageId(
@@ -105,12 +141,24 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       setDesignatorPrefix("U");
       setDescription("");
       setDatasheet("");
+      setManufacturer("");
+      setMpn("");
+      setTags([]);
+      setTagInput("");
+
       setParamValue("");
+      setTolerance("");
+      setVoltageRating("");
+      setPowerRating("");
+      setMaxCurrent("");
+      setOperatingTemp("");
+      setCustomParams([]);
+
       setLogicalPins([
-        { id: "pin_1", name: "VCC", electricalType: "power_in" },
-        { id: "pin_2", name: "GND", electricalType: "ground" },
-        { id: "pin_3", name: "IN", electricalType: "input" },
-        { id: "pin_4", name: "OUT", electricalType: "output" },
+        { id: "pin_1", name: "VCC", electricalType: "power_in", description: "Напряжение питания" },
+        { id: "pin_2", name: "GND", electricalType: "ground", description: "Общий провод" },
+        { id: "pin_3", name: "IN", electricalType: "input", description: "Входной сигнал" },
+        { id: "pin_4", name: "OUT", electricalType: "output", description: "Выходной сигнал" },
       ]);
       const firstPkg = availablePackages[0];
       if (firstPkg) {
@@ -139,6 +187,35 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const currentPkgDef = availablePackages.find((p) => p.id === activePackageId);
   const currentMapping = supportedPackages.find((m) => m.packageId === activePackageId);
 
+  // Добавление / удаление тегов
+  const handleAddTag = () => {
+    const trimmed = tagInput.trim();
+    if (trimmed && !tags.includes(trimmed)) {
+      setTags([...tags, trimmed]);
+      setTagInput("");
+    }
+  };
+
+  const handleRemoveTag = (tagToRemove: string) => {
+    setTags(tags.filter((t) => t !== tagToRemove));
+  };
+
+  // Пользовательские параметры (Custom Key-Values)
+  const handleAddCustomParam = () => {
+    setCustomParams([...customParams, { key: "", value: "" }]);
+  };
+
+  const handleUpdateCustomParam = (index: number, key: string, value: string) => {
+    const updated = [...customParams];
+    updated[index] = { key, value };
+    setCustomParams(updated);
+  };
+
+  const handleRemoveCustomParam = (index: number) => {
+    setCustomParams(customParams.filter((_, i) => i !== index));
+  };
+
+  // Управление выводами
   const handleAddPin = () => {
     const nextNum = logicalPins.length + 1;
     setLogicalPins([
@@ -161,6 +238,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         id: `pin_${Date.now()}_vcc`,
         name: "VCC",
         electricalType: "power_in",
+        description: "Питание VCC",
       });
     }
     if (!hasGND) {
@@ -168,6 +246,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         id: `pin_${Date.now()}_gnd`,
         name: "GND",
         electricalType: "ground",
+        description: "Общий провод GND",
       });
     }
     if (newItems.length > 0) {
@@ -185,6 +264,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     );
   };
 
+  // Привязка корпусов и маппинг
   const handleAddPackageBinding = (pkgId: string) => {
     if (supportedPackages.some((p) => p.packageId === pkgId)) {
       setActivePackageId(pkgId);
@@ -193,7 +273,6 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     const pkg = availablePackages.find((p) => p.id === pkgId);
     if (!pkg) return;
 
-    // Автоматическое начальное сопоставление по порядку
     const autoMap: Record<string, string> = {};
     logicalPins.forEach((pin, idx) => {
       const pad = pkg.pads[idx];
@@ -264,6 +343,13 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       return;
     }
 
+    const customRecord: Record<string, string> = {};
+    customParams.forEach((p) => {
+      if (p.key.trim() && p.value.trim()) {
+        customRecord[p.key.trim()] = p.value.trim();
+      }
+    });
+
     const dev: DeviceDefinition = {
       id: id || `dev_${Date.now()}`,
       name: name.trim(),
@@ -272,9 +358,17 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       designatorPrefix: designatorPrefix.trim() || "U",
       description: description.trim(),
       datasheet: datasheet.trim() || undefined,
-      tags: [],
+      manufacturer: manufacturer.trim() || undefined,
+      mpn: mpn.trim() || undefined,
+      tags: tags.filter((t) => t.trim().length > 0),
       parameters: {
         value: paramValue.trim() || undefined,
+        tolerance: tolerance.trim() || undefined,
+        voltageRating: voltageRating.trim() || undefined,
+        powerRating: powerRating.trim() || undefined,
+        maxCurrent: maxCurrent.trim() || undefined,
+        operatingTemp: operatingTemp.trim() || undefined,
+        custom: Object.keys(customRecord).length > 0 ? customRecord : undefined,
       },
       logicalPins,
       supportedPackages,
@@ -284,12 +378,19 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     onClose();
   };
 
+  // Число заполненных электропараметров для индикации на вкладке
+  const filledSpecsCount = [
+    paramValue,
+    tolerance,
+    voltageRating,
+    powerRating,
+    maxCurrent,
+    operatingTemp,
+  ].filter(Boolean).length + customParams.filter((p) => p.key && p.value).length;
+
   return (
     <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={onClose}>
-      <div
-        className="device-editor-box"
-        onClick={(e) => e.stopPropagation()}
-      >
+      <div className="device-editor-box" onClick={(e) => e.stopPropagation()}>
         {/* Шапка модального окна */}
         <div className="cad-modal-header" style={{ padding: "12px 18px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
@@ -297,7 +398,16 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <Cpu size={18} color="var(--cad-accent-hover)" />
             </div>
             <div>
-              <div style={{ fontSize: "14px", fontWeight: 600, color: "var(--cad-text-main)", display: "flex", alignItems: "center", gap: 8 }}>
+              <div
+                style={{
+                  fontSize: "14px",
+                  fontWeight: 600,
+                  color: "var(--cad-text-main)",
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 8,
+                }}
+              >
                 <span>{name || "Новый компонент"}</span>
                 {designatorPrefix && (
                   <span
@@ -316,146 +426,445 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   </span>
                 )}
                 {paramValue && (
-                  <span style={{ fontSize: "11px", color: "var(--cad-text-muted)", fontWeight: 400 }}>
+                  <span style={{ fontSize: "11px", color: "var(--cad-net-active, #10b981)", fontWeight: 500 }}>
                     • {paramValue}
+                  </span>
+                )}
+                {mpn && (
+                  <span style={{ fontSize: "11px", color: "var(--cad-text-dim)", fontWeight: 400 }}>
+                    [{mpn}]
                   </span>
                 )}
               </div>
               <div style={{ fontSize: "11px", color: "var(--cad-text-muted)", marginTop: "1px" }}>
-                Связка логических выводов схемы (Pins) с посадочными местами (Footprints & Pin Mapping)
+                Спецификация радиокомпонента, схемные выводы (Pins) и посадочные места (Footprints)
               </div>
             </div>
           </div>
-          <button className="cad-modal-close-btn" onClick={onClose} title="Закрыть (Esc)">
+          <button type="button" className="cad-modal-close-btn" onClick={onClose} title="Закрыть (Esc)">
             <X size={15} />
           </button>
         </div>
 
-        {/* Тело модального окна: строгая двухколоночная CAD-сетка */}
+        {/* Тело модального окна: двухколоночная CAD-сетка */}
         <div className="device-editor-grid">
-          {/* Левая колонка: Основные метаданные и таблица выводов УГО */}
+          {/* Левая колонка: Параметры радиодетали и таблица логических выводов схемы */}
           <div className="device-col">
-            {/* Карточка 1: Параметры компонента */}
+            {/* Карточка 1: Переключаемые вкладки «Основные & BOM» и «Электропараметры» */}
             <div className="device-card" style={{ flexShrink: 0 }}>
               <div className="device-card-header">
-                <div className="device-card-title">
-                  <Info size={13} />
-                  <span>Параметры компонента</span>
+                <div className="device-tab-group">
+                  <button
+                    type="button"
+                    className={`device-tab-btn ${activeSubTab === "info" ? "active" : ""}`}
+                    onClick={() => setActiveSubTab("info")}
+                  >
+                    <Info size={12} />
+                    <span>Основные & BOM</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`device-tab-btn ${activeSubTab === "specs" ? "active" : ""}`}
+                    onClick={() => setActiveSubTab("specs")}
+                  >
+                    <Zap size={12} />
+                    <span>Электропараметры</span>
+                    {filledSpecsCount > 0 && (
+                      <span className="device-chip-count" style={{ marginLeft: 3 }}>
+                        {filledSpecsCount}
+                      </span>
+                    )}
+                  </button>
                 </div>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
-                <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Название (Part Name):</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    placeholder="напр. NE555, STM32F103"
-                    className="cad-input"
-                    style={{ width: "100%", padding: "5px 8px", fontSize: 12, fontWeight: 600 }}
-                  />
-                </div>
-                <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Префикс УГО:</label>
-                  <input
-                    type="text"
-                    value={designatorPrefix}
-                    onChange={(e) => setDesignatorPrefix(e.target.value)}
-                    placeholder="U, R, C"
-                    className="cad-input"
-                    style={{ width: "100%", padding: "5px 8px", fontSize: 12, textAlign: "center", fontWeight: "bold" }}
-                  />
-                </div>
-              </div>
+              {activeSubTab === "info" ? (
+                /* Вкладка 1: Основные метаданные и закупка (BOM) */
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 90px", gap: 8 }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Название (Part Name):</label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={(e) => setName(e.target.value)}
+                        placeholder="напр. NE555, STM32F103, 1N4148"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 12, fontWeight: 600 }}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Префикс УГО:</label>
+                      <input
+                        type="text"
+                        value={designatorPrefix}
+                        onChange={(e) => setDesignatorPrefix(e.target.value)}
+                        placeholder="U, R, C, VT"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 12, textAlign: "center", fontWeight: "bold" }}
+                      />
+                    </div>
+                  </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Категория:</label>
-                  <input
-                    type="text"
-                    list="cad-category-datalist"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder="Выберите или введите..."
-                    className="cad-input"
-                    style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
-                  />
-                  <datalist id="cad-category-datalist">
-                    <option value="Пассивные компоненты" />
-                    <option value="Полупроводники (Дискретные)" />
-                    <option value="Интегральные микросхемы (IC)" />
-                    <option value="Микроконтроллеры, DSP и ПЛИС" />
-                    <option value="Источники и управление питанием" />
-                    <option value="Разъемы и соединители" />
-                    <option value="Коммутация и электромеханика" />
-                    <option value="Оптоэлектроника и индикация" />
-                    <option value="Датчики и сенсоры" />
-                    <option value="Кварцы и тактирование" />
-                    <option value="Акустика и звук" />
-                    <option value="ВЧ, СВЧ и беспроводная связь" />
-                    <option value="Трансформаторы и моточные узлы" />
-                    <option value="ЭМС и фильтрация помех (EMI/RFI)" />
-                    <option value="Модули и мезонины" />
-                    <option value="Служебные, крепеж и механика" />
-                  </datalist>
-                </div>
-                <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Подкатегория:</label>
-                  <input
-                    type="text"
-                    value={subcategory}
-                    onChange={(e) => setSubcategory(e.target.value)}
-                    placeholder="Например: Резисторы, ОУ, LDO..."
-                    className="cad-input"
-                    style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
-                  />
-                </div>
-              </div>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Категория:</label>
+                      <input
+                        type="text"
+                        list="cad-category-datalist"
+                        value={category}
+                        onChange={(e) => setCategory(e.target.value)}
+                        placeholder="Выберите или введите..."
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                      <datalist id="cad-category-datalist">
+                        <option value="Пассивные компоненты" />
+                        <option value="Полупроводники (Дискретные)" />
+                        <option value="Интегральные микросхемы (IC)" />
+                        <option value="Микроконтроллеры, DSP и ПЛИС" />
+                        <option value="Источники и управление питанием" />
+                        <option value="Разъемы и соединители" />
+                        <option value="Коммутация и электромеханика" />
+                        <option value="Оптоэлектроника и индикация" />
+                        <option value="Датчики и сенсоры" />
+                        <option value="Кварцы и тактирование" />
+                        <option value="Акустика и звук" />
+                        <option value="ВЧ, СВЧ и беспроводная связь" />
+                        <option value="Трансформаторы и моточные узлы" />
+                        <option value="ЭМС и фильтрация помех (EMI/RFI)" />
+                        <option value="Модули и мезонины" />
+                        <option value="Служебные, крепеж и механика" />
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Подкатегория:</label>
+                      <input
+                        type="text"
+                        value={subcategory}
+                        onChange={(e) => setSubcategory(e.target.value)}
+                        placeholder="Резисторы, ОУ, LDO, MCU..."
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                    </div>
+                  </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Номинал (Value):</label>
-                  <input
-                    type="text"
-                    value={paramValue}
-                    onChange={(e) => setParamValue(e.target.value)}
-                    placeholder="10k, 0.1uF, 3.3V"
-                    className="cad-input"
-                    style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
-                  />
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Производитель (Manufacturer):</label>
+                      <input
+                        type="text"
+                        value={manufacturer}
+                        onChange={(e) => setManufacturer(e.target.value)}
+                        placeholder="TI, ST, Microchip, Yageo..."
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Артикул детали (MPN):</label>
+                      <input
+                        type="text"
+                        value={mpn}
+                        onChange={(e) => setMpn(e.target.value)}
+                        placeholder="STM32F103C8T6, NE555P..."
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11, fontFamily: "var(--cad-font-mono)" }}
+                      />
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Описание (Description):</label>
+                      <input
+                        type="text"
+                        value={description}
+                        onChange={(e) => setDescription(e.target.value)}
+                        placeholder="Краткое функциональное описание"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                    </div>
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <label className="form-label" style={{ fontSize: 10 }}>Ссылка на Datasheet (URL):</label>
+                        {datasheet && (
+                          <a
+                            href={datasheet}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 10, color: "var(--cad-accent-hover)", display: "flex", alignItems: "center", gap: 2, textDecoration: "none" }}
+                            title="Открыть документацию в браузере"
+                          >
+                            <ExternalLink size={10} /> Открыть
+                          </a>
+                        )}
+                      </div>
+                      <input
+                        type="text"
+                        value={datasheet}
+                        onChange={(e) => setDatasheet(e.target.value)}
+                        placeholder="https://... или pdf"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Теги компонента */}
+                  <div>
+                    <label className="form-label" style={{ fontSize: 10, marginBottom: 4 }}>
+                      Теги и ключевые слова (Tags):
+                    </label>
+                    <div style={{ display: "flex", gap: 6, flexWrap: "wrap", alignItems: "center", minHeight: 26 }}>
+                      {tags.map((t) => (
+                        <span key={t} className="device-tag-chip">
+                          <Tag size={10} />
+                          <span>{t}</span>
+                          <button
+                            type="button"
+                            className="device-tag-remove"
+                            onClick={() => handleRemoveTag(t)}
+                            title="Удалить тег"
+                          >
+                            <X size={11} />
+                          </button>
+                        </span>
+                      ))}
+                      <div style={{ display: "flex", gap: 4, flex: 1, minWidth: 120 }}>
+                        <input
+                          type="text"
+                          value={tagInput}
+                          onChange={(e) => setTagInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault();
+                              handleAddTag();
+                            }
+                          }}
+                          placeholder="+ тег (Enter)"
+                          className="cad-input"
+                          style={{ flex: 1, padding: "3px 6px", fontSize: 11, height: 24 }}
+                        />
+                        <button
+                          type="button"
+                          className="cad-btn-secondary"
+                          style={{ padding: "0 6px", height: 24, fontSize: 11 }}
+                          onClick={handleAddTag}
+                        >
+                          <Plus size={11} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-                <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Описание / Даташит:</label>
-                  <input
-                    type="text"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Краткое описание радиодетали"
-                    className="cad-input"
-                    style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
-                  />
+              ) : (
+                /* Вкладка 2: Электрические характеристики и предельные режимы */
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Номинал (Value):</label>
+                      <input
+                        type="text"
+                        value={paramValue}
+                        onChange={(e) => setParamValue(e.target.value)}
+                        placeholder="10k, 0.1uF, 3.3V, 16MHz"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11, fontWeight: 600, color: "var(--cad-net-active, #10b981)" }}
+                      />
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Класс точности / Допуск:</label>
+                      <input
+                        type="text"
+                        list="tolerance-presets"
+                        value={tolerance}
+                        onChange={(e) => setTolerance(e.target.value)}
+                        placeholder="±1%, ±5%, ±10%"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                      <datalist id="tolerance-presets">
+                        <option value="±0.1%" />
+                        <option value="±0.5%" />
+                        <option value="±1%" />
+                        <option value="±2%" />
+                        <option value="±5%" />
+                        <option value="±10%" />
+                        <option value="±20%" />
+                      </datalist>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Рабочее напряжение:</label>
+                      <input
+                        type="text"
+                        list="voltage-presets"
+                        value={voltageRating}
+                        onChange={(e) => setVoltageRating(e.target.value)}
+                        placeholder="3.3V, 5V, 16V, 50V, 250V"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                      <datalist id="voltage-presets">
+                        <option value="3.3V" />
+                        <option value="5V" />
+                        <option value="12V" />
+                        <option value="16V" />
+                        <option value="25V" />
+                        <option value="50V" />
+                        <option value="100V" />
+                        <option value="250V" />
+                        <option value="400V" />
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Рассеиваемая мощность:</label>
+                      <input
+                        type="text"
+                        list="power-presets"
+                        value={powerRating}
+                        onChange={(e) => setPowerRating(e.target.value)}
+                        placeholder="0.125W (1/8W), 0.25W, 1W"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                      <datalist id="power-presets">
+                        <option value="0.063W (0402)" />
+                        <option value="0.1W (0603)" />
+                        <option value="0.125W (0805)" />
+                        <option value="0.25W (1206)" />
+                        <option value="0.5W" />
+                        <option value="1W" />
+                        <option value="2W" />
+                        <option value="5W" />
+                      </datalist>
+                    </div>
+                  </div>
+
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Максимальный ток:</label>
+                      <input
+                        type="text"
+                        list="current-presets"
+                        value={maxCurrent}
+                        onChange={(e) => setMaxCurrent(e.target.value)}
+                        placeholder="20mA, 100mA, 1.5A, 10A"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                      <datalist id="current-presets">
+                        <option value="20mA" />
+                        <option value="100mA" />
+                        <option value="500mA" />
+                        <option value="1A" />
+                        <option value="1.5A" />
+                        <option value="3A" />
+                        <option value="5A" />
+                        <option value="10A" />
+                      </datalist>
+                    </div>
+                    <div>
+                      <label className="form-label" style={{ fontSize: 10 }}>Температурный диапазон:</label>
+                      <input
+                        type="text"
+                        list="temp-presets"
+                        value={operatingTemp}
+                        onChange={(e) => setOperatingTemp(e.target.value)}
+                        placeholder="-40°C..+85°C (Industrial)"
+                        className="cad-input"
+                        style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                      />
+                      <datalist id="temp-presets">
+                        <option value="-40°C..+85°C (Industrial)" />
+                        <option value="-40°C..+125°C (Automotive)" />
+                        <option value="0°C..+70°C (Commercial)" />
+                        <option value="-55°C..+150°C (Military)" />
+                      </datalist>
+                    </div>
+                  </div>
+
+                  {/* Пользовательские характеристики (Custom Key-Value) */}
+                  <div style={{ marginTop: 2 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
+                      <label className="form-label" style={{ fontSize: 10 }}>Дополнительные параметры (Custom):</label>
+                      <button
+                        type="button"
+                        className="cad-btn-secondary"
+                        style={{ fontSize: 10, padding: "1px 6px", height: 20 }}
+                        onClick={handleAddCustomParam}
+                      >
+                        <Plus size={10} /> Добавить параметр
+                      </button>
+                    </div>
+
+                    {customParams.length === 0 ? (
+                      <div style={{ fontSize: 10, color: "var(--cad-text-dim)", padding: "4px 0" }}>
+                        Нет кастомных параметров (ESR, индуктивность, частота, корпус-донор и др.).
+                      </div>
+                    ) : (
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, maxHeight: 75, overflowY: "auto" }}>
+                        {customParams.map((p, idx) => (
+                          <div key={idx} style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                            <input
+                              type="text"
+                              value={p.key}
+                              onChange={(e) => handleUpdateCustomParam(idx, e.target.value, p.value)}
+                              placeholder="Имя параметра"
+                              className="cad-input"
+                              style={{ flex: 1, padding: "2px 6px", fontSize: 11 }}
+                            />
+                            <input
+                              type="text"
+                              value={p.value}
+                              onChange={(e) => handleUpdateCustomParam(idx, p.key, e.target.value)}
+                              placeholder="Значение"
+                              className="cad-input"
+                              style={{ flex: 1, padding: "2px 6px", fontSize: 11 }}
+                            />
+                            <button
+                              type="button"
+                              className="cad-icon-btn danger"
+                              style={{ width: 20, height: 20, padding: 0 }}
+                              onClick={() => handleRemoveCustomParam(idx)}
+                              title="Удалить"
+                            >
+                              <Trash2 size={11} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
+            {/* Карточка 2: Логические выводы схемы (Logical Pins) */}
             <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
               <div className="device-card-header">
                 <div className="device-card-title">
                   <Sparkles size={13} />
-                  <span>Выводы схемы</span>
+                  <span>Выводы схемы (Pins)</span>
                   <span className="device-chip-count">{logicalPins.length} шт.</span>
                 </div>
                 <div style={{ display: "flex", gap: 6 }}>
                   <button
+                    type="button"
                     className="cad-btn-secondary"
                     style={{ fontSize: 10, padding: "2px 7px", height: 24 }}
                     onClick={handleAddPowerPins}
-                    title="Добавить VCC и GND"
+                    title="Быстро добавить VCC и GND"
                   >
                     + PWR
                   </button>
                   <button
+                    type="button"
                     className="cad-btn-secondary"
                     style={{ fontSize: 10, padding: "2px 8px", height: 24 }}
                     onClick={handleAddPin}
@@ -465,21 +874,23 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 </div>
               </div>
 
-              {/* Таблица логических выводов с вертикальной прокруткой */}
+              {/* Таблица логических выводов схемы с поддержкой Unit (секции) и описания */}
               <div className="device-table-container">
                 <table className="device-table">
                   <thead>
                     <tr>
-                      <th style={{ width: 28, textAlign: "center" }}>#</th>
-                      <th style={{ width: 110 }}>Имя вывода</th>
-                      <th>Тип сигнала</th>
-                      <th style={{ width: 32, textAlign: "center" }}></th>
+                      <th style={{ width: 24, textAlign: "center" }}>#</th>
+                      <th style={{ width: 95 }}>Имя вывода</th>
+                      <th style={{ width: 140 }}>Тип сигнала</th>
+                      <th style={{ width: 55, textAlign: "center" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секция</th>
+                      <th>Назначение / Описание</th>
+                      <th style={{ width: 28, textAlign: "center" }}></th>
                     </tr>
                   </thead>
                   <tbody>
                     {logicalPins.length === 0 ? (
                       <tr>
-                        <td colSpan={4} style={{ textAlign: "center", padding: "24px 10px", color: "#64748b" }}>
+                        <td colSpan={6} style={{ textAlign: "center", padding: "24px 10px", color: "#64748b" }}>
                           Выводы не добавлены. Нажмите «+ Добавить» для создания логического вывода.
                         </td>
                       </tr>
@@ -520,7 +931,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               />
                             </td>
                             <td>
-                              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                 <span
                                   className="pin-type-dot"
                                   style={{ backgroundColor: typeCfg.color }}
@@ -535,8 +946,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                   className="cad-input"
                                   style={{
                                     flex: 1,
-                                    padding: "3px 6px",
-                                    fontSize: 11,
+                                    padding: "2px 4px",
+                                    fontSize: 10.5,
                                     height: 24,
                                   }}
                                 >
@@ -548,8 +959,45 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 </select>
                               </div>
                             </td>
+                            <td>
+                              <input
+                                type="text"
+                                value={pin.unit || ""}
+                                onChange={(e) =>
+                                  handleUpdatePin(pin.id, { unit: e.target.value.toUpperCase() })
+                                }
+                                placeholder="A, B"
+                                maxLength={4}
+                                className="cad-input"
+                                style={{
+                                  padding: "3px 4px",
+                                  fontSize: 11,
+                                  textAlign: "center",
+                                  fontFamily: "monospace",
+                                  width: "100%",
+                                }}
+                                title="Секция УГО: A, B, C, D для многоэлементных схем"
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                value={pin.description || ""}
+                                onChange={(e) =>
+                                  handleUpdatePin(pin.id, { description: e.target.value })
+                                }
+                                placeholder="Назначение пина"
+                                className="cad-input"
+                                style={{
+                                  padding: "3px 6px",
+                                  fontSize: 10.5,
+                                  width: "100%",
+                                }}
+                              />
+                            </td>
                             <td style={{ textAlign: "center" }}>
                               <button
+                                type="button"
                                 className="cad-icon-btn danger"
                                 style={{ width: 22, height: 22, padding: 0 }}
                                 onClick={() => handleRemovePin(pin.id)}
@@ -580,6 +1028,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 </div>
                 {onCreateNewPackage && (
                   <button
+                    type="button"
                     className="cad-btn-secondary"
                     style={{ fontSize: 10, padding: "2px 8px", height: 24 }}
                     onClick={onCreateNewPackage}
@@ -610,6 +1059,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                         </span>
                       )}
                       <button
+                        type="button"
                         className="device-pkg-chip-remove"
                         onClick={(e) => {
                           e.stopPropagation();
@@ -664,6 +1114,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 {currentPkgDef && (
                   <div style={{ display: "flex", gap: 6 }}>
                     <button
+                      type="button"
                       className="cad-btn-secondary"
                       style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
                       onClick={handleAutoMapSequential}
@@ -672,6 +1123,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                       <Zap size={11} color="var(--cad-top-layer, #f59e0b)" /> Авто 1:1
                     </button>
                     <button
+                      type="button"
                       className="cad-btn-secondary"
                       style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
                       onClick={handleClearMapping}
@@ -709,7 +1161,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     <table className="device-table">
                       <thead>
                         <tr>
-                          <th style={{ width: 140 }}>Вывод схемы (УГО)</th>
+                          <th style={{ width: 155 }}>Вывод схемы (УГО)</th>
                           <th style={{ width: 24, textAlign: "center" }}></th>
                           <th>Площадка корпуса (Pad)</th>
                         </tr>
@@ -724,7 +1176,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                           return (
                             <tr key={pin.id}>
                               <td>
-                                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                                   <span
                                     className="pin-type-dot"
                                     style={{ backgroundColor: typeCfg.color }}
@@ -739,6 +1191,22 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                   >
                                     {pin.name}
                                   </span>
+                                  {pin.unit && (
+                                    <span
+                                      style={{
+                                        fontSize: 9.5,
+                                        background: "rgba(59, 130, 246, 0.15)",
+                                        color: "var(--cad-accent-hover)",
+                                        padding: "0 4px",
+                                        borderRadius: 3,
+                                        fontWeight: 600,
+                                        fontFamily: "var(--cad-font-mono)",
+                                      }}
+                                      title={`Секция ${pin.unit}`}
+                                    >
+                                      [{pin.unit}]
+                                    </span>
+                                  )}
                                   <span
                                     style={{
                                       fontSize: 10,
@@ -826,10 +1294,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
         {/* Подвал */}
         <div className="cad-modal-footer" style={{ padding: "10px 18px" }}>
-          <button className="cad-btn-secondary" onClick={onClose}>
+          <button type="button" className="cad-btn-secondary" onClick={onClose}>
             Отмена
           </button>
-          <button className="cad-btn-primary" onClick={handleSave}>
+          <button type="button" className="cad-btn-primary" onClick={handleSave}>
             <Save size={13} />
             <span>Сохранить деталь</span>
           </button>

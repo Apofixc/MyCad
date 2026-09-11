@@ -1848,10 +1848,10 @@
    Device Editor Modal: Aligned with MyCad Core Design System
    ========================================================================== */
 .device-editor-box {
-  width: 1040px;
-  max-width: 95vw;
-  height: 720px;
-  max-height: 88vh;
+  width: 1180px;
+  max-width: 96vw;
+  height: 760px;
+  max-height: 92vh;
   display: flex;
   flex-direction: column;
   background: linear-gradient(180deg, var(--cad-bg-panel) 0%, #12161f 100%);
@@ -1864,13 +1864,77 @@
 
 .device-editor-grid {
   display: grid;
-  grid-template-columns: 440px 1fr;
+  grid-template-columns: 540px 1fr;
   flex: 1;
   min-height: 0;
   gap: 16px;
   padding: 16px 20px;
   background: var(--cad-bg-deep);
   overflow: hidden;
+}
+
+.device-tab-group {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--cad-bg-deep);
+  padding: 3px;
+  border-radius: 6px;
+  border: 1px solid var(--cad-border);
+}
+
+.device-tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--cad-text-muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.12s ease;
+}
+
+.device-tab-btn:hover {
+  color: var(--cad-text-main);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.device-tab-btn.active {
+  color: #fff;
+  background: var(--cad-accent);
+  font-weight: 600;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
+}
+
+.device-tag-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(59, 130, 246, 0.12);
+  color: var(--cad-accent-hover);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  padding: 2px 7px;
+  border-radius: 4px;
+  font-size: 11px;
+}
+
+.device-tag-remove {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: var(--cad-accent-hover);
+  opacity: 0.7;
+  display: flex;
+  align-items: center;
+}
+
+.device-tag-remove:hover {
+  opacity: 1;
 }
 
 .device-col {

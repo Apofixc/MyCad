@@ -86,6 +86,10 @@ pub struct DeviceDefinition {
     pub description: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub datasheet: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub manufacturer: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub mpn: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]

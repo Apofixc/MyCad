@@ -5344,7 +5344,12 @@
       "id": "DEV_ESP32_WROOM_32",
       "name": "Wi-Fi / Bluetooth модуль ESP32-WROOM-32",
       "category": "Микроконтроллеры и модули (MCU)",
+      "subcategory": "Модули Wi-Fi / Bluetooth",
       "description": "Двухъядерный 32-битный микроконтроллер Xtensa LX6 с Wi-Fi 802.11 b/g/n и Bluetooth v4.2 BR/EDR/BLE",
+      "manufacturer": "Espressif Systems",
+      "mpn": "ESP32-WROOM-32D",
+      "datasheet": "https://www.espressif.com/sites/default/files/documentation/esp32-wroom-32d_esp32-wroom-32u_datasheet_en.pdf",
+      "tags": ["esp32", "wifi", "bluetooth", "ble", "iot", "mcu"],
       "designatorPrefix": "U",
       "symbolType": "ic",
       "supportedPackages": [
@@ -5395,7 +5400,10 @@
       ],
       "parameters": {
         "value": "ESP32-WROOM-32 (4MB Flash)",
-        "voltage": "3.3V"
+        "voltage": "3.3V",
+        "voltageRating": "3.0V - 3.6V",
+        "maxCurrent": "500mA",
+        "operatingTemp": "-40°C..+85°C"
       },
       "pins": [
         {
@@ -5423,14 +5431,17 @@
           "name": "TXD0",
           "pinType": "output"
         }
-      ],
-      "subcategory": "Модули Wi-Fi / Bluetooth"
+      ]
     },
     {
       "id": "DEV_SENSOR_DHT11",
       "name": "Датчик температуры и влажности DHT11",
       "category": "Датчики и сенсоры",
+      "subcategory": "Температура и влажность",
       "description": "Цифровой датчик относительной влажности (20-90%) и температуры (0-50°C)",
+      "manufacturer": "Aosong",
+      "mpn": "DHT11",
+      "tags": ["sensor", "temperature", "humidity", "1wire"],
       "designatorPrefix": "U",
       "symbolType": "sensor",
       "supportedPackages": [
@@ -5446,7 +5457,10 @@
       ],
       "parameters": {
         "value": "DHT11",
-        "voltage": "3.3V - 5.5V"
+        "voltage": "3.3V - 5.5V",
+        "voltageRating": "5.0V",
+        "maxCurrent": "2.5mA",
+        "operatingTemp": "0°C..+50°C"
       },
       "pins": [
         {
@@ -5469,14 +5483,17 @@
           "name": "GND",
           "pinType": "power"
         }
-      ],
-      "subcategory": "Температура и влажность"
+      ]
     },
     {
       "id": "DEV_BATTERY_CR2032",
       "name": "Держатель батарейки CR2032 3V",
       "category": "Источники и управление питанием",
+      "subcategory": "Держатели батарей и элементы",
       "description": "Батарейный отсек для литиевого дискового элемента CR2032 3V",
+      "manufacturer": "Keystone",
+      "mpn": "KEYSTONE-3003",
+      "tags": ["battery", "cr2032", "coin-cell", "power"],
       "designatorPrefix": "GB",
       "symbolType": "battery",
       "supportedPackages": [
@@ -5490,7 +5507,8 @@
       ],
       "parameters": {
         "value": "CR2032 3V 220mAh",
-        "voltage": "3.0V"
+        "voltage": "3.0V",
+        "voltageRating": "3.0V"
       },
       "pins": [
         {
@@ -5503,8 +5521,7 @@
           "name": "GND",
           "pinType": "power"
         }
-      ],
-      "subcategory": "Держатели батарей и элементы"
+      ]
     }
   ]
 }

@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
+import { useLibraryStore } from "../../stores/libraryStore";
 import { BoardImageLayer } from "../../types/cad";
 import { engineClient, resolveImageUrl } from "../../api/engineClient";
 import { notifySuccess, notifyWarning, reportError } from "../../utils/errorHandler";
@@ -52,7 +53,10 @@ export const InspectorSidebar: React.FC = () => {
     setPendingPreprocess,
     openModal,
     setEditingPackage,
+    setEditingDevice,
   } = useUiStore();
+
+  const { devices } = useLibraryStore();
 
   // Resize handler for right sidebar
   const handleMouseDown = (e: React.MouseEvent) => {
@@ -81,6 +85,13 @@ export const InspectorSidebar: React.FC = () => {
     const pkg = comp.packageDef;
     const variants = pkg?.variants || [];
     const activeVariant = variants.find((v) => v.id === comp.selectedVariantId) || variants[0];
+    const linkedDevice =
+      devices.find((d) => d.id === comp.deviceId) ||
+      devices.find(
+        (d) =>
+          d.supportedPackages.some((p) => p.packageId === comp.packageId) &&
+          (d.name === comp.name || d.parameters?.value === comp.value)
+      );
 
     return (
       <aside className="cad-inspector-panel" style={{ width: `${rightSidebarWidth}px` }}>
@@ -220,6 +231,66 @@ export const InspectorSidebar: React.FC = () => {
                   )}
                 </div>
               </div>
+
+              {/* Радиодеталь (Device / BOM Card) */}
+              {linkedDevice && (
+                <div style={{ marginTop: 2 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                    <label style={{ fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
+                      Паспорт радиодетали
+                    </label>
+                    <button
+                      type="button"
+                      className="cad-tool-btn"
+                      style={{ width: "20px", height: "20px" }}
+                      onClick={() => {
+                        setEditingDevice(linkedDevice);
+                        openModal("deviceEditor");
+                      }}
+                      title="Редактировать спецификацию радиокомпонента"
+                    >
+                      <Edit2 size={11} />
+                    </button>
+                  </div>
+                  <div
+                    style={{
+                      background: "var(--cad-bg-deep)",
+                      border: "1px solid var(--cad-border)",
+                      borderRadius: "6px",
+                      padding: "8px 10px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                      fontSize: "11px",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <span style={{ fontWeight: 600, color: "var(--cad-text-main)" }}>{linkedDevice.name}</span>
+                      {linkedDevice.mpn && (
+                        <span style={{ fontSize: "10px", color: "var(--cad-accent-hover)", fontFamily: "var(--cad-font-mono)" }}>
+                          {linkedDevice.mpn}
+                        </span>
+                      )}
+                    </div>
+                    {linkedDevice.manufacturer && (
+                      <div style={{ color: "var(--cad-text-dim)", fontSize: "10.5px" }}>
+                        Производитель: <span style={{ color: "var(--cad-text-muted)" }}>{linkedDevice.manufacturer}</span>
+                      </div>
+                    )}
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", marginTop: "3px" }}>
+                      {linkedDevice.parameters?.tolerance && (
+                        <span className="cad-badge-dim">Допуск: {linkedDevice.parameters.tolerance}</span>
+                      )}
+                      {linkedDevice.parameters?.voltageRating && (
+                        <span className="cad-badge-dim">{linkedDevice.parameters.voltageRating}</span>
+                      )}
+                      {linkedDevice.parameters?.powerRating && (
+                        <span className="cad-badge-dim">{linkedDevice.parameters.powerRating}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 

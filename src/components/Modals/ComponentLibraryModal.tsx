@@ -1462,11 +1462,19 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                       >
                         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                           <span style={{ fontWeight: "bold", color: "var(--cad-text-main)", fontSize: 13 }}>{dev.name}</span>
-                          <span style={{ fontSize: 10, background: "var(--cad-bg-surface)", color: "var(--cad-accent-hover)", padding: "2px 6px", borderRadius: 4 }}>
+                          <span style={{ fontSize: 10, background: "var(--cad-bg-surface)", color: "var(--cad-accent-hover)", padding: "2px 6px", borderRadius: 4, fontWeight: "bold" }}>
                             {dev.designatorPrefix}
                           </span>
                         </div>
-                        <span style={{ fontSize: 11, color: "var(--cad-text-muted)" }}>{dev.category}</span>
+                        <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, color: "var(--cad-text-muted)" }}>
+                          <span>{dev.category}</span>
+                          {dev.manufacturer && <span style={{ color: "var(--cad-text-dim)" }}>• {dev.manufacturer}</span>}
+                        </div>
+                        {dev.mpn && (
+                          <div style={{ fontSize: 10.5, color: "var(--cad-accent-hover)", fontFamily: "var(--cad-font-mono)", fontWeight: 500 }}>
+                            MPN: {dev.mpn}
+                          </div>
+                        )}
                         {dev.description && (
                           <span
                             style={{
@@ -1480,11 +1488,28 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                             {dev.description}
                           </span>
                         )}
-                        {dev.parameters?.value && (
-                          <span style={{ fontSize: 11, color: "var(--cad-net-active, #10b981)", fontWeight: "bold" }}>
-                            Номинал: {dev.parameters.value}
-                          </span>
-                        )}
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginTop: 2 }}>
+                          {dev.parameters?.value && (
+                            <span style={{ fontSize: 10, background: "rgba(16, 185, 129, 0.12)", color: "var(--cad-net-active, #10b981)", padding: "1px 5px", borderRadius: 3, fontWeight: "bold" }}>
+                              {dev.parameters.value}
+                            </span>
+                          )}
+                          {dev.parameters?.tolerance && (
+                            <span style={{ fontSize: 10, background: "rgba(59, 130, 246, 0.12)", color: "var(--cad-accent-hover)", padding: "1px 5px", borderRadius: 3 }}>
+                              {dev.parameters.tolerance}
+                            </span>
+                          )}
+                          {dev.parameters?.voltageRating && (
+                            <span style={{ fontSize: 10, background: "rgba(245, 158, 11, 0.12)", color: "#f59e0b", padding: "1px 5px", borderRadius: 3 }}>
+                              {dev.parameters.voltageRating}
+                            </span>
+                          )}
+                          {dev.parameters?.powerRating && (
+                            <span style={{ fontSize: 10, background: "rgba(168, 85, 247, 0.12)", color: "#c084fc", padding: "1px 5px", borderRadius: 3 }}>
+                              {dev.parameters.powerRating}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     );
                   })}
@@ -1758,21 +1783,145 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                 </div>
 
                 {activeTab === "devices" && activeDevice && (
-                  <div className="form-section" style={{ background: "var(--cad-bg-surface, #141820)", border: "1px solid var(--cad-border, #283344)" }}>
-                    <span className="section-title">Параметры компонента</span>
-                    <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
-                      <div style={{ display: "flex", justifyContent: "space-between" }}>
-                        <span style={{ color: "var(--cad-text-muted)" }}>Позиционное обозначение:</span>
-                        <span style={{ color: "var(--cad-accent-hover)", fontWeight: "bold" }}>{activeDevice.designatorPrefix}</span>
+                  <>
+                    <div className="form-section" style={{ background: "var(--cad-bg-surface, #141820)", border: "1px solid var(--cad-border, #283344)" }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <span className="section-title" style={{ fontSize: 11 }}>Спецификация и параметры</span>
+                        {activeDevice.datasheet && (
+                          <a
+                            href={activeDevice.datasheet}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{ fontSize: 10, color: "var(--cad-accent-hover)", display: "flex", alignItems: "center", gap: 3, textDecoration: "none" }}
+                            title="Открыть Datasheet"
+                          >
+                            <ExternalLink size={10} /> Datasheet
+                          </a>
+                        )}
                       </div>
-                      {activeDevice.parameters?.value && (
+
+                      <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
                         <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span style={{ color: "var(--cad-text-muted)" }}>Номинал:</span>
-                          <span style={{ color: "var(--cad-net-active, #10b981)", fontWeight: "bold" }}>{activeDevice.parameters.value}</span>
+                          <span style={{ color: "var(--cad-text-muted)" }}>Обозначение (RefDes):</span>
+                          <span style={{ color: "var(--cad-accent-hover)", fontWeight: "bold" }}>{activeDevice.designatorPrefix}</span>
+                        </div>
+                        {activeDevice.manufacturer && (
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--cad-text-muted)" }}>Производитель:</span>
+                            <span style={{ color: "var(--cad-text-main)", fontWeight: 500 }}>{activeDevice.manufacturer}</span>
+                          </div>
+                        )}
+                        {activeDevice.mpn && (
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--cad-text-muted)" }}>Артикул (MPN):</span>
+                            <span style={{ color: "var(--cad-accent-hover)", fontFamily: "var(--cad-font-mono)", fontWeight: 600 }}>{activeDevice.mpn}</span>
+                          </div>
+                        )}
+                        {activeDevice.parameters?.value && (
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--cad-text-muted)" }}>Номинал:</span>
+                            <span style={{ color: "var(--cad-net-active, #10b981)", fontWeight: "bold" }}>{activeDevice.parameters.value}</span>
+                          </div>
+                        )}
+                        {activeDevice.parameters?.tolerance && (
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--cad-text-muted)" }}>Допуск:</span>
+                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.tolerance}</span>
+                          </div>
+                        )}
+                        {activeDevice.parameters?.voltageRating && (
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--cad-text-muted)" }}>Напряжение:</span>
+                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.voltageRating}</span>
+                          </div>
+                        )}
+                        {activeDevice.parameters?.powerRating && (
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--cad-text-muted)" }}>Мощность:</span>
+                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.powerRating}</span>
+                          </div>
+                        )}
+                        {activeDevice.parameters?.maxCurrent && (
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--cad-text-muted)" }}>Макс. ток:</span>
+                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.maxCurrent}</span>
+                          </div>
+                        )}
+                        {activeDevice.parameters?.operatingTemp && (
+                          <div style={{ display: "flex", justifyContent: "space-between" }}>
+                            <span style={{ color: "var(--cad-text-muted)" }}>Температура:</span>
+                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.operatingTemp}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {activeDevice.tags && activeDevice.tags.length > 0 && (
+                        <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 4 }}>
+                          {activeDevice.tags.map((t) => (
+                            <span
+                              key={t}
+                              style={{
+                                fontSize: 9.5,
+                                background: "rgba(59, 130, 246, 0.1)",
+                                color: "var(--cad-accent-hover)",
+                                border: "1px solid rgba(59, 130, 246, 0.2)",
+                                padding: "1px 5px",
+                                borderRadius: 3,
+                              }}
+                            >
+                              #{t}
+                            </span>
+                          ))}
                         </div>
                       )}
                     </div>
-                  </div>
+
+                    {/* Схемные выводы детали */}
+                    {activeDevice.logicalPins && activeDevice.logicalPins.length > 0 && (
+                      <div className="form-section" style={{ background: "var(--cad-bg-surface, #141820)", border: "1px solid var(--cad-border, #283344)" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                          <span className="section-title" style={{ fontSize: 11 }}>Схемные выводы (Pinout)</span>
+                          <span className="lib-tree-badge">{activeDevice.logicalPins.length} шт.</span>
+                        </div>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: 110, overflowY: "auto" }}>
+                          {activeDevice.logicalPins.map((pin) => (
+                            <div
+                              key={pin.id}
+                              style={{
+                                display: "flex",
+                                alignItems: "center",
+                                justifyContent: "space-between",
+                                fontSize: 10.5,
+                                padding: "2px 4px",
+                                background: "rgba(0, 0, 0, 0.2)",
+                                borderRadius: 3,
+                              }}
+                            >
+                              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                                <span
+                                  style={{
+                                    fontFamily: "var(--cad-font-mono)",
+                                    fontWeight: "bold",
+                                    color: "var(--cad-text-main)",
+                                  }}
+                                >
+                                  {pin.name}
+                                </span>
+                                {pin.unit && (
+                                  <span style={{ fontSize: 9, color: "var(--cad-accent-hover)", background: "rgba(59, 130, 246, 0.15)", padding: "0 3px", borderRadius: 2 }}>
+                                    [{pin.unit}]
+                                  </span>
+                                )}
+                              </div>
+                              <span style={{ color: "var(--cad-text-dim)", fontSize: 10 }}>
+                                {pin.description || pin.electricalType}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
 
                 {/* Кнопки действий */}

@@ -222,6 +222,8 @@ export interface DeviceDefinition {
   designatorPrefix: string;
   description: string;
   datasheet?: string;
+  manufacturer?: string;
+  mpn?: string;
   tags: string[];
   parameters: ElectricalParameters;
   logicalPins: LogicalPin[];
