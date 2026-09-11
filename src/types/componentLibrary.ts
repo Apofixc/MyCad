@@ -253,6 +253,10 @@ export interface PlacedComponent {
   locked?: boolean;
   visible?: boolean;
   packageDef?: PackageDefinition;
+  parameters?: ElectricalParameters;
+  manufacturer?: string;
+  mpn?: string;
+  description?: string;
 }
 
 export interface CatalogSubcategory {

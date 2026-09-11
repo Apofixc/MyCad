@@ -123,13 +123,14 @@ export const App: React.FC = () => {
     }
     const posX = 20 + (existing.length % 5) * 15;
     const posY = 20 + Math.floor(existing.length / 5) * 15;
+    const initialValue = device.isBase ? "" : (device.parameters?.value || device.name);
     const newComp: PlacedComponent = {
       id: `comp_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`,
       refDes: `${prefix}${index}`,
       deviceId: device.id,
       packageId: packageDef.id,
       selectedVariantId: packageDef.variants?.[0]?.id,
-      value: device.isBase ? "" : (device.parameters?.value || device.name),
+      value: initialValue,
       name: device.name,
       package: packageDef.name,
       x: posX,
@@ -143,6 +144,18 @@ export const App: React.FC = () => {
       mirrored: false,
       locked: false,
       packageDef: packageDef,
+      parameters: {
+        value: initialValue,
+        tolerance: device.parameters?.tolerance || "",
+        voltageRating: device.parameters?.voltageRating || "",
+        powerRating: device.parameters?.powerRating || "",
+        maxCurrent: device.parameters?.maxCurrent || "",
+        operatingTemp: device.parameters?.operatingTemp || "",
+        custom: { ...(device.parameters?.custom || {}) },
+      },
+      manufacturer: device.manufacturer,
+      mpn: device.mpn,
+      description: device.description,
     };
     await addComponent(newComp);
   };

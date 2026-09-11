@@ -24,11 +24,17 @@ import {
   Trash2,
   Cpu,
   Edit2,
+  Tag,
+  Sliders,
+  Plus,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
 import { useLibraryStore } from "../../stores/libraryStore";
 import { BoardImageLayer } from "../../types/cad";
+import { ElectricalParameters } from "../../types/componentLibrary";
 import { engineClient, resolveImageUrl } from "../../api/engineClient";
 import { notifySuccess, notifyWarning, reportError } from "../../utils/errorHandler";
 
@@ -78,6 +84,13 @@ export const InspectorSidebar: React.FC = () => {
     window.addEventListener("mouseup", onMouseUp);
   };
 
+  // Состояние раскрытия расширенных секций свойств компонента
+  const [showSpecs, setShowSpecs] = React.useState(true);
+  const [showBom, setShowBom] = React.useState(false);
+  const [showCustom, setShowCustom] = React.useState(false);
+  const [newCustomKey, setNewCustomKey] = React.useState("");
+  const [newCustomVal, setNewCustomVal] = React.useState("");
+
   // Component selection inspector
   const comp = board?.data?.components?.find((c) => c.id === selectedComponentId);
   if (comp) {
@@ -92,6 +105,79 @@ export const InspectorSidebar: React.FC = () => {
           d.supportedPackages.some((p) => p.packageId === comp.packageId) &&
           (d.name === comp.name || d.parameters?.value === comp.value)
       );
+
+    const params: ElectricalParameters = comp.parameters || {
+      value: comp.value || "",
+      tolerance: linkedDevice?.parameters?.tolerance || "",
+      voltageRating: linkedDevice?.parameters?.voltageRating || "",
+      powerRating: linkedDevice?.parameters?.powerRating || "",
+      maxCurrent: linkedDevice?.parameters?.maxCurrent || "",
+      operatingTemp: linkedDevice?.parameters?.operatingTemp || "",
+      custom: { ...(linkedDevice?.parameters?.custom || {}) },
+    };
+
+    const handleUpdateParam = (field: keyof ElectricalParameters, val: string) => {
+      const currentParams = comp.parameters ? { ...comp.parameters } : { ...(linkedDevice?.parameters || {}) };
+      const updated: ElectricalParameters = {
+        ...currentParams,
+        [field]: val,
+      };
+      updateComponent({
+        ...comp,
+        parameters: updated,
+        ...(field === "value" ? { value: val } : {}),
+      });
+    };
+
+    const handleUpdateBomField = (field: "manufacturer" | "mpn" | "description", val: string) => {
+      updateComponent({
+        ...comp,
+        [field]: val,
+      });
+    };
+
+    const handleUpdateCustomAttr = (key: string, val: string) => {
+      const currentParams = comp.parameters ? { ...comp.parameters } : { ...(linkedDevice?.parameters || {}) };
+      const currentCustom = { ...(currentParams.custom || {}) };
+      currentCustom[key] = val;
+      updateComponent({
+        ...comp,
+        parameters: {
+          ...currentParams,
+          custom: currentCustom,
+        },
+      });
+    };
+
+    const handleDeleteCustomAttr = (key: string) => {
+      const currentParams = comp.parameters ? { ...comp.parameters } : { ...(linkedDevice?.parameters || {}) };
+      const currentCustom = { ...(currentParams.custom || {}) };
+      delete currentCustom[key];
+      updateComponent({
+        ...comp,
+        parameters: {
+          ...currentParams,
+          custom: currentCustom,
+        },
+      });
+    };
+
+    const handleAddCustomAttr = () => {
+      if (!newCustomKey.trim()) return;
+      handleUpdateCustomAttr(newCustomKey.trim(), newCustomVal.trim());
+      setNewCustomKey("");
+      setNewCustomVal("");
+    };
+
+    const filledSpecsCount = [
+      params.tolerance,
+      params.voltageRating,
+      params.powerRating,
+      params.maxCurrent,
+      params.operatingTemp,
+    ].filter(Boolean).length;
+
+    const customEntries = Object.entries(params.custom || {});
 
     return (
       <aside className="cad-inspector-panel" style={{ width: `${rightSidebarWidth}px` }}>
@@ -362,6 +448,422 @@ export const InspectorSidebar: React.FC = () => {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Card: Электропараметры и спецификация */}
+          <div className="cad-card-group" style={{ padding: "8px 10px" }}>
+            <div
+              className="cad-card-header"
+              style={{
+                marginBottom: showSpecs ? "8px" : 0,
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                userSelect: "none",
+              }}
+              onClick={() => setShowSpecs(!showSpecs)}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Zap size={13} color="#eab308" />
+                <span>Электропараметры</span>
+                {filledSpecsCount > 0 && (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      background: "rgba(234, 179, 8, 0.15)",
+                      color: "#facc15",
+                      padding: "1px 5px",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {filledSpecsCount}
+                  </span>
+                )}
+              </div>
+              <div style={{ color: "var(--cad-text-muted)" }}>
+                {showSpecs ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </div>
+            </div>
+
+            {showSpecs && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                {/* Допуск (Tolerance) */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" }}>
+                    <label style={{ fontSize: "10px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
+                      Допуск (Tolerance)
+                    </label>
+                    <div style={{ display: "flex", gap: "3px" }}>
+                      {["0.1%", "0.5%", "1%", "5%", "10%"].map((t) => (
+                        <button
+                          key={t}
+                          type="button"
+                          onClick={() => handleUpdateParam("tolerance", t)}
+                          style={{
+                            fontSize: "9px",
+                            padding: "1px 4px",
+                            borderRadius: "3px",
+                            border: params.tolerance === t ? "1px solid #60a5fa" : "1px solid var(--cad-border)",
+                            background: params.tolerance === t ? "rgba(59, 130, 246, 0.2)" : "rgba(255, 255, 255, 0.03)",
+                            color: params.tolerance === t ? "#93c5fd" : "var(--cad-text-dim)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {t}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="cad-field-wrap">
+                    <span className="cad-field-prefix">TOL</span>
+                    <input
+                      type="text"
+                      className="cad-modern-input"
+                      value={params.tolerance || ""}
+                      placeholder="например, 1%, 5%, 0.1%"
+                      onChange={(e) => handleUpdateParam("tolerance", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Номинальное напряжение (Voltage Rating) */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" }}>
+                    <label style={{ fontSize: "10px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
+                      Ном. напряжение
+                    </label>
+                    <div style={{ display: "flex", gap: "3px" }}>
+                      {["16V", "25V", "50V", "100V", "250V"].map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => handleUpdateParam("voltageRating", v)}
+                          style={{
+                            fontSize: "9px",
+                            padding: "1px 4px",
+                            borderRadius: "3px",
+                            border: params.voltageRating === v ? "1px solid #f59e0b" : "1px solid var(--cad-border)",
+                            background: params.voltageRating === v ? "rgba(245, 158, 11, 0.2)" : "rgba(255, 255, 255, 0.03)",
+                            color: params.voltageRating === v ? "#fcd34d" : "var(--cad-text-dim)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="cad-field-wrap">
+                    <span className="cad-field-prefix">VOLT</span>
+                    <input
+                      type="text"
+                      className="cad-modern-input"
+                      value={params.voltageRating || ""}
+                      placeholder="например, 16V, 50V, 250V"
+                      onChange={(e) => handleUpdateParam("voltageRating", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Рассеиваемая мощность (Power Rating) */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" }}>
+                    <label style={{ fontSize: "10px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
+                      Мощность
+                    </label>
+                    <div style={{ display: "flex", gap: "3px" }}>
+                      {["0.063W", "0.125W", "0.25W", "0.5W", "1W"].map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => handleUpdateParam("powerRating", p)}
+                          style={{
+                            fontSize: "9px",
+                            padding: "1px 4px",
+                            borderRadius: "3px",
+                            border: params.powerRating === p ? "1px solid #a855f7" : "1px solid var(--cad-border)",
+                            background: params.powerRating === p ? "rgba(168, 85, 247, 0.2)" : "rgba(255, 255, 255, 0.03)",
+                            color: params.powerRating === p ? "#d8b4fe" : "var(--cad-text-dim)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="cad-field-wrap">
+                    <span className="cad-field-prefix">PWR</span>
+                    <input
+                      type="text"
+                      className="cad-modern-input"
+                      value={params.powerRating || ""}
+                      placeholder="например, 0.125W, 0.25W, 1W"
+                      onChange={(e) => handleUpdateParam("powerRating", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Максимальный рабочий ток (Max Current) */}
+                <div>
+                  <label style={{ display: "block", fontSize: "10px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "3px" }}>
+                    Максимальный ток
+                  </label>
+                  <div className="cad-field-wrap">
+                    <span className="cad-field-prefix">CURR</span>
+                    <input
+                      type="text"
+                      className="cad-modern-input"
+                      value={params.maxCurrent || ""}
+                      placeholder="например, 100mA, 1A, 5A"
+                      onChange={(e) => handleUpdateParam("maxCurrent", e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Температура / ТКС / Диэлектрик */}
+                <div>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "3px" }}>
+                    <label style={{ fontSize: "10px", fontWeight: 500, color: "var(--cad-text-muted)" }}>
+                      Диэлектрик / ТКС / Температура
+                    </label>
+                    <div style={{ display: "flex", gap: "3px" }}>
+                      {["X7R", "NP0", "-40..+125°C"].map((c) => (
+                        <button
+                          key={c}
+                          type="button"
+                          onClick={() => handleUpdateParam("operatingTemp", c)}
+                          style={{
+                            fontSize: "9px",
+                            padding: "1px 4px",
+                            borderRadius: "3px",
+                            border: params.operatingTemp === c ? "1px solid #10b981" : "1px solid var(--cad-border)",
+                            background: params.operatingTemp === c ? "rgba(16, 185, 129, 0.2)" : "rgba(255, 255, 255, 0.03)",
+                            color: params.operatingTemp === c ? "#6ee7b7" : "var(--cad-text-dim)",
+                            cursor: "pointer",
+                          }}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="cad-field-wrap">
+                    <span className="cad-field-prefix">TEMP</span>
+                    <input
+                      type="text"
+                      className="cad-modern-input"
+                      value={params.operatingTemp || ""}
+                      placeholder="например, X7R, NP0, -40..+125°C"
+                      onChange={(e) => handleUpdateParam("operatingTemp", e.target.value)}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Card: Спецификация и закупка (BOM) */}
+          <div className="cad-card-group" style={{ padding: "8px 10px" }}>
+            <div
+              className="cad-card-header"
+              style={{
+                marginBottom: showBom ? "8px" : 0,
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                userSelect: "none",
+              }}
+              onClick={() => setShowBom(!showBom)}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Tag size={13} color="#10b981" />
+                <span>Спецификация BOM</span>
+                {(comp.manufacturer || comp.mpn || linkedDevice?.mpn) && (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      background: "rgba(16, 185, 129, 0.15)",
+                      color: "#34d399",
+                      padding: "1px 5px",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    BOM
+                  </span>
+                )}
+              </div>
+              <div style={{ color: "var(--cad-text-muted)" }}>
+                {showBom ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </div>
+            </div>
+
+            {showBom && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+                <div>
+                  <label style={{ display: "block", fontSize: "10px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "3px" }}>
+                    Производитель (Manufacturer)
+                  </label>
+                  <input
+                    type="text"
+                    className="cad-modern-input"
+                    value={comp.manufacturer ?? (linkedDevice?.manufacturer || "")}
+                    placeholder="например, Yageo, Murata, STMicroelectronics"
+                    onChange={(e) => handleUpdateBomField("manufacturer", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "10px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "3px" }}>
+                    Артикул производителя (MPN)
+                  </label>
+                  <input
+                    type="text"
+                    className="cad-modern-input"
+                    style={{ fontFamily: "var(--cad-font-mono)" }}
+                    value={comp.mpn ?? (linkedDevice?.mpn || "")}
+                    placeholder="например, RC0805FR-0710KL"
+                    onChange={(e) => handleUpdateBomField("mpn", e.target.value)}
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: "block", fontSize: "10px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "3px" }}>
+                    Описание компонента
+                  </label>
+                  <input
+                    type="text"
+                    className="cad-modern-input"
+                    value={comp.description ?? (linkedDevice?.description || "")}
+                    placeholder="например, SMD Резистор 10кОм ±1% 0805"
+                    onChange={(e) => handleUpdateBomField("description", e.target.value)}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Card: Пользовательские свойства и атрибуты (Custom Properties) */}
+          <div className="cad-card-group" style={{ padding: "8px 10px" }}>
+            <div
+              className="cad-card-header"
+              style={{
+                marginBottom: showCustom ? "8px" : 0,
+                cursor: "pointer",
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                userSelect: "none",
+              }}
+              onClick={() => setShowCustom(!showCustom)}
+            >
+              <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                <Sliders size={13} color="#8b5cf6" />
+                <span>Пользовательские свойства</span>
+                {customEntries.length > 0 && (
+                  <span
+                    style={{
+                      fontSize: "9px",
+                      background: "rgba(139, 92, 246, 0.15)",
+                      color: "#c4b5fd",
+                      padding: "1px 5px",
+                      borderRadius: "10px",
+                      fontWeight: 700,
+                    }}
+                  >
+                    {customEntries.length}
+                  </span>
+                )}
+              </div>
+              <div style={{ color: "var(--cad-text-muted)" }}>
+                {showCustom ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+              </div>
+            </div>
+
+            {showCustom && (
+              <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+                {/* Список уже созданных атрибутов */}
+                {customEntries.map(([k, v]) => (
+                  <div
+                    key={k}
+                    style={{
+                      display: "grid",
+                      gridTemplateColumns: "1fr 1.2fr 24px",
+                      gap: 4,
+                      alignItems: "center",
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        color: "var(--cad-text-muted)",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        whiteSpace: "nowrap",
+                        padding: "3px 4px",
+                        background: "rgba(255, 255, 255, 0.03)",
+                        borderRadius: "3px",
+                      }}
+                      title={k}
+                    >
+                      {k}
+                    </span>
+                    <input
+                      type="text"
+                      className="cad-modern-input"
+                      style={{ fontSize: "10.5px", padding: "3px 6px" }}
+                      value={v}
+                      onChange={(e) => handleUpdateCustomAttr(k, e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      className="cad-tool-btn"
+                      style={{ width: "22px", height: "22px", color: "var(--cad-danger, #ef4444)" }}
+                      onClick={() => handleDeleteCustomAttr(k)}
+                      title={`Удалить свойство "${k}"`}
+                    >
+                      <Trash2 size={11} />
+                    </button>
+                  </div>
+                ))}
+
+                {/* Строка быстрого добавления нового атрибута */}
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1.2fr 24px", gap: 4, alignItems: "center", marginTop: "3px" }}>
+                  <input
+                    type="text"
+                    className="cad-modern-input"
+                    style={{ fontSize: "10.5px", padding: "4px 6px" }}
+                    placeholder="Свойство..."
+                    value={newCustomKey}
+                    onChange={(e) => setNewCustomKey(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddCustomAttr()}
+                  />
+                  <input
+                    type="text"
+                    className="cad-modern-input"
+                    style={{ fontSize: "10.5px", padding: "4px 6px" }}
+                    placeholder="Значение..."
+                    value={newCustomVal}
+                    onChange={(e) => setNewCustomVal(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleAddCustomAttr()}
+                  />
+                  <button
+                    type="button"
+                    className="cad-tool-btn"
+                    style={{ width: "22px", height: "22px", color: "var(--cad-accent-hover, #60a5fa)" }}
+                    onClick={handleAddCustomAttr}
+                    title="Добавить свойство"
+                    disabled={!newCustomKey.trim()}
+                  >
+                    <Plus size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Card: Слой размещения (Сегментированный переключатель) */}
