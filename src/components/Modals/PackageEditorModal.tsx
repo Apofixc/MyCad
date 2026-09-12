@@ -363,6 +363,22 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       setBodyWidth(Math.max(0.5, w));
       setBodyHeight(Math.max(0.5, h));
     }
+
+    // Автоматический расчет шага выводов (pitch) по соседним площадкам
+    if (pads.length >= 2) {
+      let minPitch = Infinity;
+      for (let i = 0; i < pads.length; i++) {
+        for (let j = i + 1; j < pads.length; j++) {
+          const d = Math.hypot(pads[i].x - pads[j].x, pads[i].y - pads[j].y);
+          if (d > 0.05 && d < minPitch) {
+            minPitch = d;
+          }
+        }
+      }
+      if (minPitch !== Infinity && minPitch < 50) {
+        setPitch(Math.round(minPitch * 100) / 100);
+      }
+    }
   };
 
   // Авто-генерация шелкографического контура вокруг площадок
@@ -413,6 +429,22 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
     handleGraphicsChange([...graphics, newOutline, dotGraphic]);
     setBodyWidth(w);
     setBodyHeight(h);
+
+    // Автоматический расчет шага выводов
+    if (pads.length >= 2) {
+      let minPitch = Infinity;
+      for (let i = 0; i < pads.length; i++) {
+        for (let j = i + 1; j < pads.length; j++) {
+          const d = Math.hypot(pads[i].x - pads[j].x, pads[i].y - pads[j].y);
+          if (d > 0.05 && d < minPitch) {
+            minPitch = d;
+          }
+        }
+      }
+      if (minPitch !== Infinity && minPitch < 50) {
+        setPitch(Math.round(minPitch * 100) / 100);
+      }
+    }
   };
 
   // Сохранение корпуса
@@ -1659,17 +1691,21 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           </button>
                         </div>
 
-                        <div>
-                          <label className="form-label">Шаг выводов (Pitch, мм):</label>
-                          <input
-                            type="number"
-                            step="0.05"
-                            value={pitch}
-                            onChange={(e) => setPitch(parseFloat(e.target.value) || 0)}
-                            className="cad-input"
-                            style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                            placeholder="1.27, 2.54, 0.8..."
-                          />
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4, padding: "5px 8px", background: "rgba(15, 23, 42, 0.4)", borderRadius: 4, border: "1px solid #1e293b" }}>
+                          <span style={{ fontSize: 11, color: "var(--cad-text-muted)" }}>Шаг выводов (каталог):</span>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                            <input
+                              type="number"
+                              step="0.05"
+                              value={pitch || ""}
+                              onChange={(e) => setPitch(parseFloat(e.target.value) || 0)}
+                              className="cad-input"
+                              style={{ width: 64, padding: "2px 6px", fontSize: 11, textAlign: "right" }}
+                              placeholder="Авто"
+                              title="Паспортный шаг выводов для каталога (рассчитывается автоматически по соседним выводам)"
+                            />
+                            <span style={{ fontSize: 11, color: "var(--cad-text-secondary)" }}>мм</span>
+                          </div>
                         </div>
                       </div>
 
