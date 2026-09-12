@@ -94,6 +94,199 @@ export const PIN_SIGNAL_ROLES: SignalRoleConfig[] = [
   { value: "rf", label: "ВЧ / Радио (RF, 50 Ом)", shortLabel: "RF", color: "#f97316" },
 ];
 
+export interface UnifiedPinTypeConfig {
+  value: string;
+  label: string;
+  shortLabel: string;
+  category: string;
+  color: string;
+  electricalType: PinElectricalType;
+  pinRole: PinSignalRole;
+  isClock?: boolean;
+}
+
+export const UNIFIED_PIN_TYPES: UnifiedPinTypeConfig[] = [
+  // Пассивные и дискретные
+  {
+    value: "passive",
+    label: "Пассивный (R, C, L, контакты)",
+    shortLabel: "Пассивный",
+    category: "Пассивные и дискретные",
+    color: "#94a3b8",
+    electricalType: "passive",
+    pinRole: "passive",
+  },
+  {
+    value: "unspecified",
+    label: "Не указан / Свободный (Free)",
+    shortLabel: "Свободный",
+    category: "Пассивные и дискретные",
+    color: "#a1a1aa",
+    electricalType: "unspecified",
+    pinRole: "passive",
+  },
+
+  // Питание и земля
+  {
+    value: "power_in",
+    label: "Вход питания (VCC, VDD, +5V)",
+    shortLabel: "Вх. питания",
+    category: "Питание и земля",
+    color: "#ef4444",
+    electricalType: "power_in",
+    pinRole: "power",
+  },
+  {
+    value: "ground",
+    label: "Земля / Общий (GND, AGND)",
+    shortLabel: "Земля (GND)",
+    category: "Питание и земля",
+    color: "#10b981",
+    electricalType: "ground",
+    pinRole: "ground",
+  },
+  {
+    value: "power_out",
+    label: "Выход питания (VOUT, LDO)",
+    shortLabel: "Вых. питания",
+    category: "Питание и земля",
+    color: "#ec4899",
+    electricalType: "power_out",
+    pinRole: "power",
+  },
+
+  // Интерфейсы и сигналы
+  {
+    value: "diff_pair",
+    label: "Дифф. пара (USB D±, LAN)",
+    shortLabel: "Дифф. пара",
+    category: "Интерфейсы и сигналы",
+    color: "#6366f1",
+    electricalType: "bidirectional",
+    pinRole: "diff_pair",
+  },
+  {
+    value: "bidirectional",
+    label: "Двунаправленный (GPIO, Bus)",
+    shortLabel: "Двунаправл.",
+    category: "Интерфейсы и сигналы",
+    color: "#8b5cf6",
+    electricalType: "bidirectional",
+    pinRole: "digital",
+  },
+  {
+    value: "input",
+    label: "Вход сигнала (Input)",
+    shortLabel: "Вход (Input)",
+    category: "Интерфейсы и сигналы",
+    color: "#3b82f6",
+    electricalType: "input",
+    pinRole: "digital",
+  },
+  {
+    value: "output",
+    label: "Выход сигнала (Push-Pull)",
+    shortLabel: "Выход (Out)",
+    category: "Интерфейсы и сигналы",
+    color: "#f59e0b",
+    electricalType: "output",
+    pinRole: "digital",
+  },
+  {
+    value: "open_collector",
+    label: "Открытый сток / колл. (OD/OC)",
+    shortLabel: "Откр. сток",
+    category: "Интерфейсы и сигналы",
+    color: "#d97706",
+    electricalType: "open_collector",
+    pinRole: "digital",
+  },
+  {
+    value: "tri_state",
+    label: "Hi-Z / 3-состояние (Tri-State)",
+    shortLabel: "Hi-Z (3-сост.)",
+    category: "Интерфейсы и сигналы",
+    color: "#14b8a6",
+    electricalType: "tri_state",
+    pinRole: "digital",
+  },
+  {
+    value: "analog",
+    label: "Аналоговый (ADC/DAC/Audio)",
+    shortLabel: "Аналоговый",
+    category: "Интерфейсы и сигналы",
+    color: "#06b6d4",
+    electricalType: "bidirectional",
+    pinRole: "analog",
+  },
+  {
+    value: "clock",
+    label: "Тактирование (CLK, XTAL)",
+    shortLabel: "Тактовый (CLK)",
+    category: "Интерфейсы и сигналы",
+    color: "#ec4899",
+    electricalType: "input",
+    pinRole: "clock",
+    isClock: true,
+  },
+  {
+    value: "rf",
+    label: "ВЧ / Радио (RF 50 Ом)",
+    shortLabel: "ВЧ (RF)",
+    category: "Интерфейсы и сигналы",
+    color: "#f97316",
+    electricalType: "passive",
+    pinRole: "rf",
+  },
+
+  // Специальные
+  {
+    value: "shield",
+    label: "Экран / Корпус (Shield)",
+    shortLabel: "Экран (Shield)",
+    category: "Специальные",
+    color: "#64748b",
+    electricalType: "passive",
+    pinRole: "shield",
+  },
+  {
+    value: "no_connect",
+    label: "Не подключен (NC)",
+    shortLabel: "Не подключен",
+    category: "Специальные",
+    color: "#475569",
+    electricalType: "no_connect",
+    pinRole: "passive",
+  },
+];
+
+export const getUnifiedPinTypeKey = (pin: LogicalPin): string => {
+  if (pin.pinRole === "shield") return "shield";
+  if (pin.pinRole === "diff_pair") return "diff_pair";
+  if (pin.pinRole === "rf") return "rf";
+  if (pin.pinRole === "analog") return "analog";
+  if (pin.pinRole === "clock" || pin.isClock) return "clock";
+
+  if (pin.electricalType === "ground" || pin.pinRole === "ground") return "ground";
+  if (pin.electricalType === "power_in") return "power_in";
+  if (pin.electricalType === "power_out") return "power_out";
+  if (pin.electricalType === "open_collector") return "open_collector";
+  if (pin.electricalType === "tri_state") return "tri_state";
+  if (pin.electricalType === "no_connect") return "no_connect";
+  if (pin.electricalType === "output") return "output";
+  if (pin.electricalType === "input") return "input";
+  if (pin.electricalType === "bidirectional") return "bidirectional";
+  if (pin.electricalType === "unspecified") return "unspecified";
+
+  if (pin.pinRole === "power") return "power_in";
+  return "passive";
+};
+
+export const getUnifiedPinTypeConfig = (pin: LogicalPin): UnifiedPinTypeConfig => {
+  const key = getUnifiedPinTypeKey(pin);
+  return UNIFIED_PIN_TYPES.find((t) => t.value === key) || UNIFIED_PIN_TYPES[0];
+};
+
 interface TaxonomySubcategory {
   id: string;
   name: string;
@@ -354,6 +547,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [pinGenList, setPinGenList] = useState<string>("VCC, GND, IN, OUT");
   const [pinGenType, setPinGenType] = useState<PinElectricalType>("passive");
   const [pinGenRole, setPinGenRole] = useState<PinSignalRole>("passive");
+  const [pinGenUnifiedType, setPinGenUnifiedType] = useState<string>("passive");
   const [pinGenUnit, setPinGenUnit] = useState<string>("");
 
   // Мультивыбор выводов для групповых операций
@@ -818,8 +1012,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           labels[padNum] = pinName;
           const found = logicalPins.find((p) => p.name === pinName);
           if (found) {
-            const cfg = ELECTRICAL_TYPES.find((t) => t.value === found.electricalType);
-            if (cfg) colors[padNum] = cfg.color;
+            const uCfg = getUnifiedPinTypeConfig(found);
+            colors[padNum] = uCfg.color;
           }
         }
       });
@@ -877,6 +1071,23 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (next.has(id)) next.delete(id);
     else next.add(id);
     setSelectedPinIds(next);
+  };
+
+  const handleBulkSetUnifiedPinType = (unifiedKey: string) => {
+    if (selectedPinIds.size === 0) return;
+    const cfg = UNIFIED_PIN_TYPES.find((t) => t.value === unifiedKey);
+    if (!cfg) return;
+    setLogicalPins(
+      logicalPins.map((p) => {
+        if (!selectedPinIds.has(p.id)) return p;
+        return {
+          ...p,
+          electricalType: cfg.electricalType,
+          pinRole: cfg.pinRole,
+          ...(cfg.isClock ? { isClock: true } : {}),
+        };
+      })
+    );
   };
 
   const handleBulkSetElectricalType = (type: PinElectricalType) => {
@@ -1270,6 +1481,20 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     );
   };
 
+  // Обновление типа/роли вывода через единый селектор
+  const handleUpdateUnifiedPinType = (pinId: string, unifiedKey: string) => {
+    const cfg = UNIFIED_PIN_TYPES.find((t) => t.value === unifiedKey);
+    if (!cfg) return;
+    const updates: Partial<LogicalPin> = {
+      electricalType: cfg.electricalType,
+      pinRole: cfg.pinRole,
+    };
+    if (cfg.isClock) {
+      updates.isClock = true;
+    }
+    handleUpdatePin(pinId, updates);
+  };
+
   // Перемещение вывода вверх / вниз в списке УГО
   const handleMovePin = (pinId: string, direction: "up" | "down") => {
     const idx = logicalPins.findIndex((p) => p.id === pinId);
@@ -1320,6 +1545,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const handleExecutePinGen = () => {
     const newPins: LogicalPin[] = [];
     const timestamp = Date.now();
+    const uCfg = UNIFIED_PIN_TYPES.find((t) => t.value === pinGenUnifiedType) || UNIFIED_PIN_TYPES[0];
 
     if (pinGenMode === "range") {
       const minVal = Math.min(pinGenStart, pinGenEnd);
@@ -1329,8 +1555,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         newPins.push({
           id: `pin_${timestamp}_${i}`,
           name: pinName,
-          electricalType: pinGenType,
-          pinRole: pinGenRole,
+          electricalType: uCfg.electricalType,
+          pinRole: uCfg.pinRole,
+          ...(uCfg.isClock ? { isClock: true } : {}),
           unit: pinGenUnit.trim() ? pinGenUnit.trim().toUpperCase() : undefined,
           description: `${pinGenPrefix ? `Линия ${pinGenPrefix}` : "Вывод"} ${i}`,
         });
@@ -1345,8 +1572,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         newPins.push({
           id: `pin_${timestamp}_${idx}`,
           name: pName,
-          electricalType: pinGenType,
-          pinRole: pinGenRole,
+          electricalType: uCfg.electricalType,
+          pinRole: uCfg.pinRole,
+          ...(uCfg.isClock ? { isClock: true } : {}),
           unit: pinGenUnit.trim() ? pinGenUnit.trim().toUpperCase() : undefined,
           description: `Вывод ${pName}`,
         });
@@ -2713,26 +2941,26 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 4,
-                paddingBottom: 8,
+                gap: 3,
+                paddingBottom: 6,
                 borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
                 flexShrink: 0,
                 flexWrap: "nowrap",
-                overflow: "hidden",
+                overflowX: "auto",
               }}
             >
               <button
                 type="button"
                 className="cad-btn-primary"
-                style={{ fontSize: 10.5, padding: "3px 8px", height: 24, gap: 4, fontWeight: 600, flexShrink: 0 }}
+                style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 3, fontWeight: 600, flexShrink: 0 }}
                 onClick={handleAddPin}
                 title="Добавить новый логический вывод (Ins)"
               >
-                <Plus size={12} /> Пин
+                <Plus size={11} /> Пин
               </button>
               <select
                 className="cad-input"
-                style={{ fontSize: 10, padding: "2px 6px", height: 24, width: 106, flexShrink: 0, cursor: "pointer" }}
+                style={{ fontSize: 10, padding: "2px 4px", height: 24, width: 92, flexShrink: 0, cursor: "pointer" }}
                 defaultValue=""
                 onChange={(e) => {
                   const val = e.target.value;
@@ -2778,16 +3006,16 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <button
                 type="button"
                 className="cad-btn-secondary"
-                style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 4, flexShrink: 0 }}
+                style={{ fontSize: 10, padding: "2px 5px", height: 24, gap: 3, flexShrink: 0 }}
                 onClick={() => setIsPinGenOpen(true)}
                 title="Генератор шин и диапазонов выводов (D0..D7, 1..16, список)"
               >
-                <ListPlus size={11} color="var(--cad-accent-hover)" /> Серия...
+                <ListPlus size={11} color="var(--cad-accent-hover)" /> Серия
               </button>
               <button
                 type="button"
                 className="cad-btn-secondary"
-                style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 3, flexShrink: 0 }}
+                style={{ fontSize: 10, padding: "2px 5px", height: 24, gap: 3, flexShrink: 0 }}
                 onClick={handleAddPowerPins}
                 title="Быстро добавить выводы VCC и GND"
               >
@@ -2799,24 +3027,24 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <button
                 type="button"
                 className="cad-btn-secondary"
-                style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 4, flexShrink: 0 }}
+                style={{ fontSize: 10, padding: "2px 5px", height: 24, gap: 3, flexShrink: 0 }}
                 onClick={() => {
                   setBulkImportText("");
                   setIsBulkImportOpen(true);
                 }}
                 title="Импортировать выводы из таблицы даташита, Excel или CSV"
               >
-                <FileText size={11} color="#60a5fa" /> Импорт...
+                <FileText size={11} color="#60a5fa" /> Импорт
               </button>
               {currentPkgDef && currentPkgDef.pads && currentPkgDef.pads.length > 0 && (
                 <button
                   type="button"
                   className="cad-btn-secondary"
-                  style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 4, flexShrink: 0 }}
+                  style={{ fontSize: 10, padding: "2px 5px", height: 24, gap: 3, flexShrink: 0 }}
                   onClick={handleImportPinsFromPackage}
                   title={`Импортировать выводы из площадок корпуса ${currentPkgDef.name} (${currentPkgDef.pads.length} площадок)`}
                 >
-                  <Download size={11} color="#10b981" /> Из корпуса ({currentPkgDef.pads.length})
+                  <Download size={11} color="#10b981" /> Корпус ({currentPkgDef.pads.length})
                 </button>
               )}
 
@@ -2827,7 +3055,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 <button
                   type="button"
                   className="cad-btn-secondary"
-                  style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 3, flexShrink: 0 }}
+                  style={{ fontSize: 10, padding: "2px 5px", height: 24, gap: 3, flexShrink: 0 }}
                   onClick={handleSwapFirstTwoPins}
                   title="Поменять местами выводы 1 и 2 (Swap 1↔2)"
                 >
@@ -2929,41 +3157,25 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 <div className="pin-bulk-actions">
                   <select
                     className="cad-input"
-                    style={{ fontSize: 10.5, height: 24, padding: "2px 6px" }}
+                    style={{ fontSize: 10.5, height: 24, padding: "2px 6px", maxWidth: 140 }}
                     defaultValue=""
                     onChange={(e) => {
                       if (e.target.value) {
-                        handleBulkSetPinRole(e.target.value as PinSignalRole);
+                        handleBulkSetUnifiedPinType(e.target.value);
                         e.target.value = "";
                       }
                     }}
-                    title="Установить роль/назначение сигнала для всех выбранных выводов"
+                    title="Установить тип и назначение для всех выбранных выводов"
                   >
-                    <option value="" disabled>Роль сигнала...</option>
-                    {PIN_SIGNAL_ROLES.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
-
-                  <select
-                    className="cad-input"
-                    style={{ fontSize: 10.5, height: 24, padding: "2px 6px" }}
-                    defaultValue=""
-                    onChange={(e) => {
-                      if (e.target.value) {
-                        handleBulkSetElectricalType(e.target.value as PinElectricalType);
-                        e.target.value = "";
-                      }
-                    }}
-                    title="Установить электрический тип ERC для всех выбранных выводов"
-                  >
-                    <option value="" disabled>Тип (ERC)...</option>
-                    {ELECTRICAL_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
+                    <option value="" disabled>Тип / Назначение...</option>
+                    {["Пассивные и дискретные", "Питание и земля", "Интерфейсы и сигналы", "Специальные"].map((cat) => (
+                      <optgroup key={cat} label={cat}>
+                        {UNIFIED_PIN_TYPES.filter((t) => t.category === cat).map((t) => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
 
@@ -3015,7 +3227,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <table className="device-table" style={{ tableLayout: "fixed", width: "100%" }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 24, textAlign: "center" }}>
+                    <th style={{ width: 22, textAlign: "center" }}>
                       <input
                         type="checkbox"
                         style={{ cursor: "pointer", accentColor: "var(--cad-accent)" }}
@@ -3025,19 +3237,18 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                       />
                     </th>
                     <th style={{ width: 20, textAlign: "center" }}>#</th>
-                    <th style={{ width: 44, whiteSpace: "nowrap" }}>Вывод</th>
-                    <th style={{ width: 78, whiteSpace: "nowrap" }} title="Функциональная роль сигнала: Пассивный, Питание, Земля, Дифпара, Экран, Аналог, Цифра...">Роль</th>
-                    <th style={{ width: 80, whiteSpace: "nowrap" }} title="Электрический тип для валидации схемы (ERC): Пассивный, Вход, Выход, Питание, Земля, Hi-Z...">Тип (ERC)</th>
+                    <th style={{ width: 52, whiteSpace: "nowrap" }} title="Имя логического вывода схемы (PIN1, VBUS, GND...)">Вывод</th>
+                    <th style={{ width: 140, whiteSpace: "nowrap" }} title="Тип и функциональное назначение вывода: Пассивный, Питание, Земля, Дифпара, Аналог...">Тип / Роль</th>
                     <th style={{ width: 28, textAlign: "center", whiteSpace: "nowrap" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секц.</th>
-                    <th style={{ width: 74, textAlign: "center", whiteSpace: "nowrap" }} title="Контактная площадка активного корпуса">Площадка</th>
+                    <th style={{ width: 72, textAlign: "center", whiteSpace: "nowrap" }} title="Контактная площадка активного корпуса">Площадка</th>
                     <th style={{ whiteSpace: "nowrap" }} title="Назначение цепи / Описание">Описание</th>
-                    <th style={{ width: 110, textAlign: "center", whiteSpace: "nowrap" }} title="Инверсия (~), тактирование (CLK), перемещение и удаление">Опции</th>
+                    <th style={{ width: 96, textAlign: "center", whiteSpace: "nowrap" }} title="Инверсия (~), тактирование (CLK), перемещение и удаление">Опции</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLogicalPins.length === 0 ? (
                     <tr>
-                      <td colSpan={9} style={{ textAlign: "center", padding: "32px 10px", color: "#64748b" }}>
+                      <td colSpan={8} style={{ textAlign: "center", padding: "32px 10px", color: "#64748b" }}>
                         {logicalPins.length === 0 ? (
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                             <Sparkles size={22} color="var(--cad-accent)" opacity={0.6} />
@@ -3058,11 +3269,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     </tr>
                   ) : (
                     filteredLogicalPins.map((pin) => {
-                      const typeCfg =
-                        ELECTRICAL_TYPES.find((t) => t.value === pin.electricalType) ||
-                        ELECTRICAL_TYPES[0];
-                      const activeRole = pin.pinRole || (pin.electricalType === "passive" ? "passive" : pin.electricalType === "power_in" || pin.electricalType === "power_out" ? "power" : pin.electricalType === "ground" ? "ground" : "digital");
-                      const roleCfg = PIN_SIGNAL_ROLES.find((r) => r.value === activeRole) || PIN_SIGNAL_ROLES[0];
+                      const uCfg = getUnifiedPinTypeConfig(pin);
+                      const uKey = getUnifiedPinTypeKey(pin);
                       const isSelected = selectedPinId === pin.id;
                       const isDupe = duplicatePinNames.has(pin.name.trim().toUpperCase());
                       const pinGlobalIdx = logicalPins.findIndex((p) => p.id === pin.id);
@@ -3137,63 +3345,32 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                             </div>
                           </td>
                           <td>
-                            <div className="cad-grid-select-wrapper" style={{ padding: "1px 3px", gap: 3, width: "100%" }}>
+                            <div className="cad-grid-select-wrapper" style={{ padding: "1px 4px", gap: 4, width: "100%" }}>
                               <span
                                 style={{
-                                  width: 6,
-                                  height: 6,
+                                  width: 7,
+                                  height: 7,
                                   borderRadius: "50%",
-                                  backgroundColor: roleCfg.color,
-                                  boxShadow: `0 0 4px ${roleCfg.color}`,
+                                  backgroundColor: uCfg.color,
+                                  boxShadow: `0 0 5px ${uCfg.color}`,
                                   flexShrink: 0,
                                 }}
                               />
                               <select
-                                value={activeRole}
-                                onChange={(e) =>
-                                  handleUpdatePin(pin.id, {
-                                    pinRole: e.target.value as PinSignalRole,
-                                  })
-                                }
+                                value={uKey}
+                                onChange={(e) => handleUpdateUnifiedPinType(pin.id, e.target.value)}
                                 className="cad-grid-select"
-                                title={`Роль сигнала: ${roleCfg.label}`}
+                                title={`Тип вывода: ${uCfg.label}`}
                                 style={{ fontSize: 10, width: "100%" }}
                               >
-                                {PIN_SIGNAL_ROLES.map((r) => (
-                                  <option key={r.value} value={r.value}>
-                                    {r.shortLabel}
-                                  </option>
-                                ))}
-                              </select>
-                            </div>
-                          </td>
-                          <td>
-                            <div className="cad-grid-select-wrapper" style={{ padding: "1px 3px", gap: 3, width: "100%" }}>
-                              <span
-                                style={{
-                                  width: 6,
-                                  height: 6,
-                                  borderRadius: "50%",
-                                  backgroundColor: typeCfg.color,
-                                  boxShadow: `0 0 4px ${typeCfg.color}`,
-                                  flexShrink: 0,
-                                }}
-                              />
-                              <select
-                                value={pin.electricalType}
-                                onChange={(e) =>
-                                  handleUpdatePin(pin.id, {
-                                    electricalType: e.target.value as PinElectricalType,
-                                  })
-                                }
-                                className="cad-grid-select"
-                                title={`Тип вывода (ERC): ${typeCfg.label}\n${typeCfg.description}`}
-                                style={{ fontSize: 10, width: "100%" }}
-                              >
-                                {ELECTRICAL_TYPES.map((t) => (
-                                  <option key={t.value} value={t.value}>
-                                    {t.shortLabel}
-                                  </option>
+                                {["Пассивные и дискретные", "Питание и земля", "Интерфейсы и сигналы", "Специальные"].map((cat) => (
+                                  <optgroup key={cat} label={cat}>
+                                    {UNIFIED_PIN_TYPES.filter((t) => t.category === cat).map((t) => (
+                                      <option key={t.value} value={t.value}>
+                                        {t.shortLabel}
+                                      </option>
+                                    ))}
+                                  </optgroup>
                                 ))}
                               </select>
                             </div>
@@ -4095,34 +4272,23 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               )}
 
               {/* Общие настройки для генерируемых выводов */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 0.8fr", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1.8fr 1fr", gap: 8 }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Роль сигнала:</label>
+                  <label className="form-label" style={{ fontSize: 10 }}>Тип / Назначение:</label>
                   <select
-                    value={pinGenRole}
-                    onChange={(e) => setPinGenRole(e.target.value as PinSignalRole)}
+                    value={pinGenUnifiedType}
+                    onChange={(e) => setPinGenUnifiedType(e.target.value)}
                     className="cad-input"
                     style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
                   >
-                    {PIN_SIGNAL_ROLES.map((r) => (
-                      <option key={r.value} value={r.value}>
-                        {r.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Электрический тип (ERC):</label>
-                  <select
-                    value={pinGenType}
-                    onChange={(e) => setPinGenType(e.target.value as PinElectricalType)}
-                    className="cad-input"
-                    style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
-                  >
-                    {ELECTRICAL_TYPES.map((t) => (
-                      <option key={t.value} value={t.value}>
-                        {t.label}
-                      </option>
+                    {["Пассивные и дискретные", "Питание и земля", "Интерфейсы и сигналы", "Специальные"].map((cat) => (
+                      <optgroup key={cat} label={cat}>
+                        {UNIFIED_PIN_TYPES.filter((t) => t.category === cat).map((t) => (
+                          <option key={t.value} value={t.value}>
+                            {t.label}
+                          </option>
+                        ))}
+                      </optgroup>
                     ))}
                   </select>
                 </div>
@@ -4238,8 +4404,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                       <tr>
                         <th style={{ width: 34, textAlign: "center" }}>#</th>
                         <th style={{ width: 90 }}>Имя вывода</th>
-                        <th style={{ width: 100 }}>Роль</th>
-                        <th style={{ width: 110 }}>Тип (ERC)</th>
+                        <th style={{ width: 140 }}>Тип / Роль</th>
                         <th style={{ width: 50, textAlign: "center" }}>Секция</th>
                         <th>Описание / Примечание</th>
                       </tr>
@@ -4247,18 +4412,18 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     <tbody>
                       {parseBulkImportText(bulkImportText).length === 0 ? (
                         <tr>
-                          <td colSpan={6} style={{ textAlign: "center", padding: "24px 10px", color: "var(--cad-text-dim)" }}>
+                          <td colSpan={5} style={{ textAlign: "center", padding: "24px 10px", color: "var(--cad-text-dim)" }}>
                             Вставьте строки в поле выше для предпросмотра
                           </td>
                         </tr>
                       ) : (
                         parseBulkImportText(bulkImportText).slice(0, 50).map((item, idx) => {
-                          const typeCfg =
-                            ELECTRICAL_TYPES.find((t) => t.value === item.electricalType) ||
-                            ELECTRICAL_TYPES[0];
-                          const roleCfg =
-                            PIN_SIGNAL_ROLES.find((r) => r.value === item.pinRole) ||
-                            PIN_SIGNAL_ROLES[0];
+                          const uCfg = getUnifiedPinTypeConfig({
+                            id: "",
+                            name: item.name,
+                            electricalType: item.electricalType,
+                            pinRole: item.pinRole,
+                          });
                           return (
                             <tr key={idx}>
                               <td style={{ textAlign: "center", color: "#64748b", fontFamily: "monospace", fontSize: 10 }}>
@@ -4284,33 +4449,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                       width: 6,
                                       height: 6,
                                       borderRadius: "50%",
-                                      backgroundColor: roleCfg.color,
+                                      backgroundColor: uCfg.color,
                                     }}
                                   />
-                                  <span>{roleCfg.shortLabel}</span>
-                                </span>
-                              </td>
-                              <td>
-                                <span
-                                  style={{
-                                    display: "inline-flex",
-                                    alignItems: "center",
-                                    gap: 5,
-                                    fontSize: 10,
-                                    background: "rgba(255,255,255,0.04)",
-                                    padding: "1px 6px",
-                                    borderRadius: 3,
-                                  }}
-                                >
-                                  <span
-                                    style={{
-                                      width: 6,
-                                      height: 6,
-                                      borderRadius: "50%",
-                                      backgroundColor: typeCfg.color,
-                                    }}
-                                  />
-                                  <span>{typeCfg.shortLabel}</span>
+                                  <span>{uCfg.shortLabel}</span>
                                 </span>
                               </td>
                               <td style={{ textAlign: "center", fontFamily: "monospace", fontSize: 10.5 }}>
