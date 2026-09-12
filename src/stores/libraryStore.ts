@@ -9,6 +9,7 @@ import {
   PackageDefinition,
 } from "../types/componentLibrary";
 import { libraryApi } from "../api/libraryApi";
+import { reportError } from "../utils/errorHandler";
 
 interface LibraryState {
   categories: CatalogCategory[];
@@ -88,7 +89,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       set({ packages: updated, selectedPackageId: pkg.id, isLoading: false });
       return true;
     } catch (e: any) {
-      console.error("Ошибка сохранения посадочного места:", e);
+      reportError(e, "Ошибка сохранения посадочного места");
       set({ error: String(e), isLoading: false });
       return false;
     }
@@ -128,7 +129,7 @@ export const useLibraryStore = create<LibraryState>((set, get) => ({
       set({ devices: updated, selectedDeviceId: dev.id, isLoading: false });
       return true;
     } catch (e: any) {
-      console.error("Ошибка сохранения радиодетали:", e);
+      reportError(e, "Ошибка сохранения радиодетали");
       set({ error: String(e), isLoading: false });
       return false;
     }

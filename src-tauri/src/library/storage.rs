@@ -1,7 +1,7 @@
 // src-tauri/src/library/storage.rs
 // Сервис постоянного хранения и управления библиотекой компонентов и посадочных мест
 
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
 use crate::cad::footprint::PackageDefinition;
@@ -31,16 +31,43 @@ pub fn validate_package(pkg: &PackageDefinition) -> Result<(), String> {
     if pkg.name.trim().is_empty() {
         return Err("Название посадочного места не может быть пустым".to_string());
     }
-    if pkg.body_width <= 0.0 || pkg.body_height <= 0.0 {
+    if !pkg.body_width.is_finite()
+        || !pkg.body_height.is_finite()
+        || pkg.body_width <= 0.0
+        || pkg.body_height <= 0.0
+    {
         return Err("Габариты корпуса (ширина и высота) должны быть больше 0".to_string());
     }
+    let mut pad_numbers = HashSet::new();
     for pad in &pkg.pads {
         if pad.pad_num.trim().is_empty() {
             return Err("Номер контактной площадки не может быть пустым".to_string());
         }
-        if pad.width <= 0.0 || pad.height <= 0.0 {
-            return Err(format!("Размеры площадки #{} должны быть больше 0", pad.pad_num));
+        if !pad_numbers.insert(&pad.pad_num) {
+            return Err(format!("Номер площадки #{} повторяется", pad.pad_num));
         }
+        if !pad.width.is_finite()
+            || !pad.height.is_finite()
+            || pad.width <= 0.0
+            || pad.height <= 0.0
+        {
+            return Err(format!(
+                "Размеры площадки #{} должны быть больше 0",
+                pad.pad_num
+            ));
+        }
+        if !pad.x.is_finite() || !pad.y.is_finite() || !pad.rotation.is_finite() {
+            return Err(format!("Некорректное положение площадки #{}", pad.pad_num));
+        }
+    }
+    let mut variant_ids = HashSet::new();
+    for variant in &pkg.variants {
+        if variant.id.trim().is_empty() || !variant_ids.insert(&variant.id) {
+            return Err("ID вариантов корпуса должны быть непустыми и уникальными".into());
+        }
+    }
+    if !pkg.default_variant_id.is_empty() && !variant_ids.contains(&pkg.default_variant_id) {
+        return Err("Вариант корпуса по умолчанию не найден".into());
     }
     Ok(())
 }
@@ -62,13 +89,44 @@ pub fn validate_device(
         return Err("Префикс позиционного обозначения (напр. R, C, U) не может быть пустым".to_string());
     }
 
+    let mut pin_ids = HashSet::new();
+    for pin in &dev.logical_pins {
+        if pin.id.trim().is_empty() || !pin_ids.insert(&pin.id) || pin.name.trim().is_empty() {
+            return Err("У выводов должны быть имена и уникальные непустые ID".into());
+        }
+    }
     if let Some(lookup) = package_lookup {
+        let mut package_ids = HashSet::new();
         for pkg_map in &dev.supported_packages {
-            if lookup(&pkg_map.package_id).is_none() {
-                return Err(format!(
+            if !package_ids.insert(&pkg_map.package_id) {
+                return Err("Корпус указан несколько раз".into());
+            }
+            let pkg = lookup(&pkg_map.package_id).ok_or_else(|| {
+                format!(
                     "Связанное посадочное место '{}' не найдено в библиотеке",
                     pkg_map.package_id
-                ));
+                )
+            })?;
+            if let Some(variant_id) = &pkg_map.default_variant_id {
+                if !variant_id.is_empty() && !pkg.variants.iter().any(|v| v.id == *variant_id) {
+                    return Err(format!(
+                        "Вариант '{variant_id}' не найден в корпусе '{}'",
+                        pkg.name
+                    ));
+                }
+            }
+            let pads: HashSet<_> = pkg.pads.iter().map(|p| &p.pad_num).collect();
+            for (pin, pad) in &pkg_map.pin_map {
+                if pin.trim().is_empty() || !pads.contains(pad) {
+                    return Err(format!(
+                        "Некорректная связь вывода '{pin}' с площадкой '{pad}'"
+                    ));
+                }
+            }
+            for (pin, mapped_pads) in &pkg_map.multi_pin_map {
+                if pin.trim().is_empty() || mapped_pads.iter().any(|pad| !pads.contains(pad)) {
+                    return Err(format!("Некорректная связь вывода '{pin}' с площадками"));
+                }
             }
         }
     }
