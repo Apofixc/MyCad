@@ -30,6 +30,9 @@ import {
   ChevronDown,
   ChevronRight,
   FileText,
+  AlertTriangle,
+  CheckSquare,
+  AlignLeft,
 } from "lucide-react";
 import { useProjectStore } from "../../stores/projectStore";
 import { useUiStore } from "../../stores/uiStore";
@@ -42,10 +45,17 @@ import { notifySuccess, notifyWarning, reportError } from "../../utils/errorHand
 export const InspectorSidebar: React.FC = () => {
   const {
     board,
+    schematic,
+    activeFileType,
     selectedImageId,
     selectedComponentId,
+    selectedComponentIds,
     selectImage,
     selectComponent,
+    clearSelectedComponents,
+    batchSetComponentsVisibility,
+    batchSetComponentsLocked,
+    batchDeleteComponents,
     updateImageLayer,
     deleteImageLayer,
     updateComponent,
@@ -89,8 +99,403 @@ export const InspectorSidebar: React.FC = () => {
   const [showSpecs, setShowSpecs] = React.useState(true);
   const [showBom, setShowBom] = React.useState(false);
   const [showCustom, setShowCustom] = React.useState(false);
+  const [showPadsList, setShowPadsList] = React.useState(false);
   const [newCustomKey, setNewCustomKey] = React.useState("");
   const [newCustomVal, setNewCustomVal] = React.useState("");
+
+  // Schematic Document Inspector
+  if (activeFileType === "schematic") {
+    return (
+      <aside className="cad-inspector-panel" style={{ width: `${rightSidebarWidth}px` }}>
+        <div
+          onMouseDown={handleMouseDown}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "4px",
+            height: "100%",
+            cursor: "col-resize",
+            background: "transparent",
+            zIndex: 10,
+          }}
+        />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 12px",
+            borderBottom: "1px solid var(--cad-border)",
+            background: "var(--cad-bg-surface)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+            <Cpu size={15} color="#38bdf8" />
+            <span style={{ fontWeight: 600, fontSize: "12.5px", color: "#f8fafc", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              Схема: {schematic?.name || "Лист схемы"}
+            </span>
+          </div>
+        </div>
+
+        <div
+          className="cad-sidebar-content"
+          style={{
+            padding: "10px",
+            display: "flex",
+            flexDirection: "column",
+            gap: "9px",
+            overflowY: "auto",
+            flex: 1,
+          }}
+        >
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <FileText size={13} />
+              <span>Параметры листа схемы</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "8px", fontSize: "11px" }}>
+              <div>
+                <label style={{ display: "block", fontSize: "10px", color: "var(--cad-text-muted)", marginBottom: "3px" }}>Название документа</label>
+                <div className="cad-field-wrap">
+                  <input type="text" className="cad-modern-input" value={schematic?.name || ""} readOnly />
+                </div>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+                <div style={{ background: "rgba(0,0,0,0.2)", padding: "6px 8px", borderRadius: "5px" }}>
+                  <span style={{ fontSize: "9.5px", color: "var(--cad-text-muted)", display: "block" }}>Формат листа</span>
+                  <span style={{ fontWeight: 600, color: "var(--cad-text-main)" }}>A4 (ГОСТ 2.104)</span>
+                </div>
+                <div style={{ background: "rgba(0,0,0,0.2)", padding: "6px 8px", borderRadius: "5px" }}>
+                  <span style={{ fontSize: "9.5px", color: "var(--cad-text-muted)", display: "block" }}>Ориентация</span>
+                  <span style={{ fontWeight: 600, color: "var(--cad-text-main)" }}>Альбомная</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Zap size={13} color="#eab308" />
+              <span>Содержимое схемы</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px", fontSize: "11px" }}>
+              <div style={{ background: "rgba(0,0,0,0.2)", padding: "6px 8px", borderRadius: "5px" }}>
+                <span style={{ fontSize: "9.5px", color: "var(--cad-text-muted)", display: "block" }}>Компонентов</span>
+                <span style={{ fontWeight: 600, color: "#38bdf8" }}>{schematic?.data?.components?.length || 0} шт.</span>
+              </div>
+              <div style={{ background: "rgba(0,0,0,0.2)", padding: "6px 8px", borderRadius: "5px" }}>
+                <span style={{ fontSize: "9.5px", color: "var(--cad-text-muted)", display: "block" }}>Электроцепей (Nets)</span>
+                <span style={{ fontWeight: 600, color: "#34d399" }}>{schematic?.data?.nets?.length || 0} шт.</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "8px" }}>
+            <button
+              type="button"
+              className="cad-btn cad-btn-secondary"
+              style={{ width: "100%", justifyContent: "center", padding: "8px", fontSize: "11.5px", gap: "6px" }}
+              onClick={() => openModal("componentLibrary")}
+            >
+              <Plus size={13} />
+              <span>Добавить компонент из библиотеки</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
+
+  // Multi-component selection inspector
+  const selectedComps = (board?.data?.components || []).filter((c) =>
+    selectedComponentIds.includes(c.id)
+  );
+
+  if (selectedComps.length > 1) {
+    const allLocked = selectedComps.every((c) => c.locked);
+    const allHidden = selectedComps.every((c) => c.visible === false);
+    const topCount = selectedComps.filter((c) => c.layer !== "bottom").length;
+    const botCount = selectedComps.length - topCount;
+
+    const handleBatchFlipSide = async (targetSide: "top" | "bottom") => {
+      for (const c of selectedComps) {
+        await updateComponent({
+          ...c,
+          layer: targetSide,
+          side: targetSide,
+          mirrored: targetSide === "bottom",
+        });
+      }
+      notifySuccess(`Выбранные ${selectedComps.length} компонентов перенесены на слой ${targetSide === "top" ? "Top (Лицевая)" : "Bottom (Оборотная)"}`);
+    };
+
+    const handleBatchRotate = async (deltaDeg: number) => {
+      for (const c of selectedComps) {
+        const cur = c.rotationDeg ?? c.rotation ?? 0;
+        const next = ((cur + deltaDeg) % 360 + 360) % 360;
+        await updateComponent({ ...c, rotation: next, rotationDeg: Math.round(next * 10) / 10 });
+      }
+    };
+
+    const handleBatchSetRotation = async (targetDeg: number) => {
+      for (const c of selectedComps) {
+        await updateComponent({ ...c, rotation: targetDeg, rotationDeg: targetDeg });
+      }
+    };
+
+    const handleBatchAlign = async (type: "left" | "center-x" | "right" | "top" | "center-y" | "bottom" | "distribute-x" | "distribute-y") => {
+      if (selectedComps.length < 2) return;
+      const xs = selectedComps.map((c) => c.xMm ?? c.x ?? 0);
+      const ys = selectedComps.map((c) => c.yMm ?? c.y ?? 0);
+      const minX = Math.min(...xs);
+      const maxX = Math.max(...xs);
+      const avgX = xs.reduce((a, b) => a + b, 0) / xs.length;
+      const minY = Math.min(...ys);
+      const maxY = Math.max(...ys);
+      const avgY = ys.reduce((a, b) => a + b, 0) / ys.length;
+
+      if (type === "left") {
+        for (const c of selectedComps) await updateComponent({ ...c, x: minX, xMm: minX });
+        notifySuccess("Компоненты выровнены по левому краю");
+      } else if (type === "center-x") {
+        for (const c of selectedComps) await updateComponent({ ...c, x: avgX, xMm: avgX });
+        notifySuccess("Компоненты выровнены по горизонтальному центру");
+      } else if (type === "right") {
+        for (const c of selectedComps) await updateComponent({ ...c, x: maxX, xMm: maxX });
+        notifySuccess("Компоненты выровнены по правому краю");
+      } else if (type === "top") {
+        for (const c of selectedComps) await updateComponent({ ...c, y: minY, yMm: minY });
+        notifySuccess("Компоненты выровнены по верхнему краю");
+      } else if (type === "center-y") {
+        for (const c of selectedComps) await updateComponent({ ...c, y: avgY, yMm: avgY });
+        notifySuccess("Компоненты выровнены по вертикальному центру");
+      } else if (type === "bottom") {
+        for (const c of selectedComps) await updateComponent({ ...c, y: maxY, yMm: maxY });
+        notifySuccess("Компоненты выровнены по нижнему краю");
+      } else if (type === "distribute-x") {
+        const sorted = [...selectedComps].sort((a, b) => (a.xMm ?? a.x ?? 0) - (b.xMm ?? b.x ?? 0));
+        const span = maxX - minX;
+        const step = span / (sorted.length - 1);
+        for (let i = 0; i < sorted.length; i++) {
+          const newX = minX + i * step;
+          await updateComponent({ ...sorted[i], x: newX, xMm: newX });
+        }
+        notifySuccess("Компоненты равномерно распределены по горизонтали");
+      } else if (type === "distribute-y") {
+        const sorted = [...selectedComps].sort((a, b) => (a.yMm ?? a.y ?? 0) - (b.yMm ?? b.y ?? 0));
+        const span = maxY - minY;
+        const step = span / (sorted.length - 1);
+        for (let i = 0; i < sorted.length; i++) {
+          const newY = minY + i * step;
+          await updateComponent({ ...sorted[i], y: newY, yMm: newY });
+        }
+        notifySuccess("Компоненты равномерно распределены по вертикали");
+      }
+    };
+
+    return (
+      <aside className="cad-inspector-panel" style={{ width: `${rightSidebarWidth}px` }}>
+        <div
+          onMouseDown={handleMouseDown}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            width: "4px",
+            height: "100%",
+            cursor: "col-resize",
+            background: "transparent",
+            zIndex: 10,
+          }}
+        />
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            padding: "10px 12px",
+            borderBottom: "1px solid var(--cad-border)",
+            background: "var(--cad-bg-surface)",
+          }}
+        >
+          <div style={{ display: "flex", alignItems: "center", gap: "8px", minWidth: 0 }}>
+            <CheckSquare size={16} color="#38bdf8" />
+            <span style={{ fontWeight: 600, fontSize: "12.5px", color: "#f8fafc" }}>
+              Выбрано: {selectedComps.length} комп.
+            </span>
+          </div>
+          <button className="cad-tool-btn" onClick={clearSelectedComponents} title="Снять выделение со всех" style={{ width: 24, height: 24 }}>
+            <X size={13} />
+          </button>
+        </div>
+
+        <div className="cad-sidebar-content" style={{ padding: "10px", display: "flex", flexDirection: "column", gap: "9px", overflowY: "auto", flex: 1 }}>
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Cpu size={13} />
+              <span>Список выбранных элементов</span>
+            </div>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: "4px", maxHeight: "100px", overflowY: "auto" }}>
+              {selectedComps.map((c) => (
+                <span
+                  key={c.id}
+                  className="cad-badge-dim"
+                  style={{
+                    cursor: "pointer",
+                    background: "rgba(56, 189, 248, 0.12)",
+                    color: "#7dd3fc",
+                    border: "1px solid rgba(56, 189, 248, 0.3)",
+                  }}
+                  onClick={() => selectComponent(c.id, false)}
+                  title={`Перейти к компоненту ${c.refDes}`}
+                >
+                  {c.refDes} {c.value ? `(${c.value})` : ""}
+                </span>
+              ))}
+            </div>
+          </div>
+
+          <div className="cad-card-group" style={{ padding: "8px 10px" }}>
+            <div className="cad-card-header" style={{ marginBottom: "6px" }}>
+              <Layers size={13} />
+              <span>Слой размещения группы</span>
+            </div>
+            <div className="cad-side-toggle-group">
+              <button
+                type="button"
+                className={`cad-side-btn ${topCount === selectedComps.length ? "active" : ""}`}
+                onClick={() => handleBatchFlipSide("top")}
+              >
+                Все на Top ({topCount})
+              </button>
+              <button
+                type="button"
+                className={`cad-side-btn ${botCount === selectedComps.length ? "active" : ""}`}
+                onClick={() => handleBatchFlipSide("bottom")}
+              >
+                Все на Bottom ({botCount})
+              </button>
+            </div>
+          </div>
+
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <Move size={13} />
+              <span>Групповой поворот</span>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "6px", marginBottom: "6px" }}>
+              <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }} onClick={() => handleBatchRotate(-90)}>
+                <RotateCcw size={12} style={{ marginRight: "3px" }} /> -90°
+              </button>
+              <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }} onClick={() => handleBatchRotate(90)}>
+                <RotateCw size={12} style={{ marginRight: "3px" }} /> +90°
+              </button>
+              <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "11px", padding: "5px", justifyContent: "center" }} onClick={() => handleBatchRotate(180)}>
+                180°
+              </button>
+            </div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "4px" }}>
+              {[0, 45, 90, 180].map((deg) => (
+                <button
+                  key={deg}
+                  type="button"
+                  className="cad-btn cad-btn-secondary"
+                  style={{ fontSize: "10px", padding: "4px 2px", justifyContent: "center" }}
+                  onClick={() => handleBatchSetRotation(deg)}
+                >
+                  ={deg}°
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="cad-card-group">
+            <div className="cad-card-header">
+              <AlignLeft size={13} />
+              <span>Выравнивание и распределение</span>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: "6px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px" }}>
+                <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "10px", padding: "4px", justifyContent: "center" }} onClick={() => handleBatchAlign("left")} title="По левому краю">
+                  ⬅ Влево
+                </button>
+                <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "10px", padding: "4px", justifyContent: "center" }} onClick={() => handleBatchAlign("center-x")} title="По центру X">
+                  ⬌ Центр X
+                </button>
+                <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "10px", padding: "4px", justifyContent: "center" }} onClick={() => handleBatchAlign("right")} title="По правому краю">
+                  Вправо ➡
+                </button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "4px" }}>
+                <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "10px", padding: "4px", justifyContent: "center" }} onClick={() => handleBatchAlign("top")} title="По верхнему краю">
+                  ⬆ Вверх
+                </button>
+                <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "10px", padding: "4px", justifyContent: "center" }} onClick={() => handleBatchAlign("center-y")} title="По центру Y">
+                  ⬍ Центр Y
+                </button>
+                <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "10px", padding: "4px", justifyContent: "center" }} onClick={() => handleBatchAlign("bottom")} title="По нижнему краю">
+                  Вниз ⬇
+                </button>
+              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "4px", marginTop: "2px" }}>
+                <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "10.5px", padding: "4px", justifyContent: "center" }} onClick={() => handleBatchAlign("distribute-x")} title="Равный шаг по горизонтали">
+                  Шаг ⬌ (X)
+                </button>
+                <button type="button" className="cad-btn cad-btn-secondary" style={{ fontSize: "10.5px", padding: "4px", justifyContent: "center" }} onClick={() => handleBatchAlign("distribute-y")} title="Равный шаг по вертикали">
+                  Шаг ⬍ (Y)
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style={{ marginTop: "auto", display: "flex", flexDirection: "column", gap: "8px", paddingTop: "8px" }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+              <button
+                type="button"
+                className="cad-btn cad-btn-secondary"
+                style={{ fontSize: "11px", padding: "6px", justifyContent: "center" }}
+                onClick={() => batchSetComponentsLocked(selectedComponentIds, !allLocked)}
+              >
+                {allLocked ? <Unlock size={12} style={{ marginRight: 4 }} /> : <Lock size={12} style={{ marginRight: 4 }} />}
+                <span>{allLocked ? "Разблокир. все" : "Заблокир. все"}</span>
+              </button>
+              <button
+                type="button"
+                className="cad-btn cad-btn-secondary"
+                style={{ fontSize: "11px", padding: "6px", justifyContent: "center" }}
+                onClick={() => batchSetComponentsVisibility(selectedComponentIds, allHidden)}
+              >
+                {allHidden ? <Eye size={12} style={{ marginRight: 4 }} /> : <EyeOff size={12} style={{ marginRight: 4 }} />}
+                <span>{allHidden ? "Показать все" : "Скрыть все"}</span>
+              </button>
+            </div>
+
+            <button
+              type="button"
+              className="cad-btn cad-btn-secondary"
+              style={{
+                width: "100%",
+                justifyContent: "center",
+                padding: "7px 10px",
+                fontSize: "11.5px",
+                color: "#f87171",
+                borderColor: "rgba(239, 68, 68, 0.25)",
+              }}
+              onClick={() => {
+                if (window.confirm(`Удалить выбранные ${selectedComps.length} компонентов с платы?`)) {
+                  batchDeleteComponents(selectedComponentIds);
+                }
+              }}
+            >
+              <Trash2 size={13} style={{ marginRight: "4px" }} />
+              <span>Удалить выбранные ({selectedComps.length})</span>
+            </button>
+          </div>
+        </div>
+      </aside>
+    );
+  }
 
   // Component selection inspector
   const comp = board?.data?.components?.find((c) => c.id === selectedComponentId);
@@ -108,6 +513,12 @@ export const InspectorSidebar: React.FC = () => {
       );
 
     const isBaseComponent = linkedDevice ? Boolean(linkedDevice.isBase) : !comp.deviceId;
+    const isDuplicateRefDes = Boolean(
+      comp.refDes.trim() &&
+      (board?.data?.components || []).some(
+        (c) => c.id !== comp.id && c.refDes.trim().toLowerCase() === comp.refDes.trim().toLowerCase()
+      )
+    );
 
     const params: ElectricalParameters = comp.parameters || {
       value: comp.value || "",
@@ -282,15 +693,45 @@ export const InspectorSidebar: React.FC = () => {
                 <label style={{ display: "block", fontSize: "10.5px", fontWeight: 500, color: "var(--cad-text-muted)", marginBottom: "4px" }}>
                   Позиционное обозначение
                 </label>
-                <div className="cad-field-wrap">
-                  <span className="cad-field-prefix">ID</span>
+                <div className="cad-field-wrap" style={{ borderColor: isDuplicateRefDes ? "#ef4444" : undefined }}>
+                  <span className="cad-field-prefix" style={{ color: isDuplicateRefDes ? "#ef4444" : undefined }}>ID</span>
                   <input
                     type="text"
                     className="cad-modern-input"
                     value={comp.refDes}
                     onChange={(e) => updateComponent({ ...comp, refDes: e.target.value })}
                   />
+                  {isDuplicateRefDes && (
+                    <span title="Обозначение уже занято другим компонентом!" style={{ display: "inline-flex", alignItems: "center", marginRight: "6px", flexShrink: 0 }}>
+                      <AlertTriangle size={14} color="#ef4444" />
+                    </span>
+                  )}
                 </div>
+                {isDuplicateRefDes && (
+                  <div style={{ fontSize: "10px", color: "#f87171", marginTop: "3px", display: "flex", alignItems: "center", gap: "4px" }}>
+                    <span>⚠️ Внимание: позиционное обозначение уже занято на плате</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Отображение надписей маркировки на плате */}
+              <div style={{ display: "flex", gap: "10px", padding: "6px 8px", background: "rgba(0,0,0,0.2)", borderRadius: "6px" }}>
+                <label style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10.5px", color: "var(--cad-text-muted)", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={comp.showRefDes !== false}
+                    onChange={(e) => updateComponent({ ...comp, showRefDes: e.target.checked })}
+                  />
+                  <span>Шелкография ID</span>
+                </label>
+                <label style={{ display: "flex", alignItems: "center", gap: "5px", fontSize: "10.5px", color: "var(--cad-text-muted)", cursor: "pointer" }}>
+                  <input
+                    type="checkbox"
+                    checked={comp.showValue !== false}
+                    onChange={(e) => updateComponent({ ...comp, showValue: e.target.checked })}
+                  />
+                  <span>Шелкография номинала</span>
+                </label>
               </div>
 
               {/* Номинал / Значение */}
@@ -1122,10 +1563,44 @@ export const InspectorSidebar: React.FC = () => {
               </div>
             </div>
 
-            {/* Заголовок угла */}
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "6px" }}>
-              <span style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--cad-text-muted)" }}>Поворот:</span>
-              <span className="cad-badge-dim">{comp.rotationDeg ?? comp.rotation ?? 0}°</span>
+            {/* Заголовок угла и точный ввод */}
+            <div style={{ marginBottom: "6px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "4px" }}>
+                <span style={{ fontSize: "10.5px", fontWeight: 600, color: "var(--cad-text-muted)" }}>Угол поворота:</span>
+                <span className="cad-badge-dim">{comp.rotationDeg ?? comp.rotation ?? 0}°</span>
+              </div>
+              <div className="cad-field-wrap">
+                <span className="cad-field-prefix">∠</span>
+                <input
+                  type="number"
+                  step="1"
+                  min="0"
+                  max="360"
+                  className="cad-modern-input"
+                  value={comp.rotationDeg ?? comp.rotation ?? 0}
+                  onChange={(e) => {
+                    const raw = parseFloat(e.target.value) || 0;
+                    const normalized = ((raw % 360) + 360) % 360;
+                    updateComponent({ ...comp, rotation: normalized, rotationDeg: Math.round(normalized * 10) / 10 });
+                  }}
+                />
+                <span className="cad-field-suffix">°</span>
+              </div>
+            </div>
+
+            {/* Быстрые угловые пресеты */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: "4px", marginBottom: "6px" }}>
+              {[0, 45, 90, 180, 270].map((deg) => (
+                <button
+                  key={deg}
+                  type="button"
+                  className={`cad-btn cad-btn-secondary ${Math.round(comp.rotationDeg ?? comp.rotation ?? 0) === deg ? "active" : ""}`}
+                  style={{ fontSize: "10px", padding: "4px 2px", justifyContent: "center" }}
+                  onClick={() => updateComponent({ ...comp, rotation: deg, rotationDeg: deg })}
+                >
+                  {deg}°
+                </button>
+              ))}
             </div>
 
             {/* Быстрые кнопки поворота */}
@@ -1200,6 +1675,77 @@ export const InspectorSidebar: React.FC = () => {
                   ))}
                 </select>
               </div>
+            </div>
+          )}
+
+          {/* Card: Выводы и контактные площадки */}
+          {pkg && pkg.pads && pkg.pads.length > 0 && (
+            <div className="cad-card-group" style={{ padding: "8px 10px" }}>
+              <div
+                className="cad-card-header"
+                style={{
+                  marginBottom: showPadsList ? "8px" : 0,
+                  cursor: "pointer",
+                  display: "flex",
+                  justifyContent: "space-between",
+                  alignItems: "center",
+                  userSelect: "none",
+                }}
+                onClick={() => setShowPadsList(!showPadsList)}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                  <Layers size={13} color="#38bdf8" />
+                  <span>Контактные площадки</span>
+                  <span className="cad-badge-dim">{pkg.pads.length} шт.</span>
+                </div>
+                <div style={{ color: "var(--cad-text-muted)" }}>
+                  {showPadsList ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+                </div>
+              </div>
+
+              {showPadsList && (
+                <div style={{ display: "flex", flexDirection: "column", gap: "4px", maxHeight: "180px", overflowY: "auto" }}>
+                  <table style={{ width: "100%", fontSize: "10.5px", borderCollapse: "collapse" }}>
+                    <thead>
+                      <tr style={{ color: "var(--cad-text-muted)", borderBottom: "1px solid var(--cad-border)", textAlign: "left" }}>
+                        <th style={{ padding: "3px 4px" }}>№</th>
+                        <th style={{ padding: "3px 4px" }}>Сигнал</th>
+                        <th style={{ padding: "3px 4px" }}>Тип</th>
+                        <th style={{ padding: "3px 4px", textAlign: "right" }}>X, Y (мм)</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {pkg.pads.map((pad) => {
+                        const mapping = linkedDevice?.supportedPackages?.find((sp) => sp.packageId === comp.packageId);
+                        let mappedPinName = pad.name || "";
+                        if (mapping) {
+                          const entry = Object.entries(mapping.pinMap).find(([_, padNum]) => padNum === pad.padNum);
+                          if (entry) mappedPinName = entry[0];
+                        }
+                        const isTht = Boolean(pad.drillDiameter && pad.drillDiameter > 0);
+                        return (
+                          <tr key={pad.padNum} style={{ borderBottom: "1px solid rgba(255,255,255,0.03)" }}>
+                            <td style={{ padding: "3px 4px", fontWeight: 700, color: "var(--cad-accent-hover)" }}>
+                              {pad.padNum}
+                            </td>
+                            <td style={{ padding: "3px 4px", color: mappedPinName ? "var(--cad-text-main)" : "var(--cad-text-dim)" }}>
+                              {mappedPinName || "—"}
+                            </td>
+                            <td style={{ padding: "3px 4px" }}>
+                              <span style={{ fontSize: "9px", padding: "1px 4px", borderRadius: "3px", background: isTht ? "rgba(217, 119, 6, 0.2)" : "rgba(59, 130, 246, 0.2)", color: isTht ? "#fbbf24" : "#93c5fd" }}>
+                                {isTht ? "THT" : "SMD"}
+                              </span>
+                            </td>
+                            <td style={{ padding: "3px 4px", textAlign: "right", fontFamily: "var(--cad-font-mono)", fontSize: "9.5px", color: "var(--cad-text-muted)" }}>
+                              {pad.x.toFixed(1)}, {pad.y.toFixed(1)}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
           )}
 

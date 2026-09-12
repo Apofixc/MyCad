@@ -1764,33 +1764,48 @@ function drawPlacedComponents(
     // -------------------------------------------------------------------------
     // 4. Позиционное обозначение и номинал (RefDes & Value)
     // -------------------------------------------------------------------------
-    const labelText = comp.value ? `${comp.refDes} · ${comp.value}` : comp.refDes;
-    const fontPx = Math.max(10, Math.min(13, 1.4 * pxPerMm));
-    ctx.font = `bold ${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
-    const textWidth = ctx.measureText(labelText).width;
-    const badgeW = textWidth + 10;
-    const badgeH = fontPx + 6;
-    // Размещаем над корпусом с достаточным зазором, чтобы не перекрывать маркер вращения
-    const badgeY = -bodyH / 2 - badgeH / 2 - 6;
+    const showRef = comp.showRefDes !== false;
+    const showVal = comp.showValue !== false && Boolean(comp.value);
+    const labelText = showRef && showVal
+      ? `${comp.refDes} · ${comp.value}`
+      : showRef
+      ? comp.refDes
+      : showVal
+      ? (comp.value || "")
+      : "";
 
-    ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
-    ctx.strokeStyle = isSelected ? "#38bdf8" : "rgba(255, 255, 255, 0.2)";
-    ctx.lineWidth = isSelected ? 1.5 : 1;
+    let badgeW = 0;
+    let badgeH = 0;
+    let badgeY = -bodyH / 2 - 12;
 
-    if (typeof (ctx as any).roundRect === "function") {
-      ctx.beginPath();
-      (ctx as any).roundRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 4);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      ctx.fillRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH);
-      ctx.strokeRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH);
+    if (labelText) {
+      const fontPx = Math.max(10, Math.min(13, 1.4 * pxPerMm));
+      ctx.font = `bold ${fontPx}px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif`;
+      const textWidth = ctx.measureText(labelText).width;
+      badgeW = textWidth + 10;
+      badgeH = fontPx + 6;
+      // Размещаем над корпусом с достаточным зазором, чтобы не перекрывать маркер вращения
+      badgeY = -bodyH / 2 - badgeH / 2 - 6;
+
+      ctx.fillStyle = "rgba(15, 23, 42, 0.92)";
+      ctx.strokeStyle = isSelected ? "#38bdf8" : "rgba(255, 255, 255, 0.2)";
+      ctx.lineWidth = isSelected ? 1.5 : 1;
+
+      if (typeof (ctx as any).roundRect === "function") {
+        ctx.beginPath();
+        (ctx as any).roundRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH, 4);
+        ctx.fill();
+        ctx.stroke();
+      } else {
+        ctx.fillRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH);
+        ctx.strokeRect(-badgeW / 2, badgeY - badgeH / 2, badgeW, badgeH);
+      }
+
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillStyle = isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#ffffff";
+      ctx.fillText(labelText, 0, badgeY);
     }
-
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillStyle = isSelected ? "var(--cad-accent-hover, #60a5fa)" : "#ffffff";
-    ctx.fillText(labelText, 0, badgeY);
 
     // -------------------------------------------------------------------------
     // 5. Рамка и маркеры выделения (Selection Box & Handles)
@@ -1822,10 +1837,11 @@ function drawPlacedComponents(
         ctx.strokeRect(cx - handleSize / 2, cy - handleSize / 2, handleSize, handleSize);
       });
 
-      // Маркер поворота выносим НАД бейджем обозначения, чтобы они не накладывались
-      const rotHandleY = badgeY - badgeH / 2 - 10;
+      // Маркер поворота выносим НАД бейджем обозначения (или над корпусом, если бейдж скрыт)
+      const startRotY = labelText ? badgeY - badgeH / 2 : -boxH / 2;
+      const rotHandleY = startRotY - 12;
       ctx.beginPath();
-      ctx.moveTo(0, badgeY - badgeH / 2);
+      ctx.moveTo(0, startRotY);
       ctx.lineTo(0, rotHandleY);
       ctx.strokeStyle = "#38bdf8";
       ctx.lineWidth = 1.5;

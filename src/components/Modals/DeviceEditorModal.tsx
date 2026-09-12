@@ -529,6 +529,51 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           { id: `pin_${Date.now()}_out`, name: "OUT", electricalType: "output", description: "Выходной сигнал" },
         ]);
         break;
+      case "i2c_eeprom":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_a0`, name: "A0", electricalType: "input", description: "Адресный вход A0" },
+          { id: `pin_${Date.now()}_a1`, name: "A1", electricalType: "input", description: "Адресный вход A1" },
+          { id: `pin_${Date.now()}_a2`, name: "A2", electricalType: "input", description: "Адресный вход A2" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий провод GND" },
+          { id: `pin_${Date.now()}_sda`, name: "SDA", electricalType: "bidirectional", description: "Линия данных I2C SDA" },
+          { id: `pin_${Date.now()}_scl`, name: "SCL", electricalType: "input", isClock: true, description: "Тактирование I2C SCL" },
+          { id: `pin_${Date.now()}_wp`, name: "WP", electricalType: "input", isInverted: true, description: "Защита записи ~WP" },
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Питание VCC" },
+        ]);
+        break;
+      case "spi_flash":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_cs`, name: "CS#", electricalType: "input", isInverted: true, description: "Выбор чипа ~CS" },
+          { id: `pin_${Date.now()}_so`, name: "SO", electricalType: "output", description: "Данные MISO/SO" },
+          { id: `pin_${Date.now()}_wp`, name: "WP#", electricalType: "input", isInverted: true, description: "Защита записи ~WP" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий GND" },
+          { id: `pin_${Date.now()}_si`, name: "SI", electricalType: "input", description: "Данные MOSI/SI" },
+          { id: `pin_${Date.now()}_sck`, name: "SCK", electricalType: "input", isClock: true, description: "Тактирование SPI SCK" },
+          { id: `pin_${Date.now()}_hold`, name: "HOLD#", electricalType: "input", isInverted: true, description: "Удержание ~HOLD" },
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Питание VCC" },
+        ]);
+        break;
+      case "dcdc_buck":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_vin`, name: "VIN", electricalType: "power_in", description: "Входное напряжение" },
+          { id: `pin_${Date.now()}_en`, name: "EN", electricalType: "input", description: "Включение Enable" },
+          { id: `pin_${Date.now()}_boot`, name: "BOOT", electricalType: "passive", description: "Вольтодобавка Bootstrap" },
+          { id: `pin_${Date.now()}_sw`, name: "SW", electricalType: "output", description: "Ключевая точка Switch" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Силовая и сигнальная земля" },
+          { id: `pin_${Date.now()}_fb`, name: "FB", electricalType: "input", description: "Обратная связь Feedback" },
+          { id: `pin_${Date.now()}_comp`, name: "COMP", electricalType: "passive", description: "Коррекция компенсации" },
+          { id: `pin_${Date.now()}_vout`, name: "VOUT", electricalType: "power_out", description: "Выход стабилизатора" },
+        ]);
+        break;
+      case "swd_header":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Опорное питание VCC" },
+          { id: `pin_${Date.now()}_swdio`, name: "SWDIO", electricalType: "bidirectional", description: "Данные SWD IO" },
+          { id: `pin_${Date.now()}_swclk`, name: "SWCLK", electricalType: "input", isClock: true, description: "Тактирование SWD CLK" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий провод GND" },
+          { id: `pin_${Date.now()}_nrst`, name: "NRST", electricalType: "output", isInverted: true, description: "Аппаратный сброс ~RESET" },
+        ]);
+        break;
     }
   };
 
@@ -2469,6 +2514,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 <option value="opamp_dual">ОУ сдвоенный (Unit A, B + PWR)</option>
                 <option value="header_1x4">Штыревой разъем (1..4)</option>
                 <option value="pwr_logic">ИМС логики (VCC, GND, IN, OUT)</option>
+                <option value="i2c_eeprom">I2C EEPROM (A0-A2, I2C, WP, VCC)</option>
+                <option value="spi_flash">SPI Flash (CS#, SPI, WP#, HOLD#)</option>
+                <option value="dcdc_buck">DC-DC Buck (VIN, SW, BOOT, FB...)</option>
+                <option value="swd_header">SWD Отладка (SWDIO, SWCLK, NRST)</option>
               </select>
               <button
                 type="button"
@@ -2704,7 +2753,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     <th style={{ width: 145, whiteSpace: "nowrap" }}>Тип сигнала</th>
                     <th style={{ width: 48, textAlign: "center", whiteSpace: "nowrap" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секция</th>
                     <th style={{ whiteSpace: "nowrap" }}>Назначение цепи / Описание</th>
-                    <th style={{ width: 60, textAlign: "center" }}></th>
+                    <th style={{ width: 110, textAlign: "center", whiteSpace: "nowrap" }} title="Инверсия (~), тактирование (CLK) и перемещение">Свойства</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2867,6 +2916,48 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                           </td>
                           <td style={{ textAlign: "center", whiteSpace: "nowrap" }}>
                             <div style={{ display: "inline-flex", alignItems: "center", gap: 2 }}>
+                              <button
+                                type="button"
+                                className={`cad-icon-btn ${pin.isInverted ? "active" : ""}`}
+                                style={{
+                                  width: 20,
+                                  height: 18,
+                                  padding: 0,
+                                  fontSize: 11,
+                                  fontWeight: "bold",
+                                  color: pin.isInverted ? "#38bdf8" : "var(--cad-text-dim)",
+                                  background: pin.isInverted ? "rgba(56, 189, 248, 0.2)" : undefined,
+                                  border: pin.isInverted ? "1px solid rgba(56, 189, 248, 0.4)" : "1px solid transparent",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdatePin(pin.id, { isInverted: !pin.isInverted });
+                                }}
+                                title={pin.isInverted ? "Инверсный сигнал (~ / Active-Low) включен" : "Сделать сигнал инверсным (~ / Active-Low)"}
+                              >
+                                ~
+                              </button>
+                              <button
+                                type="button"
+                                className={`cad-icon-btn ${pin.isClock ? "active" : ""}`}
+                                style={{
+                                  width: 26,
+                                  height: 18,
+                                  padding: "0 2px",
+                                  fontSize: 9,
+                                  fontWeight: "bold",
+                                  color: pin.isClock ? "#f59e0b" : "var(--cad-text-dim)",
+                                  background: pin.isClock ? "rgba(245, 158, 11, 0.2)" : undefined,
+                                  border: pin.isClock ? "1px solid rgba(245, 158, 11, 0.4)" : "1px solid transparent",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleUpdatePin(pin.id, { isClock: !pin.isClock });
+                                }}
+                                title={pin.isClock ? "Тактовый сигнал (Clock) включен" : "Обозначить как тактовый сигнал (Clock)"}
+                              >
+                                CLK
+                              </button>
                               <button
                                 type="button"
                                 className="cad-icon-btn"

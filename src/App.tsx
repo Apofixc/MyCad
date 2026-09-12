@@ -181,7 +181,7 @@ export const App: React.FC = () => {
                 <EmptyWorkspace />
               )}
             </ErrorBoundary>
-            {!rightSidebarCollapsed && activeFileType === "board" && <InspectorSidebar />}
+            {!rightSidebarCollapsed && (activeFileType === "board" || activeFileType === "schematic") && <InspectorSidebar />}
           </div>
           <StatusBar />
         </>

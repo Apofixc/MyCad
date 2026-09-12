@@ -196,12 +196,17 @@ export interface LogicalPin {
   electricalType: PinElectricalType;
   unit?: string;
   description?: string;
+  isInverted?: boolean;
+  isClock?: boolean;
+  swapGroup?: string;
 }
 
 export interface PackageMapping {
   packageId: string;
   defaultVariantId?: string;
   pinMap: Record<string, string>;
+  /** Расширенное сопоставление 1-к-многим (логический пин -> несколько номеров площадок) */
+  multiPinMap?: Record<string, string[]>;
 }
 
 export interface ElectricalParameters {
@@ -252,6 +257,9 @@ export interface PlacedComponent {
   mirrored?: boolean;
   locked?: boolean;
   visible?: boolean;
+  showRefDes?: boolean;
+  showValue?: boolean;
+  refDesOffset?: [number, number];
   packageDef?: PackageDefinition;
   parameters?: ElectricalParameters;
   manufacturer?: string;
