@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Layers, Plus, FolderOpen, Clock, FileCode, Trash2, ChevronRight } from "lucide-react";
+import { Layers, Plus, FolderOpen, Clock, FileCode, Trash2, ChevronRight, Cpu } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
 import { engineClient } from "../../api/engineClient";
@@ -130,6 +130,18 @@ export const StartScreen: React.FC = () => {
               <div>
                 <div style={{ fontWeight: 500, fontSize: "13px" }}>Открыть проект...</div>
                 <div style={{ fontSize: "11px", color: "var(--cad-text-dim)" }}>Файл архива .mycad на диске</div>
+              </div>
+            </button>
+
+            <button
+              className="cad-start-action-btn"
+              onClick={() => openModal("componentLibrary")}
+              data-testid="start-open-library-btn"
+            >
+              <Cpu size={20} color="#c084fc" />
+              <div>
+                <div style={{ fontWeight: 500, fontSize: "13px" }}>База компонентов и посадочных мест</div>
+                <div style={{ fontSize: "11px", color: "var(--cad-text-dim)" }}>Редактор корпусов, IPC-7351, радиодетали</div>
               </div>
             </button>
           </div>
