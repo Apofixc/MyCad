@@ -43,6 +43,7 @@ export const App: React.FC = () => {
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (Object.values(useUiStore.getState().modals).some(Boolean)) return;
       // Ignore when focused inside input / textarea
       if (
         document.activeElement?.tagName === "INPUT" ||

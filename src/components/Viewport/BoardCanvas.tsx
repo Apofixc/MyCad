@@ -17,6 +17,10 @@ import { notifySuccess, notifyWarning, reportError } from "../../utils/errorHand
 import { Target, X, Check, RotateCcw, Zap, Play, Pause, Compass } from "lucide-react";
 import { BoardImageLayer } from "../../types/cad";
 import { PlacedComponent, GraphicItem, PackagePad } from "../../types/componentLibrary";
+import { getGraphicPath, graphicRotation, getPadPath } from "../../utils/footprintGeometry";
+import { getCapsulePath } from "../../utils/footprintGenerator";
+import { calibrateImageLayer } from "../../utils/calibration";
+import { useLibraryStore } from "../../stores/libraryStore";
 
 export type TransformHandleType =
   | "nw"
@@ -30,6 +34,7 @@ export type TransformHandleType =
   | "rotate";
 
 export const BoardCanvas: React.FC = () => {
+  const packages = useLibraryStore((state) => state.packages);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const {
@@ -125,6 +130,7 @@ export const BoardCanvas: React.FC = () => {
     measuredPx: number;
     currentPxPerMm: number;
     layer: BoardImageLayer;
+    anchor: { bitmapX: number; bitmapY: number; boardX: number; boardY: number; width: number; height: number };
   } | null>(null);
 
   // Registration state
@@ -543,8 +549,9 @@ export const BoardCanvas: React.FC = () => {
 
         setCalibrationModal({
           isOpen: true,
-          measuredPx: Math.round(measuredPx * 10) / 10,
-          currentPxPerMm: pxPerMm,
+          measuredPx,
+          currentPxPerMm: pxPerMm / (activeLayer.scale || 1),
+          anchor: { bitmapX: bp1.x, bitmapY: bp1.y, boardX: p1[0], boardY: p1[1], width: naturalW, height: naturalH },
           layer: activeLayer,
         });
       }
@@ -1316,26 +1323,24 @@ export const BoardCanvas: React.FC = () => {
           isOpen={calibrationModal.isOpen}
           measuredPx={calibrationModal.measuredPx}
           currentPxPerMm={calibrationModal.currentPxPerMm}
+          packages={packages}
+          initialPackageId={board?.data.components?.find((component) => component.id === selectedComponentId)?.packageId}
           onClose={() => {
             setCalibrationModal(null);
             setMeasurePts([]);
             setActiveTool("select");
           }}
-          onApply={(realMm) => {
+          onApply={async (realMm) => {
             if (calibrationModal && calibrationModal.measuredPx > 0 && realMm > 0) {
-              const newPxPerMm = Math.round((calibrationModal.measuredPx / realMm) * 100) / 100;
-              const dpi = Math.round(newPxPerMm * 25.4);
-              const updated: BoardImageLayer = {
-                ...calibrationModal.layer,
-                pxPerMm: newPxPerMm,
-                dpi: dpi,
-              };
-              updateImageLayer(updated);
-              notifySuccess(`Калибровка выполнена: ${updated.pxPerMm} px/мм (${updated.dpi} DPI)`);
+              const updated = calibrateImageLayer(calibrationModal.layer, calibrationModal.measuredPx, realMm, calibrationModal.anchor);
+              if (!await updateImageLayer(updated)) return false;
+              notifySuccess(`Калибровка выполнена: ${updated.pxPerMm?.toFixed(2)} px/мм (${updated.dpi?.toFixed(0)} DPI)`);
               setCalibrationModal(null);
               setMeasurePts([]);
               setActiveTool("select");
+              return true;
             }
+            return false;
           }}
         />
       )}
@@ -1610,55 +1615,21 @@ function drawPlacedComponents(
         const strokeColor = activeVariant.silkscreenColor || (isTop ? "#f8fafc" : "#60a5fa");
         ctx.strokeStyle = strokeColor;
         ctx.fillStyle = strokeColor;
-        ctx.lineWidth = Math.max(1, (g.strokeWidth || 0.15) * pxPerMm);
-
-        if (g.kind === "line") {
-          ctx.beginPath();
-          ctx.moveTo(g.x1 * pxPerMm, g.y1 * pxPerMm);
-          ctx.lineTo(g.x2 * pxPerMm, g.y2 * pxPerMm);
-          ctx.stroke();
-        } else if (g.kind === "rect") {
-          const gx = (g.x - g.width / 2) * pxPerMm;
-          const gy = (g.y - g.height / 2) * pxPerMm;
-          const gw = g.width * pxPerMm;
-          const gh = g.height * pxPerMm;
-          if (g.filled) {
-            ctx.fillRect(gx, gy, gw, gh);
-          } else {
-            ctx.strokeRect(gx, gy, gw, gh);
-          }
-        } else if (g.kind === "circle") {
-          ctx.beginPath();
-          ctx.arc(g.cx * pxPerMm, g.cy * pxPerMm, g.radius * pxPerMm, 0, Math.PI * 2);
-          if (g.filled) {
-            ctx.fill();
-          } else {
-            ctx.stroke();
-          }
-        } else if (g.kind === "arc") {
-          ctx.beginPath();
-          ctx.arc(
-            g.cx * pxPerMm,
-            g.cy * pxPerMm,
-            g.radius * pxPerMm,
-            (g.startAngle * Math.PI) / 180,
-            (g.endAngle * Math.PI) / 180
-          );
-          ctx.stroke();
-        } else if (g.kind === "d_shape") {
-          const r = (g.diameter / 2) * pxPerMm;
-          ctx.beginPath();
-          ctx.arc(g.cx * pxPerMm, g.cy * pxPerMm, r, -Math.PI / 2, Math.PI / 2, false);
-          ctx.lineTo((g.cx - g.diameter / 2 + g.cutDepth) * pxPerMm, g.cy * pxPerMm + r);
-          ctx.lineTo((g.cx - g.diameter / 2 + g.cutDepth) * pxPerMm, g.cy * pxPerMm - r);
-          ctx.closePath();
-          ctx.stroke();
-        } else if (g.kind === "capsule") {
-          ctx.strokeRect((g.cx - g.width / 2) * pxPerMm, (g.cy - g.height / 2) * pxPerMm, g.width * pxPerMm, g.height * pxPerMm);
-        } else if (g.kind === "text") {
-          ctx.font = `${Math.max(8, g.fontSize * pxPerMm)}px sans-serif`;
+        ctx.scale(pxPerMm, pxPerMm);
+        ctx.lineWidth = Math.max(1 / pxPerMm, g.strokeWidth || 0.15);
+        const [angle, cx, cy] = graphicRotation(g);
+        ctx.translate(cx, cy);
+        ctx.rotate(angle * Math.PI / 180);
+        ctx.translate(-cx, -cy);
+        if (g.kind === "text") {
+          ctx.font = `${g.fontSize}px sans-serif`;
           ctx.textAlign = g.align || "center";
-          ctx.fillText(g.text, g.x * pxPerMm, g.y * pxPerMm);
+          ctx.textBaseline = "middle";
+          ctx.fillText(g.text, g.x, g.y);
+        } else {
+          const path = new Path2D(getGraphicPath(g));
+          if ("filled" in g && g.filled) ctx.fill(path);
+          ctx.stroke(path);
         }
         ctx.restore();
       }
@@ -1697,64 +1668,23 @@ function drawPlacedComponents(
           ctx.translate(-padX, -padY);
         }
 
-        if (pad.shape === "circle") {
-          ctx.beginPath();
-          ctx.arc(padX, padY, padW / 2, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.stroke();
-        } else if (pad.shape === "rounded_rect") {
-          const r = Math.min(padW, padH) * 0.25;
-          ctx.beginPath();
-          if (typeof (ctx as any).roundRect === "function") {
-            (ctx as any).roundRect(padX - padW / 2, padY - padH / 2, padW, padH, r);
-          } else {
-            ctx.rect(padX - padW / 2, padY - padH / 2, padW, padH);
-          }
-          ctx.fill();
-          ctx.stroke();
-        } else if (pad.shape === "chamfered_rect") {
-          const ch = Math.min(padW, padH) * 0.25;
-          const left = padX - padW / 2;
-          const top = padY - padH / 2;
-          const right = padX + padW / 2;
-          const bot = padY + padH / 2;
-          ctx.beginPath();
-          ctx.moveTo(left + ch, top);
-          ctx.lineTo(right, top);
-          ctx.lineTo(right, bot);
-          ctx.lineTo(left, bot);
-          ctx.lineTo(left, top + ch);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-        } else if (pad.shape === "d_shape") {
-          const r = padW / 2;
-          ctx.beginPath();
-          ctx.arc(padX, padY, r, -Math.PI / 2, Math.PI / 2, false);
-          ctx.lineTo(padX - padW / 2, padY + padH / 2);
-          ctx.lineTo(padX - padW / 2, padY - padH / 2);
-          ctx.closePath();
-          ctx.fill();
-          ctx.stroke();
-        } else {
-          ctx.beginPath();
-          ctx.rect(padX - padW / 2, padY - padH / 2, padW, padH);
-          ctx.fill();
-          ctx.stroke();
-        }
-        ctx.restore();
+        ctx.scale(pxPerMm, pxPerMm);
+        ctx.lineWidth = 1 / pxPerMm;
+        const padPath = new Path2D(getPadPath(pad));
+        ctx.fill(padPath);
+        ctx.stroke(padPath);
 
         // Отверстие металлизации (Drill Hole) для THT
         if (isTht) {
-          const drillD = Math.max(1.5, (pad.drillDiameter || 1.0) * pxPerMm);
+          const drillD = pad.drillDiameter || 1.0;
           ctx.fillStyle = "#0c101d";
-          ctx.beginPath();
-          ctx.arc(padX, padY, drillD / 2, 0, Math.PI * 2);
-          ctx.fill();
+          const drillPath = new Path2D(getCapsulePath(pad.x, pad.y,
+            pad.drillShape === "slot" ? Math.max(drillD, pad.slotLength ?? 0) : drillD, drillD));
+          ctx.fill(drillPath);
           ctx.strokeStyle = "rgba(0, 0, 0, 0.6)";
-          ctx.lineWidth = 1;
-          ctx.stroke();
+          ctx.stroke(drillPath);
         }
+        ctx.restore();
 
         // Номер площадки (Pad Number): белый в отверстии THT, черный на площадке SMD
         if (padW >= 10 && padH >= 10 && pad.padNum !== undefined) {

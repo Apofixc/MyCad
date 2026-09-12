@@ -72,7 +72,7 @@ pub struct PackageMapping {
     pub package_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_variant_id: Option<String>,
-    /// Таблица соответствия: Имя логического пина (напр. "VCC", "GND", "BASE") -> Номер физической площадки ("1", "8", "EP")
+    /// ID логического вывода -> номер площадки; имена допустимы для старых библиотек.
     #[serde(default, alias = "pinMapping")]
     pub pin_map: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]

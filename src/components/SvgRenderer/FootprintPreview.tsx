@@ -11,6 +11,7 @@ import {
 } from "../../types/componentLibrary";
 import { ZoomIn, ZoomOut, RotateCcw } from "lucide-react";
 import { getDShapePath, getCapsulePath } from "../../utils/footprintGenerator";
+import { getGraphicPath, graphicRotation, getPadPath, getFootprintBounds } from "../../utils/footprintGeometry";
 
 interface FootprintPreviewProps {
   packageDef: PackageDefinition;
@@ -66,10 +67,11 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
   ];
 
   // Вычисление охватывающей рамки (Bounding Box) в миллиметрах
-  let minX = -packageDef.bodyWidth / 2;
-  let maxX = packageDef.bodyWidth / 2;
-  let minY = -packageDef.bodyHeight / 2;
-  let maxY = packageDef.bodyHeight / 2;
+  const bounds = getFootprintBounds(packageDef.pads || [], allGraphics);
+  let minX = Math.min(-packageDef.bodyWidth / 2, bounds.minX);
+  let maxX = Math.max(packageDef.bodyWidth / 2, bounds.maxX);
+  let minY = Math.min(-packageDef.bodyHeight / 2, bounds.minY);
+  let maxY = Math.max(packageDef.bodyHeight / 2, bounds.maxY);
 
   (packageDef.pads || []).forEach((p) => {
     const halfW = p.width / 2;
@@ -208,11 +210,9 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
         );
 
       case "d_shape": {
-        const radius = Math.min(pad.width, pad.height) / 2;
-        const dPath = getDShapePath(pad.x, pad.y, radius, "right", 0.6);
         return (
           <path
-            d={dPath}
+            d={getPadPath(pad)}
             fill={copperColor}
             stroke={strokeColor}
             strokeWidth={strokeWidth}
@@ -250,6 +250,9 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
           />
         );
 
+      case "chamfered_rect":
+        return <path d={getPadPath(pad)} fill={copperColor} stroke={strokeColor}
+          strokeWidth={strokeWidth} transform={transform} />;
       case "rect":
       default:
         return (
@@ -274,114 +277,14 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
       ? "#a855f7"
       : "#94a3b8";
 
-    switch (item.kind) {
-      case "line":
-        return (
-          <line
-            key={item.id}
-            x1={item.x1}
-            y1={item.y1}
-            x2={item.x2}
-            y2={item.y2}
-            stroke={stroke}
-            strokeWidth={item.strokeWidth}
-            strokeLinecap="round"
-          />
-        );
-      case "arc": {
-        const r = item.radius;
-        const startRad = (item.startAngle * Math.PI) / 180;
-        const endRad = (item.endAngle * Math.PI) / 180;
-        const x1 = item.cx + r * Math.cos(startRad);
-        const y1 = item.cy + r * Math.sin(startRad);
-        const x2 = item.cx + r * Math.cos(endRad);
-        const y2 = item.cy + r * Math.sin(endRad);
-        const largeArc = Math.abs(item.endAngle - item.startAngle) > 180 ? 1 : 0;
-        const d = `M ${x1} ${y1} A ${r} ${r} 0 ${largeArc} 1 ${x2} ${y2}`;
-        return (
-          <path
-            key={item.id}
-            d={d}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={item.strokeWidth}
-            strokeLinecap="round"
-          />
-        );
-      }
-      case "d_shape":
-        return (
-          <path
-            key={item.id}
-            d={getDShapePath(item.cx, item.cy, item.diameter / 2, item.cutOrientation as any, 0.58)}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={item.strokeWidth}
-          />
-        );
-      case "capsule":
-        return (
-          <path
-            key={item.id}
-            d={getCapsulePath(item.cx, item.cy, item.width, item.height)}
-            fill="none"
-            stroke={stroke}
-            strokeWidth={item.strokeWidth}
-          />
-        );
-      case "rect":
-        return (
-          <rect
-            key={item.id}
-            x={item.x - item.width / 2}
-            y={item.y - item.height / 2}
-            width={item.width}
-            height={item.height}
-            rx={item.roundRadius}
-            fill={item.filled ? stroke : "none"}
-            stroke={stroke}
-            strokeWidth={item.strokeWidth}
-          />
-        );
-      case "circle":
-        return (
-          <circle
-            key={item.id}
-            cx={item.cx}
-            cy={item.cy}
-            r={item.radius}
-            fill={item.filled ? stroke : "none"}
-            stroke={stroke}
-            strokeWidth={item.strokeWidth}
-          />
-        );
-      case "polygon":
-        return (
-          <polygon
-            key={item.id}
-            points={item.points.map(([px, py]) => `${px},${py}`).join(" ")}
-            fill={item.filled ? stroke : "none"}
-            stroke={stroke}
-            strokeWidth={item.strokeWidth}
-          />
-        );
-      case "text":
-        return (
-          <text
-            key={item.id}
-            x={item.x}
-            y={item.y}
-            fontSize={item.fontSize}
-            fill={stroke}
-            textAnchor={item.align === "left" ? "start" : item.align === "right" ? "end" : "middle"}
-            dominantBaseline="central"
-          >
-            {item.text}
-          </text>
-        );
-      default:
-        return null;
-    }
+    const [angle, cx, cy] = graphicRotation(item);
+    const transform = `rotate(${angle} ${cx} ${cy})`;
+    return item.kind === "text"
+      ? <text key={item.id} x={item.x} y={item.y} fontSize={item.fontSize} fill={stroke}
+          transform={transform} textAnchor={item.align === "left" ? "start" : item.align === "right" ? "end" : "middle"}
+          dominantBaseline="central">{item.text}</text>
+      : <path key={item.id} d={getGraphicPath(item)} transform={transform} stroke={stroke}
+          strokeWidth={item.strokeWidth} fill={"filled" in item && item.filled ? stroke : "none"} />;
   };
 
   return (
@@ -514,10 +417,11 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
 
               {/* Сверловка THT (Drill Hole) */}
               {pad.drillDiameter && pad.drillDiameter > 0 && (
-                <circle
-                  cx={pad.x}
-                  cy={pad.y}
-                  r={pad.drillDiameter / 2}
+                <path
+                  d={getCapsulePath(pad.x, pad.y,
+                    pad.drillShape === "slot" ? Math.max(pad.drillDiameter, pad.slotLength ?? 0) : pad.drillDiameter,
+                    pad.drillDiameter)}
+                  transform={`rotate(${pad.rotation} ${pad.x} ${pad.y})`}
                   fill="#0f172a"
                   stroke="#475569"
                   strokeWidth="0.04"
