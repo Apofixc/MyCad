@@ -1,11 +1,11 @@
 // src-tauri/src/library/storage.rs
 // Сервис постоянного хранения и управления библиотекой компонентов и посадочных мест
 
-use std::collections::BTreeMap;
+use crate::cad::footprint::{DrillShape, GraphicItem, PackageDefinition, PadShape};
+use crate::library::model::{CatalogCategory, ComponentLibraryPayload, DeviceDefinition};
+use std::collections::{BTreeMap, HashSet};
 use std::fs;
 use std::path::{Path, PathBuf};
-use crate::cad::footprint::PackageDefinition;
-use crate::library::model::{CatalogCategory, ComponentLibraryPayload, DeviceDefinition};
 
 const DEFAULT_LIBRARY_JSON: &str = include_str!("default_library.json");
 
@@ -20,7 +20,13 @@ pub struct LibraryService {
 
 fn sanitize_id(id: &str) -> String {
     id.chars()
-        .map(|c| if c.is_alphanumeric() || c == '_' || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_alphanumeric() || c == '_' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect()
 }
 
@@ -31,15 +37,185 @@ pub fn validate_package(pkg: &PackageDefinition) -> Result<(), String> {
     if pkg.name.trim().is_empty() {
         return Err("Название посадочного места не может быть пустым".to_string());
     }
-    if pkg.body_width <= 0.0 || pkg.body_height <= 0.0 {
+    if !pkg.body_width.is_finite()
+        || !pkg.body_height.is_finite()
+        || pkg.body_width <= 0.0
+        || pkg.body_height <= 0.0
+    {
         return Err("Габариты корпуса (ширина и высота) должны быть больше 0".to_string());
     }
+    let mut pad_numbers = HashSet::new();
     for pad in &pkg.pads {
         if pad.pad_num.trim().is_empty() {
             return Err("Номер контактной площадки не может быть пустым".to_string());
         }
-        if pad.width <= 0.0 || pad.height <= 0.0 {
-            return Err(format!("Размеры площадки #{} должны быть больше 0", pad.pad_num));
+        if !pad_numbers.insert(&pad.pad_num) {
+            return Err(format!("Номер площадки #{} повторяется", pad.pad_num));
+        }
+        if !pad.width.is_finite()
+            || !pad.height.is_finite()
+            || pad.width <= 0.0
+            || pad.height <= 0.0
+        {
+            return Err(format!(
+                "Размеры площадки #{} должны быть больше 0",
+                pad.pad_num
+            ));
+        }
+        if !pad.x.is_finite() || !pad.y.is_finite() || !pad.rotation.is_finite() {
+            return Err(format!("Некорректное положение площадки #{}", pad.pad_num));
+        }
+        if pad
+            .drill_diameter
+            .is_some_and(|d| !d.is_finite() || d < 0.0)
+            || pad.round_radius.is_some_and(|r| !r.is_finite() || r < 0.0)
+            || (pad.drill_shape == Some(DrillShape::Slot)
+                && !pad.slot_length.is_some_and(|length| {
+                    length.is_finite() && length >= pad.drill_diameter.unwrap_or(0.0)
+                }))
+        {
+            return Err(format!(
+                "Некорректное отверстие или скругление площадки #{}",
+                pad.pad_num
+            ));
+        }
+        if pad.shape == PadShape::CustomPolygon
+            && !pad.polygon_points.as_ref().is_some_and(|points| {
+                points.len() >= 3 && points.iter().flatten().all(|value| value.is_finite())
+            })
+        {
+            return Err(format!("Некорректный полигон площадки #{}", pad.pad_num));
+        }
+    }
+    validate_graphics(&pkg.graphics)?;
+    let mut variant_ids = HashSet::new();
+    for variant in &pkg.variants {
+        validate_graphics(&variant.graphics)?;
+        if variant.id.trim().is_empty() || !variant_ids.insert(&variant.id) {
+            return Err("ID вариантов корпуса должны быть непустыми и уникальными".into());
+        }
+    }
+    if !pkg.default_variant_id.is_empty() && !variant_ids.contains(&pkg.default_variant_id) {
+        return Err("Вариант корпуса по умолчанию не найден".into());
+    }
+    Ok(())
+}
+
+fn validate_graphics(graphics: &[GraphicItem]) -> Result<(), String> {
+    let finite = |values: &[f64]| values.iter().all(|value| value.is_finite());
+    for graphic in graphics {
+        let valid = match graphic {
+            GraphicItem::Line {
+                x1,
+                y1,
+                x2,
+                y2,
+                stroke_width,
+                ..
+            } => finite(&[*x1, *y1, *x2, *y2, *stroke_width]) && *stroke_width > 0.0,
+            GraphicItem::Arc {
+                cx,
+                cy,
+                radius,
+                start_angle,
+                end_angle,
+                stroke_width,
+                ..
+            } => {
+                finite(&[*cx, *cy, *radius, *start_angle, *end_angle, *stroke_width])
+                    && *radius > 0.0
+                    && *stroke_width > 0.0
+            }
+            GraphicItem::Circle {
+                cx,
+                cy,
+                radius,
+                stroke_width,
+                ..
+            } => {
+                finite(&[*cx, *cy, *radius, *stroke_width]) && *radius > 0.0 && *stroke_width > 0.0
+            }
+            GraphicItem::DShape {
+                cx,
+                cy,
+                diameter,
+                cut_depth,
+                cut_orientation,
+                stroke_width,
+                ..
+            } => {
+                finite(&[*cx, *cy, *diameter, *cut_depth, *stroke_width])
+                    && *diameter > 0.0
+                    && *cut_depth >= 0.0
+                    && *cut_depth < *diameter
+                    && *stroke_width > 0.0
+                    && matches!(
+                        cut_orientation.as_str(),
+                        "top" | "bottom" | "left" | "right"
+                    )
+            }
+            GraphicItem::Capsule {
+                cx,
+                cy,
+                width,
+                height,
+                rotation,
+                stroke_width,
+                ..
+            } => {
+                finite(&[*cx, *cy, *width, *height, *rotation, *stroke_width])
+                    && *width > 0.0
+                    && *height > 0.0
+                    && *stroke_width > 0.0
+            }
+            GraphicItem::Rect {
+                x,
+                y,
+                width,
+                height,
+                round_radius,
+                rotation,
+                stroke_width,
+                ..
+            } => {
+                finite(&[
+                    *x,
+                    *y,
+                    *width,
+                    *height,
+                    *round_radius,
+                    *rotation,
+                    *stroke_width,
+                ]) && *width > 0.0
+                    && *height > 0.0
+                    && *round_radius >= 0.0
+                    && *stroke_width > 0.0
+            }
+            GraphicItem::Polygon {
+                points,
+                stroke_width,
+                ..
+            } => {
+                points.len() >= 3
+                    && points.iter().flatten().all(|value| value.is_finite())
+                    && stroke_width.is_finite()
+                    && *stroke_width > 0.0
+            }
+            GraphicItem::Text {
+                x,
+                y,
+                font_size,
+                rotation,
+                stroke_width,
+                ..
+            } => {
+                finite(&[*x, *y, *font_size, *rotation, *stroke_width])
+                    && *font_size > 0.0
+                    && *stroke_width > 0.0
+            }
+        };
+        if !valid {
+            return Err("Некорректная геометрия контура корпуса".into());
         }
     }
     Ok(())
@@ -59,16 +235,69 @@ pub fn validate_device(
         return Err("Категория радиокомпонента не может быть пустой".to_string());
     }
     if dev.designator_prefix.trim().is_empty() {
-        return Err("Префикс позиционного обозначения (напр. R, C, U) не может быть пустым".to_string());
+        return Err(
+            "Префикс позиционного обозначения (напр. R, C, U) не может быть пустым".to_string(),
+        );
     }
 
+    let mut pin_ids = HashSet::new();
+    for pin in &dev.logical_pins {
+        if pin.id.trim().is_empty() || !pin_ids.insert(&pin.id) || pin.name.trim().is_empty() {
+            return Err("У выводов должны быть имена и уникальные непустые ID".into());
+        }
+    }
     if let Some(lookup) = package_lookup {
+        let mut package_ids = HashSet::new();
         for pkg_map in &dev.supported_packages {
-            if lookup(&pkg_map.package_id).is_none() {
-                return Err(format!(
+            if !package_ids.insert(&pkg_map.package_id) {
+                return Err("Корпус указан несколько раз".into());
+            }
+            let pkg = lookup(&pkg_map.package_id).ok_or_else(|| {
+                format!(
                     "Связанное посадочное место '{}' не найдено в библиотеке",
                     pkg_map.package_id
-                ));
+                )
+            })?;
+            if let Some(variant_id) = &pkg_map.default_variant_id {
+                if !variant_id.is_empty() && !pkg.variants.iter().any(|v| v.id == *variant_id) {
+                    return Err(format!(
+                        "Вариант '{variant_id}' не найден в корпусе '{}'",
+                        pkg.name
+                    ));
+                }
+            }
+            let pads: HashSet<_> = pkg.pads.iter().map(|p| &p.pad_num).collect();
+            let mut pad_owners = BTreeMap::new();
+            for (key, pad) in pkg_map.pin_map.iter().chain(
+                pkg_map
+                    .multi_pin_map
+                    .iter()
+                    .flat_map(|(key, pads)| pads.iter().map(move |pad| (key, pad))),
+            ) {
+                let owner = dev
+                    .logical_pins
+                    .iter()
+                    .find(|pin| pin.id == *key)
+                    .or_else(|| dev.logical_pins.iter().find(|pin| pin.name == *key))
+                    .map(|pin| pin.id.as_str())
+                    .unwrap_or(key.as_str());
+                if let Some(previous) = pad_owners.insert(pad, owner) {
+                    if previous != owner {
+                        return Err(format!("Площадка '{pad}' назначена нескольким выводам"));
+                    }
+                }
+            }
+            for (pin, pad) in &pkg_map.pin_map {
+                if pin.trim().is_empty() || !pads.contains(pad) {
+                    return Err(format!(
+                        "Некорректная связь вывода '{pin}' с площадкой '{pad}'"
+                    ));
+                }
+            }
+            for (pin, mapped_pads) in &pkg_map.multi_pin_map {
+                if pin.trim().is_empty() || mapped_pads.iter().any(|pad| !pads.contains(pad)) {
+                    return Err(format!("Некорректная связь вывода '{pin}' с площадками"));
+                }
             }
         }
     }
@@ -95,8 +324,12 @@ impl LibraryService {
     }
 
     pub fn init_storage(&self) -> Result<(), String> {
-        fs::create_dir_all(&self.base_dir)
-            .map_err(|e| format!("Не удалось создать директорию библиотеки {}: {e}", self.base_dir.display()))?;
+        fs::create_dir_all(&self.base_dir).map_err(|e| {
+            format!(
+                "Не удалось создать директорию библиотеки {}: {e}",
+                self.base_dir.display()
+            )
+        })?;
         fs::create_dir_all(self.base_dir.join("packages"))
             .map_err(|e| format!("Не удалось создать директорию packages: {e}"))?;
         fs::create_dir_all(self.base_dir.join("devices"))
@@ -174,7 +407,9 @@ impl LibraryService {
                 }
             }
             Err(e) => {
-                eprintln!("MyCad: Ошибка десериализации встроенной библиотеки DEFAULT_LIBRARY_JSON: {e}");
+                eprintln!(
+                    "MyCad: Ошибка десериализации встроенной библиотеки DEFAULT_LIBRARY_JSON: {e}"
+                );
             }
         }
 
@@ -232,7 +467,10 @@ impl LibraryService {
 
     pub fn delete_package(&mut self, id: &str) -> Result<(), String> {
         let safe_id = sanitize_id(id);
-        let file_path = self.base_dir.join("packages").join(format!("{safe_id}.json"));
+        let file_path = self
+            .base_dir
+            .join("packages")
+            .join(format!("{safe_id}.json"));
         if file_path.exists() {
             fs::remove_file(&file_path)
                 .map_err(|e| format!("Не удалось удалить корпус {}: {e}", file_path.display()))?;
@@ -314,7 +552,10 @@ impl LibraryService {
 
     pub fn delete_device(&mut self, id: &str) -> Result<(), String> {
         let safe_id = sanitize_id(id);
-        let file_path = self.base_dir.join("devices").join(format!("{safe_id}.json"));
+        let file_path = self
+            .base_dir
+            .join("devices")
+            .join(format!("{safe_id}.json"));
         if file_path.exists() {
             fs::remove_file(&file_path)
                 .map_err(|e| format!("Не удалось удалить девайс {}: {e}", file_path.display()))?;
@@ -355,7 +596,11 @@ mod tests {
         let res = serde_json::from_str::<ComponentLibraryPayload>(DEFAULT_LIBRARY_JSON);
         match res {
             Ok(p) => {
-                println!("Loaded {} packages, {} devices", p.packages.len(), p.devices.len());
+                println!(
+                    "Loaded {} packages, {} devices",
+                    p.packages.len(),
+                    p.devices.len()
+                );
             }
             Err(e) => {
                 panic!("Failed to load DEFAULT_LIBRARY_JSON: {e}");

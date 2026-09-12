@@ -955,6 +955,9 @@ function drawAlignmentGrid(
           layer.tintColor = targetOldLayer.tintColor;
           layer.pxPerMm = targetOldLayer.pxPerMm;
           layer.dpi = targetOldLayer.dpi;
+          layer.locked = targetOldLayer.locked;
+          layer.visible = targetOldLayer.visible;
+          layer.lockAspectRatio = targetOldLayer.lockAspectRatio;
         } else if (existing && existing.length > 0) {
           let maxRight = 0;
           for (const ex of existing) {
@@ -968,7 +971,7 @@ function drawAlignmentGrid(
           }
         }
 
-        await updateImageLayer(layer);
+        if (!await updateImageLayer(layer)) return;
       }
       handleClose();
     } catch (e: any) {
@@ -1028,6 +1031,9 @@ function drawAlignmentGrid(
         layer.tintColor = targetOldLayer.tintColor;
         layer.pxPerMm = targetOldLayer.pxPerMm;
         layer.dpi = targetOldLayer.dpi;
+        layer.locked = targetOldLayer.locked;
+        layer.visible = targetOldLayer.visible;
+        layer.lockAspectRatio = targetOldLayer.lockAspectRatio;
       } else if (existing && existing.length > 0) {
         let maxRight = 0;
         for (const ex of existing) {
@@ -1041,7 +1047,7 @@ function drawAlignmentGrid(
         }
       }
 
-      await updateImageLayer(layer);
+      if (!await updateImageLayer(layer)) return;
       handleClose();
     } catch (e: any) {
       console.error(e);

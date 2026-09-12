@@ -188,6 +188,9 @@ pub fn board_delete_image_layer(state: State<AppState>, layer_id: String) -> Res
         board.data.bg_top.images.retain(|img| img.id != layer_id);
         board.data.bg_bottom.images.retain(|img| img.id != layer_id);
     }
+    for schematic in &mut session.schematics {
+        schematic.data.bg.images.retain(|img| img.id != layer_id);
+    }
     Ok(())
 }
 
@@ -236,65 +239,29 @@ pub fn schematic_get_active(state: State<AppState>) -> Result<Option<SchematicDo
 }
 
 #[tauri::command]
-pub fn board_update_image_layer(state: State<AppState>, layer: BoardImageLayer) -> Result<BoardImageLayer, String> {
+pub fn board_update_image_layer(
+    state: State<AppState>,
+    layer: BoardImageLayer,
+    file_id: Option<String>,
+) -> Result<BoardImageLayer, String> {
     let mut guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_mut().ok_or("Нет активного проекта")?;
 
-    let active_id = session.active_file_id.clone();
-    let board = if let Some(ref aid) = active_id {
-        if let Some(pos) = session.boards.iter().position(|b| b.id == *aid) {
-            session.boards.get_mut(pos)
-        } else {
-            session.boards.first_mut()
-        }
-    } else {
-        session.boards.first_mut()
-    }.ok_or("В проекте нет схемы платы для добавления или редактирования слоя")?;
-
-    let group = if layer.side == "top" {
-        &mut board.data.bg_top.images
-    } else {
-        &mut board.data.bg_bottom.images
-    };
-
-    if let Some(existing) = group.iter_mut().find(|img| img.id == layer.id) {
-        *existing = layer.clone();
-    } else {
-        group.push(layer.clone());
-    }
+    session.update_image_layers(std::slice::from_ref(&layer), file_id.as_deref())?;
 
     Ok(layer)
 }
 
 #[tauri::command]
-pub fn board_update_image_layers(state: State<AppState>, layers: Vec<BoardImageLayer>) -> Result<Vec<BoardImageLayer>, String> {
+pub fn board_update_image_layers(
+    state: State<AppState>,
+    layers: Vec<BoardImageLayer>,
+    file_id: Option<String>,
+) -> Result<Vec<BoardImageLayer>, String> {
     let mut guard = state.session.lock().map_err(|e| e.to_string())?;
     let session = guard.as_mut().ok_or("Нет активного проекта")?;
 
-    let active_id = session.active_file_id.clone();
-    let board = if let Some(ref aid) = active_id {
-        if let Some(pos) = session.boards.iter().position(|b| b.id == *aid) {
-            session.boards.get_mut(pos)
-        } else {
-            session.boards.first_mut()
-        }
-    } else {
-        session.boards.first_mut()
-    }.ok_or("В проекте нет схемы платы для добавления или редактирования слоя")?;
-
-    for layer in &layers {
-        let group = if layer.side == "top" {
-            &mut board.data.bg_top.images
-        } else {
-            &mut board.data.bg_bottom.images
-        };
-
-        if let Some(existing) = group.iter_mut().find(|img| img.id == layer.id) {
-            *existing = layer.clone();
-        } else {
-            group.push(layer.clone());
-        }
-    }
+    session.update_image_layers(&layers, file_id.as_deref())?;
 
     Ok(layers)
 }
@@ -663,5 +630,4 @@ pub fn board_delete_component(
     board.data.components.retain(|c| c.id != component_id);
     Ok(build_full_state(session))
 }
-
 

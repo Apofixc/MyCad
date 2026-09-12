@@ -72,7 +72,7 @@ pub struct PackageMapping {
     pub package_id: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub default_variant_id: Option<String>,
-    /// Таблица соответствия: Имя логического пина (напр. "VCC", "GND", "BASE") -> Номер физической площадки ("1", "8", "EP")
+    /// ID логического вывода -> номер площадки; имена допустимы для старых библиотек.
     #[serde(default, alias = "pinMapping")]
     pub pin_map: BTreeMap<String, String>,
     #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
@@ -152,6 +152,18 @@ pub struct PlacedComponent {
     pub mirrored: bool,
     #[serde(default)]
     pub locked: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub package: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_ref_des: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_value: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ref_des_offset: Option<[f64; 2]>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub package_def: Option<crate::cad::footprint::PackageDefinition>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

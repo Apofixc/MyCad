@@ -8,7 +8,8 @@ use zip::write::SimpleFileOptions;
 use zip::{ZipArchive, ZipWriter};
 
 use crate::models::{
-    BoardData, BoardDocument, ProjectFileRef, ProjectManifest, SchematicData, SchematicDocument,
+    BoardData, BoardDocument, BoardImageLayer, ProjectFileRef, ProjectManifest, SchematicData,
+    SchematicDocument,
 };
 
 pub struct ProjectSession {
@@ -21,6 +22,86 @@ pub struct ProjectSession {
 }
 
 impl ProjectSession {
+    pub fn update_image_layers(
+        &mut self,
+        layers: &[BoardImageLayer],
+        file_id: Option<&str>,
+    ) -> Result<(), String> {
+        let mut targets = Vec::with_capacity(layers.len());
+        for layer in layers {
+            if layer.side != "top" && layer.side != "bottom" {
+                return Err("Сторона изображения должна быть top или bottom".into());
+            }
+            if !layer.scale.is_finite()
+                || layer.scale <= 0.0
+                || !layer.px_per_mm.is_finite()
+                || layer.px_per_mm <= 0.0
+                || !layer.offset_x.is_finite()
+                || !layer.offset_y.is_finite()
+                || !layer.rotation.is_finite()
+            {
+                return Err("Некорректный масштаб или положение изображения".into());
+            }
+            let owner = self
+                .boards
+                .iter()
+                .find(|b| {
+                    b.data
+                        .bg_top
+                        .images
+                        .iter()
+                        .chain(&b.data.bg_bottom.images)
+                        .any(|img| img.id == layer.id)
+                })
+                .map(|b| b.id.as_str())
+                .or_else(|| {
+                    self.schematics
+                        .iter()
+                        .find(|s| s.data.bg.images.iter().any(|img| img.id == layer.id))
+                        .map(|s| s.id.as_str())
+                });
+            let target = owner
+                .or(file_id)
+                .or(self.active_file_id.as_deref())
+                .ok_or("Выберите документ для изображения")?;
+            if !self.boards.iter().any(|b| b.id == target)
+                && !self.schematics.iter().any(|s| s.id == target)
+            {
+                return Err("Документ изображения не найден".into());
+            }
+            targets.push(target.to_string());
+        }
+        for (layer, target) in layers.iter().zip(targets) {
+            if let Some(board) = self.boards.iter_mut().find(|b| b.id == target) {
+                let (group, opposite) = if layer.side == "top" {
+                    (
+                        &mut board.data.bg_top.images,
+                        &mut board.data.bg_bottom.images,
+                    )
+                } else {
+                    (
+                        &mut board.data.bg_bottom.images,
+                        &mut board.data.bg_top.images,
+                    )
+                };
+                opposite.retain(|img| img.id != layer.id);
+                if let Some(existing) = group.iter_mut().find(|img| img.id == layer.id) {
+                    *existing = layer.clone();
+                } else {
+                    group.push(layer.clone());
+                }
+            } else if let Some(schematic) = self.schematics.iter_mut().find(|s| s.id == target) {
+                let images = &mut schematic.data.bg.images;
+                if let Some(existing) = images.iter_mut().find(|img| img.id == layer.id) {
+                    *existing = layer.clone();
+                } else {
+                    images.push(layer.clone());
+                }
+            }
+        }
+        Ok(())
+    }
+
     pub fn new(
         file_path: PathBuf,
         manifest: ProjectManifest,

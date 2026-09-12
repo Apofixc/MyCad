@@ -3,6 +3,7 @@
 // Управление логическими выводами схемы, спецификацией BOM, электрическими параметрами и сопоставлением Pin-to-Pad Mapping
 
 import React, { useState, useEffect, useMemo, useRef } from "react";
+import { normalizeDeviceMapping, mappedPads, mappingEntries, setMappedPads, mappingError } from "../../utils/pinMapping";
 import {
   DeviceDefinition,
   PackageDefinition,
@@ -42,13 +43,14 @@ import {
   Download,
 } from "lucide-react";
 import { FootprintPreview } from "../SvgRenderer/FootprintPreview";
+import { reportError } from "../../utils/errorHandler";
 
 interface DeviceEditorModalProps {
   isOpen: boolean;
   initialDevice?: DeviceDefinition | null;
   availablePackages: PackageDefinition[];
   onClose: () => void;
-  onSave: (device: DeviceDefinition) => void;
+  onSave: (device: DeviceDefinition) => Promise<boolean>;
   onCreateNewPackage?: () => void;
 }
 
@@ -568,6 +570,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
   // Поддерживаемые корпуса и маппинг
   const [supportedPackages, setSupportedPackages] = useState<PackageMapping[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const [activePackageId, setActivePackageId] = useState<string>("");
 
   // Выделение и интерактивность сопоставления
@@ -610,9 +613,6 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [mappingSearchQuery, setMappingSearchQuery] = useState<string>("");
   const [isAutoAdvanceEnabled, setIsAutoAdvanceEnabled] = useState<boolean>(true);
 
-  // Кэш сопоставления pinId -> padNum для защиты от потери связей при промежуточной очистке имени вывода
-  const pinIdToPadCacheRef = useRef<Map<string, string>>(new Map());
-
   // Модальные окна для Альтернативных функций (AF / MUX) и Пользовательских типов сигналов
   const [editingAfPinId, setEditingAfPinId] = useState<string | null>(null);
   const [newAfInput, setNewAfInput] = useState<string>("");
@@ -621,9 +621,12 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [customSignalInput, setCustomSignalInput] = useState<string>("");
   const [customSignalElectricalType, setCustomSignalElectricalType] = useState<PinElectricalType>("bidirectional");
   const [customSignalDescription, setCustomSignalDescription] = useState<string>("");
+  const packagesRef = useRef(availablePackages);
+  packagesRef.current = availablePackages;
 
   useEffect(() => {
     if (!isOpen) return;
+    const availablePackages = packagesRef.current;
 
     if (initialDevice) {
       setId(initialDevice.id);
@@ -672,8 +675,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         );
       }
 
-      setLogicalPins(initialDevice.logicalPins || []);
-      setSupportedPackages(initialDevice.supportedPackages || []);
+      const normalized = normalizeDeviceMapping(initialDevice.logicalPins || [], initialDevice.supportedPackages || []);
+      setLogicalPins(normalized.logicalPins);
+      setSupportedPackages(normalized.supportedPackages);
       setActivePackageId(
         initialDevice.supportedPackages?.[0]?.packageId ||
           availablePackages[0]?.id ||
@@ -719,8 +723,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
             packageId: firstPkg.id,
             defaultVariantId: firstPkg.defaultVariantId,
             pinMap: {
-              "1": firstPkg.pads[0]?.padNum || "1",
-              "2": firstPkg.pads[1]?.padNum || "2",
+              ...(firstPkg.pads[0] ? { pin_1: firstPkg.pads[0].padNum } : {}),
+              ...(firstPkg.pads[1] ? { pin_2: firstPkg.pads[1].padNum } : {}),
             },
           },
         ]);
@@ -730,10 +734,11 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         setActivePackageId("");
       }
     }
-  }, [isOpen, initialDevice, availablePackages]);
+  }, [isOpen, initialDevice]);
 
   // Пресеты распиновки для пассивных компонентов, разъемов, полупроводников и микросхем
   const applyPinPreset = (presetKey: string) => {
+    setSupportedPackages((previous) => previous.map((mapping) => ({ ...mapping, pinMap: {}, multiPinMap: {} })));
     switch (presetKey) {
       case "rlc":
         setLogicalPins([
@@ -947,17 +952,6 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const currentPkgDef = availablePackages.find((p) => p.id === activePackageId);
   const currentMapping = supportedPackages.find((m) => m.packageId === activePackageId);
 
-  // Синхронизация кэша pinId -> padNum для защиты от потери привязок при переименовании
-  useEffect(() => {
-    if (!currentMapping) return;
-    logicalPins.forEach((pin) => {
-      const padNum = currentMapping.pinMap[pin.name];
-      if (padNum) {
-        pinIdToPadCacheRef.current.set(pin.id, padNum);
-      }
-    });
-  }, [currentMapping, logicalPins]);
-
   // Список всех уникальных секций схемы (Units: A, B, C...)
   const availableUnits = useMemo(() => {
     const set = new Set<string>();
@@ -1016,18 +1010,18 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const padUsageCount = useMemo(() => {
     const counts: Record<string, string[]> = {};
     if (!currentMapping) return counts;
-    Object.entries(currentMapping.pinMap).forEach(([pinName, padNum]) => {
-      if (!padNum) return;
+    mappingEntries(currentMapping).forEach(([pinId, pads]) => pads.forEach((padNum) => {
       if (!counts[padNum]) counts[padNum] = [];
-      counts[padNum].push(pinName);
-    });
+      counts[padNum].push(pinId);
+    }));
     return counts;
   }, [currentMapping]);
+  const pinNamesById = useMemo(() => Object.fromEntries(logicalPins.map((pin) => [pin.id, pin.name])), [logicalPins]);
 
   // Свободные (не сопоставленные) площадки текущего корпуса
   const unassignedPads = useMemo(() => {
     if (!currentPkgDef || !currentMapping) return [];
-    const usedPadNums = new Set(Object.values(currentMapping.pinMap).filter(Boolean));
+    const usedPadNums = new Set(mappingEntries(currentMapping).flatMap(([, pads]) => pads));
     return currentPkgDef.pads.filter((p) => !usedPadNums.has(p.padNum));
   }, [currentPkgDef, currentMapping]);
 
@@ -1036,7 +1030,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (!currentMapping || logicalPins.length === 0) {
       return { mapped: 0, total: 0, percent: 0, unassignedPadCount: 0, isFullyReady: false };
     }
-    const mappedCount = logicalPins.filter((p) => Boolean(currentMapping.pinMap[p.name])).length;
+    const mappedCount = logicalPins.filter((p) => Boolean(currentMapping.pinMap[p.id])).length;
     const unassignedPadCount = unassignedPads.length;
     const isFullyReady = mappedCount === logicalPins.length && unassignedPadCount === 0;
     return {
@@ -1055,8 +1049,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (logicalPins.length === 0) {
       return { mapped: 0, total: 0, padCount, unassignedPadCount: padCount, isComplete: false };
     }
-    const mapped = logicalPins.filter((p) => Boolean(pkgMapping.pinMap[p.name])).length;
-    const usedPads = new Set(Object.values(pkgMapping.pinMap).filter(Boolean));
+    const mapped = logicalPins.filter((p) => Boolean(pkgMapping.pinMap[p.id])).length;
+    const usedPads = new Set(mappingEntries(pkgMapping).flatMap(([, pads]) => pads));
     const unassignedPadCount = Math.max(0, padCount - usedPads.size);
     const isComplete = mapped === logicalPins.length && unassignedPadCount === 0;
     return {
@@ -1077,16 +1071,16 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (!currentPkgDef) return { padLabels: labels, padColors: colors, unassignedPadNums: unassigned };
 
     if (currentMapping) {
-      Object.entries(currentMapping.pinMap).forEach(([pinName, padNum]) => {
+      mappingEntries(currentMapping).forEach(([pinId, pads]) => pads.forEach((padNum) => {
         if (padNum) {
-          labels[padNum] = pinName;
-          const found = logicalPins.find((p) => p.name === pinName);
+          const found = logicalPins.find((p) => p.id === pinId);
+          labels[padNum] = found?.name ?? pinId;
           if (found) {
             const uCfg = getUnifiedPinTypeConfig(found);
             colors[padNum] = uCfg.color;
           }
         }
-      });
+      }));
     }
 
     currentPkgDef.pads.forEach((p) => {
@@ -1099,7 +1093,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   // Фильтрация таблицы сопоставления по статусу привязки и поисковому запросу
   const mappingFilteredPins = useMemo(() => {
     return filteredLogicalPins.filter((pin) => {
-      const assignedPad = currentMapping?.pinMap[pin.name];
+      const assignedPad = currentMapping?.pinMap[pin.id];
       if (mappingSearchQuery.trim()) {
         const q = mappingSearchQuery.toLowerCase();
         const matchesPin = pin.name.toLowerCase().includes(q);
@@ -1108,7 +1102,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       }
       if (mappingFilter === "unmapped") return !assignedPad;
       if (mappingFilter === "conflicts") {
-        return Boolean(assignedPad && (padUsageCount[assignedPad] || []).length > 1);
+        return mappedPads(currentMapping, pin).some((pad) => (padUsageCount[pad] ?? []).length > 1);
       }
       return true;
     });
@@ -1116,7 +1110,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
   const unmappedCount = useMemo(() => {
     if (!currentMapping) return logicalPins.length;
-    return logicalPins.filter((p) => !currentMapping.pinMap[p.name]).length;
+    return logicalPins.filter((p) => !currentMapping.pinMap[p.id]).length;
   }, [currentMapping, logicalPins]);
 
   const conflictCount = useMemo(() => {
@@ -1207,6 +1201,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (selectedPinIds.size === 0) return;
     if (!window.confirm(`Удалить выбранные выводы (${selectedPinIds.size} шт.)?`)) return;
     setLogicalPins(logicalPins.filter((p) => !selectedPinIds.has(p.id)));
+    setSupportedPackages((previous) => previous.map((mapping) =>
+      [...selectedPinIds].reduce((current, id) => setMappedPads(current, id, []), mapping)));
     setSelectedPinIds(new Set());
   };
 
@@ -1401,6 +1397,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
     if (bulkImportMode === "replace") {
       setLogicalPins(newLogicalPins);
+      setSupportedPackages((previous) => previous.map((mapping) => ({ ...mapping, pinMap: {}, multiPinMap: {} })));
     } else {
       setLogicalPins([...logicalPins, ...newLogicalPins]);
     }
@@ -1515,12 +1512,12 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       newPins.forEach((p, idx) => {
         const pad = currentPkgDef.pads[idx];
         if (pad) {
-          autoMap[p.name] = pad.padNum;
+          autoMap[p.id] = pad.padNum;
         }
       });
       setSupportedPackages((prev) =>
         prev.map((item) =>
-          item.packageId === activePackageId ? { ...item, pinMap: autoMap } : item
+          ({ ...item, pinMap: item.packageId === activePackageId ? autoMap : {}, multiPinMap: {} })
         )
       );
     }
@@ -1531,62 +1528,18 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (logicalPins.length === 0) return;
     if (window.confirm("Удалить все выводы схемы?")) {
       setLogicalPins([]);
-      handleClearMapping();
+      setSupportedPackages((previous) => previous.map((mapping) => ({ ...mapping, pinMap: {}, multiPinMap: {} })));
     }
   };
 
   // Каскадное удаление вывода из схемы и сопоставления всех корпусов
   const handleRemovePin = (pinId: string) => {
-    const targetPin = logicalPins.find((p) => p.id === pinId);
-    if (targetPin) {
-      const pinName = targetPin.name;
-      setSupportedPackages((prev) =>
-        prev.map((pkg) => {
-          if (pinName in pkg.pinMap) {
-            const nextPinMap = { ...pkg.pinMap };
-            delete nextPinMap[pinName];
-            return { ...pkg, pinMap: nextPinMap };
-          }
-          return pkg;
-        })
-      );
-    }
+    setSupportedPackages((previous) => previous.map((mapping) => setMappedPads(mapping, pinId, [])));
     setLogicalPins((prev) => prev.filter((p) => p.id !== pinId));
     if (selectedPinId === pinId) setSelectedPinId(null);
   };
 
-  // Каскадное обновление вывода (при переименовании обновляет ключи в pinMap всех корпусов без потери связей)
   const handleUpdatePin = (pinId: string, updates: Partial<LogicalPin>) => {
-    const targetPin = logicalPins.find((p) => p.id === pinId);
-    if (!targetPin) return;
-
-    const oldName = targetPin.name;
-    const newName = updates.name !== undefined ? updates.name : oldName;
-
-    // Если имя изменилось — выполняем безопасное каскадное обновление в pinMap всех корпусов
-    if (updates.name !== undefined && oldName !== newName) {
-      const trimmedNew = newName.trim();
-      const cachedPad = pinIdToPadCacheRef.current.get(pinId);
-
-      setSupportedPackages((prev) =>
-        prev.map((pkg) => {
-          const nextPinMap = { ...pkg.pinMap };
-          const val = nextPinMap[oldName] || cachedPad;
-
-          if (oldName in nextPinMap) {
-            delete nextPinMap[oldName];
-          }
-
-          // Если новое имя не пустое и для вывода была привязка — восстанавливаем/присваиваем её
-          if (trimmedNew && val) {
-            nextPinMap[trimmedNew] = val;
-          }
-
-          return { ...pkg, pinMap: nextPinMap };
-        })
-      );
-    }
-
     setLogicalPins((prev) =>
       prev.map((p) => (p.id === pinId ? { ...p, ...updates } : p))
     );
@@ -1651,19 +1604,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       setSupportedPackages((prev) =>
         prev.map((pkg) => {
           if (pkg.packageId !== activePackageId) return pkg;
-          const nextPinMap = { ...pkg.pinMap };
-          const pad1 = nextPinMap[p1.name];
-          const pad2 = nextPinMap[p2.name];
-
-          if (pad1 !== undefined || pad2 !== undefined) {
-            if (pad2 !== undefined) nextPinMap[p1.name] = pad2;
-            else delete nextPinMap[p1.name];
-
-            if (pad1 !== undefined) nextPinMap[p2.name] = pad1;
-            else delete nextPinMap[p2.name];
-          }
-
-          return { ...pkg, pinMap: nextPinMap };
+          return setMappedPads(setMappedPads(pkg, p1.id, mappedPads(pkg, p2)), p2.id, mappedPads(pkg, p1));
         })
       );
     }
@@ -1729,7 +1670,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     const autoMap: Record<string, string> = {};
     logicalPins.forEach((pin, idx) => {
       const pad = pkg.pads[idx];
-      if (pad) autoMap[pin.name] = pad.padNum;
+      if (pad) autoMap[pin.id] = pad.padNum;
     });
 
     const newBinding: PackageMapping = {
@@ -1774,46 +1715,41 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   // Копирование сопоставления распиновки из другого привязанного корпуса
   const handleCopyMappingFrom = (sourcePkgId: string) => {
     const source = supportedPackages.find((p) => p.packageId === sourcePkgId);
-    if (!source || !activePackageId) return;
+    if (!source || !activePackageId || !currentMapping || !currentPkgDef) return;
+    const padNumbers = new Set(currentPkgDef?.pads.map((pad) => pad.padNum));
+    let copy: PackageMapping = { ...currentMapping, pinMap: {}, multiPinMap: {} };
+    for (const [key, pads] of mappingEntries(source)) copy = setMappedPads(copy, key, pads.filter((pad) => padNumbers.has(pad)));
     setSupportedPackages(
       supportedPackages.map((item) =>
         item.packageId === activePackageId
-          ? { ...item, pinMap: { ...source.pinMap } }
+          ? copy
           : item
       )
     );
   };
 
-  const handleUpdatePinMapping = (logicalPinName: string, padNum: string) => {
-    if (!activePackageId) return;
-    setSupportedPackages(
-      supportedPackages.map((item) => {
-        if (item.packageId !== activePackageId) return item;
-        const nextMap = { ...item.pinMap };
-        if (padNum) {
-          nextMap[logicalPinName] = padNum;
-        } else {
-          delete nextMap[logicalPinName];
-        }
-        return {
-          ...item,
-          pinMap: nextMap,
-        };
-      })
-    );
+  const handleUpdatePinPads = (pinId: string, pads: string[]) => {
+    if (!currentMapping || !currentPkgDef) return false;
+    const next = setMappedPads(currentMapping, pinId, pads);
+    const error = mappingError(next, logicalPins, new Set(currentPkgDef.pads.map((pad) => pad.padNum)));
+    if (error && pads.length > 0) { alert(error); return false; }
+    setSupportedPackages((previous) => previous.map((item) => item.packageId === activePackageId ? next : item));
+    return true;
   };
+  const handleUpdatePinMapping = (pinId: string, padNum: string) => handleUpdatePinPads(pinId, padNum ? [padNum] : []);
 
   // Умное авто-сопоставление с поддержкой синонимов цепей питания, земли и номеров
   const handleSmartAutoMap = () => {
     if (!currentPkgDef || !activePackageId) return;
-    const newMap: Record<string, string> = {};
-    const usedPads = new Set<string>();
+    const newMap: Record<string, string> = { ...currentMapping?.pinMap };
+    const usedPads = new Set(currentMapping ? mappingEntries(currentMapping).flatMap(([, pads]) => pads) : []);
 
     const POWER_SYNONYMS = new Set(["VCC", "VDD", "3V3", "+3.3V", "+5V", "5V", "VIN", "VBUS", "VBAT", "VDDA", "VREF"]);
     const GND_SYNONYMS = new Set(["GND", "VSS", "0V", "AGND", "DGND", "PGND", "EP", "THERMAL_PAD", "THERMAL", "PAD"]);
 
     // 1. Точное совпадение: padNum === pin.name или pad.name === pin.name
     logicalPins.forEach((pin) => {
+      if (newMap[pin.id]) return;
       const pinNameUpper = pin.name.trim().toUpperCase();
       const exactPad = currentPkgDef.pads.find(
         (p) =>
@@ -1821,14 +1757,14 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           (p.padNum.toUpperCase() === pinNameUpper || (p.name && p.name.toUpperCase() === pinNameUpper))
       );
       if (exactPad) {
-        newMap[pin.name] = exactPad.padNum;
+        newMap[pin.id] = exactPad.padNum;
         usedPads.add(exactPad.padNum);
       }
     });
 
     // 2. Сопоставление по синонимам питания и земли
     logicalPins.forEach((pin) => {
-      if (newMap[pin.name]) return;
+      if (newMap[pin.id]) return;
       const pinUpper = pin.name.trim().toUpperCase();
       const isPower = POWER_SYNONYMS.has(pinUpper);
       const isGnd = GND_SYNONYMS.has(pinUpper);
@@ -1842,7 +1778,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           return false;
         });
         if (synonymPad) {
-          newMap[pin.name] = synonymPad.padNum;
+          newMap[pin.id] = synonymPad.padNum;
           usedPads.add(synonymPad.padNum);
         }
       }
@@ -1850,7 +1786,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
     // 3. Для оставшихся — если в имени пина есть число (напр. "PIN 1" -> pad "1", "D2" -> pad "2")
     logicalPins.forEach((pin) => {
-      if (newMap[pin.name]) return;
+      if (newMap[pin.id]) return;
       const match = pin.name.match(/\d+/);
       if (match) {
         const numStr = match[0];
@@ -1858,7 +1794,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           (p) => !usedPads.has(p.padNum) && p.padNum === numStr
         );
         if (padMatch) {
-          newMap[pin.name] = padMatch.padNum;
+          newMap[pin.id] = padMatch.padNum;
           usedPads.add(padMatch.padNum);
         }
       }
@@ -1878,12 +1814,12 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     const newMap: Record<string, string> = {};
     logicalPins.forEach((pin, index) => {
       if (index < currentPkgDef.pads.length) {
-        newMap[pin.name] = currentPkgDef.pads[index].padNum;
+        newMap[pin.id] = currentPkgDef.pads[index].padNum;
       }
     });
     setSupportedPackages(
       supportedPackages.map((item) =>
-        item.packageId === activePackageId ? { ...item, pinMap: newMap } : item
+        item.packageId === activePackageId ? { ...item, pinMap: newMap, multiPinMap: {} } : item
       )
     );
   };
@@ -1892,7 +1828,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (!activePackageId) return;
     setSupportedPackages(
       supportedPackages.map((item) =>
-        item.packageId === activePackageId ? { ...item, pinMap: {} } : item
+        item.packageId === activePackageId ? { ...item, pinMap: {}, multiPinMap: {} } : item
       )
     );
   };
@@ -1903,14 +1839,14 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (selectedPinId) {
       const targetPin = logicalPins.find((p) => p.id === selectedPinId);
       if (targetPin) {
-        handleUpdatePinMapping(targetPin.name, padNum);
+        if (!handleUpdatePinMapping(targetPin.id, padNum)) return;
 
         if (isAutoAdvanceEnabled) {
           // Ищем следующий несопоставленный вывод
           const currIdx = logicalPins.findIndex((p) => p.id === selectedPinId);
           const nextUnmapped =
-            logicalPins.slice(currIdx + 1).find((p) => !currentMapping?.pinMap[p.name] && p.name !== targetPin.name) ||
-            logicalPins.find((p) => p.id !== targetPin.id && !currentMapping?.pinMap[p.name] && p.name !== targetPin.name);
+            logicalPins.slice(currIdx + 1).find((p) => !currentMapping?.pinMap[p.id]) ||
+            logicalPins.find((p) => p.id !== targetPin.id && !currentMapping?.pinMap[p.id]);
           if (nextUnmapped) {
             setSelectedPinId(nextUnmapped.id);
           }
@@ -1920,24 +1856,25 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     }
     // Если пин не выбран, проверяем, назначен ли padNum на какой-либо пин
     if (currentMapping) {
-      const entry = Object.entries(currentMapping.pinMap).find(([_, num]) => num === padNum);
+      const entry = mappingEntries(currentMapping).find(([, pads]) => pads.includes(padNum));
       if (entry) {
-        const foundPin = logicalPins.find((p) => p.name === entry[0]);
+        const foundPin = logicalPins.find((p) => p.id === entry[0]);
         if (foundPin) {
           setSelectedPinId(foundPin.id);
           return;
         }
       }
       // Если площадка свободна, находим первый несопоставленный пин и связываем его
-      const firstUnmapped = logicalPins.find((p) => !currentMapping.pinMap[p.name]);
+      const firstUnmapped = logicalPins.find((p) => !currentMapping.pinMap[p.id]);
       if (firstUnmapped) {
-        handleUpdatePinMapping(firstUnmapped.name, padNum);
+        handleUpdatePinMapping(firstUnmapped.id, padNum);
         setSelectedPinId(firstUnmapped.id);
       }
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return;
     if (!name.trim()) {
       alert("Укажите название радиодетали");
       return;
@@ -1947,6 +1884,11 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (emptyPin) {
       alert("У всех логических выводов схемы должны быть указаны имена (вывод не может быть пустым)");
       return;
+    }
+    for (const mapping of supportedPackages) {
+      const pkg = availablePackages.find((p) => p.id === mapping.packageId);
+      const error = pkg ? mappingError(mapping, logicalPins, new Set(pkg.pads.map((p) => p.padNum))) : "Выберите существующий корпус.";
+      if (error) { alert(error); return; }
     }
 
     const customRecord: Record<string, string> = {};
@@ -1986,8 +1928,14 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       supportedPackages,
     };
 
-    onSave(dev);
-    onClose();
+    setIsSaving(true);
+    try {
+      if (await onSave(dev)) onClose();
+    } catch (error) {
+      reportError(error, "Ошибка сохранения радиокомпонента");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Число заполненных электропараметров для индикации на вкладке
@@ -2003,7 +1951,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={onClose}>
+    <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={isSaving ? undefined : onClose}>
       <div className="device-editor-box" onClick={(e) => e.stopPropagation()}>
         {/* Шапка модального окна */}
         <div className="cad-modal-header" style={{ padding: "12px 18px" }}>
@@ -2070,7 +2018,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               </div>
             </div>
           </div>
-          <button type="button" className="cad-modal-close-btn" onClick={onClose} title="Закрыть (Esc)">
+          <button type="button" className="cad-modal-close-btn" onClick={onClose} disabled={isSaving} title="Закрыть (Esc)">
             <X size={15} />
           </button>
         </div>
@@ -3431,8 +3379,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                           className={isSelected ? "active-mapping-row" : ""}
                           onClick={() => {
                             setSelectedPinId(pin.id);
-                            if (currentMapping && currentMapping.pinMap[pin.name]) {
-                              setActivePadNum(currentMapping.pinMap[pin.name]);
+                            if (currentMapping && currentMapping.pinMap[pin.id]) {
+                              setActivePadNum(currentMapping.pinMap[pin.id]);
                             }
                           }}
                           style={{
@@ -3578,7 +3526,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                   </span>
                                 );
                               }
-                              const assignedPad = currentMapping.pinMap[pin.name];
+                              const assignedPad = currentMapping.pinMap[pin.id];
                               const hasConflict = Boolean(assignedPad && (padUsageCount[assignedPad] || []).length > 1);
 
                               if (assignedPad) {
@@ -3613,7 +3561,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                       e.stopPropagation();
                                       setSelectedPinId(pin.id);
                                       if (hasFreePads) {
-                                        handleUpdatePinMapping(pin.name, unassignedPads[0].padNum);
+                                        handleUpdatePinMapping(pin.id, unassignedPads[0].padNum);
                                         setActivePadNum(unassignedPads[0].padNum);
                                       }
                                     }}
@@ -4055,7 +4003,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                           </tr>
                         ) : (
                           mappingFilteredPins.map((pin) => {
-                          const assignedPad = currentMapping.pinMap[pin.name] || "";
+                          const assignedPad = currentMapping.pinMap[pin.id] || "";
                           const typeCfg =
                             ELECTRICAL_TYPES.find((t) => t.value === pin.electricalType) ||
                             ELECTRICAL_TYPES[5];
@@ -4125,7 +4073,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                     <select
                                       value={assignedPad}
                                       onChange={(e) => {
-                                        handleUpdatePinMapping(pin.name, e.target.value);
+                                        handleUpdatePinMapping(pin.id, e.target.value);
                                         setActivePadNum(e.target.value || null);
                                       }}
                                       className="mapping-pad-select"
@@ -4139,13 +4087,11 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                     >
                                       <option value="">— Не подключен —</option>
                                       {currentPkgDef.pads.map((pad) => {
-                                        const occupiedBy = Object.entries(currentMapping.pinMap).find(
-                                          ([pName, pNum]) => pNum === pad.padNum && pName !== pin.name
-                                        );
+                                        const occupiedBy = padUsageCount[pad.padNum]?.find((id) => id !== pin.id);
                                         return (
-                                          <option key={pad.padNum} value={pad.padNum}>
+                                          <option key={pad.padNum} value={pad.padNum} disabled={!!occupiedBy}>
                                             Pad #{pad.padNum} {pad.name ? `(${pad.name})` : ""} [{pad.shape}]
-                                            {occupiedBy ? ` — занят (${occupiedBy[0]})` : ""}
+                                            {occupiedBy ? ` — занят (${pinNamesById[occupiedBy] ?? occupiedBy})` : ""}
                                           </option>
                                         );
                                       })}
@@ -4169,7 +4115,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                         style={{ width: 20, height: 20, padding: 0, opacity: 0.6, flexShrink: 0 }}
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          handleUpdatePinMapping(pin.name, "");
+                                          handleUpdatePinMapping(pin.id, "");
                                           setActivePadNum(null);
                                         }}
                                         title="Отвязать площадку от этого вывода"
@@ -4180,10 +4126,27 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                   </div>
 
                                   {/* Предупреждение о конфликте, если площадка назначена нескольким выводам */}
+                                  {mappedPads(currentMapping, pin).length > 1 && <span style={{ fontSize: 11 }}>
+                                    Площадки: {mappedPads(currentMapping, pin).join(", ")}
+                                  </span>}
+                                  {selectedPinId === pin.id && <details onClick={(event) => event.stopPropagation()}>
+                                    <summary style={{ cursor: "pointer", fontSize: 11 }}>Несколько площадок для одного вывода</summary>
+                                    <div style={{ maxHeight: 120, overflowY: "auto", display: "grid", gridTemplateColumns: "1fr 1fr" }}>
+                                      {currentPkgDef.pads.map((pad) => {
+                                        const assigned = mappedPads(currentMapping, pin);
+                                        const occupied = (padUsageCount[pad.padNum] ?? []).some((id) => id !== pin.id);
+                                        return <label key={pad.padNum}>
+                                          <input type="checkbox" checked={assigned.includes(pad.padNum)} disabled={occupied}
+                                            onChange={(event) => handleUpdatePinPads(pin.id, event.target.checked
+                                              ? [...assigned, pad.padNum] : assigned.filter((num) => num !== pad.padNum))} /> {pad.padNum}
+                                        </label>;
+                                      })}
+                                    </div>
+                                  </details>}
                                   {hasConflict && (
                                     <div style={{ fontSize: 9.5, color: "#ef4444", display: "flex", alignItems: "center", gap: 4 }}>
                                       <AlertTriangle size={10} />
-                                      Площадка #{assignedPad} назначена нескольким выводам: {padUsageCount[assignedPad].join(", ")}
+                                      Площадка #{assignedPad} назначена нескольким выводам: {padUsageCount[assignedPad].map((id) => pinNamesById[id] ?? id).join(", ")}
                                     </div>
                                   )}
                                 </div>
@@ -4226,10 +4189,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
         {/* Подвал модального окна */}
         <div className="cad-modal-footer" style={{ padding: "10px 18px" }}>
-          <button type="button" className="cad-btn-secondary" onClick={onClose}>
+          <button type="button" className="cad-btn-secondary" onClick={onClose} disabled={isSaving}>
             Отмена
           </button>
-          <button type="button" className="cad-btn-primary" onClick={handleSave}>
+          <button type="button" className="cad-btn-primary" onClick={handleSave} disabled={isSaving}>
             <Save size={13} />
             <span>Сохранить деталь</span>
           </button>

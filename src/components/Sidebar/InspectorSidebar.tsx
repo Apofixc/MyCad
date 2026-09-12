@@ -1,4 +1,5 @@
 import React from "react";
+import { mappedPads } from "../../utils/pinMapping";
 import {
   Image as ImageIcon,
   Move,
@@ -1719,8 +1720,8 @@ export const InspectorSidebar: React.FC = () => {
                         const mapping = linkedDevice?.supportedPackages?.find((sp) => sp.packageId === comp.packageId);
                         let mappedPinName = pad.name || "";
                         if (mapping) {
-                          const entry = Object.entries(mapping.pinMap).find(([_, padNum]) => padNum === pad.padNum);
-                          if (entry) mappedPinName = entry[0];
+                          const pin = linkedDevice?.logicalPins.find((pin) => mappedPads(mapping, pin).includes(pad.padNum));
+                          if (pin) mappedPinName = pin.name;
                         }
                         const isTht = Boolean(pad.drillDiameter && pad.drillDiameter > 0);
                         return (

@@ -16,6 +16,8 @@ import {
   IPC_CHIP_PRESETS,
 } from "../../utils/footprintGenerator";
 import { X, Layers, Check, Grid, Sparkles, Sliders, Box } from "lucide-react";
+import { FootprintPreview } from "../SvgRenderer/FootprintPreview";
+import { validateFootprint } from "../../utils/footprintGeometry";
 
 interface PadArrayModalProps {
   isOpen: boolean;
@@ -152,7 +154,12 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
       break;
   }
 
-  const handleGenerate = () => {
+  const countValid = Number.isInteger(totalPads) && totalPads > 0 && totalPads <= 10000 &&
+    (arrayType !== "quad" || Number.isInteger(quadPinsPerSide) && quadPinsPerSide > 0) &&
+    (arrayType !== "dual" || dualTotalPins % 2 === 0) &&
+    (arrayType !== "matrix" || Number.isInteger(matrixRows) && Number.isInteger(matrixCols) && matrixRows > 0 && matrixCols > 0);
+  const generatePads = () => {
+    if (!countValid) return [];
     let generated: PackagePad[] = [];
     const tpl = {
       width: padWidth,
@@ -189,9 +196,11 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
         break;
     }
 
-    onApplyPads(generated);
-    onClose();
+    return generated;
   };
+  const generated = generatePads();
+  const generationError = !countValid ? "Задайте целое число площадок от 1 до 10000; два ряда требуют чётного числа."
+    : validateFootprint(generated, []);
 
   return (
     <div className="cad-modal-backdrop" style={{ zIndex: 1100 }} onClick={onClose}>
@@ -665,11 +674,20 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
         </div>
 
         {/* Подвал */}
+        {generationError ? <p role="alert">{generationError}</p> : <FootprintPreview
+          packageDef={{ id: "array-preview", name: "Массив площадок", bodyWidth: estW, bodyHeight: estH,
+            mountType: drillDiameter > 0 ? "tht" : "smd",
+            constraints: { courtyardWidth: estW, courtyardHeight: estH, maxHeight: 0 },
+            pads: generated, graphics: [], variants: [], defaultVariantId: "" }}
+          height={170} showDimensions showCourtyard={false} interactive={false} />}
         <div className="cad-modal-footer" style={{ padding: "10px 18px" }}>
           <button className="cad-btn-secondary" onClick={onClose}>
             Отмена
           </button>
-          <button className="cad-btn-primary" onClick={handleGenerate}>
+          <button className="cad-btn-primary" disabled={!!generationError} onClick={() => {
+            onApplyPads(generated);
+            onClose();
+          }}>
             <Check size={14} />
             <span>Сгенерировать на холст</span>
           </button>

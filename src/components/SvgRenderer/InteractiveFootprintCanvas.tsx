@@ -11,6 +11,7 @@ import {
   PackageVariant,
 } from "../../types/componentLibrary";
 import { getDShapePath, getCapsulePath } from "../../utils/footprintGenerator";
+import { getArcPath, getGraphicPath, getFootprintBounds, getPadPath } from "../../utils/footprintGeometry";
 
 export type EditorTool =
   | "select"
@@ -22,6 +23,7 @@ export type EditorTool =
   | "rect"
   | "circle"
   | "text"
+  | "polygon"
   | "measure"
   | "set_origin";
 
@@ -51,6 +53,8 @@ interface InteractiveFootprintCanvasProps {
   onUndo?: () => void;
   onRedo?: () => void;
   onDeleteSelected?: () => void;
+  onInteractionStart?: () => void;
+  onInteractionEnd?: () => void;
 }
 
 export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProps> = ({
@@ -73,6 +77,8 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   onUndo,
   onRedo,
   onDeleteSelected,
+  onInteractionStart,
+  onInteractionEnd,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -98,10 +104,52 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   // Линия/измерение в процессе черчения
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
   const [measureDist, setMeasureDist] = useState<{ dx: number; dy: number; dist: number } | null>(null);
+  const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
+  const [arcStart, setArcStart] = useState<{ x: number; y: number } | null>(null);
+  const [viewport, setViewport] = useState({ width: 800, height: 600 });
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    const observer = new ResizeObserver(() => {
+      setViewport({ width: container.clientWidth, height: container.clientHeight });
+    });
+    observer.observe(container);
+    return () => observer.disconnect();
+  }, []);
+
+  useEffect(() => {
+    setDrawStart(null);
+    setArcStart(null);
+    setPolygonPoints([]);
+    setMeasureDist(null);
+  }, [activeTool]);
+
+  const finishPolygon = () => {
+    if (polygonPoints.length < 3) return;
+    const item: GraphicItem = {
+      kind: "polygon", id: crypto.randomUUID(), points: polygonPoints,
+      strokeWidth: 0.15, layer: "top_fab", filled: false,
+    };
+    onGraphicsChange([...graphics, item]);
+    onSelectGraphic(item.id);
+    onSelectPad(null);
+    setPolygonPoints([]);
+    onSetActiveTool?.("select");
+  };
+
+  const fitGeometry = () => {
+    const { minX, maxX, minY, maxY } = getFootprintBounds(pads, graphics);
+    setViewOffset({ x: (minX + maxX) / 2, y: (minY + maxY) / 2 });
+    setScale(Math.max(0.1, Math.min(200,
+      (viewport.width - 80) / Math.max(1, maxX - minX),
+      (viewport.height - 100) / Math.max(1, maxY - minY))));
+  };
 
   // Слушатель горячих клавиш
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (!containerRef.current?.contains(document.activeElement)) return;
       const target = e.target as HTMLElement;
       if (
         target &&
@@ -146,12 +194,23 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       }
 
       if (e.key === "Escape") {
+        if (draggingPadNum || draggingGraphicId) onInteractionEnd?.();
+        setDraggingPadNum(null);
+        setDraggingGraphicId(null);
+        setIsPanning(false);
         e.preventDefault();
         setDrawStart(null);
+        setPolygonPoints([]);
+        setArcStart(null);
         setMeasureDist(null);
         onSelectPad(null);
         onSelectGraphic(null);
         onSetActiveTool?.("select");
+        return;
+      }
+      if (e.key === "Enter" && activeTool === "polygon") {
+        e.preventDefault();
+        finishPolygon();
         return;
       }
 
@@ -179,6 +238,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       else if (key === "r" || key === "к") onSetActiveTool?.("rect");
       else if (key === "c" || key === "с") onSetActiveTool?.("circle");
       else if (key === "m" || key === "ь") onSetActiveTool?.("measure");
+      else if (key === "f") fitGeometry();
     };
 
     window.addEventListener("keydown", handleKeyDown);
@@ -198,6 +258,11 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     onRotatePadTemplate,
     onUndo,
     onRedo,
+    polygonPoints,
+    viewport,
+    draggingPadNum,
+    draggingGraphicId,
+    onInteractionEnd,
   ]);
 
   // Привязка к сетке
@@ -234,7 +299,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   const handleWheel = (e: React.WheelEvent) => {
     e.preventDefault();
     const zoomFactor = e.deltaY < 0 ? 1.15 : 0.87;
-    const newScale = Math.max(5, Math.min(200, scale * zoomFactor));
+    const newScale = Math.max(0.1, Math.min(400, scale * zoomFactor));
 
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
@@ -265,6 +330,49 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     const world = screenToWorld(e.clientX, e.clientY);
     const snapped = { x: snapCoord(world.x), y: snapCoord(world.y) };
 
+    if (activeTool === "polygon") {
+      const first = polygonPoints[0];
+      if (first && polygonPoints.length >= 3 && Math.hypot(snapped.x - first[0], snapped.y - first[1]) * scale < 10) {
+        finishPolygon();
+      } else if (!polygonPoints.length || Math.hypot(
+        snapped.x - polygonPoints[polygonPoints.length - 1][0],
+        snapped.y - polygonPoints[polygonPoints.length - 1][1]) > 0.001) {
+        setPolygonPoints([...polygonPoints, [snapped.x, snapped.y]]);
+      }
+      return;
+    }
+    if (activeTool === "arc") {
+      if (!drawStart) setDrawStart(snapped);
+      else if (!arcStart) {
+        if (Math.hypot(snapped.x - drawStart.x, snapped.y - drawStart.y) > 0.001) setArcStart(snapped);
+      } else {
+        const item: GraphicItem = {
+          kind: "arc", id: crypto.randomUUID(), cx: drawStart.x, cy: drawStart.y,
+          radius: Math.hypot(arcStart.x - drawStart.x, arcStart.y - drawStart.y),
+          startAngle: Math.atan2(arcStart.y - drawStart.y, arcStart.x - drawStart.x) * 180 / Math.PI,
+          endAngle: Math.atan2(snapped.y - drawStart.y, snapped.x - drawStart.x) * 180 / Math.PI,
+          strokeWidth: 0.15, layer: "top_silk",
+        };
+        onGraphicsChange([...graphics, item]);
+        onSelectGraphic(item.id);
+        onSelectPad(null);
+        setDrawStart(null);
+        setArcStart(null);
+        onSetActiveTool?.("select");
+      }
+      return;
+    }
+    if (activeTool === "text") {
+      const item: GraphicItem = {
+        kind: "text", id: crypto.randomUUID(), x: snapped.x, y: snapped.y, text: "Текст",
+        fontSize: 1, rotation: 0, align: "center", strokeWidth: 0.15, layer: "top_silk",
+      };
+      onGraphicsChange([...graphics, item]);
+      onSelectGraphic(item.id);
+      onSelectPad(null);
+      onSetActiveTool?.("select");
+      return;
+    }
     if (activeTool === "pad") {
       // Ставим новую площадку с автоматическим инкрементом
       const nextNum = getNextPadNumber(pads);
@@ -370,6 +478,9 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         layer: "top_silk",
       };
       onGraphicsChange([...graphics, newD]);
+      onSelectPad(null);
+      onSelectGraphic(newD.id);
+      onSetActiveTool?.("select");
       return;
     }
 
@@ -386,6 +497,9 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         layer: "top_silk",
       };
       onGraphicsChange([...graphics, newCap]);
+      onSelectPad(null);
+      onSelectGraphic(newCap.id);
+      onSetActiveTool?.("select");
       return;
     }
 
@@ -486,10 +600,16 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   };
 
   const handleMouseUp = () => {
+    if (draggingPadNum || draggingGraphicId) onInteractionEnd?.();
     setIsPanning(false);
     setDraggingPadNum(null);
     setDraggingGraphicId(null);
   };
+
+  useEffect(() => {
+    window.addEventListener("mouseup", handleMouseUp);
+    return () => window.removeEventListener("mouseup", handleMouseUp);
+  }, [draggingPadNum, draggingGraphicId, onInteractionEnd]);
 
   // Хелпер вычисления следующего номера площадки
   function getNextPadNumber(existingPads: PackagePad[]): string {
@@ -570,14 +690,17 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   };
 
   // Координаты экрана центра холста
-  const containerW = containerRef.current?.clientWidth || 800;
-  const containerH = containerRef.current?.clientHeight || 600;
+  const containerW = viewport.width;
+  const containerH = viewport.height;
   const originPxX = -viewOffset.x * scale + containerW / 2;
   const originPxY = -viewOffset.y * scale + containerH / 2;
 
   return (
     <div
       ref={containerRef}
+      tabIndex={0}
+      aria-label="2D-редактор корпуса"
+      onMouseDownCapture={() => containerRef.current?.focus({ preventScroll: true })}
       onWheel={handleWheel}
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
@@ -605,6 +728,16 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     >
       {/* Сетка и оси координат */}
       {renderGrid()}
+      <div style={{ position: "absolute", top: 8, left: 12, right: 12, zIndex: 2, display: "flex", gap: 8, alignItems: "center", fontSize: 12 }}>
+        <button className="cad-btn-secondary" onClick={fitGeometry} onMouseDown={(e) => e.stopPropagation()}>Показать всё (F)</button>
+        {activeTool === "polygon" && <button className="cad-btn-primary" disabled={polygonPoints.length < 3} onClick={finishPolygon} onMouseDown={(e) => e.stopPropagation()}>Замкнуть контур (Enter)</button>}
+        <span style={{ color: "#94a3b8", pointerEvents: "none" }}>
+          {activeTool === "polygon" ? "Кликните вершины. Enter — замкнуть, Esc — отменить."
+            : activeTool === "arc" ? "Три клика: центр → начало дуги → конец по часовой стрелке."
+            : activeTool === "text" ? "Кликните место надписи, затем измените текст в свойствах."
+            : "Колесо — масштаб · Alt + перетаскивание — панорама · Esc — выбор"}
+        </span>
+      </div>
 
       {/* SVG холст для отрисовки геометрии корпуса */}
       <svg
@@ -632,6 +765,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                 onSelectGraphic(item.id);
                 onSelectPad(null);
                 setDraggingGraphicId(item.id);
+                onInteractionStart?.();
                 const world = screenToWorld(e.clientX, e.clientY);
                 setGraphicDragOrigin({ x: snapCoord(world.x), y: snapCoord(world.y) });
               }
@@ -662,7 +796,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                 return (
                   <path
                     key={item.id}
-                    d={getDShapePath(item.cx, item.cy, item.diameter / 2, item.cutOrientation as any, 0.58)}
+                    d={getGraphicPath(item)}
                     fill="none"
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
@@ -680,6 +814,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                   <path
                     key={item.id}
                     d={getCapsulePath(item.cx, item.cy, item.width, item.height)}
+                    transform={`rotate(${item.rotation} ${item.cx} ${item.cy})`}
                     fill="none"
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
@@ -701,6 +836,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                     width={item.width}
                     height={item.height}
                     rx={item.roundRadius}
+                    transform={`rotate(${item.rotation} ${item.x} ${item.y})`}
                     fill={item.filled ? strokeColor : "none"}
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
@@ -732,8 +868,17 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                     }}
                   />
                 );
-              default:
-                return null;
+              case "arc":
+              case "polygon":
+                return <path key={item.id} d={getGraphicPath(item)}
+                  fill={item.kind === "polygon" && item.filled ? strokeColor : "none"}
+                  stroke={strokeColor} strokeWidth={strokeWidth}
+                  style={pointerStyle} onMouseDown={handleGraphicMouseDown} />;
+              case "text":
+                return <text key={item.id} x={item.x} y={item.y} fontSize={item.fontSize}
+                  transform={`rotate(${item.rotation} ${item.x} ${item.y})`}
+                  fill={strokeColor} textAnchor={item.align === "left" ? "start" : item.align === "right" ? "end" : "middle"}
+                  dominantBaseline="central" style={pointerStyle} onMouseDown={handleGraphicMouseDown}>{item.text}</text>;
             }
           })}
 
@@ -755,6 +900,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                     onSelectPad(pad.padNum);
                     onSelectGraphic(null);
                     setDraggingPadNum(pad.padNum);
+                    onInteractionStart?.();
                     const world = screenToWorld(e.clientX, e.clientY);
                     setDragOffset({ x: world.x - pad.x, y: world.y - pad.y });
                   }
@@ -766,52 +912,13 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                 }}
               >
                 {/* Форма площадки */}
-                {pad.shape === "circle" ? (
-                  <circle cx={pad.x} cy={pad.y} r={pad.width / 2} fill={copper} stroke={stroke} strokeWidth={sw} />
-                ) : pad.shape === "rounded_rect" ? (
-                  <rect
-                    x={pad.x - pad.width / 2}
-                    y={pad.y - pad.height / 2}
-                    width={pad.width}
-                    height={pad.height}
-                    rx={pad.roundRadius ?? Math.min(pad.width, pad.height) * 0.25}
-                    fill={copper}
-                    stroke={stroke}
-                    strokeWidth={sw}
-                  />
-                ) : pad.shape === "oval" ? (
-                  <rect
-                    x={pad.x - pad.width / 2}
-                    y={pad.y - pad.height / 2}
-                    width={pad.width}
-                    height={pad.height}
-                    rx={Math.min(pad.width, pad.height) / 2}
-                    fill={copper}
-                    stroke={stroke}
-                    strokeWidth={sw}
-                  />
-                ) : pad.shape === "d_shape" ? (
-                  <path
-                    d={getDShapePath(pad.x, pad.y, Math.min(pad.width, pad.height) / 2, "right", 0.6)}
-                    fill={copper}
-                    stroke={stroke}
-                    strokeWidth={sw}
-                  />
-                ) : (
-                  <rect
-                    x={pad.x - pad.width / 2}
-                    y={pad.y - pad.height / 2}
-                    width={pad.width}
-                    height={pad.height}
-                    fill={copper}
-                    stroke={stroke}
-                    strokeWidth={sw}
-                  />
-                )}
+                <path d={getPadPath(pad)} fill={copper} stroke={stroke} strokeWidth={sw} />
 
                 {/* Сверловка THT */}
                 {pad.drillDiameter && pad.drillDiameter > 0 && (
-                  <circle cx={pad.x} cy={pad.y} r={pad.drillDiameter / 2} fill="#090d16" stroke="#475569" strokeWidth={0.04} />
+                  <path d={getCapsulePath(pad.x, pad.y,
+                    pad.drillShape === "slot" ? Math.max(pad.drillDiameter, pad.slotLength ?? 0) : pad.drillDiameter,
+                    pad.drillDiameter)} fill="#090d16" stroke="#475569" strokeWidth={0.04} />
                 )}
 
                 {/* Номер вывода */}
@@ -832,8 +939,19 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
           })}
 
           {/* Резиновая нить / превью при черчении */}
+          {polygonPoints.length > 0 && <polyline
+            points={[...polygonPoints, [cursorPos.x, cursorPos.y]].map(([x, y]) => `${x},${y}`).join(" ")}
+            fill="none" stroke="#38bdf8" strokeWidth={0.15} strokeDasharray="0.3 0.2" pointerEvents="none" />}
           {drawStart && (
-            <g>
+            <g pointerEvents="none">
+              {activeTool === "arc" && (arcStart ? <path d={getArcPath({
+                kind: "arc", id: "preview", layer: "top_silk", strokeWidth: 0.15,
+                cx: drawStart.x, cy: drawStart.y,
+                radius: Math.hypot(arcStart.x - drawStart.x, arcStart.y - drawStart.y),
+                startAngle: Math.atan2(arcStart.y - drawStart.y, arcStart.x - drawStart.x) * 180 / Math.PI,
+                endAngle: Math.atan2(cursorPos.y - drawStart.y, cursorPos.x - drawStart.x) * 180 / Math.PI,
+              })} fill="none" stroke="#38bdf8" strokeWidth={0.15} />
+                : <line x1={drawStart.x} y1={drawStart.y} x2={cursorPos.x} y2={cursorPos.y} stroke="#38bdf8" strokeWidth={0.15} />)}
               {activeTool === "line" && (
                 <line
                   x1={drawStart.x}
