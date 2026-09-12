@@ -8,6 +8,7 @@ import {
   PackageDefinition,
   LogicalPin,
   PinElectricalType,
+  PinSignalRole,
   PackageMapping,
 } from "../../types/componentLibrary";
 import {
@@ -56,18 +57,41 @@ interface ElectricalTypeConfig {
   label: string;
   shortLabel: string;
   color: string;
+  description: string;
 }
 
 const ELECTRICAL_TYPES: ElectricalTypeConfig[] = [
-  { value: "power_in", label: "Питание (Power In)", shortLabel: "Питание", color: "#ef4444" },
-  { value: "ground", label: "Земля (Ground/GND)", shortLabel: "Земля", color: "#10b981" },
-  { value: "input", label: "Вход (Input)", shortLabel: "Вход", color: "#3b82f6" },
-  { value: "output", label: "Выход (Output)", shortLabel: "Выход", color: "#f59e0b" },
-  { value: "bidirectional", label: "Двунаправл. (I/O)", shortLabel: "Двунапр.", color: "#8b5cf6" },
-  { value: "passive", label: "Пассивный (Passive)", shortLabel: "Пассив.", color: "#94a3b8" },
-  { value: "power_out", label: "Выход пит. (Pwr Out)", shortLabel: "Вых.пит.", color: "#ec4899" },
-  { value: "open_collector", label: "Откр. коллектор (OC)", shortLabel: "ОК", color: "#d97706" },
-  { value: "no_connect", label: "Не подключен (NC)", shortLabel: "NC", color: "#64748b" },
+  { value: "passive", label: "Пассивный (Passive) — R, C, L, контакты", shortLabel: "Пассив.", color: "#94a3b8", description: "Нейтральный вывод. Не порождает конфликтов при проверке схемы (ERC)." },
+  { value: "power_in", label: "Вход питания (Power In / VCC)", shortLabel: "Вх.пит.", color: "#ef4444", description: "Потребление питания микросхемы. Требует источника питания." },
+  { value: "ground", label: "Земля / Общий (Ground / GND)", shortLabel: "Земля", color: "#10b981", description: "Опорная шина нулевого потенциала." },
+  { value: "input", label: "Вход сигнала (Input)", shortLabel: "Вход", color: "#3b82f6", description: "Логический или аналоговый приемник. Ошибка при обрыве." },
+  { value: "output", label: "Выход сигнала (Output Push-Pull)", shortLabel: "Выход", color: "#f59e0b", description: "Активный двухтактный выход. Два соединенных выхода вызовут КЗ." },
+  { value: "bidirectional", label: "Двунаправленный (I/O, Bus)", shortLabel: "Двунапр.", color: "#8b5cf6", description: "Шина данных, GPIO микроконтроллера." },
+  { value: "power_out", label: "Источник питания (Power Out / VOUT)", shortLabel: "Вых.пит.", color: "#ec4899", description: "Выход стабилизатора, батареи или источника напряжения." },
+  { value: "open_collector", label: "Открытый коллектор / сток (OC / OD)", shortLabel: "ОК/ОС", color: "#d97706", description: "Выход с открытым плечом. Требует внешнего подтягивающего резистора." },
+  { value: "tri_state", label: "Трёхстабильный / Hi-Z (Tri-State)", shortLabel: "Hi-Z", color: "#14b8a6", description: "Выход с высокоомным Z-состоянием." },
+  { value: "no_connect", label: "Не подключен (NC - No Connect)", shortLabel: "NC", color: "#64748b", description: "Свободный вывод корпуса. Запрещено подключение проводников." },
+  { value: "unspecified", label: "Не указан / Универсальный (Free)", shortLabel: "Свобод.", color: "#a1a1aa", description: "Тип не специфицирован (для универсальных компонентов)." },
+];
+
+export interface SignalRoleConfig {
+  value: PinSignalRole;
+  label: string;
+  shortLabel: string;
+  color: string;
+}
+
+export const PIN_SIGNAL_ROLES: SignalRoleConfig[] = [
+  { value: "passive", label: "Пассивный (R, C, L, контакты)", shortLabel: "Пассив.", color: "#94a3b8" },
+  { value: "power", label: "Шина питания (VBUS, VCC, +5V)", shortLabel: "Питание", color: "#ef4444" },
+  { value: "ground", label: "Земля / Общий (GND, AGND)", shortLabel: "Земля", color: "#10b981" },
+  { value: "diff_pair", label: "Дифф. пара (USB D+/D-, Ethernet)", shortLabel: "Дифпара", color: "#6366f1" },
+  { value: "digital", label: "Цифровой сигнал (GPIO, Data)", shortLabel: "Цифра", color: "#3b82f6" },
+  { value: "analog", label: "Аналоговый (ADC/DAC/Audio)", shortLabel: "Аналог", color: "#06b6d4" },
+  { value: "clock", label: "Тактирование (CLK, XTAL)", shortLabel: "Тактовый", color: "#ec4899" },
+  { value: "shield", label: "Экран / Корпус (Shield)", shortLabel: "Экран", color: "#64748b" },
+  { value: "control", label: "Управление (~RST, EN, CS)", shortLabel: "Управл.", color: "#f59e0b" },
+  { value: "rf", label: "ВЧ / Радио (RF, 50 Ом)", shortLabel: "RF", color: "#f97316" },
 ];
 
 interface TaxonomySubcategory {
@@ -329,6 +353,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [pinGenEnd, setPinGenEnd] = useState<number>(7);
   const [pinGenList, setPinGenList] = useState<string>("VCC, GND, IN, OUT");
   const [pinGenType, setPinGenType] = useState<PinElectricalType>("passive");
+  const [pinGenRole, setPinGenRole] = useState<PinSignalRole>("passive");
   const [pinGenUnit, setPinGenUnit] = useState<string>("");
 
   // Мультивыбор выводов для групповых операций
@@ -457,124 +482,213 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     }
   }, [isOpen, initialDevice, availablePackages]);
 
-  // Пресеты распиновки для сложных полупроводников и базовых компонентов
+  // Пресеты распиновки для пассивных компонентов, разъемов, полупроводников и микросхем
   const applyPinPreset = (presetKey: string) => {
     switch (presetKey) {
       case "rlc":
         setLogicalPins([
-          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", description: "Вывод 1" },
-          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "passive", description: "Вывод 2" },
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", pinRole: "passive", description: "Вывод 1" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "passive", pinRole: "passive", description: "Вывод 2" },
         ]);
         break;
       case "diode":
         setLogicalPins([
-          { id: `pin_${Date.now()}_a`, name: "A", electricalType: "passive", description: "Анод" },
-          { id: `pin_${Date.now()}_k`, name: "K", electricalType: "passive", description: "Катод" },
+          { id: `pin_${Date.now()}_a`, name: "A", electricalType: "passive", pinRole: "passive", description: "Анод (Anode)" },
+          { id: `pin_${Date.now()}_k`, name: "K", electricalType: "passive", pinRole: "passive", description: "Катод (Cathode)" },
+        ]);
+        break;
+      case "potentiometer":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", pinRole: "passive", description: "Крайний вывод 1" },
+          { id: `pin_${Date.now()}_w`, name: "WIPER", electricalType: "passive", pinRole: "analog", description: "Регулировка (Ползунок / Wiper)" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "passive", pinRole: "passive", description: "Крайний вывод 2" },
+        ]);
+        break;
+      case "xtal_2p":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", pinRole: "clock", description: "Кварцевый резонатор OSC1" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "passive", pinRole: "clock", description: "Кварцевый резонатор OSC2" },
+        ]);
+        break;
+      case "xtal_4p":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", pinRole: "clock", description: "OSC1 (Резонатор)" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "ground", pinRole: "shield", description: "GND (Экран корпуса)" },
+          { id: `pin_${Date.now()}_3`, name: "3", electricalType: "passive", pinRole: "clock", description: "OSC2 (Резонатор)" },
+          { id: `pin_${Date.now()}_4`, name: "4", electricalType: "ground", pinRole: "shield", description: "GND (Экран корпуса)" },
+        ]);
+        break;
+      case "usb_a":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "power_in", pinRole: "power", description: "VBUS (+5V питание)" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "bidirectional", pinRole: "diff_pair", description: "D- (USB Data -)" },
+          { id: `pin_${Date.now()}_3`, name: "3", electricalType: "bidirectional", pinRole: "diff_pair", description: "D+ (USB Data +)" },
+          { id: `pin_${Date.now()}_4`, name: "4", electricalType: "ground", pinRole: "ground", description: "GND (Общий провод)" },
+          { id: `pin_${Date.now()}_sh`, name: "SHIELD", electricalType: "passive", pinRole: "shield", description: "Металлический экран корпуса" },
+        ]);
+        break;
+      case "usb_micro_b":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "power_in", pinRole: "power", description: "VBUS (+5V)" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "bidirectional", pinRole: "diff_pair", description: "D- (Data -)" },
+          { id: `pin_${Date.now()}_3`, name: "3", electricalType: "bidirectional", pinRole: "diff_pair", description: "D+ (Data +)" },
+          { id: `pin_${Date.now()}_4`, name: "4", electricalType: "input", pinRole: "control", description: "ID (USB OTG Detect)" },
+          { id: `pin_${Date.now()}_5`, name: "5", electricalType: "ground", pinRole: "ground", description: "GND (Общий провод)" },
+          { id: `pin_${Date.now()}_sh`, name: "SHIELD", electricalType: "passive", pinRole: "shield", description: "Экран разъема" },
+        ]);
+        break;
+      case "usb_c_16p":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_gnd1`, name: "GND", electricalType: "ground", pinRole: "ground", description: "Общий GND (A1/B12)" },
+          { id: `pin_${Date.now()}_vbus1`, name: "VBUS", electricalType: "power_in", pinRole: "power", description: "Шина питания VBUS (A4/B9)" },
+          { id: `pin_${Date.now()}_cc1`, name: "CC1", electricalType: "bidirectional", pinRole: "control", description: "Канал конфигурации CC1" },
+          { id: `pin_${Date.now()}_dp1`, name: "DP1", electricalType: "bidirectional", pinRole: "diff_pair", description: "Данные D+ (USB 2.0)" },
+          { id: `pin_${Date.now()}_dn1`, name: "DN1", electricalType: "bidirectional", pinRole: "diff_pair", description: "Данные D- (USB 2.0)" },
+          { id: `pin_${Date.now()}_sbu1`, name: "SBU1", electricalType: "bidirectional", pinRole: "analog", description: "Служебная линия SBU1" },
+          { id: `pin_${Date.now()}_cc2`, name: "CC2", electricalType: "bidirectional", pinRole: "control", description: "Канал конфигурации CC2" },
+          { id: `pin_${Date.now()}_dp2`, name: "DP2", electricalType: "bidirectional", pinRole: "diff_pair", description: "Данные D+ (обратная сторона)" },
+          { id: `pin_${Date.now()}_dn2`, name: "DN2", electricalType: "bidirectional", pinRole: "diff_pair", description: "Данные D- (обратная сторона)" },
+          { id: `pin_${Date.now()}_sbu2`, name: "SBU2", electricalType: "bidirectional", pinRole: "analog", description: "Служебная линия SBU2" },
+          { id: `pin_${Date.now()}_sh`, name: "SHIELD", electricalType: "passive", pinRole: "shield", description: "Экран корпуса Type-C" },
+        ]);
+        break;
+      case "dc_jack":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "power_in", pinRole: "power", description: "Центральный (+) контакт питания" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "ground", pinRole: "ground", description: "Внешний (-) контакт (Общий/GND)" },
+          { id: `pin_${Date.now()}_3`, name: "3", electricalType: "passive", pinRole: "control", description: "Размыкающий контакт (Detect/Switch)" },
+        ]);
+        break;
+      case "audio_jack_35":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_tip`, name: "TIP", electricalType: "passive", pinRole: "analog", description: "Левый канал аудио (Tip)" },
+          { id: `pin_${Date.now()}_ring`, name: "RING", electricalType: "passive", pinRole: "analog", description: "Правый канал аудио (Ring)" },
+          { id: `pin_${Date.now()}_sleeve`, name: "SLEEVE", electricalType: "ground", pinRole: "ground", description: "Общий аудио (Sleeve/GND)" },
+          { id: `pin_${Date.now()}_det`, name: "DET", electricalType: "passive", pinRole: "control", description: "Детектор вставки штекера" },
+        ]);
+        break;
+      case "ethernet_rj45":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "output", pinRole: "diff_pair", description: "TX+ (Передача +)" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "output", pinRole: "diff_pair", description: "TX- (Передача -)" },
+          { id: `pin_${Date.now()}_3`, name: "3", electricalType: "input", pinRole: "diff_pair", description: "RX+ (Прием +)" },
+          { id: `pin_${Date.now()}_4`, name: "4", electricalType: "passive", pinRole: "passive", description: "Терминация 4 (75 Ом)" },
+          { id: `pin_${Date.now()}_5`, name: "5", electricalType: "passive", pinRole: "passive", description: "Терминация 5 (75 Ом)" },
+          { id: `pin_${Date.now()}_6`, name: "6", electricalType: "input", pinRole: "diff_pair", description: "RX- (Прием -)" },
+          { id: `pin_${Date.now()}_7`, name: "7", electricalType: "passive", pinRole: "passive", description: "Терминация 7 (75 Ом)" },
+          { id: `pin_${Date.now()}_8`, name: "8", electricalType: "passive", pinRole: "passive", description: "Терминация 8 (75 Ом)" },
+          { id: `pin_${Date.now()}_sh`, name: "SHIELD", electricalType: "passive", pinRole: "shield", description: "Экран разъема RJ-45" },
+        ]);
+        break;
+      case "screw_terminal_2":
+        setLogicalPins([
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", pinRole: "passive", description: "Винтовой зажим 1" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "passive", pinRole: "passive", description: "Винтовой зажим 2" },
         ]);
         break;
       case "bjt_npn":
       case "bjt_pnp":
         setLogicalPins([
-          { id: `pin_${Date.now()}_b`, name: "B", electricalType: "input", description: "База (Base)" },
-          { id: `pin_${Date.now()}_c`, name: "C", electricalType: "output", description: "Коллектор (Collector)" },
-          { id: `pin_${Date.now()}_e`, name: "E", electricalType: "passive", description: "Эмиттер (Emitter)" },
+          { id: `pin_${Date.now()}_b`, name: "B", electricalType: "input", pinRole: "control", description: "База (Base)" },
+          { id: `pin_${Date.now()}_c`, name: "C", electricalType: "passive", pinRole: "analog", description: "Коллектор (Collector)" },
+          { id: `pin_${Date.now()}_e`, name: "E", electricalType: "passive", pinRole: "analog", description: "Эмиттер (Emitter)" },
         ]);
         break;
       case "mosfet_n":
       case "mosfet_p":
         setLogicalPins([
-          { id: `pin_${Date.now()}_g`, name: "G", electricalType: "input", description: "Затвор (Gate)" },
-          { id: `pin_${Date.now()}_d`, name: "D", electricalType: "output", description: "Сток (Drain)" },
-          { id: `pin_${Date.now()}_s`, name: "S", electricalType: "passive", description: "Исток (Source)" },
+          { id: `pin_${Date.now()}_g`, name: "G", electricalType: "input", pinRole: "control", description: "Затвор (Gate)" },
+          { id: `pin_${Date.now()}_d`, name: "D", electricalType: "passive", pinRole: "power", description: "Сток (Drain)" },
+          { id: `pin_${Date.now()}_s`, name: "S", electricalType: "passive", pinRole: "power", description: "Исток (Source)" },
         ]);
         break;
       case "ldo3":
         setLogicalPins([
-          { id: `pin_${Date.now()}_in`, name: "VIN", electricalType: "power_in", description: "Вход (VIN)" },
-          { id: `pin_${Date.now()}_out`, name: "VOUT", electricalType: "power_out", description: "Выход (VOUT)" },
-          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий (GND/ADJ)" },
+          { id: `pin_${Date.now()}_in`, name: "VIN", electricalType: "power_in", pinRole: "power", description: "Входное напряжение (VIN)" },
+          { id: `pin_${Date.now()}_out`, name: "VOUT", electricalType: "power_out", pinRole: "power", description: "Выход стабилизатора (VOUT)" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", pinRole: "ground", description: "Общий (GND/ADJ)" },
         ]);
         break;
       case "opamp_single":
         setLogicalPins([
-          { id: `pin_${Date.now()}_inp`, name: "IN+", electricalType: "input", description: "Неинвертирующий вход +" },
-          { id: `pin_${Date.now()}_inm`, name: "IN-", electricalType: "input", description: "Инвертирующий вход -" },
-          { id: `pin_${Date.now()}_out`, name: "OUT", electricalType: "output", description: "Выход ОУ" },
-          { id: `pin_${Date.now()}_vp`, name: "V+", electricalType: "power_in", description: "Питание V+" },
-          { id: `pin_${Date.now()}_vm`, name: "V-", electricalType: "power_in", description: "Питание V- / GND" },
+          { id: `pin_${Date.now()}_inp`, name: "IN+", electricalType: "input", pinRole: "analog", description: "Неинвертирующий вход +" },
+          { id: `pin_${Date.now()}_inm`, name: "IN-", electricalType: "input", pinRole: "analog", description: "Инвертирующий вход -" },
+          { id: `pin_${Date.now()}_out`, name: "OUT", electricalType: "output", pinRole: "analog", description: "Выход ОУ" },
+          { id: `pin_${Date.now()}_vp`, name: "V+", electricalType: "power_in", pinRole: "power", description: "Питание V+" },
+          { id: `pin_${Date.now()}_vm`, name: "V-", electricalType: "power_in", pinRole: "power", description: "Питание V- / GND" },
         ]);
         break;
       case "opamp_dual":
         setLogicalPins([
-          { id: `pin_${Date.now()}_1inp`, name: "1IN+", electricalType: "input", unit: "A", description: "Вход + (Unit A)" },
-          { id: `pin_${Date.now()}_1inm`, name: "1IN-", electricalType: "input", unit: "A", description: "Вход - (Unit A)" },
-          { id: `pin_${Date.now()}_1out`, name: "1OUT", electricalType: "output", unit: "A", description: "Выход (Unit A)" },
-          { id: `pin_${Date.now()}_2inp`, name: "2IN+", electricalType: "input", unit: "B", description: "Вход + (Unit B)" },
-          { id: `pin_${Date.now()}_2inm`, name: "2IN-", electricalType: "input", unit: "B", description: "Вход - (Unit B)" },
-          { id: `pin_${Date.now()}_2out`, name: "2OUT", electricalType: "output", unit: "B", description: "Выход (Unit B)" },
-          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Питание VCC" },
-          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Земля GND" },
+          { id: `pin_${Date.now()}_1inp`, name: "1IN+", electricalType: "input", pinRole: "analog", unit: "A", description: "Вход + (Unit A)" },
+          { id: `pin_${Date.now()}_1inm`, name: "1IN-", electricalType: "input", pinRole: "analog", unit: "A", description: "Вход - (Unit A)" },
+          { id: `pin_${Date.now()}_1out`, name: "1OUT", electricalType: "output", pinRole: "analog", unit: "A", description: "Выход (Unit A)" },
+          { id: `pin_${Date.now()}_2inp`, name: "2IN+", electricalType: "input", pinRole: "analog", unit: "B", description: "Вход + (Unit B)" },
+          { id: `pin_${Date.now()}_2inm`, name: "2IN-", electricalType: "input", pinRole: "analog", unit: "B", description: "Вход - (Unit B)" },
+          { id: `pin_${Date.now()}_2out`, name: "2OUT", electricalType: "output", pinRole: "analog", unit: "B", description: "Выход (Unit B)" },
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", pinRole: "power", description: "Питание VCC" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", pinRole: "ground", description: "Земля GND" },
         ]);
         break;
       case "header_1x4":
         setLogicalPins([
-          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", description: "Контакт 1" },
-          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "passive", description: "Контакт 2" },
-          { id: `pin_${Date.now()}_3`, name: "3", electricalType: "passive", description: "Контакт 3" },
-          { id: `pin_${Date.now()}_4`, name: "4", electricalType: "passive", description: "Контакт 4" },
+          { id: `pin_${Date.now()}_1`, name: "1", electricalType: "passive", pinRole: "passive", description: "Контакт 1" },
+          { id: `pin_${Date.now()}_2`, name: "2", electricalType: "passive", pinRole: "passive", description: "Контакт 2" },
+          { id: `pin_${Date.now()}_3`, name: "3", electricalType: "passive", pinRole: "passive", description: "Контакт 3" },
+          { id: `pin_${Date.now()}_4`, name: "4", electricalType: "passive", pinRole: "passive", description: "Контакт 4" },
         ]);
         break;
       case "pwr_logic":
         setLogicalPins([
-          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Питание VCC" },
-          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий GND" },
-          { id: `pin_${Date.now()}_in`, name: "IN", electricalType: "input", description: "Входной сигнал" },
-          { id: `pin_${Date.now()}_out`, name: "OUT", electricalType: "output", description: "Выходной сигнал" },
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", pinRole: "power", description: "Питание VCC" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", pinRole: "ground", description: "Общий GND" },
+          { id: `pin_${Date.now()}_in`, name: "IN", electricalType: "input", pinRole: "digital", description: "Входной сигнал" },
+          { id: `pin_${Date.now()}_out`, name: "OUT", electricalType: "output", pinRole: "digital", description: "Выходной сигнал" },
         ]);
         break;
       case "i2c_eeprom":
         setLogicalPins([
-          { id: `pin_${Date.now()}_a0`, name: "A0", electricalType: "input", description: "Адресный вход A0" },
-          { id: `pin_${Date.now()}_a1`, name: "A1", electricalType: "input", description: "Адресный вход A1" },
-          { id: `pin_${Date.now()}_a2`, name: "A2", electricalType: "input", description: "Адресный вход A2" },
-          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий провод GND" },
-          { id: `pin_${Date.now()}_sda`, name: "SDA", electricalType: "bidirectional", description: "Линия данных I2C SDA" },
-          { id: `pin_${Date.now()}_scl`, name: "SCL", electricalType: "input", isClock: true, description: "Тактирование I2C SCL" },
-          { id: `pin_${Date.now()}_wp`, name: "WP", electricalType: "input", isInverted: true, description: "Защита записи ~WP" },
-          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Питание VCC" },
+          { id: `pin_${Date.now()}_a0`, name: "A0", electricalType: "input", pinRole: "control", description: "Адресный вход A0" },
+          { id: `pin_${Date.now()}_a1`, name: "A1", electricalType: "input", pinRole: "control", description: "Адресный вход A1" },
+          { id: `pin_${Date.now()}_a2`, name: "A2", electricalType: "input", pinRole: "control", description: "Адресный вход A2" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", pinRole: "ground", description: "Общий провод GND" },
+          { id: `pin_${Date.now()}_sda`, name: "SDA", electricalType: "bidirectional", pinRole: "digital", description: "Линия данных I2C SDA" },
+          { id: `pin_${Date.now()}_scl`, name: "SCL", electricalType: "input", pinRole: "clock", isClock: true, description: "Тактирование I2C SCL" },
+          { id: `pin_${Date.now()}_wp`, name: "WP", electricalType: "input", pinRole: "control", isInverted: true, description: "Защита записи ~WP" },
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", pinRole: "power", description: "Питание VCC" },
         ]);
         break;
       case "spi_flash":
         setLogicalPins([
-          { id: `pin_${Date.now()}_cs`, name: "CS#", electricalType: "input", isInverted: true, description: "Выбор чипа ~CS" },
-          { id: `pin_${Date.now()}_so`, name: "SO", electricalType: "output", description: "Данные MISO/SO" },
-          { id: `pin_${Date.now()}_wp`, name: "WP#", electricalType: "input", isInverted: true, description: "Защита записи ~WP" },
-          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий GND" },
-          { id: `pin_${Date.now()}_si`, name: "SI", electricalType: "input", description: "Данные MOSI/SI" },
-          { id: `pin_${Date.now()}_sck`, name: "SCK", electricalType: "input", isClock: true, description: "Тактирование SPI SCK" },
-          { id: `pin_${Date.now()}_hold`, name: "HOLD#", electricalType: "input", isInverted: true, description: "Удержание ~HOLD" },
-          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Питание VCC" },
+          { id: `pin_${Date.now()}_cs`, name: "CS#", electricalType: "input", pinRole: "control", isInverted: true, description: "Выбор чипа ~CS" },
+          { id: `pin_${Date.now()}_so`, name: "SO", electricalType: "output", pinRole: "digital", description: "Данные MISO/SO" },
+          { id: `pin_${Date.now()}_wp`, name: "WP#", electricalType: "input", pinRole: "control", isInverted: true, description: "Защита записи ~WP" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", pinRole: "ground", description: "Общий GND" },
+          { id: `pin_${Date.now()}_si`, name: "SI", electricalType: "input", pinRole: "digital", description: "Данные MOSI/SI" },
+          { id: `pin_${Date.now()}_sck`, name: "SCK", electricalType: "input", pinRole: "clock", isClock: true, description: "Тактирование SPI SCK" },
+          { id: `pin_${Date.now()}_hold`, name: "HOLD#", electricalType: "input", pinRole: "control", isInverted: true, description: "Удержание ~HOLD" },
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", pinRole: "power", description: "Питание VCC" },
         ]);
         break;
       case "dcdc_buck":
         setLogicalPins([
-          { id: `pin_${Date.now()}_vin`, name: "VIN", electricalType: "power_in", description: "Входное напряжение" },
-          { id: `pin_${Date.now()}_en`, name: "EN", electricalType: "input", description: "Включение Enable" },
-          { id: `pin_${Date.now()}_boot`, name: "BOOT", electricalType: "passive", description: "Вольтодобавка Bootstrap" },
-          { id: `pin_${Date.now()}_sw`, name: "SW", electricalType: "output", description: "Ключевая точка Switch" },
-          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Силовая и сигнальная земля" },
-          { id: `pin_${Date.now()}_fb`, name: "FB", electricalType: "input", description: "Обратная связь Feedback" },
-          { id: `pin_${Date.now()}_comp`, name: "COMP", electricalType: "passive", description: "Коррекция компенсации" },
-          { id: `pin_${Date.now()}_vout`, name: "VOUT", electricalType: "power_out", description: "Выход стабилизатора" },
+          { id: `pin_${Date.now()}_vin`, name: "VIN", electricalType: "power_in", pinRole: "power", description: "Входное напряжение VIN" },
+          { id: `pin_${Date.now()}_en`, name: "EN", electricalType: "input", pinRole: "control", description: "Включение Enable" },
+          { id: `pin_${Date.now()}_boot`, name: "BOOT", electricalType: "passive", pinRole: "power", description: "Вольтодобавка Bootstrap" },
+          { id: `pin_${Date.now()}_sw`, name: "SW", electricalType: "output", pinRole: "power", description: "Ключевая точка Switch" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", pinRole: "ground", description: "Силовая и сигнальная земля" },
+          { id: `pin_${Date.now()}_fb`, name: "FB", electricalType: "input", pinRole: "analog", description: "Обратная связь Feedback" },
+          { id: `pin_${Date.now()}_comp`, name: "COMP", electricalType: "passive", pinRole: "analog", description: "Коррекция компенсации" },
+          { id: `pin_${Date.now()}_vout`, name: "VOUT", electricalType: "power_out", pinRole: "power", description: "Выход стабилизатора VOUT" },
         ]);
         break;
       case "swd_header":
         setLogicalPins([
-          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", description: "Опорное питание VCC" },
-          { id: `pin_${Date.now()}_swdio`, name: "SWDIO", electricalType: "bidirectional", description: "Данные SWD IO" },
-          { id: `pin_${Date.now()}_swclk`, name: "SWCLK", electricalType: "input", isClock: true, description: "Тактирование SWD CLK" },
-          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", description: "Общий провод GND" },
-          { id: `pin_${Date.now()}_nrst`, name: "NRST", electricalType: "output", isInverted: true, description: "Аппаратный сброс ~RESET" },
+          { id: `pin_${Date.now()}_vcc`, name: "VCC", electricalType: "power_in", pinRole: "power", description: "Опорное питание VCC" },
+          { id: `pin_${Date.now()}_swdio`, name: "SWDIO", electricalType: "bidirectional", pinRole: "digital", description: "Данные SWD IO" },
+          { id: `pin_${Date.now()}_swclk`, name: "SWCLK", electricalType: "input", pinRole: "clock", isClock: true, description: "Тактирование SWD CLK" },
+          { id: `pin_${Date.now()}_gnd`, name: "GND", electricalType: "ground", pinRole: "ground", description: "Общий провод GND" },
+          { id: `pin_${Date.now()}_nrst`, name: "NRST", electricalType: "output", pinRole: "control", isInverted: true, description: "Аппаратный сброс ~RESET" },
         ]);
         break;
     }
@@ -613,7 +727,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         const q = pinSearchQuery.trim().toLowerCase();
         const matchesName = p.name.toLowerCase().includes(q);
         const matchesDesc = (p.description || "").toLowerCase().includes(q);
-        const matchesType = p.electricalType.toLowerCase().includes(q);
+        const matchesType = p.electricalType.toLowerCase().includes(q) || Boolean(p.pinRole && p.pinRole.toLowerCase().includes(q));
         if (!matchesName && !matchesDesc && !matchesType) return false;
       }
       return true;
@@ -772,6 +886,13 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     );
   };
 
+  const handleBulkSetPinRole = (role: PinSignalRole) => {
+    if (selectedPinIds.size === 0) return;
+    setLogicalPins(
+      logicalPins.map((p) => (selectedPinIds.has(p.id) ? { ...p, pinRole: role } : p))
+    );
+  };
+
   const handleBulkSetUnit = (unit: string) => {
     if (selectedPinIds.size === 0) return;
     setLogicalPins(
@@ -795,6 +916,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     const results: Array<{
       name: string;
       electricalType: PinElectricalType;
+      pinRole?: PinSignalRole;
       unit?: string;
       description?: string;
     }> = [];
@@ -819,6 +941,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       let pinName = parts[0];
       let pinDesc = "";
       let pinType: PinElectricalType = "passive";
+      let pinRole: PinSignalRole = "passive";
       let pinUnit = "";
 
       // Если первый элемент - число (№ вывода), а второй - имя сигнала
@@ -833,22 +956,51 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         const lower = tok.toLowerCase();
         if (/^(gnd|ground|земля|vss|0v)$/i.test(lower)) {
           pinType = "ground";
+          pinRole = "ground";
         } else if (/^(power_in|pwr|power|питание|vcc|vdd|vin|vbat|vbus)$/i.test(lower)) {
           pinType = "power_in";
+          pinRole = "power";
         } else if (/^(power_out|вых.*пит|vref|out_pwr)$/i.test(lower)) {
           pinType = "power_out";
+          pinRole = "power";
+        } else if (/^(diff_pair|дифпар|d\+|d-|dp|dn|tx\+|tx-|rx\+|rx-)$/i.test(lower)) {
+          pinType = "bidirectional";
+          pinRole = "diff_pair";
+        } else if (/^(shield|экран|корпус|chassis)$/i.test(lower)) {
+          pinType = "passive";
+          pinRole = "shield";
+        } else if (/^(clock|clk|sck|xtal|кварц)$/i.test(lower)) {
+          pinType = "input";
+          pinRole = "clock";
+        } else if (/^(rf|вч|ant|antenna|антенна)$/i.test(lower)) {
+          pinType = "passive";
+          pinRole = "rf";
+        } else if (/^(analog|adc|dac|ацп|цап|audio)$/i.test(lower)) {
+          pinType = "bidirectional";
+          pinRole = "analog";
+        } else if (/^(tri_state|hi_z|hiz)$/i.test(lower)) {
+          pinType = "tri_state";
+          pinRole = "digital";
         } else if (/^(input|in|вход|btn|rx|din)$/i.test(lower)) {
           pinType = "input";
+          pinRole = "digital";
         } else if (/^(output|out|выход|led|tx|dout)$/i.test(lower)) {
           pinType = "output";
+          pinRole = "digital";
         } else if (/^(bidirectional|bidi|двунапр|io|gpio|sda|scl)$/i.test(lower)) {
           pinType = "bidirectional";
+          pinRole = "digital";
         } else if (/^(open_collector|oc|ок)$/i.test(lower)) {
           pinType = "open_collector";
+          pinRole = "digital";
         } else if (/^(no_connect|nc|не\s*подкл)$/i.test(lower)) {
           pinType = "no_connect";
+        } else if (/^(unspecified|free|свобод)$/i.test(lower)) {
+          pinType = "unspecified";
+          pinRole = "passive";
         } else if (/^(passive|пассивный)$/i.test(lower)) {
           pinType = "passive";
+          pinRole = "passive";
         } else if (/^(unit\s*|секц\w*\s*)?([a-d])$/i.test(lower)) {
           const m = lower.match(/[a-d]$/i);
           if (m) pinUnit = m[0].toUpperCase();
@@ -858,14 +1010,38 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       });
 
       // Если тип не указан явно, определяем по общепринятым префиксам имени
-      if (pinType === "passive") {
+      if (pinType === "passive" && pinRole === "passive") {
         const nameLower = pinName.toLowerCase();
-        if (/gnd|vss|ground/i.test(nameLower)) pinType = "ground";
-        else if (/vcc|vdd|vbat|vin|vbus|3v3|5v/i.test(nameLower)) pinType = "power_in";
-        else if (/nc|n\.c\./i.test(nameLower)) pinType = "no_connect";
-        else if (/clk|sck|scl|rx|in|din|cs|en|rst|reset/i.test(nameLower)) pinType = "input";
-        else if (/tx|out|dout|led/i.test(nameLower)) pinType = "output";
-        else if (/io|sda|bidi/i.test(nameLower)) pinType = "bidirectional";
+        if (/gnd|vss|ground/i.test(nameLower)) {
+          pinType = "ground";
+          pinRole = "ground";
+        } else if (/vcc|vdd|vbat|vin|vbus|3v3|5v/i.test(nameLower)) {
+          pinType = "power_in";
+          pinRole = "power";
+        } else if (/d\+|d\-|dp|dn|can_h|can_l|eth|tx\+|tx\-|rx\+|rx\-/i.test(nameLower)) {
+          pinType = "bidirectional";
+          pinRole = "diff_pair";
+        } else if (/shield|screen|chassis|корпус|экран/i.test(nameLower)) {
+          pinType = "passive";
+          pinRole = "shield";
+        } else if (/xtal|osc|clk|sck/i.test(nameLower)) {
+          pinType = "passive";
+          pinRole = "clock";
+        } else if (/ant|rf|50ohm/i.test(nameLower)) {
+          pinType = "passive";
+          pinRole = "rf";
+        } else if (/nc|n\.c\./i.test(nameLower)) {
+          pinType = "no_connect";
+        } else if (/rx|in|din|cs|en|rst|reset/i.test(nameLower)) {
+          pinType = "input";
+          pinRole = "control";
+        } else if (/tx|out|dout|led/i.test(nameLower)) {
+          pinType = "output";
+          pinRole = "digital";
+        } else if (/io|sda|bidi/i.test(nameLower)) {
+          pinType = "bidirectional";
+          pinRole = "digital";
+        }
       }
 
       const extraDesc = remainingTokens.join(" ");
@@ -876,6 +1052,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       results.push({
         name: pinName,
         electricalType: pinType,
+        pinRole: pinRole,
         unit: pinUnit || undefined,
         description: pinDesc || undefined,
       });
@@ -895,6 +1072,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       id: `pin_${Date.now()}_${idx}`,
       name: p.name,
       electricalType: p.electricalType,
+      pinRole: p.pinRole,
       unit: p.unit,
       description: p.description,
     }));
@@ -1152,6 +1330,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           id: `pin_${timestamp}_${i}`,
           name: pinName,
           electricalType: pinGenType,
+          pinRole: pinGenRole,
           unit: pinGenUnit.trim() ? pinGenUnit.trim().toUpperCase() : undefined,
           description: `${pinGenPrefix ? `Линия ${pinGenPrefix}` : "Вывод"} ${i}`,
         });
@@ -1167,6 +1346,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           id: `pin_${timestamp}_${idx}`,
           name: pName,
           electricalType: pinGenType,
+          pinRole: pinGenRole,
           unit: pinGenUnit.trim() ? pinGenUnit.trim().toUpperCase() : undefined,
           description: `Вывод ${pName}`,
         });
@@ -2552,7 +2732,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               </button>
               <select
                 className="cad-input"
-                style={{ fontSize: 10, padding: "2px 4px", height: 24, width: 88, flexShrink: 0, cursor: "pointer" }}
+                style={{ fontSize: 10, padding: "2px 6px", height: 24, width: 106, flexShrink: 0, cursor: "pointer" }}
                 defaultValue=""
                 onChange={(e) => {
                   const val = e.target.value;
@@ -2560,22 +2740,40 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   applyPinPreset(val);
                   e.target.value = "";
                 }}
-                title="Готовые шаблоны выводов для компонентов"
+                title="Инженерные шаблоны распиновки для пассивных деталей, разъёмов и чипов"
               >
                 <option value="" disabled>⚡ Пресет...</option>
-                <option value="rlc">Пассивный 2-pin (1, 2)</option>
-                <option value="diode">Диод (Анод A, Катод K)</option>
-                <option value="bjt_npn">BJT NPN (B, C, E)</option>
-                <option value="mosfet_n">MOSFET N-Ch (G, D, S)</option>
-                <option value="ldo3">LDO 3-pin (VIN, VOUT, GND)</option>
-                <option value="opamp_single">ОУ одиночный (IN+, IN-, OUT...)</option>
-                <option value="opamp_dual">ОУ сдвоенный (Unit A, B + PWR)</option>
-                <option value="header_1x4">Штыревой разъем (1..4)</option>
-                <option value="pwr_logic">ИМС логики (VCC, GND, IN, OUT)</option>
-                <option value="i2c_eeprom">I2C EEPROM (A0-A2, I2C, WP, VCC)</option>
-                <option value="spi_flash">SPI Flash (CS#, SPI, WP#, HOLD#)</option>
-                <option value="dcdc_buck">DC-DC Buck (VIN, SW, BOOT, FB...)</option>
-                <option value="swd_header">SWD Отладка (SWDIO, SWCLK, NRST)</option>
+                <optgroup label="Пассивные (R, C, L, кварцы)">
+                  <option value="rlc">Пассивный 2-pin (1, 2)</option>
+                  <option value="diode">Диод (Анод A, Катод K)</option>
+                  <option value="potentiometer">Потенциометр (1, Wiper, 2)</option>
+                  <option value="xtal_2p">Кварц 2-pin (OSC1, OSC2)</option>
+                  <option value="xtal_4p">Кварц 4-pin (OSC + GND Shield)</option>
+                </optgroup>
+                <optgroup label="Разъемы и порты (USB, LAN, Jack)">
+                  <option value="usb_a">USB 2.0 Type-A (VBUS, D-, D+, GND, SH)</option>
+                  <option value="usb_micro_b">USB Micro-B (VBUS, D-, D+, ID, GND, SH)</option>
+                  <option value="usb_c_16p">USB Type-C 16-pin (USB 2.0 + PD)</option>
+                  <option value="dc_jack">DC Jack (Центр +, Внешний -, Switch)</option>
+                  <option value="audio_jack_35">Audio 3.5mm (Tip, Ring, Sleeve, Det)</option>
+                  <option value="ethernet_rj45">RJ-45 Ethernet (TX/RX pairs, Shield)</option>
+                  <option value="screw_terminal_2">Клеммник винтовой 2P (1, 2)</option>
+                  <option value="header_1x4">Штыревой разъем (1..4)</option>
+                  <option value="swd_header">SWD Отладка (VCC, SWD, RST)</option>
+                </optgroup>
+                <optgroup label="Полупроводники и питание">
+                  <option value="bjt_npn">BJT NPN (B, C, E)</option>
+                  <option value="mosfet_n">MOSFET N-Ch (G, D, S)</option>
+                  <option value="ldo3">LDO 3-pin (VIN, VOUT, GND)</option>
+                  <option value="dcdc_buck">DC-DC Buck (VIN, SW, BOOT, FB...)</option>
+                  <option value="opamp_single">ОУ одиночный (IN+, IN-, OUT...)</option>
+                  <option value="opamp_dual">ОУ сдвоенный (Unit A, B + PWR)</option>
+                </optgroup>
+                <optgroup label="Микросхемы и память">
+                  <option value="pwr_logic">ИМС логики (VCC, GND, IN, OUT)</option>
+                  <option value="i2c_eeprom">I2C EEPROM (A0-A2, I2C, WP, VCC)</option>
+                  <option value="spi_flash">SPI Flash (CS#, SPI, WP#, HOLD#)</option>
+                </optgroup>
               </select>
               <button
                 type="button"
@@ -2735,13 +2933,33 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     defaultValue=""
                     onChange={(e) => {
                       if (e.target.value) {
+                        handleBulkSetPinRole(e.target.value as PinSignalRole);
+                        e.target.value = "";
+                      }
+                    }}
+                    title="Установить роль/назначение сигнала для всех выбранных выводов"
+                  >
+                    <option value="" disabled>Роль сигнала...</option>
+                    {PIN_SIGNAL_ROLES.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="cad-input"
+                    style={{ fontSize: 10.5, height: 24, padding: "2px 6px" }}
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) {
                         handleBulkSetElectricalType(e.target.value as PinElectricalType);
                         e.target.value = "";
                       }
                     }}
-                    title="Установить единый тип сигнала для всех выбранных выводов"
+                    title="Установить электрический тип ERC для всех выбранных выводов"
                   >
-                    <option value="" disabled>Тип сигнала...</option>
+                    <option value="" disabled>Тип (ERC)...</option>
                     {ELECTRICAL_TYPES.map((t) => (
                       <option key={t.value} value={t.value}>
                         {t.label}
@@ -2807,18 +3025,19 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                       />
                     </th>
                     <th style={{ width: 20, textAlign: "center" }}>#</th>
-                    <th style={{ width: 48, whiteSpace: "nowrap" }}>Вывод</th>
-                    <th style={{ width: 88, whiteSpace: "nowrap" }}>Тип</th>
-                    <th style={{ width: 30, textAlign: "center", whiteSpace: "nowrap" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секц.</th>
-                    <th style={{ width: 80, textAlign: "center", whiteSpace: "nowrap" }} title="Контактная площадка активного корпуса">Площадка</th>
+                    <th style={{ width: 44, whiteSpace: "nowrap" }}>Вывод</th>
+                    <th style={{ width: 78, whiteSpace: "nowrap" }} title="Функциональная роль сигнала: Пассивный, Питание, Земля, Дифпара, Экран, Аналог, Цифра...">Роль</th>
+                    <th style={{ width: 80, whiteSpace: "nowrap" }} title="Электрический тип для валидации схемы (ERC): Пассивный, Вход, Выход, Питание, Земля, Hi-Z...">Тип (ERC)</th>
+                    <th style={{ width: 28, textAlign: "center", whiteSpace: "nowrap" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секц.</th>
+                    <th style={{ width: 74, textAlign: "center", whiteSpace: "nowrap" }} title="Контактная площадка активного корпуса">Площадка</th>
                     <th style={{ whiteSpace: "nowrap" }} title="Назначение цепи / Описание">Описание</th>
-                    <th style={{ width: 112, textAlign: "center", whiteSpace: "nowrap" }} title="Инверсия (~), тактирование (CLK), перемещение и удаление">Опции</th>
+                    <th style={{ width: 110, textAlign: "center", whiteSpace: "nowrap" }} title="Инверсия (~), тактирование (CLK), перемещение и удаление">Опции</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLogicalPins.length === 0 ? (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: "center", padding: "32px 10px", color: "#64748b" }}>
+                      <td colSpan={9} style={{ textAlign: "center", padding: "32px 10px", color: "#64748b" }}>
                         {logicalPins.length === 0 ? (
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                             <Sparkles size={22} color="var(--cad-accent)" opacity={0.6} />
@@ -2841,7 +3060,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     filteredLogicalPins.map((pin) => {
                       const typeCfg =
                         ELECTRICAL_TYPES.find((t) => t.value === pin.electricalType) ||
-                        ELECTRICAL_TYPES[5];
+                        ELECTRICAL_TYPES[0];
+                      const activeRole = pin.pinRole || (pin.electricalType === "passive" ? "passive" : pin.electricalType === "power_in" || pin.electricalType === "power_out" ? "power" : pin.electricalType === "ground" ? "ground" : "digital");
+                      const roleCfg = PIN_SIGNAL_ROLES.find((r) => r.value === activeRole) || PIN_SIGNAL_ROLES[0];
                       const isSelected = selectedPinId === pin.id;
                       const isDupe = duplicatePinNames.has(pin.name.trim().toUpperCase());
                       const pinGlobalIdx = logicalPins.findIndex((p) => p.id === pin.id);
@@ -2922,6 +3143,37 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                   width: 6,
                                   height: 6,
                                   borderRadius: "50%",
+                                  backgroundColor: roleCfg.color,
+                                  boxShadow: `0 0 4px ${roleCfg.color}`,
+                                  flexShrink: 0,
+                                }}
+                              />
+                              <select
+                                value={activeRole}
+                                onChange={(e) =>
+                                  handleUpdatePin(pin.id, {
+                                    pinRole: e.target.value as PinSignalRole,
+                                  })
+                                }
+                                className="cad-grid-select"
+                                title={`Роль сигнала: ${roleCfg.label}`}
+                                style={{ fontSize: 10, width: "100%" }}
+                              >
+                                {PIN_SIGNAL_ROLES.map((r) => (
+                                  <option key={r.value} value={r.value}>
+                                    {r.shortLabel}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </td>
+                          <td>
+                            <div className="cad-grid-select-wrapper" style={{ padding: "1px 3px", gap: 3, width: "100%" }}>
+                              <span
+                                style={{
+                                  width: 6,
+                                  height: 6,
+                                  borderRadius: "50%",
                                   backgroundColor: typeCfg.color,
                                   boxShadow: `0 0 4px ${typeCfg.color}`,
                                   flexShrink: 0,
@@ -2935,7 +3187,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                   })
                                 }
                                 className="cad-grid-select"
-                                title={`Тип сигнала: ${typeCfg.label}`}
+                                title={`Тип вывода (ERC): ${typeCfg.label}\n${typeCfg.description}`}
                                 style={{ fontSize: 10, width: "100%" }}
                               >
                                 {ELECTRICAL_TYPES.map((t) => (
@@ -3843,9 +4095,24 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               )}
 
               {/* Общие настройки для генерируемых выводов */}
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 0.8fr", gap: 8 }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Тип сигнала по умолчанию:</label>
+                  <label className="form-label" style={{ fontSize: 10 }}>Роль сигнала:</label>
+                  <select
+                    value={pinGenRole}
+                    onChange={(e) => setPinGenRole(e.target.value as PinSignalRole)}
+                    className="cad-input"
+                    style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                  >
+                    {PIN_SIGNAL_ROLES.map((r) => (
+                      <option key={r.value} value={r.value}>
+                        {r.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="form-label" style={{ fontSize: 10 }}>Электрический тип (ERC):</label>
                   <select
                     value={pinGenType}
                     onChange={(e) => setPinGenType(e.target.value as PinElectricalType)}
@@ -3860,7 +4127,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   </select>
                 </div>
                 <div>
-                  <label className="form-label" style={{ fontSize: 10 }}>Секция УГО (Unit / Вентиль):</label>
+                  <label className="form-label" style={{ fontSize: 10 }}>Секция УГО:</label>
                   <input
                     type="text"
                     value={pinGenUnit}
@@ -3918,7 +4185,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
             <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 0 }}>
               <div style={{ fontSize: 11, color: "var(--cad-text-muted)", background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", borderRadius: 6, padding: "8px 12px" }}>
                 💡 <strong>Как использовать:</strong> скопируйте таблицу выводов из PDF-даташита, таблицы Excel или CSV и вставьте в поле ниже.
-                Автоматически определяются: номер, имя вывода, тип сигнала (VCC, GND, IN, OUT, NC) и описание.
+                Автоматически определяются: номер, имя вывода, роль (Power, GND, Diff-Pair, Shield, Digital), тип ERC и описание.
               </div>
 
               <div>
@@ -3928,7 +4195,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 <textarea
                   value={bulkImportText}
                   onChange={(e) => setBulkImportText(e.target.value)}
-                  placeholder={"Пример скопированных строк:\n1\tVCC\tPower In\tПитание микросхемы 3.3В\n2\tGND\tGround\tОбщий провод\n3\tPA0\tInput\tКнопка включения\n4\tPA1\tOutput\tСветодиод статуса"}
+                  placeholder={"Пример скопированных строк:\n1\tVBUS\tPower\tPower In\tПитание шины USB 5V\n2\tD-\tDiff-Pair\tBidirectional\tЛиния данных D-\n3\tD+\tDiff-Pair\tBidirectional\tЛиния данных D+\n4\tGND\tGround\tGround\tОбщий провод\nSH\tSHIELD\tShield\tPassive\tЭкран разъема"}
                   className="bulk-import-textarea"
                   autoFocus
                 />
@@ -3970,8 +4237,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     <thead>
                       <tr>
                         <th style={{ width: 34, textAlign: "center" }}>#</th>
-                        <th style={{ width: 100 }}>Имя вывода</th>
-                        <th style={{ width: 140 }}>Тип сигнала</th>
+                        <th style={{ width: 90 }}>Имя вывода</th>
+                        <th style={{ width: 100 }}>Роль</th>
+                        <th style={{ width: 110 }}>Тип (ERC)</th>
                         <th style={{ width: 50, textAlign: "center" }}>Секция</th>
                         <th>Описание / Примечание</th>
                       </tr>
@@ -3979,7 +4247,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     <tbody>
                       {parseBulkImportText(bulkImportText).length === 0 ? (
                         <tr>
-                          <td colSpan={5} style={{ textAlign: "center", padding: "24px 10px", color: "var(--cad-text-dim)" }}>
+                          <td colSpan={6} style={{ textAlign: "center", padding: "24px 10px", color: "var(--cad-text-dim)" }}>
                             Вставьте строки в поле выше для предпросмотра
                           </td>
                         </tr>
@@ -3987,7 +4255,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                         parseBulkImportText(bulkImportText).slice(0, 50).map((item, idx) => {
                           const typeCfg =
                             ELECTRICAL_TYPES.find((t) => t.value === item.electricalType) ||
-                            ELECTRICAL_TYPES[5];
+                            ELECTRICAL_TYPES[0];
+                          const roleCfg =
+                            PIN_SIGNAL_ROLES.find((r) => r.value === item.pinRole) ||
+                            PIN_SIGNAL_ROLES[0];
                           return (
                             <tr key={idx}>
                               <td style={{ textAlign: "center", color: "#64748b", fontFamily: "monospace", fontSize: 10 }}>
@@ -3995,6 +4266,29 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               </td>
                               <td style={{ fontWeight: "bold", fontFamily: "monospace", color: "var(--cad-accent-hover)" }}>
                                 {item.name}
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 5,
+                                    fontSize: 10,
+                                    background: "rgba(255,255,255,0.04)",
+                                    padding: "1px 6px",
+                                    borderRadius: 3,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: 6,
+                                      height: 6,
+                                      borderRadius: "50%",
+                                      backgroundColor: roleCfg.color,
+                                    }}
+                                  />
+                                  <span>{roleCfg.shortLabel}</span>
+                                </span>
                               </td>
                               <td>
                                 <span

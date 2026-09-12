@@ -180,25 +180,42 @@ export interface PackageDefinition {
 }
 
 export type PinElectricalType =
+  | "passive"
   | "input"
   | "output"
   | "bidirectional"
   | "power_in"
   | "power_out"
   | "ground"
-  | "passive"
   | "open_collector"
-  | "no_connect";
+  | "tri_state"
+  | "no_connect"
+  | "unspecified";
+
+/** Семантическая / функциональная роль вывода (физическая природа сигнала) */
+export type PinSignalRole =
+  | "passive" // Резисторы, конденсаторы, дроссели, контакты
+  | "power" // Силовые шины (VCC, VDD, 5V, 3V3, VBUS)
+  | "ground" // Земляные шины (GND, AGND, PGND)
+  | "digital" // Цифровые сигналы и шины данных
+  | "analog" // Аналоговые цепи (АЦП, ЦАП, ОУ, датчики)
+  | "diff_pair" // Дифференциальные пары (USB D+/D-, CAN, Ethernet, LVDS)
+  | "rf" // Высокочастотные цепи (антенны, RF, 50 Ом)
+  | "clock" // Тактовые линии и кварцевые резонаторы (XTAL, OSC, CLK)
+  | "shield" // Экран разъема, корпус, земля шасси
+  | "control"; // Управляющие сигналы (~RESET, EN, CS, INT)
 
 export interface LogicalPin {
   id: string;
   name: string;
   electricalType: PinElectricalType;
+  pinRole?: PinSignalRole;
   unit?: string;
   description?: string;
   isInverted?: boolean;
   isClock?: boolean;
   swapGroup?: string;
+  altFunctions?: string[];
 }
 
 export interface PackageMapping {

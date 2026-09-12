@@ -18,8 +18,12 @@ pub enum PinElectricalType {
     Ground,
     Passive,
     OpenCollector,
+    #[serde(alias = "hi_z", alias = "hiz")]
+    TriState,
     #[serde(alias = "not_connected")]
     NoConnect,
+    #[serde(alias = "free")]
+    Unspecified,
 }
 
 fn default_pin_electrical_type() -> PinElectricalType {
@@ -35,9 +39,13 @@ pub struct LogicalPin {
     #[serde(default = "default_pin_electrical_type", alias = "pinType")]
     pub electrical_type: PinElectricalType,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub pin_role: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unit: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub alt_functions: Vec<String>,
 }
 
 /// Привязка логических выводов схемы к физическим контактным площадкам посадочного места
