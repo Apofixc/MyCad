@@ -2794,10 +2794,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
             {/* Профессиональная таблица-сетка логических выводов схемы */}
             <div className="device-table-container" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
-              <table className="device-table">
+              <table className="device-table" style={{ tableLayout: "fixed", width: "100%" }}>
                 <thead>
                   <tr>
-                    <th style={{ width: 26, textAlign: "center" }}>
+                    <th style={{ width: 24, textAlign: "center" }}>
                       <input
                         type="checkbox"
                         style={{ cursor: "pointer", accentColor: "var(--cad-accent)" }}
@@ -2806,13 +2806,13 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                         title="Выбрать все выводы"
                       />
                     </th>
-                    <th style={{ width: 22, textAlign: "center" }}>#</th>
-                    <th style={{ width: 68, whiteSpace: "nowrap" }}>Вывод</th>
-                    <th style={{ width: 96, whiteSpace: "nowrap" }}>Тип</th>
-                    <th style={{ width: 34, textAlign: "center", whiteSpace: "nowrap" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секц.</th>
-                    <th style={{ width: 86, textAlign: "center", whiteSpace: "nowrap" }} title="Контактная площадка активного корпуса">Площадка</th>
-                    <th style={{ whiteSpace: "nowrap" }}>Назначение цепи / Описание</th>
-                    <th style={{ width: 104, textAlign: "center", whiteSpace: "nowrap" }} title="Инверсия (~), тактирование (CLK), перемещение и удаление">Опции</th>
+                    <th style={{ width: 20, textAlign: "center" }}>#</th>
+                    <th style={{ width: 48, whiteSpace: "nowrap" }}>Вывод</th>
+                    <th style={{ width: 88, whiteSpace: "nowrap" }}>Тип</th>
+                    <th style={{ width: 30, textAlign: "center", whiteSpace: "nowrap" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секц.</th>
+                    <th style={{ width: 80, textAlign: "center", whiteSpace: "nowrap" }} title="Контактная площадка активного корпуса">Площадка</th>
+                    <th style={{ whiteSpace: "nowrap" }} title="Назначение цепи / Описание">Описание</th>
+                    <th style={{ width: 112, textAlign: "center", whiteSpace: "nowrap" }} title="Инверсия (~), тактирование (CLK), перемещение и удаление">Опции</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -2916,7 +2916,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                             </div>
                           </td>
                           <td>
-                            <div className="cad-grid-select-wrapper" style={{ padding: "1px 4px", gap: 4 }}>
+                            <div className="cad-grid-select-wrapper" style={{ padding: "1px 3px", gap: 3, width: "100%" }}>
                               <span
                                 style={{
                                   width: 6,
@@ -2936,6 +2936,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 }
                                 className="cad-grid-select"
                                 title={`Тип сигнала: ${typeCfg.label}`}
+                                style={{ fontSize: 10, width: "100%" }}
                               >
                                 {ELECTRICAL_TYPES.map((t) => (
                                   <option key={t.value} value={t.value}>
@@ -3042,7 +3043,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 type="button"
                                 className={`cad-icon-btn ${pin.isInverted ? "active" : ""}`}
                                 style={{
-                                  width: 18,
+                                  width: 17,
                                   height: 18,
                                   padding: 0,
                                   fontSize: 10.5,
@@ -3063,9 +3064,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 type="button"
                                 className={`cad-icon-btn ${pin.isClock ? "active" : ""}`}
                                 style={{
-                                  width: 24,
+                                  width: 22,
                                   height: 18,
-                                  padding: "0 1px",
+                                  padding: 0,
                                   fontSize: 8.5,
                                   fontWeight: "bold",
                                   color: pin.isClock ? "#f59e0b" : "var(--cad-text-dim)",
@@ -3083,7 +3084,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               <button
                                 type="button"
                                 className="cad-icon-btn"
-                                style={{ width: 17, height: 18, padding: 0 }}
+                                style={{ width: 16, height: 18, padding: 0 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleMovePin(pin.id, "up");
@@ -3096,7 +3097,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               <button
                                 type="button"
                                 className="cad-icon-btn"
-                                style={{ width: 17, height: 18, padding: 0 }}
+                                style={{ width: 16, height: 18, padding: 0 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleMovePin(pin.id, "down");
@@ -3109,7 +3110,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               <button
                                 type="button"
                                 className="cad-icon-btn danger"
-                                style={{ width: 17, height: 18, padding: 0 }}
+                                style={{ width: 16, height: 18, padding: 0 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleRemovePin(pin.id);
