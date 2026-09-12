@@ -400,10 +400,20 @@ impl LibraryService {
                     }
                 }
 
+                let mut devices_to_update = Vec::new();
                 for dev in default_payload.devices {
-                    if !self.devices.contains_key(&dev.id) {
-                        let _ = self.save_device(dev);
+                    if let Some(existing) = self.devices.get(&dev.id) {
+                        if existing.is_base && existing.supported_packages.is_empty() && !dev.supported_packages.is_empty() {
+                            let mut updated = existing.clone();
+                            updated.supported_packages = dev.supported_packages.clone();
+                            devices_to_update.push(updated);
+                        }
+                    } else {
+                        devices_to_update.push(dev);
                     }
+                }
+                for dev in devices_to_update {
+                    let _ = self.save_device(dev);
                 }
             }
             Err(e) => {

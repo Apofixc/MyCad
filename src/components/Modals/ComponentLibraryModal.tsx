@@ -677,13 +677,13 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   }, [packages, selectedDeviceLinkFilter, selectedMount, selectedPackageFamily, selectedPinFilter, selectedPitchFilter, searchQuery, packageToDevicesMap]);
 
   // Текущие выбранные элементы
-  const activeDevice = devices.find((d) => d.id === selectedDeviceId) || filteredDevices[0];
+  const activeDevice = devices.find((d) => d.id === selectedDeviceId) || filteredDevices[0] || null;
   const activePackage =
     activeTab === "devices"
-      ? (selectedDevicePackageId && activeDevice?.supportedPackages.some((p) => p.packageId === selectedDevicePackageId)
-          && packages.find((p) => p.id === selectedDevicePackageId)) ||
-        packages.find((p) => p.id === activeDevice?.supportedPackages?.[0]?.packageId)
-      : packages.find((p) => p.id === selectedPackageId) || filteredPackages[0];
+      ? (selectedDevicePackageId && packages.find((p) => p.id === selectedDevicePackageId)) ||
+        (activeDevice?.supportedPackages?.[0] && packages.find((p) => p.id === activeDevice.supportedPackages[0].packageId)) ||
+        null
+      : packages.find((p) => p.id === selectedPackageId) || filteredPackages[0] || null;
 
   if (!isOpen) return null;
 
@@ -718,7 +718,26 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
     setIsPlacing(true);
     try {
       if (activeTab === "devices" && activeDevice && activePackage) {
-        if (await onPlaceOnBoard(activeDevice, activePackage)) onClose();
+        let devToPlace = activeDevice;
+        if (!activeDevice.supportedPackages?.some((p) => p.packageId === activePackage.id)) {
+          devToPlace = {
+            ...activeDevice,
+            supportedPackages: [
+              ...(activeDevice.supportedPackages || []),
+              {
+                packageId: activePackage.id,
+                defaultVariantId: activePackage.defaultVariantId,
+                pinMap: Object.fromEntries(
+                  activeDevice.logicalPins.map((p, idx) => [
+                    p.id,
+                    activePackage.pads[idx]?.padNum || String(idx + 1),
+                  ])
+                ),
+              },
+            ],
+          };
+        }
+        if (await onPlaceOnBoard(devToPlace, activePackage)) onClose();
       } else if (activeTab === "packages" && activePackage) {
         const genericDev: DeviceDefinition = {
           id: `dev_${activePackage.id}`,
@@ -1800,36 +1819,433 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
               flexShrink: 0,
             }}
           >
-            {activePackage ? (
+            {activeTab === "devices" && activeDevice ? (
               <>
-                {activeTab === "devices" && activeDevice?.supportedPackages && activeDevice.supportedPackages.length > 1 && (
-                  <div style={{ display: "flex", flexDirection: "column", gap: 4, marginBottom: 2 }}>
-                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <label style={{ fontSize: 11, fontWeight: 600, color: "var(--cad-text-muted)" }}>
-                        Выбор корпуса (Footprint):
-                      </label>
-                      <span style={{ fontSize: 10, color: "var(--cad-accent-hover)" }}>
-                        {activeDevice.supportedPackages.length} варианта
-                      </span>
+                {/* Карточка заголовка компонента */}
+                <div
+                  className="form-section"
+                  style={{
+                    background: "var(--cad-bg-surface, #141820)",
+                    border: "1px solid var(--cad-border, #283344)",
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 6,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 8 }}>
+                    <div>
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                        <span style={{ fontWeight: 700, color: "var(--cad-text-main)", fontSize: 14 }}>
+                          {activeDevice.name}
+                        </span>
+                        {activeDevice.isBase && (
+                          <span
+                            style={{
+                              fontSize: 9.5,
+                              fontWeight: 700,
+                              background: "rgba(59, 130, 246, 0.2)",
+                              color: "#60a5fa",
+                              border: "1px solid rgba(59, 130, 246, 0.4)",
+                              padding: "1px 5px",
+                              borderRadius: 3,
+                            }}
+                          >
+                            Базовый
+                          </span>
+                        )}
+                      </div>
+                      <div style={{ fontSize: 11, color: "var(--cad-text-muted)", marginTop: 2 }}>
+                        {activeDevice.category}
+                        {activeDevice.subcategory ? ` • ${activeDevice.subcategory}` : ""}
+                      </div>
                     </div>
-                    <select
-                      className="cad-input"
-                      style={{ fontSize: 11.5, padding: "5px 8px", background: "var(--cad-bg-surface, #141820)" }}
-                      value={activePackage?.id}
-                      onChange={(e) => setSelectedDevicePackageId(e.target.value)}
+                    <span
+                      style={{
+                        fontSize: 11,
+                        background: "rgba(59, 130, 246, 0.15)",
+                        color: "var(--cad-accent-hover)",
+                        padding: "2px 7px",
+                        borderRadius: 4,
+                        fontWeight: "bold",
+                        flexShrink: 0,
+                      }}
                     >
-                      {activeDevice.supportedPackages.map((sp) => {
-                        const p = packages.find((pkg) => pkg.id === sp.packageId);
-                        return (
-                          <option key={sp.packageId} value={sp.packageId}>
-                            {p ? `${p.name} (${p.mountType.toUpperCase()})` : sp.packageId}
+                      {activeDevice.designatorPrefix}
+                    </span>
+                  </div>
+
+                  {activeDevice.description && (
+                    <div style={{ fontSize: 11, color: "var(--cad-text-dim)", lineHeight: 1.4 }}>
+                      {activeDevice.description}
+                    </div>
+                  )}
+                </div>
+
+                {/* Блок корпуса (Footprint) */}
+                <div
+                  className="form-section"
+                  style={{
+                    background: "var(--cad-bg-surface, #141820)",
+                    border: "1px solid var(--cad-border, #283344)",
+                    padding: "10px 12px",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                    <span className="section-title" style={{ fontSize: 11 }}>Посадочное место (Footprint)</span>
+                    {activePackage && (
+                      <span style={{ fontSize: 10, color: "var(--cad-accent-hover)", fontWeight: 700 }}>
+                        {activePackage.mountType.toUpperCase()}
+                      </span>
+                    )}
+                  </div>
+
+                  {/* Селектор корпуса, если их несколько */}
+                  {activeDevice.supportedPackages && activeDevice.supportedPackages.length > 1 ? (
+                    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                        <label style={{ fontSize: 10.5, color: "var(--cad-text-muted)" }}>
+                          Вариант корпуса:
+                        </label>
+                        <span style={{ fontSize: 10, color: "var(--cad-accent-hover)" }}>
+                          {activeDevice.supportedPackages.length} вар.
+                        </span>
+                      </div>
+                      <select
+                        className="cad-input"
+                        style={{ fontSize: 11.5, padding: "5px 8px", background: "var(--cad-bg-panel, #181d26)" }}
+                        value={activePackage?.id || ""}
+                        onChange={(e) => setSelectedDevicePackageId(e.target.value)}
+                      >
+                        {activeDevice.supportedPackages.map((sp) => {
+                          const p = packages.find((pkg) => pkg.id === sp.packageId);
+                          return (
+                            <option key={sp.packageId} value={sp.packageId}>
+                              {p ? `${p.name} (${p.mountType.toUpperCase()})` : sp.packageId}
+                            </option>
+                          );
+                        })}
+                      </select>
+                    </div>
+                  ) : !activePackage ? (
+                    <div
+                      style={{
+                        padding: "12px 10px",
+                        borderRadius: 6,
+                        background: "rgba(255, 255, 255, 0.02)",
+                        border: "1px dashed var(--cad-border, #283344)",
+                        display: "flex",
+                        flexDirection: "column",
+                        alignItems: "center",
+                        gap: 8,
+                        textAlign: "center",
+                      }}
+                    >
+                      <Box size={24} style={{ color: "var(--cad-text-dim)" }} />
+                      <div style={{ fontSize: 11.5, fontWeight: 600, color: "var(--cad-text-muted)" }}>
+                        Корпус не привязан (Параметрический)
+                      </div>
+                      <div style={{ fontSize: 10.5, color: "var(--cad-text-dim)", lineHeight: 1.35 }}>
+                        Выберите корпус из базы для предпросмотра и монтажа на печатную плату:
+                      </div>
+                      <select
+                        className="cad-input"
+                        style={{
+                          fontSize: 11,
+                          padding: "5px 8px",
+                          width: "100%",
+                          background: "var(--cad-bg-panel, #181d26)",
+                        }}
+                        value={selectedDevicePackageId || ""}
+                        onChange={(e) => setSelectedDevicePackageId(e.target.value || null)}
+                      >
+                        <option value="">— Выберите корпус из библиотеки —</option>
+                        {packages.map((pkg) => (
+                          <option key={pkg.id} value={pkg.id}>
+                            {pkg.name} ({pkg.mountType.toUpperCase()}, {pkg.pads.length} выв.)
                           </option>
-                        );
-                      })}
-                    </select>
+                        ))}
+                      </select>
+                    </div>
+                  ) : null}
+
+                  {activePackage && (
+                    <>
+                      <div
+                        style={{
+                          height: 200,
+                          background: "var(--cad-bg-panel, #181d26)",
+                          borderRadius: 6,
+                          border: "1px solid var(--cad-border, #283344)",
+                          overflow: "hidden",
+                        }}
+                      >
+                        <FootprintPreview packageDef={activePackage} height={200} interactive={false} />
+                      </div>
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, fontSize: 10.5, marginTop: 2 }}>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Корпус:</span>
+                        <span style={{ color: "var(--cad-text-main)", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }} title={activePackage.name}>
+                          {activePackage.name}
+                        </span>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Площадок:</span>
+                        <span style={{ color: "var(--cad-text-main)", fontWeight: 600 }}>{activePackage.pads.length} шт.</span>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Габариты:</span>
+                        <span style={{ color: "var(--cad-text-main)" }}>
+                          {activePackage.bodyWidth} × {activePackage.bodyHeight} мм
+                        </span>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Шаг (Pitch):</span>
+                        <span style={{ color: "var(--cad-text-main)" }}>
+                          {activePackage.pitch ? `${activePackage.pitch} мм` : "—"}
+                        </span>
+                      </div>
+
+                      {/* Возможность сменить выбранный корпус при необходимости */}
+                      {(!activeDevice.supportedPackages || activeDevice.supportedPackages.length <= 1) && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 3, marginTop: 4, paddingTop: 6, borderTop: "1px solid rgba(255,255,255,0.04)" }}>
+                          <label style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>
+                            Сменить посадочное место:
+                          </label>
+                          <select
+                            className="cad-input"
+                            style={{
+                              fontSize: 10.5,
+                              padding: "3px 6px",
+                              width: "100%",
+                              background: "var(--cad-bg-panel, #181d26)",
+                            }}
+                            value={activePackage.id}
+                            onChange={(e) => setSelectedDevicePackageId(e.target.value)}
+                          >
+                            {packages.map((pkg) => (
+                              <option key={pkg.id} value={pkg.id}>
+                                {pkg.name} ({pkg.mountType.toUpperCase()})
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+
+                {/* Спецификация и параметры компонента */}
+                <div
+                  className="form-section"
+                  style={{
+                    background: "var(--cad-bg-surface, #141820)",
+                    border: "1px solid var(--cad-border, #283344)",
+                    padding: "10px 12px",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                    <span className="section-title" style={{ fontSize: 11 }}>Спецификация и параметры</span>
+                    {activeDevice.datasheet && (
+                      <a
+                        href={activeDevice.datasheet}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        style={{ fontSize: 10, color: "var(--cad-accent-hover)", display: "flex", alignItems: "center", gap: 3, textDecoration: "none" }}
+                        title="Открыть Datasheet"
+                      >
+                        <ExternalLink size={10} /> Datasheet
+                      </a>
+                    )}
+                  </div>
+
+                  {activeDevice.isBase && (
+                    <div
+                      style={{
+                        padding: "6px 8px",
+                        borderRadius: 5,
+                        background: "rgba(59, 130, 246, 0.12)",
+                        border: "1px solid rgba(59, 130, 246, 0.3)",
+                        fontSize: 10.5,
+                        color: "#93c5fd",
+                        lineHeight: 1.35,
+                        marginBottom: 6,
+                      }}
+                    >
+                      <span style={{ fontWeight: 700, color: "#60a5fa" }}>[Базовый компонент]</span> Номинал и характеристики настраиваются по месту в схеме или в Инспекторе на плате.
+                    </div>
+                  )}
+
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
+                    <div style={{ display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ color: "var(--cad-text-muted)" }}>Обозначение (RefDes):</span>
+                      <span style={{ color: "var(--cad-accent-hover)", fontWeight: "bold" }}>{activeDevice.designatorPrefix}</span>
+                    </div>
+                    {activeDevice.manufacturer && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Производитель:</span>
+                        <span style={{ color: "var(--cad-text-main)", fontWeight: 500 }}>{activeDevice.manufacturer}</span>
+                      </div>
+                    )}
+                    {activeDevice.mpn && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Артикул (MPN):</span>
+                        <span style={{ color: "var(--cad-accent-hover)", fontFamily: "var(--cad-font-mono)", fontWeight: 600 }}>{activeDevice.mpn}</span>
+                      </div>
+                    )}
+                    {!activeDevice.isBase && activeDevice.parameters?.value && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Номинал:</span>
+                        <span style={{ color: "var(--cad-net-active, #10b981)", fontWeight: "bold" }}>{activeDevice.parameters.value}</span>
+                      </div>
+                    )}
+                    {!activeDevice.isBase && activeDevice.parameters?.tolerance && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Допуск:</span>
+                        <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.tolerance}</span>
+                      </div>
+                    )}
+                    {!activeDevice.isBase && activeDevice.parameters?.voltageRating && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Напряжение:</span>
+                        <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.voltageRating}</span>
+                      </div>
+                    )}
+                    {!activeDevice.isBase && activeDevice.parameters?.powerRating && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Мощность:</span>
+                        <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.powerRating}</span>
+                      </div>
+                    )}
+                    {!activeDevice.isBase && activeDevice.parameters?.maxCurrent && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Макс. ток:</span>
+                        <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.maxCurrent}</span>
+                      </div>
+                    )}
+                    {!activeDevice.isBase && activeDevice.parameters?.operatingTemp && (
+                      <div style={{ display: "flex", justifyContent: "space-between" }}>
+                        <span style={{ color: "var(--cad-text-muted)" }}>Температура:</span>
+                        <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.operatingTemp}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {activeDevice.tags && activeDevice.tags.length > 0 && (
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 6 }}>
+                      {activeDevice.tags.map((t) => (
+                        <span
+                          key={t}
+                          style={{
+                            fontSize: 9.5,
+                            background: "rgba(59, 130, 246, 0.1)",
+                            color: "var(--cad-accent-hover)",
+                            border: "1px solid rgba(59, 130, 246, 0.2)",
+                            padding: "1px 5px",
+                            borderRadius: 3,
+                          }}
+                        >
+                          #{t}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* Схемные выводы детали */}
+                {activeDevice.logicalPins && activeDevice.logicalPins.length > 0 && (
+                  <div
+                    className="form-section"
+                    style={{
+                      background: "var(--cad-bg-surface, #141820)",
+                      border: "1px solid var(--cad-border, #283344)",
+                      padding: "10px 12px",
+                    }}
+                  >
+                    <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                      <span className="section-title" style={{ fontSize: 11 }}>Схемные выводы (Pinout)</span>
+                      <span className="lib-tree-badge">{activeDevice.logicalPins.length} шт.</span>
+                    </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: 110, overflowY: "auto" }}>
+                      {activeDevice.logicalPins.map((pin) => (
+                        <div
+                          key={pin.id}
+                          style={{
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "space-between",
+                            fontSize: 10.5,
+                            padding: "2px 6px",
+                            background: "rgba(0, 0, 0, 0.2)",
+                            borderRadius: 3,
+                          }}
+                        >
+                          <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                            <span
+                              style={{
+                                fontFamily: "var(--cad-font-mono)",
+                                fontWeight: "bold",
+                                color: "var(--cad-text-main)",
+                              }}
+                            >
+                              {pin.name}
+                            </span>
+                            {pin.unit && (
+                              <span style={{ fontSize: 9, color: "var(--cad-accent-hover)", background: "rgba(59, 130, 246, 0.15)", padding: "0 3px", borderRadius: 2 }}>
+                                [{pin.unit}]
+                              </span>
+                            )}
+                          </div>
+                          <span style={{ color: "var(--cad-text-dim)", fontSize: 10 }}>
+                            {pin.description || pin.electricalType}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
 
+                {/* Кнопки действий для радиокомпонента */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: "auto" }}>
+                  {onPlaceOnBoard && (
+                    <button
+                      className="cad-btn-primary"
+                      onClick={handlePlaceOnBoardAction}
+                      disabled={isPlacing || !activePackage}
+                      title={!activePackage ? "Для размещения на плате сначала выберите корпус" : undefined}
+                      style={{
+                        padding: "9px 14px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 8,
+                        fontSize: 13,
+                        fontWeight: 700,
+                        opacity: !activePackage ? 0.6 : 1,
+                        cursor: !activePackage ? "not-allowed" : "pointer",
+                      }}
+                    >
+                      <Check size={16} />
+                      <span>Разместить на плате</span>
+                    </button>
+                  )}
+
+                  <button
+                    className="cad-btn-secondary"
+                    onClick={() => onOpenDeviceEditor(activeDevice)}
+                    style={{
+                      padding: "8px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      fontSize: 12,
+                    }}
+                  >
+                    <Edit2 size={14} />
+                    <span>Редактировать радиодеталь</span>
+                  </button>
+                </div>
+              </>
+            ) : activeTab === "packages" && activePackage ? (
+              <>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <span className="section-title">Предпросмотр посадочного места</span>
                   <span style={{ fontSize: 11, color: "var(--cad-accent-hover)", fontWeight: 600 }}>
@@ -1922,166 +2338,7 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                   </div>
                 </div>
 
-                {activeTab === "devices" && activeDevice && (
-                  <>
-                    <div className="form-section" style={{ background: "var(--cad-bg-surface, #141820)", border: "1px solid var(--cad-border, #283344)" }}>
-                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                        <span className="section-title" style={{ fontSize: 11 }}>Спецификация и параметры</span>
-                        {activeDevice.datasheet && (
-                          <a
-                            href={activeDevice.datasheet}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            style={{ fontSize: 10, color: "var(--cad-accent-hover)", display: "flex", alignItems: "center", gap: 3, textDecoration: "none" }}
-                            title="Открыть Datasheet"
-                          >
-                            <ExternalLink size={10} /> Datasheet
-                          </a>
-                        )}
-                      </div>
-
-                      {activeDevice.isBase && (
-                        <div
-                          style={{
-                            padding: "6px 8px",
-                            borderRadius: 5,
-                            background: "rgba(59, 130, 246, 0.12)",
-                            border: "1px solid rgba(59, 130, 246, 0.3)",
-                            fontSize: 10.5,
-                            color: "#93c5fd",
-                            lineHeight: 1.35,
-                            margin: "4px 0 6px",
-                          }}
-                        >
-                          <span style={{ fontWeight: 700, color: "#60a5fa" }}>[Базовый компонент]</span> Номинал и характеристики настраиваются по месту в схеме или в Инспекторе на плате.
-                        </div>
-                      )}
-
-                      <div style={{ display: "flex", flexDirection: "column", gap: 4, fontSize: 11 }}>
-                        <div style={{ display: "flex", justifyContent: "space-between" }}>
-                          <span style={{ color: "var(--cad-text-muted)" }}>Обозначение (RefDes):</span>
-                          <span style={{ color: "var(--cad-accent-hover)", fontWeight: "bold" }}>{activeDevice.designatorPrefix}</span>
-                        </div>
-                        {activeDevice.manufacturer && (
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--cad-text-muted)" }}>Производитель:</span>
-                            <span style={{ color: "var(--cad-text-main)", fontWeight: 500 }}>{activeDevice.manufacturer}</span>
-                          </div>
-                        )}
-                        {activeDevice.mpn && (
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--cad-text-muted)" }}>Артикул (MPN):</span>
-                            <span style={{ color: "var(--cad-accent-hover)", fontFamily: "var(--cad-font-mono)", fontWeight: 600 }}>{activeDevice.mpn}</span>
-                          </div>
-                        )}
-                        {!activeDevice.isBase && activeDevice.parameters?.value && (
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--cad-text-muted)" }}>Номинал:</span>
-                            <span style={{ color: "var(--cad-net-active, #10b981)", fontWeight: "bold" }}>{activeDevice.parameters.value}</span>
-                          </div>
-                        )}
-                        {!activeDevice.isBase && activeDevice.parameters?.tolerance && (
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--cad-text-muted)" }}>Допуск:</span>
-                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.tolerance}</span>
-                          </div>
-                        )}
-                        {!activeDevice.isBase && activeDevice.parameters?.voltageRating && (
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--cad-text-muted)" }}>Напряжение:</span>
-                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.voltageRating}</span>
-                          </div>
-                        )}
-                        {!activeDevice.isBase && activeDevice.parameters?.powerRating && (
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--cad-text-muted)" }}>Мощность:</span>
-                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.powerRating}</span>
-                          </div>
-                        )}
-                        {!activeDevice.isBase && activeDevice.parameters?.maxCurrent && (
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--cad-text-muted)" }}>Макс. ток:</span>
-                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.maxCurrent}</span>
-                          </div>
-                        )}
-                        {!activeDevice.isBase && activeDevice.parameters?.operatingTemp && (
-                          <div style={{ display: "flex", justifyContent: "space-between" }}>
-                            <span style={{ color: "var(--cad-text-muted)" }}>Температура:</span>
-                            <span style={{ color: "var(--cad-text-main)" }}>{activeDevice.parameters.operatingTemp}</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {activeDevice.tags && activeDevice.tags.length > 0 && (
-                        <div style={{ display: "flex", flexWrap: "wrap", gap: 3, marginTop: 4 }}>
-                          {activeDevice.tags.map((t) => (
-                            <span
-                              key={t}
-                              style={{
-                                fontSize: 9.5,
-                                background: "rgba(59, 130, 246, 0.1)",
-                                color: "var(--cad-accent-hover)",
-                                border: "1px solid rgba(59, 130, 246, 0.2)",
-                                padding: "1px 5px",
-                                borderRadius: 3,
-                              }}
-                            >
-                              #{t}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Схемные выводы детали */}
-                    {activeDevice.logicalPins && activeDevice.logicalPins.length > 0 && (
-                      <div className="form-section" style={{ background: "var(--cad-bg-surface, #141820)", border: "1px solid var(--cad-border, #283344)" }}>
-                        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                          <span className="section-title" style={{ fontSize: 11 }}>Схемные выводы (Pinout)</span>
-                          <span className="lib-tree-badge">{activeDevice.logicalPins.length} шт.</span>
-                        </div>
-                        <div style={{ display: "flex", flexDirection: "column", gap: 3, maxHeight: 110, overflowY: "auto" }}>
-                          {activeDevice.logicalPins.map((pin) => (
-                            <div
-                              key={pin.id}
-                              style={{
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "space-between",
-                                fontSize: 10.5,
-                                padding: "2px 4px",
-                                background: "rgba(0, 0, 0, 0.2)",
-                                borderRadius: 3,
-                              }}
-                            >
-                              <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                                <span
-                                  style={{
-                                    fontFamily: "var(--cad-font-mono)",
-                                    fontWeight: "bold",
-                                    color: "var(--cad-text-main)",
-                                  }}
-                                >
-                                  {pin.name}
-                                </span>
-                                {pin.unit && (
-                                  <span style={{ fontSize: 9, color: "var(--cad-accent-hover)", background: "rgba(59, 130, 246, 0.15)", padding: "0 3px", borderRadius: 2 }}>
-                                    [{pin.unit}]
-                                  </span>
-                                )}
-                              </div>
-                              <span style={{ color: "var(--cad-text-dim)", fontSize: 10 }}>
-                                {pin.description || pin.electricalType}
-                              </span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-
-                {/* Кнопки действий */}
+                {/* Кнопки действий для корпусов */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: "auto" }}>
                   {onPlaceOnBoard && (
                     <button
@@ -2103,41 +2360,21 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                     </button>
                   )}
 
-                  {activeTab === "packages" && (
-                    <button
-                      className="cad-btn-secondary"
-                      onClick={() => onOpenPackageEditor(activePackage)}
-                      style={{
-                        padding: "8px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 6,
-                        fontSize: 12,
-                      }}
-                    >
-                      <Edit2 size={14} />
-                      <span>Редактировать корпус в CAD</span>
-                    </button>
-                  )}
-
-                  {activeTab === "devices" && activeDevice && (
-                    <button
-                      className="cad-btn-secondary"
-                      onClick={() => onOpenDeviceEditor(activeDevice)}
-                      style={{
-                        padding: "8px 12px",
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        gap: 6,
-                        fontSize: 12,
-                      }}
-                    >
-                      <Edit2 size={14} />
-                      <span>Редактировать радиодеталь</span>
-                    </button>
-                  )}
+                  <button
+                    className="cad-btn-secondary"
+                    onClick={() => onOpenPackageEditor(activePackage)}
+                    style={{
+                      padding: "8px 12px",
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      gap: 6,
+                      fontSize: 12,
+                    }}
+                  >
+                    <Edit2 size={14} />
+                    <span>Редактировать корпус в CAD</span>
+                  </button>
                 </div>
               </>
             ) : (
