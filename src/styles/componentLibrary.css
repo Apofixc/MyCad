@@ -2169,6 +2169,51 @@
   transform: translateY(-1px);
 }
 
+.pin-pad-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: var(--cad-font-mono, monospace);
+  font-weight: 600;
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+}
+
+.pin-pad-badge.assigned {
+  background: rgba(59, 130, 246, 0.14);
+  color: #60a5fa;
+  border: 1px solid rgba(59, 130, 246, 0.3);
+}
+
+.pin-pad-badge.assigned:hover {
+  background: rgba(59, 130, 246, 0.25);
+  border-color: #3b82f6;
+}
+
+.pin-pad-badge.unassigned {
+  background: rgba(245, 158, 11, 0.1);
+  color: #f59e0b;
+  border: 1px dashed rgba(245, 158, 11, 0.4);
+}
+
+.pin-pad-badge.unassigned:hover {
+  background: rgba(245, 158, 11, 0.2);
+  border-color: #f59e0b;
+}
+
+.pin-pad-badge.conflict {
+  background: rgba(239, 68, 68, 0.14);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+
 .device-pkg-chips-wrap {
   display: flex;
   flex-direction: column;
@@ -3166,6 +3211,26 @@
   color: rgba(255, 255, 255, 0.2);
   font-size: 9px;
 }
+
+.mapping-pkg-select {
+  font-size: 11px !important;
+  padding: 1px 6px !important;
+  height: 22px !important;
+  font-weight: 600 !important;
+  color: #e2e8f0 !important;
+  background: rgba(15, 23, 42, 0.8) !important;
+  border: 1px solid rgba(59, 130, 246, 0.35) !important;
+  border-radius: 4px !important;
+  max-width: 250px !important;
+  text-overflow: ellipsis !important;
+  outline: none !important;
+}
+
+.mapping-pkg-select:focus {
+  border-color: var(--cad-accent, #3b82f6) !important;
+  box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.4) !important;
+}
+
 
 .mapping-sub-pkg-tag {
   color: var(--cad-text-dim, #94a3b8);

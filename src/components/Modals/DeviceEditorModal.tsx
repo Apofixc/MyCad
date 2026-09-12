@@ -2,7 +2,7 @@
 // Модальное окно создания и редактирования радиокомпонента (Device / Component)
 // Управление логическими выводами схемы, спецификацией BOM, электрическими параметрами и сопоставлением Pin-to-Pad Mapping
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import {
   DeviceDefinition,
   PackageDefinition,
@@ -344,6 +344,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [mappingSearchQuery, setMappingSearchQuery] = useState<string>("");
   const [isAutoAdvanceEnabled, setIsAutoAdvanceEnabled] = useState<boolean>(true);
 
+  // Кэш сопоставления pinId -> padNum для защиты от потери связей при промежуточной очистке имени вывода
+  const pinIdToPadCacheRef = useRef<Map<string, string>>(new Map());
+
   useEffect(() => {
     if (!isOpen) return;
 
@@ -580,6 +583,17 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const currentPkgDef = availablePackages.find((p) => p.id === activePackageId);
   const currentMapping = supportedPackages.find((m) => m.packageId === activePackageId);
 
+  // Синхронизация кэша pinId -> padNum для защиты от потери привязок при переименовании
+  useEffect(() => {
+    if (!currentMapping) return;
+    logicalPins.forEach((pin) => {
+      const padNum = currentMapping.pinMap[pin.name];
+      if (padNum) {
+        pinIdToPadCacheRef.current.set(pin.id, padNum);
+      }
+    });
+  }, [currentMapping, logicalPins]);
+
   // Список всех уникальных секций схемы (Units: A, B, C...)
   const availableUnits = useMemo(() => {
     const set = new Set<string>();
@@ -641,23 +655,38 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
   // Полнота сопоставления текущего корпуса
   const mappingCoverage = useMemo(() => {
-    if (!currentMapping || logicalPins.length === 0) return { mapped: 0, total: 0, percent: 0 };
+    if (!currentMapping || logicalPins.length === 0) {
+      return { mapped: 0, total: 0, percent: 0, unassignedPadCount: 0, isFullyReady: false };
+    }
     const mappedCount = logicalPins.filter((p) => Boolean(currentMapping.pinMap[p.name])).length;
+    const unassignedPadCount = unassignedPads.length;
+    const isFullyReady = mappedCount === logicalPins.length && unassignedPadCount === 0;
     return {
       mapped: mappedCount,
       total: logicalPins.length,
       percent: Math.round((mappedCount / logicalPins.length) * 100),
+      unassignedPadCount,
+      isFullyReady,
     };
-  }, [currentMapping, logicalPins]);
+  }, [currentMapping, logicalPins, unassignedPads]);
 
   // Оценка готовности распиновки для каждого привязанного корпуса
   const getPackageReadiness = (pkgMapping: PackageMapping) => {
-    if (logicalPins.length === 0) return { mapped: 0, total: 0, isComplete: false };
+    const pkgDef = availablePackages.find((p) => p.id === pkgMapping.packageId);
+    const padCount = pkgDef?.pads.length || 0;
+    if (logicalPins.length === 0) {
+      return { mapped: 0, total: 0, padCount, unassignedPadCount: padCount, isComplete: false };
+    }
     const mapped = logicalPins.filter((p) => Boolean(pkgMapping.pinMap[p.name])).length;
+    const usedPads = new Set(Object.values(pkgMapping.pinMap).filter(Boolean));
+    const unassignedPadCount = Math.max(0, padCount - usedPads.size);
+    const isComplete = mapped === logicalPins.length && unassignedPadCount === 0;
     return {
       mapped,
       total: logicalPins.length,
-      isComplete: mapped === logicalPins.length && mapped > 0,
+      padCount,
+      unassignedPadCount,
+      isComplete,
     };
   };
 
@@ -1026,7 +1055,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     if (selectedPinId === pinId) setSelectedPinId(null);
   };
 
-  // Каскадное обновление вывода (при переименовании обновляет ключи в pinMap всех корпусов)
+  // Каскадное обновление вывода (при переименовании обновляет ключи в pinMap всех корпусов без потери связей)
   const handleUpdatePin = (pinId: string, updates: Partial<LogicalPin>) => {
     const targetPin = logicalPins.find((p) => p.id === pinId);
     if (!targetPin) return;
@@ -1034,18 +1063,25 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     const oldName = targetPin.name;
     const newName = updates.name !== undefined ? updates.name : oldName;
 
-    // Если имя изменилось — выполняем каскадное обновление в pinMap всех корпусов
+    // Если имя изменилось — выполняем безопасное каскадное обновление в pinMap всех корпусов
     if (updates.name !== undefined && oldName !== newName) {
+      const trimmedNew = newName.trim();
+      const cachedPad = pinIdToPadCacheRef.current.get(pinId);
+
       setSupportedPackages((prev) =>
         prev.map((pkg) => {
           const nextPinMap = { ...pkg.pinMap };
+          const val = nextPinMap[oldName] || cachedPad;
+
           if (oldName in nextPinMap) {
-            const val = nextPinMap[oldName];
             delete nextPinMap[oldName];
-            if (newName.trim()) {
-              nextPinMap[newName.trim()] = val;
-            }
           }
+
+          // Если новое имя не пустое и для вывода была привязка — восстанавливаем/присваиваем её
+          if (trimmedNew && val) {
+            nextPinMap[trimmedNew] = val;
+          }
+
           return { ...pkg, pinMap: nextPinMap };
         })
       );
@@ -1070,14 +1106,36 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     setLogicalPins(nextList);
   };
 
-  // Быстрая смена местами первых двух выводов (Swap 1 ↔ 2)
+  // Быстрая смена местами первых двух выводов (Swap 1 ↔ 2) со сменой привязки площадок
   const handleSwapFirstTwoPins = () => {
     if (logicalPins.length < 2) return;
-    const nextList = [...logicalPins];
-    const temp = nextList[0];
-    nextList[0] = nextList[1];
-    nextList[1] = temp;
-    setLogicalPins(nextList);
+    const p1 = logicalPins[0];
+    const p2 = logicalPins[1];
+
+    // Меняем порядок в массиве выводов
+    setLogicalPins([p2, p1, ...logicalPins.slice(2)]);
+
+    // Также меняем сопоставление контактных площадок в активном корпусе
+    if (activePackageId) {
+      setSupportedPackages((prev) =>
+        prev.map((pkg) => {
+          if (pkg.packageId !== activePackageId) return pkg;
+          const nextPinMap = { ...pkg.pinMap };
+          const pad1 = nextPinMap[p1.name];
+          const pad2 = nextPinMap[p2.name];
+
+          if (pad1 !== undefined || pad2 !== undefined) {
+            if (pad2 !== undefined) nextPinMap[p1.name] = pad2;
+            else delete nextPinMap[p1.name];
+
+            if (pad1 !== undefined) nextPinMap[p2.name] = pad1;
+            else delete nextPinMap[p2.name];
+          }
+
+          return { ...pkg, pinMap: nextPinMap };
+        })
+      );
+    }
   };
 
   // Пакетный генератор серий выводов
@@ -2739,7 +2797,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <table className="device-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 28, textAlign: "center" }}>
+                    <th style={{ width: 26, textAlign: "center" }}>
                       <input
                         type="checkbox"
                         style={{ cursor: "pointer", accentColor: "var(--cad-accent)" }}
@@ -2748,18 +2806,19 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                         title="Выбрать все выводы"
                       />
                     </th>
-                    <th style={{ width: 28, textAlign: "center" }}>#</th>
-                    <th style={{ width: 80, whiteSpace: "nowrap" }}>Имя вывода</th>
-                    <th style={{ width: 145, whiteSpace: "nowrap" }}>Тип сигнала</th>
-                    <th style={{ width: 48, textAlign: "center", whiteSpace: "nowrap" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секция</th>
+                    <th style={{ width: 22, textAlign: "center" }}>#</th>
+                    <th style={{ width: 68, whiteSpace: "nowrap" }}>Вывод</th>
+                    <th style={{ width: 96, whiteSpace: "nowrap" }}>Тип</th>
+                    <th style={{ width: 34, textAlign: "center", whiteSpace: "nowrap" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секц.</th>
+                    <th style={{ width: 86, textAlign: "center", whiteSpace: "nowrap" }} title="Контактная площадка активного корпуса">Площадка</th>
                     <th style={{ whiteSpace: "nowrap" }}>Назначение цепи / Описание</th>
-                    <th style={{ width: 110, textAlign: "center", whiteSpace: "nowrap" }} title="Инверсия (~), тактирование (CLK) и перемещение">Свойства</th>
+                    <th style={{ width: 104, textAlign: "center", whiteSpace: "nowrap" }} title="Инверсия (~), тактирование (CLK), перемещение и удаление">Опции</th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLogicalPins.length === 0 ? (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: "center", padding: "32px 10px", color: "#64748b" }}>
+                      <td colSpan={8} style={{ textAlign: "center", padding: "32px 10px", color: "#64748b" }}>
                         {logicalPins.length === 0 ? (
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                             <Sparkles size={22} color="var(--cad-accent)" opacity={0.6} />
@@ -2857,14 +2916,14 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                             </div>
                           </td>
                           <td>
-                            <div className="cad-grid-select-wrapper">
+                            <div className="cad-grid-select-wrapper" style={{ padding: "1px 4px", gap: 4 }}>
                               <span
                                 style={{
-                                  width: 7,
-                                  height: 7,
+                                  width: 6,
+                                  height: 6,
                                   borderRadius: "50%",
                                   backgroundColor: typeCfg.color,
-                                  boxShadow: `0 0 5px ${typeCfg.color}`,
+                                  boxShadow: `0 0 4px ${typeCfg.color}`,
                                   flexShrink: 0,
                                 }}
                               />
@@ -2876,10 +2935,11 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                   })
                                 }
                                 className="cad-grid-select"
+                                title={`Тип сигнала: ${typeCfg.label}`}
                               >
                                 {ELECTRICAL_TYPES.map((t) => (
                                   <option key={t.value} value={t.value}>
-                                    {t.label}
+                                    {t.shortLabel}
                                   </option>
                                 ))}
                               </select>
@@ -2899,9 +2959,71 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 textAlign: "center",
                                 fontFamily: "monospace",
                                 color: pin.unit ? "var(--cad-accent-hover)" : "var(--cad-text-dim)",
+                                padding: "4px 2px",
                               }}
                               title="Секция УГО: A, B, C, D для многоэлементных схем"
                             />
+                          </td>
+                          <td>
+                            {(() => {
+                              if (!currentPkgDef || !currentMapping) {
+                                return (
+                                  <span style={{ fontSize: 10, color: "var(--cad-text-dim)", display: "block", textAlign: "center" }}>
+                                    —
+                                  </span>
+                                );
+                              }
+                              const assignedPad = currentMapping.pinMap[pin.name];
+                              const hasConflict = Boolean(assignedPad && (padUsageCount[assignedPad] || []).length > 1);
+
+                              if (assignedPad) {
+                                return (
+                                  <div style={{ display: "flex", justifyContent: "center" }}>
+                                    <span
+                                      className={`pin-pad-badge ${hasConflict ? "conflict" : "assigned"}`}
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        setSelectedPinId(pin.id);
+                                        setActivePadNum(assignedPad);
+                                      }}
+                                      title={
+                                        hasConflict
+                                          ? `Конфликт! Площадка #${assignedPad} назначена нескольким выводам!`
+                                          : `Связан с Pad #${assignedPad} (${currentPkgDef.name}). Клик для фокуса.`
+                                      }
+                                    >
+                                      <Box size={9} />
+                                      Pad #{assignedPad}
+                                    </span>
+                                  </div>
+                                );
+                              }
+
+                              const hasFreePads = unassignedPads.length > 0;
+                              return (
+                                <div style={{ display: "flex", justifyContent: "center" }}>
+                                  <span
+                                    className="pin-pad-badge unassigned"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setSelectedPinId(pin.id);
+                                      if (hasFreePads) {
+                                        handleUpdatePinMapping(pin.name, unassignedPads[0].padNum);
+                                        setActivePadNum(unassignedPads[0].padNum);
+                                      }
+                                    }}
+                                    title={
+                                      hasFreePads
+                                        ? `Вывод не привязан. Свободно площадок: ${unassignedPads.length}. Клик для привязки к #${unassignedPads[0].padNum}.`
+                                        : `Вывод не привязан. В корпусе ${currentPkgDef.pads.length} площадок — все заняты!`
+                                    }
+                                  >
+                                    <AlertTriangle size={9} />
+                                    {hasFreePads ? "Не привязан" : "Нет Pad"}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                           </td>
                           <td>
                             <input
@@ -2920,10 +3042,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 type="button"
                                 className={`cad-icon-btn ${pin.isInverted ? "active" : ""}`}
                                 style={{
-                                  width: 20,
+                                  width: 18,
                                   height: 18,
                                   padding: 0,
-                                  fontSize: 11,
+                                  fontSize: 10.5,
                                   fontWeight: "bold",
                                   color: pin.isInverted ? "#38bdf8" : "var(--cad-text-dim)",
                                   background: pin.isInverted ? "rgba(56, 189, 248, 0.2)" : undefined,
@@ -2941,10 +3063,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 type="button"
                                 className={`cad-icon-btn ${pin.isClock ? "active" : ""}`}
                                 style={{
-                                  width: 26,
+                                  width: 24,
                                   height: 18,
-                                  padding: "0 2px",
-                                  fontSize: 9,
+                                  padding: "0 1px",
+                                  fontSize: 8.5,
                                   fontWeight: "bold",
                                   color: pin.isClock ? "#f59e0b" : "var(--cad-text-dim)",
                                   background: pin.isClock ? "rgba(245, 158, 11, 0.2)" : undefined,
@@ -2961,7 +3083,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               <button
                                 type="button"
                                 className="cad-icon-btn"
-                                style={{ width: 18, height: 18, padding: 0 }}
+                                style={{ width: 17, height: 18, padding: 0 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleMovePin(pin.id, "up");
@@ -2974,7 +3096,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               <button
                                 type="button"
                                 className="cad-icon-btn"
-                                style={{ width: 18, height: 18, padding: 0 }}
+                                style={{ width: 17, height: 18, padding: 0 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleMovePin(pin.id, "down");
@@ -2987,7 +3109,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               <button
                                 type="button"
                                 className="cad-icon-btn danger"
-                                style={{ width: 18, height: 18, padding: 0 }}
+                                style={{ width: 17, height: 18, padding: 0 }}
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   handleRemovePin(pin.id);
@@ -3054,41 +3176,25 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <div className="device-card-header" style={{ flexWrap: "nowrap", gap: 6, paddingBottom: 6 }}>
                 <div className="device-card-title" style={{ flexShrink: 0, gap: 5, fontSize: 10.5 }}>
                   <ArrowRightLeft size={13} color="var(--cad-accent-hover)" />
-                  <span>Сопоставление выводов</span>
+                  <span>Сопоставление</span>
                   {currentMapping && (
                     <span
-                      className={`mapping-coverage-pill ${mappingCoverage.percent === 100 ? "complete" : "partial"}`}
-                      style={{ padding: "1px 6px", fontSize: 9.5 }}
+                      className={`mapping-coverage-pill ${mappingCoverage.isFullyReady ? "complete" : "partial"}`}
+                      style={{ padding: "1px 6px", fontSize: 9.5, textTransform: "none" }}
+                      title={
+                        mappingCoverage.isFullyReady
+                          ? "Все выводы схемы и площадки корпуса полностью сопоставлены!"
+                          : mappingCoverage.unassignedPadCount > 0
+                          ? `Привязано ${mappingCoverage.mapped}/${mappingCoverage.total} выводов, но в корпусе свободно ${mappingCoverage.unassignedPadCount} площадок!`
+                          : `Привязано ${mappingCoverage.mapped} из ${mappingCoverage.total} выводов`
+                      }
                     >
-                      {mappingCoverage.percent === 100 ? <CheckCircle2 size={9} /> : null}
-                      {mappingCoverage.mapped}/{mappingCoverage.total} ({mappingCoverage.percent}%)
+                      {mappingCoverage.isFullyReady ? <CheckCircle2 size={9} /> : null}
+                      {mappingCoverage.mapped}/{mappingCoverage.total}
+                      {mappingCoverage.unassignedPadCount > 0 ? ` (${mappingCoverage.unassignedPadCount} своб.)` : ` (${mappingCoverage.percent}%)`}
                     </span>
                   )}
                 </div>
-
-                {/* Быстрое переключение корпуса прямо на вкладке распиновки, если корпусов несколько */}
-                {supportedPackages.length > 1 && (
-                  <div style={{ display: "flex", alignItems: "center", gap: 5, margin: "0 auto 0 8px" }}>
-                    <span style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>Корпус:</span>
-                    <select
-                      value={activePackageId}
-                      onChange={(e) => setActivePackageId(e.target.value)}
-                      className="cad-input"
-                      style={{ fontSize: 10.5, padding: "2px 6px", height: 22, maxWidth: 170 }}
-                      title="Выбрать привязанный корпус для настройки распиновки"
-                    >
-                      {supportedPackages.map((b) => {
-                        const p = availablePackages.find((ap) => ap.id === b.packageId);
-                        const r = getPackageReadiness(b);
-                        return (
-                          <option key={b.packageId} value={b.packageId}>
-                            {p?.name || b.packageId} ({r.mapped}/{r.total})
-                          </option>
-                        );
-                      })}
-                    </select>
-                  </div>
-                )}
 
                 {currentPkgDef && (
                   <div className="mapping-header-actions">
@@ -3096,9 +3202,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                       className={`auto-advance-badge ${isAutoAdvanceEnabled ? "active" : ""}`}
                       onClick={() => setIsAutoAdvanceEnabled(!isAutoAdvanceEnabled)}
                       title="Автоматический переход к следующему свободному выводу схемы при клике на чертеже футпринта"
+                      style={{ padding: "2px 6px" }}
                     >
                       <Zap size={10} />
-                      <span>Авто-шаг {isAutoAdvanceEnabled ? "ВКЛ" : "ВЫКЛ"}</span>
+                      <span>Авто-шаг</span>
                     </div>
                     <div className="mapping-header-divider" />
                     <button
@@ -3134,10 +3241,38 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                   {/* Элегантная информационная полоса активного корпуса */}
                   <div className="mapping-sub-pkg-bar">
                     <div className="mapping-sub-pkg-info">
-                      <Box size={12} color="#60a5fa" />
-                      <span className="mapping-sub-pkg-name" title={currentPkgDef.name}>
-                        {currentPkgDef.name}
-                      </span>
+                      <Box size={13} color="#60a5fa" style={{ flexShrink: 0 }} />
+                      {supportedPackages.length > 1 ? (
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+                          <span style={{ fontSize: 10, color: "var(--cad-text-dim)", flexShrink: 0 }}>Корпус:</span>
+                          <select
+                            value={activePackageId}
+                            onChange={(e) => setActivePackageId(e.target.value)}
+                            className="cad-input mapping-pkg-select"
+                            title="Выбрать привязанный корпус для настройки распиновки"
+                          >
+                            {supportedPackages.map((b) => {
+                              const p = availablePackages.find((ap) => ap.id === b.packageId);
+                              const r = getPackageReadiness(b);
+                              const padSuffix =
+                                r.unassignedPadCount > 0
+                                  ? ` • ${r.unassignedPadCount} своб. pad`
+                                  : r.padCount > 0
+                                  ? ` • ${r.padCount} pad`
+                                  : "";
+                              return (
+                                <option key={b.packageId} value={b.packageId}>
+                                  {p?.name || b.packageId} ({r.mapped}/{r.total} выв.{padSuffix})
+                                </option>
+                              );
+                            })}
+                          </select>
+                        </div>
+                      ) : (
+                        <span className="mapping-sub-pkg-name" title={currentPkgDef.name}>
+                          {currentPkgDef.name}
+                        </span>
+                      )}
                       <span className="mapping-sub-pkg-dot">•</span>
                       <span className="mapping-sub-pkg-tag">{currentPkgDef.mountType.toUpperCase()}</span>
                       <span className="mapping-sub-pkg-dot">•</span>
