@@ -193,7 +193,7 @@ export type PinElectricalType =
   | "unspecified";
 
 /** Семантическая / функциональная роль вывода (физическая природа сигнала) */
-export type PinSignalRole =
+export type StandardPinSignalRole =
   | "passive" // Резисторы, конденсаторы, дроссели, контакты
   | "power" // Силовые шины (VCC, VDD, 5V, 3V3, VBUS)
   | "ground" // Земляные шины (GND, AGND, PGND)
@@ -205,6 +205,8 @@ export type PinSignalRole =
   | "shield" // Экран разъема, корпус, земля шасси
   | "control"; // Управляющие сигналы (~RESET, EN, CS, INT)
 
+export type PinSignalRole = StandardPinSignalRole | (string & {});
+
 export interface LogicalPin {
   id: string;
   name: string;
@@ -215,7 +217,10 @@ export interface LogicalPin {
   isInverted?: boolean;
   isClock?: boolean;
   swapGroup?: string;
+  /** Список альтернативных функций многофункционального вывода (ADC, PWM, UART, SPI, GPIO...) */
   altFunctions?: string[];
+  /** Активная в схеме функция (если выбрана альтернативная вместо имени по умолчанию) */
+  activeFunction?: string;
 }
 
 export interface PackageMapping {

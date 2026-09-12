@@ -260,14 +260,50 @@ export const UNIFIED_PIN_TYPES: UnifiedPinTypeConfig[] = [
   },
 ];
 
-export const getUnifiedPinTypeKey = (pin: LogicalPin): string => {
-  if (pin.pinRole === "shield") return "shield";
-  if (pin.pinRole === "diff_pair") return "diff_pair";
-  if (pin.pinRole === "rf") return "rf";
-  if (pin.pinRole === "analog") return "analog";
-  if (pin.pinRole === "clock" || pin.isClock) return "clock";
+export const getCustomTypeColor = (str: string): string => {
+  const palette = [
+    "#38bdf8", "#818cf8", "#c084fc", "#f472b6", "#fb7185",
+    "#34d399", "#2dd4bf", "#fbbf24", "#a3e635", "#60a5fa",
+    "#e879f9", "#4ade80", "#f97316"
+  ];
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0;
+  }
+  return palette[Math.abs(hash) % palette.length];
+};
 
-  if (pin.electricalType === "ground" || pin.pinRole === "ground") return "ground";
+export const getUnifiedPinTypeKey = (pin: LogicalPin): string => {
+  if (pin.pinRole) {
+    if (pin.pinRole === "shield") return "shield";
+    if (pin.pinRole === "diff_pair") return "diff_pair";
+    if (pin.pinRole === "rf") return "rf";
+    if (pin.pinRole === "analog") return "analog";
+    if (pin.pinRole === "clock" || pin.isClock) return "clock";
+    if (pin.pinRole === "ground") return "ground";
+    if (pin.pinRole === "power") {
+      return pin.electricalType === "power_out" ? "power_out" : "power_in";
+    }
+    if (pin.pinRole === "passive" && pin.electricalType === "passive") return "passive";
+    if (pin.pinRole === "digital") {
+      if (pin.electricalType === "input") return "input";
+      if (pin.electricalType === "output") return "output";
+      if (pin.electricalType === "open_collector") return "open_collector";
+      if (pin.electricalType === "tri_state") return "tri_state";
+      return "bidirectional";
+    }
+    if (pin.pinRole === "control") {
+      return pin.electricalType === "output" ? "output" : "input";
+    }
+    // Пользовательский свободный тип сигнала
+    const isStandard = PIN_SIGNAL_ROLES.some((r) => r.value === pin.pinRole);
+    if (!isStandard) {
+      return pin.pinRole;
+    }
+  }
+
+  if (pin.electricalType === "ground") return "ground";
   if (pin.electricalType === "power_in") return "power_in";
   if (pin.electricalType === "power_out") return "power_out";
   if (pin.electricalType === "open_collector") return "open_collector";
@@ -278,13 +314,24 @@ export const getUnifiedPinTypeKey = (pin: LogicalPin): string => {
   if (pin.electricalType === "bidirectional") return "bidirectional";
   if (pin.electricalType === "unspecified") return "unspecified";
 
-  if (pin.pinRole === "power") return "power_in";
   return "passive";
 };
 
 export const getUnifiedPinTypeConfig = (pin: LogicalPin): UnifiedPinTypeConfig => {
   const key = getUnifiedPinTypeKey(pin);
-  return UNIFIED_PIN_TYPES.find((t) => t.value === key) || UNIFIED_PIN_TYPES[0];
+  const found = UNIFIED_PIN_TYPES.find((t) => t.value === key);
+  if (found) return found;
+
+  // Если это пользовательский тип сигнала
+  return {
+    value: key,
+    label: `${key} (Пользовательский)`,
+    shortLabel: key.length > 12 ? `${key.slice(0, 11)}…` : key,
+    category: "Пользовательские",
+    color: getCustomTypeColor(key),
+    electricalType: pin.electricalType || "bidirectional",
+    pinRole: key,
+  };
 };
 
 interface TaxonomySubcategory {
@@ -565,6 +612,15 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
   // Кэш сопоставления pinId -> padNum для защиты от потери связей при промежуточной очистке имени вывода
   const pinIdToPadCacheRef = useRef<Map<string, string>>(new Map());
+
+  // Модальные окна для Альтернативных функций (AF / MUX) и Пользовательских типов сигналов
+  const [editingAfPinId, setEditingAfPinId] = useState<string | null>(null);
+  const [newAfInput, setNewAfInput] = useState<string>("");
+  const [customTypeModalPinId, setCustomTypeModalPinId] = useState<string | null>(null);
+  const [isBulkCustomTypeModal, setIsBulkCustomTypeModal] = useState<boolean>(false);
+  const [customSignalInput, setCustomSignalInput] = useState<string>("");
+  const [customSignalElectricalType, setCustomSignalElectricalType] = useState<PinElectricalType>("bidirectional");
+  const [customSignalDescription, setCustomSignalDescription] = useState<string>("");
 
   useEffect(() => {
     if (!isOpen) return;
@@ -911,6 +967,18 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     return Array.from(set).sort();
   }, [logicalPins]);
 
+  // Все пользовательские роли/сигналы, примененные к выводам в текущем компоненте
+  const customSignalRoles = useMemo(() => {
+    const standardSet = new Set<string>(UNIFIED_PIN_TYPES.map((t) => t.pinRole));
+    const customSet = new Set<string>();
+    logicalPins.forEach((p) => {
+      if (p.pinRole && !standardSet.has(p.pinRole)) {
+        customSet.add(p.pinRole);
+      }
+    });
+    return Array.from(customSet).sort();
+  }, [logicalPins]);
+
   // Фильтрация выводов по поисковому запросу и выбранной секции схемы
   const filteredLogicalPins = useMemo(() => {
     return logicalPins.filter((p) => {
@@ -922,7 +990,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         const matchesName = p.name.toLowerCase().includes(q);
         const matchesDesc = (p.description || "").toLowerCase().includes(q);
         const matchesType = p.electricalType.toLowerCase().includes(q) || Boolean(p.pinRole && p.pinRole.toLowerCase().includes(q));
-        if (!matchesName && !matchesDesc && !matchesType) return false;
+        const matchesAf = Boolean(p.altFunctions && p.altFunctions.some((af) => af.toLowerCase().includes(q)));
+        const matchesActiveAf = Boolean(p.activeFunction && p.activeFunction.toLowerCase().includes(q));
+        if (!matchesName && !matchesDesc && !matchesType && !matchesAf && !matchesActiveAf) return false;
       }
       return true;
     });
@@ -1075,6 +1145,26 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
   const handleBulkSetUnifiedPinType = (unifiedKey: string) => {
     if (selectedPinIds.size === 0) return;
+    if (unifiedKey === "__custom__") {
+      setCustomTypeModalPinId(null);
+      setIsBulkCustomTypeModal(true);
+      setCustomSignalInput("");
+      setCustomSignalElectricalType("bidirectional");
+      setCustomSignalDescription("");
+      return;
+    }
+    if (unifiedKey.startsWith("custom_")) {
+      const customRole = unifiedKey.replace(/^custom_/, "");
+      const existingPin = logicalPins.find((p) => p.pinRole === customRole);
+      const elType = existingPin?.electricalType || "bidirectional";
+      setLogicalPins(
+        logicalPins.map((p) => {
+          if (!selectedPinIds.has(p.id)) return p;
+          return { ...p, electricalType: elType, pinRole: customRole };
+        })
+      );
+      return;
+    }
     const cfg = UNIFIED_PIN_TYPES.find((t) => t.value === unifiedKey);
     if (!cfg) return;
     setLogicalPins(
@@ -1130,6 +1220,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       pinRole?: PinSignalRole;
       unit?: string;
       description?: string;
+      altFunctions?: string[];
     }> = [];
 
     lines.forEach((line) => {
@@ -1154,12 +1245,29 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       let pinType: PinElectricalType = "passive";
       let pinRole: PinSignalRole = "passive";
       let pinUnit = "";
+      const altFunctions: string[] = [];
 
       // Если первый элемент - число (№ вывода), а второй - имя сигнала
       if (parts.length >= 2 && /^\d+$/.test(parts[0]) && !/^\d+$/.test(parts[1])) {
         pinName = parts[1];
         pinDesc = `Пин #${parts[0]}`;
         parts = [parts[1], ...parts.slice(2)];
+      }
+
+      // Извлечение альтернативных функций из составного имени вывода (например: PA0/TIM2_CH1/ADC1_IN0 или PB6(I2C1_SCL/USART1_TX))
+      if (/[/|]/.test(pinName) || /\(.*\)/.test(pinName)) {
+        const parenMatch = pinName.match(/^([^(]+)\(([^)]+)\)$/);
+        if (parenMatch) {
+          pinName = parenMatch[1].trim();
+          const inside = parenMatch[2].split(/[/|,\s]+/).map((s) => s.trim()).filter(Boolean);
+          altFunctions.push(...inside);
+        } else {
+          const slashParts = pinName.split(/[/|]+/).map((s) => s.trim()).filter(Boolean);
+          if (slashParts.length > 1) {
+            pinName = slashParts[0];
+            altFunctions.push(...slashParts.slice(1));
+          }
+        }
       }
 
       const remainingTokens: string[] = [];
@@ -1249,7 +1357,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         } else if (/tx|out|dout|led/i.test(nameLower)) {
           pinType = "output";
           pinRole = "digital";
-        } else if (/io|sda|bidi/i.test(nameLower)) {
+        } else if (/io|sda|bidi|gpio|p[a-z]\d+/i.test(nameLower)) {
           pinType = "bidirectional";
           pinRole = "digital";
         }
@@ -1266,6 +1374,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         pinRole: pinRole,
         unit: pinUnit || undefined,
         description: pinDesc || undefined,
+        altFunctions: altFunctions.length > 0 ? altFunctions : undefined,
       });
     });
 
@@ -1286,6 +1395,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       pinRole: p.pinRole,
       unit: p.unit,
       description: p.description,
+      altFunctions: p.altFunctions && p.altFunctions.length > 0 ? p.altFunctions : undefined,
+      activeFunction: p.name,
     }));
 
     if (bulkImportMode === "replace") {
@@ -1483,6 +1594,23 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
   // Обновление типа/роли вывода через единый селектор
   const handleUpdateUnifiedPinType = (pinId: string, unifiedKey: string) => {
+    if (unifiedKey === "__custom__") {
+      setCustomTypeModalPinId(pinId);
+      setIsBulkCustomTypeModal(false);
+      setCustomSignalInput("");
+      setCustomSignalElectricalType("bidirectional");
+      setCustomSignalDescription("");
+      return;
+    }
+    if (unifiedKey.startsWith("custom_")) {
+      const customRole = unifiedKey.replace(/^custom_/, "");
+      const existingPin = logicalPins.find((p) => p.pinRole === customRole);
+      handleUpdatePin(pinId, {
+        pinRole: customRole,
+        electricalType: existingPin?.electricalType || "bidirectional",
+      });
+      return;
+    }
     const cfg = UNIFIED_PIN_TYPES.find((t) => t.value === unifiedKey);
     if (!cfg) return;
     const updates: Partial<LogicalPin> = {
@@ -3168,6 +3296,15 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     title="Установить тип и назначение для всех выбранных выводов"
                   >
                     <option value="" disabled>Тип / Назначение...</option>
+                    {customSignalRoles.length > 0 && (
+                      <optgroup label="Пользовательские сигналы">
+                        {customSignalRoles.map((role) => (
+                          <option key={role} value={`custom_${role}`}>
+                            🏷️ {role}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                     {["Пассивные и дискретные", "Питание и земля", "Интерфейсы и сигналы", "Специальные"].map((cat) => (
                       <optgroup key={cat} label={cat}>
                         {UNIFIED_PIN_TYPES.filter((t) => t.category === cat).map((t) => (
@@ -3177,6 +3314,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                         ))}
                       </optgroup>
                     ))}
+                    <optgroup label="Пользовательский">
+                      <option value="__custom__">✍ Свой тип сигнала...</option>
+                    </optgroup>
                   </select>
 
                   <select
@@ -3312,7 +3452,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                             {pinGlobalIdx + 1}
                           </td>
                           <td>
-                            <div style={{ position: "relative", display: "flex", alignItems: "center" }}>
+                            <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4 }}>
                               <input
                                 type="text"
                                 value={pin.name}
@@ -3334,6 +3474,20 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 }}
                                 placeholder="PIN"
                               />
+                              {pin.altFunctions && pin.altFunctions.length > 0 && (
+                                <button
+                                  type="button"
+                                  className="pin-af-pill"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setEditingAfPinId(pin.id);
+                                  }}
+                                  title={`Альтернативные функции (${pin.altFunctions.length}): ${pin.altFunctions.join(", ")}${pin.activeFunction && pin.activeFunction !== pin.name ? ` • Активна: ${pin.activeFunction}` : ""}. Клик для настройки MUX.`}
+                                >
+                                  <Zap size={9} />
+                                  {pin.altFunctions.length} AF
+                                </button>
+                              )}
                               {isDupe && (
                                 <span
                                   title="Имя вывода дублируется!"
@@ -3363,6 +3517,15 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 title={`Тип вывода: ${uCfg.label}`}
                                 style={{ fontSize: 10, width: "100%" }}
                               >
+                                {customSignalRoles.length > 0 && (
+                                  <optgroup label="Пользовательские сигналы">
+                                    {customSignalRoles.map((role) => (
+                                      <option key={role} value={`custom_${role}`}>
+                                        🏷️ {role}
+                                      </option>
+                                    ))}
+                                  </optgroup>
+                                )}
                                 {["Пассивные и дискретные", "Питание и земля", "Интерфейсы и сигналы", "Специальные"].map((cat) => (
                                   <optgroup key={cat} label={cat}>
                                     {UNIFIED_PIN_TYPES.filter((t) => t.category === cat).map((t) => (
@@ -3372,6 +3535,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                     ))}
                                   </optgroup>
                                 ))}
+                                <optgroup label="Пользовательский">
+                                  <option value="__custom__">✍ Свой тип...</option>
+                                </optgroup>
                               </select>
                             </div>
                           </td>
@@ -3509,6 +3675,31 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                 title={pin.isClock ? "Тактовый сигнал (Clock) включен" : "Обозначить как тактовый сигнал (Clock)"}
                               >
                                 CLK
+                              </button>
+                              <button
+                                type="button"
+                                className={`cad-icon-btn ${pin.altFunctions?.length ? "active-af" : ""}`}
+                                style={{
+                                  minWidth: 20,
+                                  height: 18,
+                                  padding: "0 3px",
+                                  fontSize: 8.5,
+                                  fontWeight: "bold",
+                                  color: pin.altFunctions?.length ? "#c084fc" : "var(--cad-text-dim)",
+                                  background: pin.altFunctions?.length ? "rgba(168, 85, 247, 0.2)" : undefined,
+                                  border: pin.altFunctions?.length ? "1px solid rgba(168, 85, 247, 0.45)" : "1px solid transparent",
+                                }}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setEditingAfPinId(pin.id);
+                                }}
+                                title={
+                                  pin.altFunctions?.length
+                                    ? `Альтернативные функции (${pin.altFunctions.length}): ${pin.altFunctions.join(", ")}. Клик для настройки MUX.`
+                                    : "Добавить альтернативные функции вывода (AF / MUX)"
+                                }
+                              >
+                                AF
                               </button>
                               <button
                                 type="button"
@@ -4492,6 +4683,391 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           </div>
         </div>
       )}
+
+      {/* Модальный диалог: Альтернативные функции вывода (AF / MUX) */}
+      {editingAfPinId !== null && (() => {
+        const pin = logicalPins.find((p) => p.id === editingAfPinId);
+        if (!pin) return null;
+
+        const handleAddAf = (funcName: string) => {
+          const trimmed = funcName.trim().toUpperCase();
+          if (!trimmed) return;
+          const currentAfs = pin.altFunctions || [];
+          const parts = trimmed.split(/[,/;\s]+/).map((s) => s.trim()).filter(Boolean);
+          const nextAfs = [...currentAfs];
+          parts.forEach((p) => {
+            if (!nextAfs.includes(p) && p !== pin.name.toUpperCase()) {
+              nextAfs.push(p);
+            }
+          });
+          handleUpdatePin(pin.id, {
+            altFunctions: nextAfs,
+            activeFunction: pin.activeFunction || pin.name,
+          });
+          setNewAfInput("");
+        };
+
+        const handleRemoveAf = (funcToRemove: string) => {
+          const nextAfs = (pin.altFunctions || []).filter((f) => f !== funcToRemove);
+          const nextActive = pin.activeFunction === funcToRemove ? pin.name : pin.activeFunction;
+          handleUpdatePin(pin.id, {
+            altFunctions: nextAfs.length > 0 ? nextAfs : undefined,
+            activeFunction: nextActive,
+          });
+        };
+
+        const handleSetActiveFunction = (func: string) => {
+          handleUpdatePin(pin.id, { activeFunction: func });
+        };
+
+        const QUICK_PRESETS = [
+          { group: "Аналог", items: ["ADC", "DAC", "COMP_IN", "VREF+"] },
+          { group: "Таймеры / ШИМ", items: ["TIM1_CH1", "TIM2_CH1", "TIM3_CH1", "PWM"] },
+          { group: "Интерфейсы", items: ["UART_TX", "UART_RX", "SPI_MOSI", "SPI_MISO", "SPI_SCK", "SPI_CS", "I2C_SDA", "I2C_SCL", "CAN_TX", "CAN_RX", "USB_DP", "USB_DM"] },
+          { group: "Отладка / Система", items: ["SWDIO", "SWCLK", "EXTI", "BOOT0", "NRST", "OSC_IN", "OSC_OUT"] },
+        ];
+
+        return (
+          <div className="pkg-picker-overlay" onClick={() => setEditingAfPinId(null)}>
+            <div className="af-modal-box" onClick={(e) => e.stopPropagation()}>
+              <div className="pkg-picker-header" style={{ borderBottom: "1px solid rgba(168, 85, 247, 0.25)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Zap size={16} color="#c084fc" />
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--cad-text-main)" }}>
+                      Альтернативные функции (AF / MUX): {pin.name}
+                    </span>
+                    <span style={{ display: "block", fontSize: 10, color: "var(--cad-text-dim)" }}>
+                      Мультиплексирование периферии для микроконтроллеров и сложных ИС
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="cad-modal-close-btn"
+                  onClick={() => setEditingAfPinId(null)}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
+                {/* Выбор активной отображаемой функции */}
+                <div>
+                  <label className="form-label" style={{ fontSize: 10.5, marginBottom: 6 }}>
+                    Активная функция для схемы (отображается в УГО):
+                  </label>
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                    <button
+                      type="button"
+                      className={`cad-btn-secondary ${(!pin.activeFunction || pin.activeFunction === pin.name) ? "cad-btn-primary" : ""}`}
+                      style={{ fontSize: 11, padding: "3px 10px", fontFamily: "monospace", fontWeight: 700 }}
+                      onClick={() => handleSetActiveFunction(pin.name)}
+                    >
+                      ★ {pin.name} (Основное имя)
+                    </button>
+                    {(pin.altFunctions || []).map((af) => {
+                      const isActive = pin.activeFunction === af;
+                      return (
+                        <button
+                          key={af}
+                          type="button"
+                          className={`cad-btn-secondary ${isActive ? "cad-btn-primary" : ""}`}
+                          style={{
+                            fontSize: 11,
+                            padding: "3px 10px",
+                            fontFamily: "monospace",
+                            fontWeight: 700,
+                            borderColor: isActive ? "#10b981" : undefined,
+                            background: isActive ? "rgba(16, 185, 129, 0.2)" : undefined,
+                            color: isActive ? "#6ee7b7" : undefined,
+                          }}
+                          onClick={() => handleSetActiveFunction(af)}
+                        >
+                          {isActive ? "✓ " : ""}{af}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Список настроенных альтернативных функций с удалением */}
+                <div>
+                  <label className="form-label" style={{ fontSize: 10.5, marginBottom: 6 }}>
+                    Настроенные функции ({pin.altFunctions?.length || 0}):
+                  </label>
+                  <div className="af-chips-wrap">
+                    {(!pin.altFunctions || pin.altFunctions.length === 0) ? (
+                      <span style={{ fontSize: 11, color: "var(--cad-text-dim)", padding: "4px 8px" }}>
+                        Нет альтернативных функций. Введите название ниже или выберите из быстрых шаблонов.
+                      </span>
+                    ) : (
+                      pin.altFunctions.map((af) => (
+                        <span key={af} className={`af-chip ${pin.activeFunction === af ? "is-active" : ""}`}>
+                          <span>{af}</span>
+                          <button
+                            type="button"
+                            className="af-chip-del"
+                            onClick={() => handleRemoveAf(af)}
+                            title="Удалить функцию"
+                          >
+                            <X size={12} />
+                          </button>
+                        </span>
+                      ))
+                    )}
+                  </div>
+                </div>
+
+                {/* Добавление новой функции вручную */}
+                <div>
+                  <label className="form-label" style={{ fontSize: 10.5, marginBottom: 4 }}>
+                    Добавить функцию вручную:
+                  </label>
+                  <div style={{ display: "flex", gap: 6 }}>
+                    <input
+                      type="text"
+                      value={newAfInput}
+                      onChange={(e) => setNewAfInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") {
+                          e.preventDefault();
+                          handleAddAf(newAfInput);
+                        }
+                      }}
+                      placeholder="Например: TIM2_CH1, ADC1_IN0, USART1_TX (можно через запятую)..."
+                      className="cad-input"
+                      style={{ flex: 1, padding: "5px 8px", fontSize: 11, fontFamily: "monospace" }}
+                    />
+                    <button
+                      type="button"
+                      className="cad-btn-primary"
+                      onClick={() => handleAddAf(newAfInput)}
+                      disabled={!newAfInput.trim()}
+                      style={{ padding: "4px 12px", fontSize: 11 }}
+                    >
+                      <Plus size={12} />
+                      Добавить
+                    </button>
+                  </div>
+                </div>
+
+                {/* Быстрые пресеты MCU / периферии */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 8, background: "rgba(0,0,0,0.2)", padding: 10, borderRadius: 6 }}>
+                  <span style={{ fontSize: 10, fontWeight: 700, color: "var(--cad-text-muted)", textTransform: "uppercase", letterSpacing: 0.5 }}>
+                    ⚡ Быстрые шаблоны периферии (клик для добавления):
+                  </span>
+                  {QUICK_PRESETS.map((grp) => (
+                    <div key={grp.group} style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 9.5, color: "var(--cad-text-dim)", minWidth: 90 }}>{grp.group}:</span>
+                      {grp.items.map((item) => (
+                        <button
+                          key={item}
+                          type="button"
+                          className="af-quick-chip"
+                          onClick={() => handleAddAf(item)}
+                        >
+                          +{item}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              <div className="cad-modal-footer" style={{ padding: "10px 16px" }}>
+                <button
+                  type="button"
+                  className="cad-btn-primary"
+                  onClick={() => setEditingAfPinId(null)}
+                  style={{ marginLeft: "auto" }}
+                >
+                  <Check size={13} />
+                  Готово
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Модальный диалог: Создание / назначение своего типа сигнала */}
+      {(customTypeModalPinId !== null || isBulkCustomTypeModal) && (() => {
+        const targetPin = customTypeModalPinId ? logicalPins.find((p) => p.id === customTypeModalPinId) : null;
+        const targetTitle = isBulkCustomTypeModal
+          ? `Свой тип сигнала для выбранных выводов (${selectedPinIds.size} шт.)`
+          : `Свой тип сигнала для вывода: ${targetPin?.name || "PIN"}`;
+
+        const handleApplyCustomSignal = () => {
+          const trimmed = customSignalInput.trim().toUpperCase();
+          if (!trimmed) {
+            alert("Пожалуйста, введите имя или метку типа сигнала (например: CAN_H, LVDS+, SWCLK).");
+            return;
+          }
+
+          if (isBulkCustomTypeModal) {
+            setLogicalPins(
+              logicalPins.map((p) => {
+                if (!selectedPinIds.has(p.id)) return p;
+                return {
+                  ...p,
+                  pinRole: trimmed,
+                  electricalType: customSignalElectricalType,
+                  description: customSignalDescription ? `${customSignalDescription}` : p.description,
+                };
+              })
+            );
+          } else if (customTypeModalPinId) {
+            handleUpdatePin(customTypeModalPinId, {
+              pinRole: trimmed,
+              electricalType: customSignalElectricalType,
+              description: customSignalDescription || undefined,
+            });
+          }
+
+          setCustomTypeModalPinId(null);
+          setIsBulkCustomTypeModal(false);
+          setCustomSignalInput("");
+          setCustomSignalDescription("");
+        };
+
+        const SIGNAL_PRESETS = [
+          { group: "Дифференциальные пары", items: ["CAN_H", "CAN_L", "LVDS+", "LVDS-", "USB_D+", "USB_D-", "ETH_TX+", "ETH_TX-", "RS485_A", "RS485_B"] },
+          { group: "Аудио и I2S", items: ["I2S_DATA", "I2S_BCLK", "I2S_WS", "I2S_MCLK", "PDM_DAT", "PDM_CLK", "LINE_IN", "LINE_OUT"] },
+          { group: "Отладка и ПЛИС", items: ["SWDIO", "SWCLK", "TMS", "TCK", "TDO", "TDI", "DONE", "PROGRAM_B", "INIT_B"] },
+          { group: "Опорные и спец. цепи", items: ["VREF+", "VREF-", "AVDD", "AGND", "REFOUT", "SENSE+", "SENSE-", "BOOT0", "NRST"] },
+        ];
+
+        return (
+          <div className="pkg-picker-overlay" onClick={() => { setCustomTypeModalPinId(null); setIsBulkCustomTypeModal(false); }}>
+            <div className="custom-type-modal-box" onClick={(e) => e.stopPropagation()}>
+              <div className="pkg-picker-header">
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <Tag size={16} color="var(--cad-accent-hover)" />
+                  <div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "var(--cad-text-main)" }}>
+                      {targetTitle}
+                    </span>
+                    <span style={{ display: "block", fontSize: 10, color: "var(--cad-text-dim)" }}>
+                      Произвольная маркировка сигнала без ограничений стандартных перечислений
+                    </span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="cad-modal-close-btn"
+                  onClick={() => { setCustomTypeModalPinId(null); setIsBulkCustomTypeModal(false); }}
+                >
+                  <X size={14} />
+                </button>
+              </div>
+
+              <div style={{ padding: "14px 16px", display: "flex", flexDirection: "column", gap: 12 }}>
+                <div>
+                  <label className="form-label" style={{ fontSize: 10.5, marginBottom: 4 }}>
+                    Имя / Метка типа сигнала:
+                  </label>
+                  <input
+                    type="text"
+                    value={customSignalInput}
+                    onChange={(e) => setCustomSignalInput(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        handleApplyCustomSignal();
+                      }
+                    }}
+                    placeholder="Например: CAN_H, LVDS+, SWCLK, I2S_DATA, VREF+..."
+                    className="cad-input"
+                    style={{ width: "100%", padding: "6px 8px", fontSize: 12, fontWeight: 700, fontFamily: "monospace", color: "var(--cad-accent-hover)" }}
+                    autoFocus
+                  />
+                </div>
+
+                {/* Рекомендованные сигналы */}
+                <div style={{ display: "flex", flexDirection: "column", gap: 6, background: "rgba(0,0,0,0.2)", padding: 8, borderRadius: 6 }}>
+                  <span style={{ fontSize: 9.5, fontWeight: 700, color: "var(--cad-text-muted)", textTransform: "uppercase" }}>
+                    💡 Популярные сигналы (клик для подстановки):
+                  </span>
+                  {SIGNAL_PRESETS.map((cat) => (
+                    <div key={cat.group} style={{ display: "flex", alignItems: "center", gap: 5, flexWrap: "wrap" }}>
+                      <span style={{ fontSize: 9, color: "var(--cad-text-dim)", minWidth: 105 }}>{cat.group}:</span>
+                      {cat.items.map((sig) => (
+                        <button
+                          key={sig}
+                          type="button"
+                          className="af-quick-chip"
+                          onClick={() => setCustomSignalInput(sig)}
+                        >
+                          {sig}
+                        </button>
+                      ))}
+                    </div>
+                  ))}
+                </div>
+
+                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                  <div>
+                    <label className="form-label" style={{ fontSize: 10.5, marginBottom: 4 }}>
+                      Электрический тип (для проверки ERC):
+                    </label>
+                    <select
+                      value={customSignalElectricalType}
+                      onChange={(e) => setCustomSignalElectricalType(e.target.value as PinElectricalType)}
+                      className="cad-input"
+                      style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                    >
+                      <option value="passive">Пассивный (Passive)</option>
+                      <option value="input">Вход (Input)</option>
+                      <option value="output">Выход (Output)</option>
+                      <option value="bidirectional">Двунаправленный (Bidirectional)</option>
+                      <option value="power_in">Питание (Power In)</option>
+                      <option value="power_out">Выход питания (Power Out)</option>
+                      <option value="ground">Общий провод / Земля (Ground)</option>
+                      <option value="open_collector">Открытый коллектор (Open Collector)</option>
+                      <option value="tri_state">3-состояние (Tri-State)</option>
+                      <option value="no_connect">Не подключен (No Connect)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="form-label" style={{ fontSize: 10.5, marginBottom: 4 }}>
+                      Описание цепи (опционально):
+                    </label>
+                    <input
+                      type="text"
+                      value={customSignalDescription}
+                      onChange={(e) => setCustomSignalDescription(e.target.value)}
+                      placeholder="Например: Прямой дифсигнал CAN"
+                      className="cad-input"
+                      style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="cad-modal-footer" style={{ padding: "10px 16px" }}>
+                <button
+                  type="button"
+                  className="cad-btn-secondary"
+                  onClick={() => { setCustomTypeModalPinId(null); setIsBulkCustomTypeModal(false); }}
+                >
+                  Отмена
+                </button>
+                <button
+                  type="button"
+                  className="cad-btn-primary"
+                  onClick={handleApplyCustomSignal}
+                  disabled={!customSignalInput.trim()}
+                >
+                  <Check size={12} />
+                  <span>Применить тип сигнала</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 };

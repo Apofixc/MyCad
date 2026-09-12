@@ -46,6 +46,8 @@ pub struct LogicalPin {
     pub description: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub alt_functions: Vec<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub active_function: Option<String>,
 }
 
 /// Привязка логических выводов схемы к физическим контактным площадкам посадочного места
