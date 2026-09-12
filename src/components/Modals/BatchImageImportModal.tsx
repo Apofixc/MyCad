@@ -359,7 +359,7 @@ export const BatchImageImportModal: React.FC = () => {
         currentX += wMm + 15; // 15mm gap between each new image
       }
 
-      await updateImageLayers(importedLayers);
+      if (!await updateImageLayers(importedLayers)) return;
       handleClose();
     } catch (err: any) {
       console.error(err);

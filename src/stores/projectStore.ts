@@ -51,11 +51,11 @@ interface ProjectStore {
   batchSetComponentsVisibility: (ids: string[], visible: boolean) => Promise<void>;
   batchSetComponentsLocked: (ids: string[], locked: boolean) => Promise<void>;
   batchDeleteComponents: (ids: string[]) => Promise<void>;
-  addComponent: (component: PlacedComponent) => Promise<void>;
-  updateComponent: (component: PlacedComponent) => Promise<void>;
+  addComponent: (component: PlacedComponent) => Promise<boolean>;
+  updateComponent: (component: PlacedComponent, boardId?: string) => Promise<boolean>;
   deleteComponent: (componentId: string) => Promise<void>;
-  updateImageLayer: (layer: BoardImageLayer) => Promise<void>;
-  updateImageLayers: (layers: BoardImageLayer[]) => Promise<void>;
+  updateImageLayer: (layer: BoardImageLayer) => Promise<boolean>;
+  updateImageLayers: (layers: BoardImageLayer[]) => Promise<boolean>;
   batchSetVisibility: (layerIds: string[], visible: boolean) => Promise<void>;
   batchSetLocked: (layerIds: string[], locked: boolean) => Promise<void>;
   batchDeleteLayers: (layerIds: string[]) => Promise<void>;
@@ -379,26 +379,31 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
 
   addComponent: async (component: PlacedComponent) => {
     const { board } = get();
-    if (!board) return;
+    if (!board) return false;
     try {
       const fullState = await engineClient.boardAddComponent(board.id, component);
       get().applyFullState(fullState);
-      set({ isDirty: true, selectedComponentId: component.id, selectedImageId: null });
+      set({ isDirty: true, selectedComponentId: component.id, selectedComponentIds: [component.id], selectedImageId: null, selectedImageIds: [] });
       notifySuccess(`Компонент "${component.refDes}" добавлен на плату`);
-    } catch (e: any) {
+      return true;
+    } catch (e) {
       reportError(e, "Ошибка добавления компонента на плату", { source: "tauri" });
+      return false;
     }
   },
 
-  updateComponent: async (component: PlacedComponent) => {
-    const { board } = get();
-    if (!board) return;
+  updateComponent: async (component: PlacedComponent, boardId?: string) => {
+    const targetBoardId = boardId ?? get().boards.find((b) =>
+      b.data.components?.some((comp) => comp.id === component.id))?.id;
+    if (!targetBoardId) return false;
     try {
-      const fullState = await engineClient.boardUpdateComponent(board.id, component);
+      const fullState = await engineClient.boardUpdateComponent(targetBoardId, component);
       get().applyFullState(fullState);
       set({ isDirty: true });
-    } catch (e: any) {
+      return true;
+    } catch (e) {
       reportError(e, "Ошибка обновления компонента", { source: "tauri" });
+      return false;
     }
   },
 
@@ -419,102 +424,59 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   updateImageLayer: async (layer) => {
-    await get().updateImageLayers([layer]);
+    return get().updateImageLayers([layer]);
   },
 
   updateImageLayers: async (layers) => {
-    if (!layers || layers.length === 0) return;
+    if (layers.length === 0) return true;
+    const { activeFileId, boards, schematics } = get();
+    const owners = new Map(layers.map((layer) => [
+      layer.id,
+      boards.find((b) => [...b.data.bgTop.images, ...b.data.bgBottom.images]
+        .some((img) => img.id === layer.id))?.id
+        ?? schematics.find((s) => s.data.bg?.images.some((img) => img.id === layer.id))?.id
+        ?? activeFileId,
+    ]));
     try {
-      const savedLayers = await engineClient.updateImageLayers(layers);
-      const savedMap = new Map(savedLayers.map((l) => [l.id, l]));
-      const { boards, board, schematics, schematic } = get();
-      const targetBoardId = board?.id || boards[0]?.id;
-
-      const updateGroupForSide = (images: BoardImageLayer[], targetSide: "top" | "bottom") => {
-        const next = [...images];
-        for (let i = 0; i < next.length; i++) {
-          const updated = savedMap.get(next[i].id);
-          if (updated) {
-            next[i] = updated;
+      const savedLayers = await engineClient.updateImageLayers(layers, activeFileId);
+      set((state) => {
+        const updateGroup = (images: BoardImageLayer[], fileId: string, side?: "top" | "bottom") => {
+          const updates = savedLayers.filter((img) => owners.get(img.id) === fileId);
+          const byId = new Map(updates.map((img) => [img.id, img]));
+          const result = images.map((img) => byId.get(img.id) ?? img)
+            .filter((img) => !side || img.side === side);
+          for (const img of updates) {
+            if ((!side || img.side === side) && !result.some((existing) => existing.id === img.id)) {
+              result.push(img);
+            }
           }
-        }
-        // Filter to keep only layers that match targetSide
-        const filtered = next.filter((img) => {
-          const updated = savedMap.get(img.id);
-          const currentSide = (updated?.side || img.side || "top").toLowerCase();
-          return currentSide === targetSide;
-        });
-        // Add new saved layers that belong strictly to targetSide
-        for (const saved of savedLayers) {
-          const sSide = (saved.side || "top").toLowerCase();
-          if (sSide === targetSide && !filtered.some((img) => img.id === saved.id)) {
-            filtered.push(saved);
-          }
-        }
-        return filtered;
-      };
-
-      const updatedBoards = boards.map((b) => {
-        const currentTopImages = b.data?.bgTop?.images || [];
-        const currentBotImages = b.data?.bgBottom?.images || [];
-        const hasTop = currentTopImages.some((img) => savedMap.has(img.id));
-        const hasBot = currentBotImages.some((img) => savedMap.has(img.id));
-        const hasTarget = savedLayers.some((s) => s.side === "top" || s.side === "bottom") && b.id === targetBoardId;
-
-        if (hasTop || hasBot || hasTarget) {
-          return {
-            ...b,
-            data: {
-              ...b.data,
-              bgTop: { images: updateGroupForSide(currentTopImages, "top") },
-              bgBottom: { images: updateGroupForSide(currentBotImages, "bottom") },
-            },
-          };
-        }
-        return b;
+          return result;
+        };
+        const updatedBoards = state.boards.map((b) => ({
+          ...b,
+          data: {
+            ...b.data,
+            bgTop: { images: updateGroup(b.data.bgTop.images, b.id, "top") },
+            bgBottom: { images: updateGroup(b.data.bgBottom.images, b.id, "bottom") },
+          },
+        }));
+        const updatedSchematics = state.schematics.map((s) => ({
+          ...s,
+          data: { ...s.data, bg: { images: updateGroup(s.data.bg?.images ?? [], s.id) } },
+        }));
+        return {
+          boards: updatedBoards,
+          schematics: updatedSchematics,
+          board: updatedBoards.find((b) => b.id === state.board?.id) ?? null,
+          schematic: updatedSchematics.find((s) => s.id === state.schematic?.id) ?? null,
+          isDirty: true,
+        };
       });
-
-      const updateSchematicGroup = (images: BoardImageLayer[]) => {
-        const next = [...images];
-        for (let i = 0; i < next.length; i++) {
-          const updated = savedMap.get(next[i].id);
-          if (updated) {
-            next[i] = updated;
-          }
-        }
-        return next;
-      };
-
-      const updatedSchematics = schematics.map((s) => {
-        const currentImages = s.data?.bg?.images || [];
-        const hasSchematicImg = currentImages.some((img) => savedMap.has(img.id));
-        if (hasSchematicImg) {
-          return {
-            ...s,
-            data: {
-              ...s.data,
-              bg: { images: updateSchematicGroup(currentImages) },
-            },
-          };
-        }
-        return s;
-      });
-
-      const updatedActiveBoard =
-        updatedBoards.find((b) => b.id === targetBoardId) || board || updatedBoards[0] || null;
-      const updatedActiveSchematic =
-        updatedSchematics.find((s) => s.id === schematic?.id) || schematic || null;
-
-      set({
-        boards: updatedBoards,
-        schematics: updatedSchematics,
-        board: updatedActiveBoard,
-        schematic: updatedActiveSchematic,
-        isDirty: true,
-      });
-    } catch (e: any) {
+      return true;
+    } catch (e) {
       reportError(e, "Ошибка обновления слоя изображения", { source: "tauri" });
-      set({ error: e?.toString() });
+      set({ error: String(e) });
+      return false;
     }
   },
 
@@ -549,13 +511,17 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
   },
 
   batchDeleteLayers: async (layerIds) => {
+    const deletedIds: string[] = [];
     for (const id of layerIds) {
       try {
         await engineClient.deleteImageLayer(id);
+        deletedIds.push(id);
       } catch (e) {
         reportError(e, `Ошибка удаления слоя скана ${id}`, { source: "tauri" });
       }
     }
+    if (deletedIds.length === 0) return;
+    layerIds = deletedIds;
     const { boards, board, schematics, schematic, selectedImageId, selectedImageIds } = get();
     const updatedBoards = boards.map((b) => ({
       ...b,

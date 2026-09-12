@@ -153,6 +153,18 @@ pub struct PlacedComponent {
     #[serde(default)]
     pub locked: bool,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub package: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub visible: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_ref_des: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub show_value: Option<bool>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub ref_des_offset: Option<[f64; 2]>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
     pub package_def: Option<crate::cad::footprint::PackageDefinition>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub parameters: Option<ElectricalParameters>,

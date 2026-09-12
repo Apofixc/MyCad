@@ -17,6 +17,7 @@ import {
   EditorTool,
 } from "../SvgRenderer/InteractiveFootprintCanvas";
 import { PadArrayModal } from "./PadArrayModal";
+import { reportError } from "../../utils/errorHandler";
 import {
   centerPads,
   generateAutoSilkscreen,
@@ -51,7 +52,7 @@ interface PackageEditorModalProps {
   isOpen: boolean;
   initialPackage?: PackageDefinition | null;
   onClose: () => void;
-  onSave: (pkg: PackageDefinition) => void;
+  onSave: (pkg: PackageDefinition) => Promise<boolean>;
 }
 
 export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
@@ -62,6 +63,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
 }) => {
   // Основные метаданные
   const [id, setId] = useState<string>("");
+  const [isSaving, setIsSaving] = useState(false);
   const [name, setName] = useState<string>("");
   const [standard, setStandard] = useState<string>("");
   const [mountType, setMountType] = useState<MountType>("smd");
@@ -149,7 +151,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
               },
             ]
       );
-      setDefaultVariantId(initialPackage.defaultVariantId || "standard");
+      setDefaultVariantId(initialPackage.defaultVariantId || initialPackage.variants?.[0]?.id || "standard");
 
       // Ограничения
       setSolderMaskMargin(initialPackage.constraints?.solderMaskMargin ?? 0.05);
@@ -416,13 +418,15 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   };
 
   // Сохранение корпуса
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return;
     if (!name.trim()) {
       alert("Укажите название посадочного места");
       return;
     }
 
     const pkgDef: PackageDefinition = {
+      ...initialPackage,
       id: id || `pkg_${Date.now()}`,
       name: name.trim(),
       standard: standard.trim() || undefined,
@@ -435,6 +439,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       pads,
       graphics,
       constraints: {
+        ...initialPackage?.constraints,
         courtyardWidth: Math.round((bodyWidth + courtyardMargin * 2) * 100) / 100,
         courtyardHeight: Math.round((bodyHeight + courtyardMargin * 2) * 100) / 100,
         maxHeight,
@@ -447,16 +452,23 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       variants,
       model3d: model3dPath.trim()
         ? {
+            ...initialPackage?.model3d,
             filePath: model3dPath.trim(),
-            offset: [0, 0, model3dOffsetZ],
-            rotation: [0, 0, 0],
-            scale: [1, 1, 1],
+            offset: [initialPackage?.model3d?.offset?.[0] ?? 0, initialPackage?.model3d?.offset?.[1] ?? 0, model3dOffsetZ],
+            rotation: initialPackage?.model3d?.rotation ?? [0, 0, 0],
+            scale: initialPackage?.model3d?.scale ?? [1, 1, 1],
           }
         : undefined,
     };
 
-    onSave(pkgDef);
-    onClose();
+    setIsSaving(true);
+    try {
+      if (await onSave(pkgDef)) onClose();
+    } catch (error) {
+      reportError(error, "Ошибка сохранения корпуса");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -480,7 +492,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   }
 
   return (
-    <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={onClose}>
+    <div className="cad-modal-backdrop" style={{ zIndex: 1100 }} onClick={isSaving ? undefined : onClose}>
       <div
         className="cad-modal-box modal-fullscreen"
         onClick={(e) => e.stopPropagation()}
@@ -544,12 +556,13 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
             <button
               className="cad-btn-primary btn-sm"
               onClick={handleSave}
+              disabled={isSaving}
               style={{ gap: 5 }}
             >
               <Save size={13} />
               <span>Сохранить корпус</span>
             </button>
-            <button className="cad-modal-close-btn" onClick={onClose} title="Закрыть (Esc)">
+            <button className="cad-modal-close-btn" onClick={onClose} disabled={isSaving} title="Закрыть (Esc)">
               <X size={16} />
             </button>
           </div>

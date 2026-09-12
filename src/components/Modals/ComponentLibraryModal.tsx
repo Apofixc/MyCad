@@ -49,7 +49,7 @@ interface ComponentLibraryModalProps {
   onClose: () => void;
   onOpenPackageEditor: (pkg?: PackageDefinition | null) => void;
   onOpenDeviceEditor: (dev?: DeviceDefinition | null) => void;
-  onPlaceOnBoard?: (device: DeviceDefinition, packageDef: PackageDefinition) => void;
+  onPlaceOnBoard?: (device: DeviceDefinition, packageDef: PackageDefinition) => Promise<boolean>;
 }
 
 // Интерфейс фильтра семейства корпусов
@@ -543,6 +543,11 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   const [selectedDeviceId, setSelectedDeviceId] = useState<string | null>(null);
   const [selectedPackageId, setSelectedPackageId] = useState<string | null>(null);
   const [selectedDevicePackageId, setSelectedDevicePackageId] = useState<string | null>(null);
+  const [isPlacing, setIsPlacing] = useState(false);
+
+  useEffect(() => {
+    setSelectedDevicePackageId(null);
+  }, [selectedDeviceId]);
 
   useEffect(() => {
     if (isOpen) {
@@ -675,9 +680,9 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
   const activeDevice = devices.find((d) => d.id === selectedDeviceId) || filteredDevices[0];
   const activePackage =
     activeTab === "devices"
-      ? (selectedDevicePackageId && packages.find((p) => p.id === selectedDevicePackageId)) ||
-        packages.find((p) => p.id === activeDevice?.supportedPackages?.[0]?.packageId) ||
-        packages[0]
+      ? (selectedDevicePackageId && activeDevice?.supportedPackages.some((p) => p.packageId === selectedDevicePackageId)
+          && packages.find((p) => p.id === selectedDevicePackageId)) ||
+        packages.find((p) => p.id === activeDevice?.supportedPackages?.[0]?.packageId)
       : packages.find((p) => p.id === selectedPackageId) || filteredPackages[0];
 
   if (!isOpen) return null;
@@ -708,36 +713,39 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
     input.click();
   };
 
-  const handlePlaceOnBoardAction = () => {
-    if (!onPlaceOnBoard) return;
-    if (activeTab === "devices" && activeDevice && activePackage) {
-      onPlaceOnBoard(activeDevice, activePackage);
-      onClose();
-    } else if (activePackage) {
-      const genericDev: DeviceDefinition = {
-        id: `dev_${activePackage.id}`,
-        name: activePackage.name,
-        category: activePackage.standard || "Корпуса",
-        subcategory: "",
-        designatorPrefix: activePackage.family === "discrete" ? "R" : "U",
-        description: activePackage.name,
-        tags: [],
-        parameters: {},
-        logicalPins: activePackage.pads.map((p) => ({
-          id: p.padNum,
-          name: p.name || p.padNum,
-          electricalType: "passive",
-        })),
-        supportedPackages: [
-          {
-            packageId: activePackage.id,
-            defaultVariantId: activePackage.defaultVariantId,
-            pinMap: Object.fromEntries(activePackage.pads.map((p) => [p.padNum, p.padNum])),
-          },
-        ],
-      };
-      onPlaceOnBoard(genericDev, activePackage);
-      onClose();
+  const handlePlaceOnBoardAction = async () => {
+    if (!onPlaceOnBoard || isPlacing) return;
+    setIsPlacing(true);
+    try {
+      if (activeTab === "devices" && activeDevice && activePackage) {
+        if (await onPlaceOnBoard(activeDevice, activePackage)) onClose();
+      } else if (activeTab === "packages" && activePackage) {
+        const genericDev: DeviceDefinition = {
+          id: `dev_${activePackage.id}`,
+          name: activePackage.name,
+          category: activePackage.standard || "Корпуса",
+          subcategory: "",
+          designatorPrefix: activePackage.family === "discrete" ? "R" : "U",
+          description: activePackage.name,
+          tags: [],
+          parameters: {},
+          logicalPins: activePackage.pads.map((p) => ({
+            id: p.padNum,
+            name: p.name || p.padNum,
+            electricalType: "passive",
+          })),
+          supportedPackages: [
+            {
+              packageId: activePackage.id,
+              defaultVariantId: activePackage.defaultVariantId,
+              pinMap: Object.fromEntries(activePackage.pads.map((p) => [p.padNum, p.padNum])),
+            },
+          ],
+        };
+        if (await onPlaceOnBoard(genericDev, activePackage)) onClose();
+      }
+    } finally {
+      setIsPlacing(false);
     }
   };
 
@@ -2079,6 +2087,7 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                     <button
                       className="cad-btn-primary"
                       onClick={handlePlaceOnBoardAction}
+                      disabled={isPlacing}
                       style={{
                         padding: "9px 14px",
                         display: "flex",

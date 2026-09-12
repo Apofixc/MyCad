@@ -42,13 +42,14 @@ import {
   Download,
 } from "lucide-react";
 import { FootprintPreview } from "../SvgRenderer/FootprintPreview";
+import { reportError } from "../../utils/errorHandler";
 
 interface DeviceEditorModalProps {
   isOpen: boolean;
   initialDevice?: DeviceDefinition | null;
   availablePackages: PackageDefinition[];
   onClose: () => void;
-  onSave: (device: DeviceDefinition) => void;
+  onSave: (device: DeviceDefinition) => Promise<boolean>;
   onCreateNewPackage?: () => void;
 }
 
@@ -568,6 +569,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
   // Поддерживаемые корпуса и маппинг
   const [supportedPackages, setSupportedPackages] = useState<PackageMapping[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
   const [activePackageId, setActivePackageId] = useState<string>("");
 
   // Выделение и интерактивность сопоставления
@@ -621,9 +623,12 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [customSignalInput, setCustomSignalInput] = useState<string>("");
   const [customSignalElectricalType, setCustomSignalElectricalType] = useState<PinElectricalType>("bidirectional");
   const [customSignalDescription, setCustomSignalDescription] = useState<string>("");
+  const packagesRef = useRef(availablePackages);
+  packagesRef.current = availablePackages;
 
   useEffect(() => {
     if (!isOpen) return;
+    const availablePackages = packagesRef.current;
 
     if (initialDevice) {
       setId(initialDevice.id);
@@ -719,8 +724,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
             packageId: firstPkg.id,
             defaultVariantId: firstPkg.defaultVariantId,
             pinMap: {
-              "1": firstPkg.pads[0]?.padNum || "1",
-              "2": firstPkg.pads[1]?.padNum || "2",
+              ...(firstPkg.pads[0] ? { "1": firstPkg.pads[0].padNum } : {}),
+              ...(firstPkg.pads[1] ? { "2": firstPkg.pads[1].padNum } : {}),
             },
           },
         ]);
@@ -730,7 +735,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
         setActivePackageId("");
       }
     }
-  }, [isOpen, initialDevice, availablePackages]);
+  }, [isOpen, initialDevice]);
 
   // Пресеты распиновки для пассивных компонентов, разъемов, полупроводников и микросхем
   const applyPinPreset = (presetKey: string) => {
@@ -1937,7 +1942,8 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) return;
     if (!name.trim()) {
       alert("Укажите название радиодетали");
       return;
@@ -1986,8 +1992,14 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       supportedPackages,
     };
 
-    onSave(dev);
-    onClose();
+    setIsSaving(true);
+    try {
+      if (await onSave(dev)) onClose();
+    } catch (error) {
+      reportError(error, "Ошибка сохранения радиокомпонента");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   // Число заполненных электропараметров для индикации на вкладке
@@ -2003,7 +2015,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={onClose}>
+    <div className="cad-modal-backdrop" style={{ zIndex: 1050 }} onClick={isSaving ? undefined : onClose}>
       <div className="device-editor-box" onClick={(e) => e.stopPropagation()}>
         {/* Шапка модального окна */}
         <div className="cad-modal-header" style={{ padding: "12px 18px" }}>
@@ -2070,7 +2082,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               </div>
             </div>
           </div>
-          <button type="button" className="cad-modal-close-btn" onClick={onClose} title="Закрыть (Esc)">
+          <button type="button" className="cad-modal-close-btn" onClick={onClose} disabled={isSaving} title="Закрыть (Esc)">
             <X size={15} />
           </button>
         </div>
@@ -4226,10 +4238,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
         {/* Подвал модального окна */}
         <div className="cad-modal-footer" style={{ padding: "10px 18px" }}>
-          <button type="button" className="cad-btn-secondary" onClick={onClose}>
+          <button type="button" className="cad-btn-secondary" onClick={onClose} disabled={isSaving}>
             Отмена
           </button>
-          <button type="button" className="cad-btn-primary" onClick={handleSave}>
+          <button type="button" className="cad-btn-primary" onClick={handleSave} disabled={isSaving}>
             <Save size={13} />
             <span>Сохранить деталь</span>
           </button>

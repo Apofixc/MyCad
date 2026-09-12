@@ -115,6 +115,9 @@ export const App: React.FC = () => {
   }, [saveProject, openModal, toggleLeftSidebar, setActiveTool, toggleGrid, fitAllImages]);
 
   const handlePlaceOnBoard = async (device: DeviceDefinition, packageDef: PackageDefinition) => {
+    if (!board || activeFileType !== "board") return false;
+    const { activeWorkLayer, setActiveWorkLayer } = useUiStore.getState();
+    const side = activeWorkLayer.type === "vias" ? "top" : activeWorkLayer.side;
     const existing = board?.data?.components || [];
     const prefix = device.designatorPrefix || "U";
     let index = 1;
@@ -129,7 +132,8 @@ export const App: React.FC = () => {
       refDes: `${prefix}${index}`,
       deviceId: device.id,
       packageId: packageDef.id,
-      selectedVariantId: packageDef.variants?.[0]?.id,
+      selectedVariantId: device.supportedPackages.find((p) => p.packageId === packageDef.id)?.defaultVariantId
+        || packageDef.defaultVariantId || packageDef.variants?.[0]?.id,
       value: initialValue,
       name: device.name,
       package: packageDef.name,
@@ -139,9 +143,9 @@ export const App: React.FC = () => {
       yMm: posY,
       rotation: 0,
       rotationDeg: 0,
-      layer: "top",
-      side: "top",
-      mirrored: false,
+      layer: side,
+      side,
+      mirrored: side === "bottom",
       locked: false,
       packageDef: packageDef,
       parameters: {
@@ -157,7 +161,11 @@ export const App: React.FC = () => {
       mpn: device.mpn,
       description: device.description,
     };
-    await addComponent(newComp);
+    if (!await addComponent(newComp)) return false;
+    setActiveWorkLayer({ type: "components", side });
+    setActiveTool("select");
+    useUiStore.getState().focusComponent(newComp);
+    return true;
   };
 
   return (
@@ -205,7 +213,7 @@ export const App: React.FC = () => {
           setEditingDevice(dev || null);
           openModal("deviceEditor");
         }}
-        onPlaceOnBoard={handlePlaceOnBoard}
+        onPlaceOnBoard={activeFileType === "board" && board ? handlePlaceOnBoard : undefined}
       />
 
       <PackageEditorModal
@@ -213,19 +221,19 @@ export const App: React.FC = () => {
         initialPackage={editingPackage}
         onClose={() => closeModal("packageEditor")}
         onSave={async (pkg) => {
-          await savePackage(pkg);
-          // Синхронизация с уже размещенными на плате компонентами
-          const currentBoardComps = board?.data?.components || [];
-          for (const comp of currentBoardComps) {
-            if (comp.packageId === pkg.id || comp.packageDef?.id === pkg.id) {
-              await updateComponent({
-                ...comp,
-                packageDef: pkg,
-                package: pkg.name,
-              });
+          if (!await savePackage(pkg)) return false;
+          for (const currentBoard of useProjectStore.getState().boards) {
+            for (const comp of currentBoard.data.components ?? []) {
+              if (comp.packageId === pkg.id || comp.packageDef?.id === pkg.id) {
+                if (!await updateComponent({
+                  ...comp,
+                  packageDef: pkg,
+                  package: pkg.name,
+                }, currentBoard.id)) return false;
+              }
             }
           }
-          closeModal("packageEditor");
+          return true;
         }}
       />
 
@@ -234,10 +242,7 @@ export const App: React.FC = () => {
         initialDevice={editingDevice}
         availablePackages={packages}
         onClose={() => closeModal("deviceEditor")}
-        onSave={async (dev) => {
-          await saveDevice(dev);
-          closeModal("deviceEditor");
-        }}
+        onSave={saveDevice}
         onCreateNewPackage={() => {
           setEditingPackage(null);
           openModal("packageEditor");

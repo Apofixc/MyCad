@@ -75,12 +75,8 @@ export const engineClient = {
     return invokeTauri<BoardImageLayer>("board_update_image_layer", { layer });
   },
 
-  async updateImageLayers(layers: BoardImageLayer[]): Promise<BoardImageLayer[]> {
-    try {
-      return await invokeTauri<BoardImageLayer[]>("board_update_image_layers", { layers });
-    } catch {
-      return await Promise.all(layers.map((l) => invokeTauri<BoardImageLayer>("board_update_image_layer", { layer: l })));
-    }
+  async updateImageLayers(layers: BoardImageLayer[], fileId?: string | null): Promise<BoardImageLayer[]> {
+    return invokeTauri<BoardImageLayer[]>("board_update_image_layers", { layers, fileId });
   },
 
   async deleteImageLayer(layerId: string): Promise<void> {
