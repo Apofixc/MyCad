@@ -30,6 +30,15 @@ fn default_pin_electrical_type() -> PinElectricalType {
     PinElectricalType::Passive
 }
 
+pub fn deserialize_null_default<'de, D, T>(deserializer: D) -> Result<T, D::Error>
+where
+    D: serde::Deserializer<'de>,
+    T: Default + serde::Deserialize<'de>,
+{
+    let opt = Option::deserialize(deserializer)?;
+    Ok(opt.unwrap_or_default())
+}
+
 /// Логический вывод схемного символа компонента
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -110,7 +119,7 @@ pub struct DeviceDefinition {
     pub mpn: Option<String>,
     #[serde(default)]
     pub tags: Vec<String>,
-    #[serde(default)]
+    #[serde(default, deserialize_with = "deserialize_null_default")]
     pub parameters: ElectricalParameters,
     #[serde(default, alias = "pins")]
     pub logical_pins: Vec<LogicalPin>,

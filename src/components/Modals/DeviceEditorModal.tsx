@@ -1943,6 +1943,12 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       return;
     }
 
+    const emptyPin = logicalPins.find((p) => !p.name.trim());
+    if (emptyPin) {
+      alert("У всех логических выводов схемы должны быть указаны имена (вывод не может быть пустым)");
+      return;
+    }
+
     const customRecord: Record<string, string> = {};
     customParams.forEach((p) => {
       if (p.key.trim() && p.value.trim()) {
@@ -1973,7 +1979,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
             custom: Object.keys(customRecord).length > 0 ? customRecord : undefined,
           },
       isBase,
-      logicalPins,
+      logicalPins: logicalPins.map((p) => ({
+        ...p,
+        name: p.name.trim(),
+      })),
       supportedPackages,
     };
 
