@@ -226,6 +226,7 @@ export interface LogicalPin {
 export interface PackageMapping {
   packageId: string;
   defaultVariantId?: string;
+  /** ID логического вывода → номер площадки; имена поддерживаются при загрузке старых библиотек. */
   pinMap: Record<string, string>;
   /** Расширенное сопоставление 1-к-многим (логический пин -> несколько номеров площадок) */
   multiPinMap?: Record<string, string[]>;

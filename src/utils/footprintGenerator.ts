@@ -28,33 +28,34 @@ export function getDShapePath(
   cutRatio: number = 0.58
 ): string {
   const d = radius * cutRatio;
-  const h = Math.sqrt(Math.max(0.1, radius * radius - d * d));
+  const h = Math.sqrt(Math.max(0, radius * radius - d * d));
   const R = radius;
+  const largeArc = d >= 0 ? 1 : 0;
 
   switch (orientation) {
     case "right": {
       const xCut = cx + d;
       const y1 = cy - h;
       const y2 = cy + h;
-      return `M ${xCut} ${y1} L ${xCut} ${y2} A ${R} ${R} 0 1 1 ${xCut} ${y1} Z`;
+      return `M ${xCut} ${y1} L ${xCut} ${y2} A ${R} ${R} 0 ${largeArc} 1 ${xCut} ${y1} Z`;
     }
     case "top": {
       const yCut = cy - d;
       const x1 = cx - h;
       const x2 = cx + h;
-      return `M ${x1} ${yCut} L ${x2} ${yCut} A ${R} ${R} 0 1 1 ${x1} ${yCut} Z`;
+      return `M ${x1} ${yCut} L ${x2} ${yCut} A ${R} ${R} 0 ${largeArc} 1 ${x1} ${yCut} Z`;
     }
     case "bottom": {
       const yCut = cy + d;
       const x1 = cx + h;
       const x2 = cx - h;
-      return `M ${x1} ${yCut} L ${x2} ${yCut} A ${R} ${R} 0 1 1 ${x1} ${yCut} Z`;
+      return `M ${x1} ${yCut} L ${x2} ${yCut} A ${R} ${R} 0 ${largeArc} 1 ${x1} ${yCut} Z`;
     }
     case "left": {
       const xCut = cx - d;
       const y1 = cy + h;
       const y2 = cy - h;
-      return `M ${xCut} ${y1} L ${xCut} ${y2} A ${R} ${R} 0 1 1 ${xCut} ${y1} Z`;
+      return `M ${xCut} ${y1} L ${xCut} ${y2} A ${R} ${R} 0 ${largeArc} 1 ${xCut} ${y1} Z`;
     }
   }
 }
@@ -295,7 +296,13 @@ export function generateMatrixPadArray(
   const startY = -((rows - 1) * pitch) / 2;
 
   for (let r = 0; r < rows; r++) {
-    const rowLetter = letters[r % letters.length];
+    let rowIndex = r + 1;
+    let rowLetter = "";
+    while (rowIndex > 0) {
+      rowIndex--;
+      rowLetter = letters[rowIndex % letters.length] + rowLetter;
+      rowIndex = Math.floor(rowIndex / letters.length);
+    }
     for (let c = 0; c < cols; c++) {
       const colNum = c + 1;
       const padNum = `${rowLetter}${colNum}`;

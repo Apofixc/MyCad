@@ -2,7 +2,7 @@
 // Полнофункциональный векторный CAD-редактор посадочных мест (Footprint Editor)
 // Свободное черчение, D-образные контуры, генераторы массивов, точный инспектор свойств и варианты исполнения
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   PackageDefinition,
   PackagePad,
@@ -11,12 +11,15 @@ import {
   MountType,
   PackageVariant,
   PackageKeyType,
+  GraphicLayer,
 } from "../../types/componentLibrary";
 import {
   InteractiveFootprintCanvas,
   EditorTool,
 } from "../SvgRenderer/InteractiveFootprintCanvas";
 import { PadArrayModal } from "./PadArrayModal";
+import { ExtraGraphicProperties, PointProperties } from "./ExtraGraphicProperties";
+import { appendUniquePads, polygonToPad, validateFootprint } from "../../utils/footprintGeometry";
 import { reportError } from "../../utils/errorHandler";
 import {
   centerPads,
@@ -104,7 +107,8 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
 
   // Стек истории для Undo/Redo
   const [history, setHistory] = useState<{ pads: PackagePad[]; graphics: GraphicItem[] }[]>([]);
-  const [historyIndex, setHistoryIndex] = useState<number>(-1);
+  const [futureHistory, setFutureHistory] = useState<{ pads: PackagePad[]; graphics: GraphicItem[] }[]>([]);
+  const isInteracting = useRef(false);
 
   // Шаблон для новой контактной площадки
   const [padTemplate, setPadTemplate] = useState<{
@@ -204,23 +208,34 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
     }
 
     setHistory([]);
-    setHistoryIndex(-1);
+    setFutureHistory([]);
+    isInteracting.current = false;
+    setActiveTool("select");
     setSelectedPadNum(null);
     setSelectedGraphicId(null);
   }, [isOpen, initialPackage]);
 
   // Запись в историю изменений
   const pushHistory = (newPads: PackagePad[], newGraphics: GraphicItem[]) => {
-    const nextHistory = history.slice(0, historyIndex + 1);
-    nextHistory.push({ pads: newPads, graphics: newGraphics });
-    if (nextHistory.length > 30) nextHistory.shift();
-    setHistory(nextHistory);
-    setHistoryIndex(nextHistory.length - 1);
+    if (isInteracting.current) return;
+    setHistory((previous) => [...previous.slice(-29), { pads: newPads, graphics: newGraphics }]);
+    setFutureHistory([]);
   };
 
   const handlePadsChange = (newPads: PackagePad[]) => {
     pushHistory(pads, graphics);
-    setPads(newPads);
+    setPads(newPads.map((pad) => {
+      if (pad.shape !== "custom_polygon" || !pad.polygonPoints) return pad;
+      const previous = pads.find((p) => p.padNum === pad.padNum);
+      if (previous?.polygonPoints === pad.polygonPoints && previous.width > 0 && previous.height > 0) {
+        return { ...pad, polygonPoints: pad.polygonPoints.map(([x, y]): [number, number] =>
+          [x * pad.width / previous.width, y * pad.height / previous.height]) };
+      }
+      return { ...pad,
+        width: Math.max(0.001, ...pad.polygonPoints.map(([x]) => Math.abs(x) * 2)),
+        height: Math.max(0.001, ...pad.polygonPoints.map(([, y]) => Math.abs(y) * 2)),
+      };
+    }));
   };
 
   const handleGraphicsChange = (newGraphics: GraphicItem[]) => {
@@ -229,20 +244,24 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   };
 
   const handleUndo = () => {
-    if (historyIndex > 0) {
-      const prev = history[historyIndex - 1];
+    if (history.length > 0) {
+      const prev = history[history.length - 1];
+      setFutureHistory((future) => [...future, { pads, graphics }]);
       setPads(prev.pads);
       setGraphics(prev.graphics);
-      setHistoryIndex(historyIndex - 1);
+      setHistory(history.slice(0, -1));
+      setSelectedPadNum(null);
+      setSelectedGraphicId(null);
     }
   };
 
   const handleRedo = () => {
-    if (historyIndex < history.length - 1) {
-      const next = history[historyIndex + 1];
+    if (futureHistory.length > 0) {
+      const next = futureHistory[futureHistory.length - 1];
+      setHistory((past) => [...past, { pads, graphics }]);
       setPads(next.pads);
       setGraphics(next.graphics);
-      setHistoryIndex(historyIndex + 1);
+      setFutureHistory(futureHistory.slice(0, -1));
     }
   };
 
@@ -287,7 +306,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   // Применение сгенерированного массива площадок
   const handleApplyArrayPads = (newPads: PackagePad[]) => {
     pushHistory(pads, graphics);
-    setPads([...pads, ...newPads]);
+    setPads(appendUniquePads(pads, newPads));
   };
 
   // Быстрое применение пресетов площадок
@@ -422,6 +441,12 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
     if (isSaving) return;
     if (!name.trim()) {
       alert("Укажите название посадочного места");
+      return;
+    }
+    const geometryError = validateFootprint(pads, [...graphics, ...variants.flatMap((v) => v.graphics)]);
+    if (geometryError) { alert(geometryError); return; }
+    if (![bodyWidth, bodyHeight].every((dimension) => Number.isFinite(dimension) && dimension > 0)) {
+      alert("Укажите положительные размеры корпуса в миллиметрах.");
       return;
     }
 
@@ -628,19 +653,19 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
             <div style={{ display: "flex", gap: 2, marginLeft: 4 }}>
               <button
                 onClick={handleUndo}
-                disabled={historyIndex <= 0}
+                disabled={history.length === 0}
                 className="cad-modal-close-btn"
                 title="Отменить (Ctrl+Z)"
-                style={{ width: 28, height: 28, opacity: historyIndex <= 0 ? 0.35 : 1 }}
+                style={{ width: 28, height: 28, opacity: history.length === 0 ? 0.35 : 1 }}
               >
                 <Undo2 size={13} />
               </button>
               <button
                 onClick={handleRedo}
-                disabled={historyIndex >= history.length - 1}
+                disabled={futureHistory.length === 0}
                 className="cad-modal-close-btn"
                 title="Повторить (Ctrl+Y)"
-                style={{ width: 28, height: 28, opacity: historyIndex >= history.length - 1 ? 0.35 : 1 }}
+                style={{ width: 28, height: 28, opacity: futureHistory.length === 0 ? 0.35 : 1 }}
               >
                 <Redo2 size={13} />
               </button>
@@ -729,6 +754,15 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                   </svg>
                 ),
                 label: "Капсула (HC-49)",
+              },
+              {
+                id: "polygon", icon: <Wand2 size={16} />, label: "Произвольный замкнутый контур",
+              },
+              {
+                id: "arc", icon: <RotateCw size={16} />, label: "Дуга: центр, начало, конец",
+              },
+              {
+                id: "text", icon: <span>Т</span>, label: "Надпись",
               },
               {
                 id: "measure",
@@ -907,13 +941,15 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                 newPadTemplate={padTemplate}
                 onPadsChange={handlePadsChange}
                 onGraphicsChange={handleGraphicsChange}
-                onSelectPad={setSelectedPadNum}
-                onSelectGraphic={setSelectedGraphicId}
+                onSelectPad={(num) => { setSelectedPadNum(num); if (num !== null) setInspectorTab("props"); }}
+                onSelectGraphic={(graphicId) => { setSelectedGraphicId(graphicId); if (graphicId) setInspectorTab("props"); }}
                 onShiftOrigin={handleShiftOrigin}
                 onSetActiveTool={setActiveTool}
                 onRotatePadTemplate={handleRotatePadTemplate}
                 onUndo={handleUndo}
                 onRedo={handleRedo}
+                onInteractionStart={() => { pushHistory(pads, graphics); isInteracting.current = true; }}
+                onInteractionEnd={() => { isInteracting.current = false; }}
                 onDeleteSelected={() => {
                   if (selectedPadNum) {
                     handlePadsChange(pads.filter((p) => p.padNum !== selectedPadNum));
@@ -990,6 +1026,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             value={selectedPad.padNum}
                             onChange={(e) => {
                               const newNum = e.target.value;
+                              if (pads.some((p) => p !== selectedPad && p.padNum === newNum)) return;
                               handlePadsChange(
                                 pads.map((p) =>
                                   p.padNum === selectedPad.padNum
@@ -1023,6 +1060,8 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             <option value="circle">Круг</option>
                             <option value="oval">Овал</option>
                             <option value="d_shape">D-образная</option>
+                            <option value="chamfered_rect">Прямоугольник со срезом</option>
+                            {selectedPad.shape === "custom_polygon" && <option value="custom_polygon">Произвольный полигон</option>}
                           </select>
                         </div>
                       </div>
@@ -1195,6 +1234,28 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                       </div>
 
                       {/* Опция неметаллизированного отверстия (NPTH) */}
+                      {selectedPad.shape === "custom_polygon" && <PointProperties points={selectedPad.polygonPoints ?? []}
+                        onChange={(polygonPoints) => handlePadsChange(pads.map((p) => p === selectedPad ? { ...p, polygonPoints } : p))} />}
+                      {Boolean(selectedPad.drillDiameter) && <>
+                        <label className="form-label">Форма отверстия
+                          <select className="cad-input" value={selectedPad.drillShape ?? "round"}
+                            onChange={(event) => handlePadsChange(pads.map((p) => p === selectedPad ? {
+                              ...p, drillShape: event.target.value as "round" | "slot",
+                              slotLength: p.slotLength ?? p.drillDiameter,
+                            } : p))}>
+                            <option value="round">Круглое</option><option value="slot">Продолговатое (Slot)</option>
+                          </select>
+                        </label>
+                        {selectedPad.drillShape === "slot" && <label className="form-label">Длина отверстия (мм)
+                          <input className="cad-input" type="number" step="0.1" min={selectedPad.drillDiameter}
+                            value={selectedPad.slotLength ?? selectedPad.drillDiameter}
+                            onChange={(event) => {
+                              if (!Number.isFinite(event.target.valueAsNumber)) return;
+                              handlePadsChange(pads.map((p) => p === selectedPad
+                                ? { ...p, slotLength: Math.max(p.drillDiameter ?? 0, event.target.valueAsNumber) } : p));
+                            }} />
+                        </label>}
+                      </>}
                       {Boolean(selectedPad.drillDiameter && selectedPad.drillDiameter > 0) && (
                         <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer", color: "var(--cad-text-secondary)", marginTop: 2 }}>
                           <input
@@ -1242,7 +1303,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           <select
                             value={selectedGraphic.layer}
                             onChange={(e) => {
-                              const lyr = e.target.value as any;
+                              const lyr = e.target.value as GraphicLayer;
                               handleGraphicsChange(
                                 graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, layer: lyr } : g))
                               );
@@ -1275,6 +1336,18 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                       </div>
 
                       {/* Специфические параметры для каждого типа графики */}
+                      <ExtraGraphicProperties item={selectedGraphic}
+                        onChange={(item) => handleGraphicsChange(graphics.map((g) => g.id === item.id ? item : g))} />
+                      {selectedGraphic.kind === "polygon" && <button className="cad-btn-secondary" onClick={() => {
+                        const newPad = polygonToPad(selectedGraphic, "1");
+                        if (newPad.width <= 0 || newPad.height <= 0) return;
+                        pushHistory(pads, graphics);
+                        const nextPads = appendUniquePads(pads, [newPad]);
+                        setPads(nextPads);
+                        setGraphics(graphics.filter((g) => g.id !== selectedGraphic.id));
+                        setSelectedGraphicId(null);
+                        setSelectedPadNum(nextPads[nextPads.length - 1].padNum);
+                      }}>Сделать контактной площадкой</button>}
                       {selectedGraphic.kind === "line" && (
                         <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
