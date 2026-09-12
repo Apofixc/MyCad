@@ -44,6 +44,12 @@ pub struct LogicalPin {
     pub unit: Option<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub description: Option<String>,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub is_inverted: bool,
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub is_clock: bool,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub swap_group: Option<String>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub alt_functions: Vec<String>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -60,6 +66,8 @@ pub struct PackageMapping {
     /// Таблица соответствия: Имя логического пина (напр. "VCC", "GND", "BASE") -> Номер физической площадки ("1", "8", "EP")
     #[serde(default, alias = "pinMapping")]
     pub pin_map: BTreeMap<String, String>,
+    #[serde(default, skip_serializing_if = "BTreeMap::is_empty")]
+    pub multi_pin_map: BTreeMap<String, Vec<String>>,
 }
 
 /// Электрические и номинальные параметры радиодетали
