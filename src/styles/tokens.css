@@ -1,0 +1,36 @@
+/* ==========================================================================
+   Design Tokens & Theme Variables (:root)
+   ========================================================================== */
+
+:root {
+  --cad-bg-deep: #0c0e12;
+  --cad-bg-surface: #141820;
+  --cad-bg-panel: #181d26;
+  --cad-bg-card: #1e2532;
+  --cad-bg-hover: #273042;
+  --cad-bg-viewport: #0c0e12;
+  --cad-border: #283344;
+  --cad-border-focus: #3b82f6;
+
+  --cad-top-layer: #f59e0b;
+  --cad-top-layer-light: #fbbf24;
+  --cad-bottom-layer: #06b6d4;
+  --cad-bottom-layer-light: #22d3ee;
+  --cad-net-active: #10b981;
+  --cad-net-active-glow: rgba(74, 222, 128, 0.4);
+  --cad-vcc: #ef4444;
+  --cad-gnd: #84cc16;
+
+  --cad-accent: #3b82f6;
+  --cad-accent-hover: #60a5fa;
+  --cad-text-main: #f1f5f9;
+  --cad-text-muted: #94a3b8;
+  --cad-text-dim: #64748b;
+
+  --cad-font-ui: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --cad-font-mono: "JetBrains Mono", "Roboto Mono", Consolas, monospace;
+
+  --cad-glass-bg: rgba(20, 24, 32, 0.85);
+  --cad-glass-border: rgba(59, 130, 246, 0.2);
+  --cad-glass-shadow: 0 12px 36px rgba(0, 0, 0, 0.55), 0 0 0 1px rgba(255, 255, 255, 0.05);
+}

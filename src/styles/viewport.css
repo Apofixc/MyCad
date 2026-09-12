@@ -1,0 +1,219 @@
+/* ==========================================================================
+   Viewport & Canvas: BoardCanvas, HUD Toolbars, Loupe, Curtain Slider
+   ========================================================================== */
+
+/* Central Viewport & Canvas */
+.cad-viewport {
+  flex: 1;
+  position: relative;
+  height: 100%;
+  background: var(--cad-bg-deep);
+  overflow: hidden;
+}
+
+.cad-canvas {
+  width: 100%;
+  height: 100%;
+  display: block;
+  cursor: crosshair;
+}
+
+/* Floating Glass HUD Toolbar */
+.cad-floating-toolbar {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  background: rgba(20, 24, 32, 0.88);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 130, 246, 0.25);
+  border-radius: 12px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.6), 0 0 20px rgba(59, 130, 246, 0.12);
+  z-index: 15;
+}
+
+.cad-tool-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 7px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: var(--cad-text-muted);
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.cad-tool-btn:hover {
+  background: var(--cad-bg-hover);
+  border-color: rgba(59, 130, 246, 0.35);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+.cad-tool-btn.active {
+  background: linear-gradient(135deg, #2563eb, #1d4ed8);
+  border-color: #3b82f6;
+  color: #fff;
+  box-shadow: 0 2px 12px rgba(37, 99, 235, 0.45);
+  transform: translateY(-1px);
+}
+
+.cad-tool-sep {
+  width: 1px;
+  height: 20px;
+  background: var(--cad-border);
+  margin: 0 4px;
+}
+
+/* Floating HUD status in canvas */
+.cad-hud-overlay {
+  position: absolute;
+  bottom: 14px;
+  right: 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 12px;
+  background: rgba(20, 24, 32, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--cad-border);
+  border-radius: 14px;
+  font-family: var(--cad-font-mono);
+  font-size: 11px;
+  color: var(--cad-text-muted);
+  z-index: 15;
+  pointer-events: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+}
+
+.cad-hud-coord {
+  color: #60a5fa;
+  font-weight: 600;
+}
+
+/* Floating Quick Components Bar */
+.cad-quick-bar {
+  position: absolute;
+  bottom: 14px;
+  left: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(20, 24, 32, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--cad-border);
+  border-radius: 10px;
+  z-index: 15;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+
+.cad-quick-chip {
+  padding: 4px 8px;
+  font-size: 11px;
+  font-family: var(--cad-font-mono);
+  background: var(--cad-bg-panel);
+  border: 1px solid var(--cad-border);
+  border-radius: 6px;
+  color: var(--cad-text-main);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.cad-quick-chip:hover {
+  background: var(--cad-bg-hover);
+  border-color: var(--cad-accent);
+  color: #fff;
+  transform: translateY(-1px);
+}
+
+
+/* Floating Banner & HUD */
+.cad-registration-banner {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 24, 32, 0.9);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 20px rgba(59, 130, 246, 0.2);
+  border-radius: 10px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  z-index: 25;
+}
+
+.cad-live-transform-hud {
+  position: absolute;
+  background: rgba(20, 24, 32, 0.9);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(59, 130, 246, 0.4);
+  border-radius: 6px;
+  padding: 4px 8px;
+  font-family: var(--cad-font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 10.5px;
+  color: #60a5fa;
+  pointer-events: none;
+  z-index: 20;
+  white-space: nowrap;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* Strobe Tool HUD */
+.cad-strobe-hud {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(20, 24, 32, 0.92);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  border-radius: 10px;
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--cad-font-mono);
+  font-size: 11.5px;
+  color: #f8fafc;
+  z-index: 25;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.7), 0 0 16px rgba(245, 158, 11, 0.2);
+  user-select: none;
+}
+
+.cad-strobe-phase-badge {
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-weight: 700;
+  font-size: 10.5px;
+  text-transform: uppercase;
+}
+
+.cad-strobe-phase-top {
+  background: rgba(245, 158, 11, 0.2);
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+}
+
+.cad-strobe-phase-bot {
+  background: rgba(6, 182, 212, 0.2);
+  color: #06b6d4;
+  border: 1px solid rgba(6, 182, 212, 0.5);
+}

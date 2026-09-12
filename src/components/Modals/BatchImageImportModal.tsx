@@ -16,7 +16,6 @@ import { useUiStore } from "../../stores/uiStore";
 import { useProjectStore } from "../../stores/projectStore";
 import { engineClient, resolveImageUrl } from "../../api/engineClient";
 import { reportError } from "../../utils/errorHandler";
-import "./BatchImageImportModal.css";
 
 interface BatchItem {
   id: string;

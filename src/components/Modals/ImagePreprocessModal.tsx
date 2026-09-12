@@ -34,7 +34,6 @@ import {
   CropRect,
 } from "../../api/engineClient";
 import { reportError } from "../../utils/errorHandler";
-import "./ImagePreprocessModal.css";
 
 type ToolMode = "perspective" | "crop" | "polygon" | "circle";
 
