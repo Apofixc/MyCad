@@ -59,6 +59,12 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
       graphics: [],
     };
 
+  // Все графические элементы: базовые + вариантные
+  const allGraphics: GraphicItem[] = [
+    ...(packageDef.graphics || []),
+    ...(activeVariant.graphics || []),
+  ];
+
   // Вычисление охватывающей рамки (Bounding Box) в миллиметрах
   let minX = -packageDef.bodyWidth / 2;
   let maxX = packageDef.bodyWidth / 2;
@@ -74,7 +80,62 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
     maxY = Math.max(maxY, p.y + halfH);
   });
 
-  const padMargin = 2.0;
+  // Учитываем все графические элементы шелкографии, контуров и сборки
+  allGraphics.forEach((g) => {
+    switch (g.kind) {
+      case "line":
+        minX = Math.min(minX, g.x1, g.x2);
+        maxX = Math.max(maxX, g.x1, g.x2);
+        minY = Math.min(minY, g.y1, g.y2);
+        maxY = Math.max(maxY, g.y1, g.y2);
+        break;
+      case "rect": {
+        const halfW = g.width / 2;
+        const halfH = g.height / 2;
+        minX = Math.min(minX, g.x - halfW);
+        maxX = Math.max(maxX, g.x + halfW);
+        minY = Math.min(minY, g.y - halfH);
+        maxY = Math.max(maxY, g.y + halfH);
+        break;
+      }
+      case "circle":
+        minX = Math.min(minX, g.cx - g.radius);
+        maxX = Math.max(maxX, g.cx + g.radius);
+        minY = Math.min(minY, g.cy - g.radius);
+        maxY = Math.max(maxY, g.cy + g.radius);
+        break;
+      case "arc":
+        minX = Math.min(minX, g.cx - g.radius);
+        maxX = Math.max(maxX, g.cx + g.radius);
+        minY = Math.min(minY, g.cy - g.radius);
+        maxY = Math.max(maxY, g.cy + g.radius);
+        break;
+      case "polygon":
+        if (g.points) {
+          g.points.forEach(([px, py]) => {
+            minX = Math.min(minX, px);
+            maxX = Math.max(maxX, px);
+            minY = Math.min(minY, py);
+            maxY = Math.max(maxY, py);
+          });
+        }
+        break;
+      default:
+        break;
+    }
+  });
+
+  // Учитываем зону отчуждения (Courtyard)
+  if (showCourtyard && packageDef.constraints?.courtyardWidth && packageDef.constraints?.courtyardHeight) {
+    const halfCw = packageDef.constraints.courtyardWidth / 2;
+    const halfCh = packageDef.constraints.courtyardHeight / 2;
+    minX = Math.min(minX, -halfCw);
+    maxX = Math.max(maxX, halfCw);
+    minY = Math.min(minY, -halfCh);
+    maxY = Math.max(maxY, halfCh);
+  }
+
+  const padMargin = 2.5;
   const viewW = Math.max(8.0, (maxX - minX + padMargin * 2) / zoomScale);
   const viewH = Math.max(8.0, (maxY - minY + padMargin * 2) / zoomScale);
   const cx = (minX + maxX) / 2;
@@ -323,12 +384,6 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
     }
   };
 
-  // Все графические элементы: базовые + вариантные
-  const allGraphics: GraphicItem[] = [
-    ...(packageDef.graphics || []),
-    ...(activeVariant.graphics || []),
-  ];
-
   return (
     <div
       style={{
@@ -342,11 +397,14 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
+        flex: 1,
+        minHeight: 0,
       }}
     >
       <svg
         viewBox={viewBox}
-        style={{ width: "100%", height: "100%", cursor: interactive ? "crosshair" : "default" }}
+        preserveAspectRatio="xMidYMid meet"
+        style={{ width: "100%", height: "100%", display: "block", cursor: interactive ? "crosshair" : "default" }}
       >
         <defs>
           {/* Сетка */}

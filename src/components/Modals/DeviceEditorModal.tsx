@@ -2175,47 +2175,52 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                             display: "flex",
                             alignItems: "center",
                             color: isPrimary ? "#fbbf24" : "var(--cad-text-dim)",
+                            flexShrink: 0,
                           }}
                           title={isPrimary ? "Основной корпус детали (Primary ⭐)" : "Сделать основным корпусом (⭐)"}
                         >
                           <Star size={12} fill={isPrimary ? "#fbbf24" : "none"} />
                         </button>
 
-                        <Box size={12} color={isSelected ? "var(--cad-accent-hover)" : "var(--cad-text-dim)"} />
-                        <span style={{ fontWeight: isSelected ? 600 : 500 }}>
-                          {pkg?.name || binding.packageId}
-                        </span>
+                        <Box size={12} style={{ flexShrink: 0 }} color={isSelected ? "var(--cad-accent-hover)" : "var(--cad-text-dim)"} />
 
-                        {pkg && (
-                          <span style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>
-                            ({pkg.pads.length}п.)
+                        <div className="device-pkg-chip-title">
+                          <span style={{ fontWeight: isSelected ? 600 : 500 }}>
+                            {pkg?.name || binding.packageId}
                           </span>
-                        )}
-
-                        {/* Индикатор готовности распиновки */}
-                        <span className={`pkg-status-badge ${readiness.isComplete ? "complete" : "partial"}`}>
-                          {readiness.isComplete ? (
-                            <>
-                              <CheckCircle2 size={9} /> {readiness.mapped}/{readiness.total}
-                            </>
-                          ) : (
-                            <>
-                              {readiness.mapped}/{readiness.total}
-                            </>
+                          {pkg && (
+                            <span style={{ fontSize: 10, color: "var(--cad-text-dim)", marginLeft: 6 }}>
+                              ({pkg.pads.length}п.)
+                            </span>
                           )}
-                        </span>
+                        </div>
 
-                        <button
-                          type="button"
-                          className="device-pkg-chip-remove"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemovePackageBinding(binding.packageId);
-                          }}
-                          title="Отвязать этот корпус"
-                        >
-                          <X size={12} />
-                        </button>
+                        <div className="device-pkg-chip-actions">
+                          {/* Индикатор готовности распиновки */}
+                          <span className={`pkg-status-badge ${readiness.isComplete ? "complete" : "partial"}`}>
+                            {readiness.isComplete ? (
+                              <>
+                                <CheckCircle2 size={9} /> {readiness.mapped}/{readiness.total}
+                              </>
+                            ) : (
+                              <>
+                                {readiness.mapped}/{readiness.total}
+                              </>
+                            )}
+                          </span>
+
+                          <button
+                            type="button"
+                            className="device-pkg-chip-remove"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleRemovePackageBinding(binding.packageId);
+                            }}
+                            title="Отвязать этот корпус"
+                          >
+                            <X size={12} />
+                          </button>
+                        </div>
                       </div>
                     );
                   })
@@ -2355,7 +2360,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     )}
                   </div>
 
-                  <div style={{ flex: 1, minHeight: 180, background: "rgba(0, 0, 0, 0.25)", borderRadius: 6, border: "1px solid var(--cad-border)", overflow: "hidden", position: "relative" }}>
+                  <div style={{ flex: 1, minHeight: 160, display: "flex", flexDirection: "column", background: "rgba(0, 0, 0, 0.25)", borderRadius: 6, border: "1px solid var(--cad-border)", overflow: "hidden", position: "relative" }}>
                     <FootprintPreview
                       packageDef={currentPkgDef}
                       variant={currentPkgDef.variants?.find((v) => v.id === (currentMapping?.defaultVariantId || currentPkgDef.defaultVariantId))}
@@ -2364,7 +2369,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                       padLabels={padLabels}
                       padColors={padColors}
                       unassignedPadNums={unassignedPadNums}
-                      height={240}
+                      height="100%"
                     />
                   </div>
 
@@ -2425,27 +2430,26 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               style={{
                 display: "flex",
                 alignItems: "center",
-                gap: 5,
+                gap: 4,
                 paddingBottom: 8,
                 borderBottom: "1px solid rgba(255, 255, 255, 0.06)",
                 flexShrink: 0,
                 flexWrap: "nowrap",
-                overflowX: "auto",
-                overflowY: "hidden",
+                overflow: "hidden",
               }}
             >
               <button
                 type="button"
                 className="cad-btn-primary"
-                style={{ fontSize: 11, padding: "3px 9px", height: 26, gap: 5, fontWeight: 600, flexShrink: 0 }}
+                style={{ fontSize: 10.5, padding: "3px 8px", height: 24, gap: 4, fontWeight: 600, flexShrink: 0 }}
                 onClick={handleAddPin}
                 title="Добавить новый логический вывод (Ins)"
               >
-                <Plus size={13} /> Пин
+                <Plus size={12} /> Пин
               </button>
               <select
                 className="cad-input"
-                style={{ fontSize: 10.5, padding: "2px 6px", height: 26, width: 105, flexShrink: 0, cursor: "pointer" }}
+                style={{ fontSize: 10, padding: "2px 4px", height: 24, width: 88, flexShrink: 0, cursor: "pointer" }}
                 defaultValue=""
                 onChange={(e) => {
                   const val = e.target.value;
@@ -2469,41 +2473,41 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <button
                 type="button"
                 className="cad-btn-secondary"
-                style={{ fontSize: 10.5, padding: "2px 8px", height: 26, gap: 4, flexShrink: 0 }}
+                style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 4, flexShrink: 0 }}
                 onClick={() => setIsPinGenOpen(true)}
                 title="Генератор шин и диапазонов выводов (D0..D7, 1..16, список)"
               >
-                <ListPlus size={12} color="var(--cad-accent-hover)" /> Серия...
+                <ListPlus size={11} color="var(--cad-accent-hover)" /> Серия...
               </button>
               <button
                 type="button"
                 className="cad-btn-secondary"
-                style={{ fontSize: 10.5, padding: "2px 7px", height: 26, gap: 4, flexShrink: 0 }}
+                style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 3, flexShrink: 0 }}
                 onClick={handleAddPowerPins}
                 title="Быстро добавить выводы VCC и GND"
               >
-                <Zap size={11} color="#f59e0b" /> + PWR
+                <Zap size={11} color="#f59e0b" /> +PWR
               </button>
 
-              <div style={{ width: 1, height: 16, background: "rgba(255, 255, 255, 0.08)", margin: "0 2px", flexShrink: 0 }} />
+              <div style={{ width: 1, height: 14, background: "rgba(255, 255, 255, 0.08)", margin: "0 1px", flexShrink: 0 }} />
 
               <button
                 type="button"
                 className="cad-btn-secondary"
-                style={{ fontSize: 10.5, padding: "2px 8px", height: 26, gap: 4, flexShrink: 0 }}
+                style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 4, flexShrink: 0 }}
                 onClick={() => {
                   setBulkImportText("");
                   setIsBulkImportOpen(true);
                 }}
                 title="Импортировать выводы из таблицы даташита, Excel или CSV"
               >
-                <FileText size={12} color="#60a5fa" /> Импорт...
+                <FileText size={11} color="#60a5fa" /> Импорт...
               </button>
               {currentPkgDef && currentPkgDef.pads && currentPkgDef.pads.length > 0 && (
                 <button
                   type="button"
                   className="cad-btn-secondary"
-                  style={{ fontSize: 10.5, padding: "2px 8px", height: 26, gap: 4, flexShrink: 0 }}
+                  style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 4, flexShrink: 0 }}
                   onClick={handleImportPinsFromPackage}
                   title={`Импортировать выводы из площадок корпуса ${currentPkgDef.name} (${currentPkgDef.pads.length} площадок)`}
                 >
@@ -2512,13 +2516,13 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               )}
 
               {/* Разделитель-распорка для прижатия к правому краю */}
-              <div style={{ flex: 1, minWidth: 4 }} />
+              <div style={{ flex: 1, minWidth: 2 }} />
 
               {logicalPins.length >= 2 && (
                 <button
                   type="button"
                   className="cad-btn-secondary"
-                  style={{ fontSize: 10.5, padding: "2px 7px", height: 26, gap: 4, flexShrink: 0 }}
+                  style={{ fontSize: 10, padding: "2px 6px", height: 24, gap: 3, flexShrink: 0 }}
                   onClick={handleSwapFirstTwoPins}
                   title="Поменять местами выводы 1 и 2 (Swap 1↔2)"
                 >
@@ -2529,11 +2533,11 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 <button
                   type="button"
                   className="cad-btn-secondary"
-                  style={{ fontSize: 10.5, padding: "2px 6px", height: 26, color: "#ef4444", flexShrink: 0 }}
+                  style={{ fontSize: 10, padding: "2px 5px", height: 24, color: "#ef4444", flexShrink: 0 }}
                   onClick={handleClearAllPins}
                   title="Очистить все выводы"
                 >
-                  <Trash2 size={12} />
+                  <Trash2 size={11} />
                 </button>
               )}
             </div>
@@ -2956,15 +2960,16 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           <div className="device-col">
             {/* Карточка: Таблица сопоставления выводов */}
             <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-              <div className="device-card-header" style={{ flexWrap: "nowrap", gap: 8, paddingBottom: 6 }}>
-                <div className="device-card-title" style={{ flexShrink: 0, gap: 6 }}>
+              <div className="device-card-header" style={{ flexWrap: "nowrap", gap: 6, paddingBottom: 6 }}>
+                <div className="device-card-title" style={{ flexShrink: 0, gap: 5, fontSize: 10.5 }}>
                   <ArrowRightLeft size={13} color="var(--cad-accent-hover)" />
                   <span>Сопоставление выводов</span>
                   {currentMapping && (
                     <span
                       className={`mapping-coverage-pill ${mappingCoverage.percent === 100 ? "complete" : "partial"}`}
+                      style={{ padding: "1px 6px", fontSize: 9.5 }}
                     >
-                      {mappingCoverage.percent === 100 ? <CheckCircle2 size={10} /> : null}
+                      {mappingCoverage.percent === 100 ? <CheckCircle2 size={9} /> : null}
                       {mappingCoverage.mapped}/{mappingCoverage.total} ({mappingCoverage.percent}%)
                     </span>
                   )}
