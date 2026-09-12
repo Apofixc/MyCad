@@ -43,6 +43,8 @@ import {
   Sparkles,
   Palette,
   Magnet,
+  RotateCw,
+  Repeat,
 } from "lucide-react";
 
 interface PackageEditorModalProps {
@@ -287,13 +289,19 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   };
 
   // Быстрое применение пресетов площадок
-  const applyPadPreset = (preset: "0603" | "0805" | "soic" | "qfp" | "tht") => {
+  const applyPadPreset = (preset: "0402" | "0603" | "0805" | "1206" | "soic" | "qfp" | "tht") => {
     switch (preset) {
+      case "0402":
+        setPadTemplate({ shape: "rect", width: 0.6, height: 0.5, drillDiameter: 0 });
+        break;
       case "0603":
         setPadTemplate({ shape: "rect", width: 1.0, height: 0.8, drillDiameter: 0 });
         break;
       case "0805":
         setPadTemplate({ shape: "rounded_rect", width: 1.3, height: 1.2, drillDiameter: 0, roundRadius: 0.1 });
+        break;
+      case "1206":
+        setPadTemplate({ shape: "rounded_rect", width: 1.6, height: 1.6, drillDiameter: 0, roundRadius: 0.15 });
         break;
       case "soic":
         setPadTemplate({ shape: "rounded_rect", width: 1.6, height: 0.6, drillDiameter: 0, roundRadius: 0.1 });
@@ -305,6 +313,106 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
         setPadTemplate({ shape: "circle", width: 1.6, height: 1.6, drillDiameter: 0.8 });
         break;
     }
+  };
+
+  // Поворот шаблона площадки (меняет W и H местами)
+  const handleRotatePadTemplate = () => {
+    setPadTemplate((prev) => ({
+      ...prev,
+      width: prev.height,
+      height: prev.width,
+    }));
+  };
+
+  // Автоматический пересчет габаритов охватывающей рамки (Bounding Box)
+  const handleRecalculateBBox = () => {
+    if (pads.length === 0 && graphics.length === 0) return;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
+    pads.forEach((p) => {
+      const halfW = (p.width || 1) / 2;
+      const halfH = (p.height || 1) / 2;
+      minX = Math.min(minX, p.x - halfW);
+      maxX = Math.max(maxX, p.x + halfW);
+      minY = Math.min(minY, p.y - halfH);
+      maxY = Math.max(maxY, p.y + halfH);
+    });
+
+    graphics.forEach((g) => {
+      if (g.kind === "line") {
+        minX = Math.min(minX, g.x1, g.x2);
+        maxX = Math.max(maxX, g.x1, g.x2);
+        minY = Math.min(minY, g.y1, g.y2);
+        maxY = Math.max(maxY, g.y1, g.y2);
+      } else if (g.kind === "rect") {
+        minX = Math.min(minX, g.x - g.width / 2);
+        maxX = Math.max(maxX, g.x + g.width / 2);
+        minY = Math.min(minY, g.y - g.height / 2);
+        maxY = Math.max(maxY, g.y + g.height / 2);
+      } else if (g.kind === "circle") {
+        minX = Math.min(minX, g.cx - g.radius);
+        maxX = Math.max(maxX, g.cx + g.radius);
+        minY = Math.min(minY, g.cy - g.radius);
+        maxY = Math.max(maxY, g.cy + g.radius);
+      }
+    });
+
+    if (minX !== Infinity) {
+      const w = Math.round((maxX - minX) * 100) / 100;
+      const h = Math.round((maxY - minY) * 100) / 100;
+      setBodyWidth(Math.max(0.5, w));
+      setBodyHeight(Math.max(0.5, h));
+    }
+  };
+
+  // Авто-генерация шелкографического контура вокруг площадок
+  const handleGenerateOutline = () => {
+    if (pads.length === 0) return;
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    pads.forEach((p) => {
+      const halfW = (p.width || 1) / 2;
+      const halfH = (p.height || 1) / 2;
+      minX = Math.min(minX, p.x - halfW);
+      maxX = Math.max(maxX, p.x + halfW);
+      minY = Math.min(minY, p.y - halfH);
+      maxY = Math.max(maxY, p.y + halfH);
+    });
+
+    const margin = 0.5; // 0.5 мм отступ шелкографии
+    const w = Math.round((maxX - minX + margin * 2) * 100) / 100;
+    const h = Math.round((maxY - minY + margin * 2) * 100) / 100;
+    const cx = Math.round(((minX + maxX) / 2) * 100) / 100;
+    const cy = Math.round(((minY + maxY) / 2) * 100) / 100;
+
+    const newOutline: GraphicItem = {
+      kind: "rect",
+      id: `silk_outline_${Date.now()}`,
+      x: cx,
+      y: cy,
+      width: w,
+      height: h,
+      roundRadius: 0.2,
+      rotation: 0,
+      strokeWidth: 0.15,
+      layer: "top_silk",
+      filled: false,
+    };
+
+    const pin1 = pads.find((p) => String(p.padNum) === "1") || pads[0];
+    const dotGraphic: GraphicItem = {
+      kind: "circle",
+      id: `silk_pin1_${Date.now()}`,
+      cx: pin1 ? pin1.x : cx - w / 2 + 0.5,
+      cy: pin1 ? pin1.y - (pin1.height / 2 + 0.5) : cy - h / 2 + 0.5,
+      radius: 0.25,
+      strokeWidth: 0.1,
+      layer: "top_silk",
+      filled: true,
+    };
+
+    handleGraphicsChange([...graphics, newOutline, dotGraphic]);
+    setBodyWidth(w);
+    setBodyHeight(h);
   };
 
   // Сохранение корпуса
@@ -641,36 +749,169 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
             </button>
           </div>
 
-          {/* ЦЕНТРАЛЬНЫЙ ВЕКТОРНЫЙ ХОЛСТ */}
-          <div style={{ flex: 1, minWidth: 0, position: "relative", background: "#060911" }}>
-            <InteractiveFootprintCanvas
-              pads={pads}
-              graphics={graphics}
-              variant={variants.find((v) => v.id === defaultVariantId)}
-              gridStep={gridStep}
-              snapToGrid={snapToGrid}
-              activeTool={activeTool}
-              selectedPadNum={selectedPadNum}
-              selectedGraphicId={selectedGraphicId}
-              newPadTemplate={padTemplate}
-              onPadsChange={handlePadsChange}
-              onGraphicsChange={handleGraphicsChange}
-              onSelectPad={setSelectedPadNum}
-              onSelectGraphic={setSelectedGraphicId}
-              onShiftOrigin={handleShiftOrigin}
-              onSetActiveTool={setActiveTool}
-              onUndo={handleUndo}
-              onRedo={handleRedo}
-              onDeleteSelected={() => {
-                if (selectedPadNum) {
-                  handlePadsChange(pads.filter((p) => p.padNum !== selectedPadNum));
-                  setSelectedPadNum(null);
-                } else if (selectedGraphicId) {
-                  handleGraphicsChange(graphics.filter((g) => g.id !== selectedGraphicId));
-                  setSelectedGraphicId(null);
-                }
-              }}
-            />
+          {/* ЦЕНТРАЛЬНЫЙ ВЕКТОРНЫЙ ХОЛСТ С КОНТЕКСТНОЙ ПАНЕЛЬЮ ИНСТРУМЕНТА */}
+          <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", position: "relative", background: "#060911" }}>
+            {/* Контекстная панель инструмента Площадка (P) */}
+            {activeTool === "pad" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "6px 12px",
+                  background: "#0c1322",
+                  borderBottom: "1px solid #1e293b",
+                  fontSize: 11,
+                  flexWrap: "wrap",
+                  zIndex: 5,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#38bdf8", fontWeight: "bold" }}>
+                  <Sparkles size={13} />
+                  <span>Площадка (P):</span>
+                </div>
+
+                {/* Быстрые пресеты */}
+                <div style={{ display: "flex", gap: 4, alignItems: "center" }}>
+                  <span style={{ color: "var(--cad-text-muted)", fontSize: 10 }}>Пресеты:</span>
+                  {(["0402", "0603", "0805", "1206", "soic", "qfp", "tht"] as const).map((pr) => (
+                    <button
+                      key={pr}
+                      type="button"
+                      className="pkg-preset-btn"
+                      style={{ padding: "2px 6px", fontSize: 10 }}
+                      onClick={() => applyPadPreset(pr)}
+                    >
+                      {pr.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                <div style={{ width: 1, height: 16, background: "#1e293b" }} />
+
+                {/* Форма площадки */}
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ color: "var(--cad-text-muted)" }}>Форма:</span>
+                  <select
+                    value={padTemplate.shape}
+                    onChange={(e) => setPadTemplate({ ...padTemplate, shape: e.target.value as PadShape })}
+                    className="cad-input"
+                    style={{ padding: "2px 6px", fontSize: 11 }}
+                  >
+                    <option value="rounded_rect">Скруглённый</option>
+                    <option value="rect">Прямоугольник</option>
+                    <option value="circle">Круг</option>
+                    <option value="oval">Овал</option>
+                    <option value="d_shape">D-образный</option>
+                  </select>
+                </div>
+
+                {/* Размеры W x H */}
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ color: "var(--cad-text-muted)" }}>W:</span>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={padTemplate.width}
+                    onChange={(e) => setPadTemplate({ ...padTemplate, width: parseFloat(e.target.value) || 0.1 })}
+                    className="cad-input"
+                    style={{ width: 50, padding: "2px 4px", fontSize: 11 }}
+                  />
+                  <span style={{ color: "var(--cad-text-muted)" }}>× H:</span>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={padTemplate.height}
+                    onChange={(e) => setPadTemplate({ ...padTemplate, height: parseFloat(e.target.value) || 0.1 })}
+                    className="cad-input"
+                    style={{ width: 50, padding: "2px 4px", fontSize: 11 }}
+                  />
+                  <button
+                    type="button"
+                    className="pkg-preset-btn"
+                    style={{ padding: "2px 6px", display: "flex", alignItems: "center", gap: 3 }}
+                    onClick={handleRotatePadTemplate}
+                    title="Поменять W ⇄ H местами (или нажмите Space)"
+                  >
+                    <Repeat size={11} />
+                    <span>W ⇄ H (Space)</span>
+                  </button>
+                </div>
+
+                {/* Сверление drill */}
+                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ color: "var(--cad-text-muted)" }}>Сверление ⌀:</span>
+                  <input
+                    type="number"
+                    step="0.05"
+                    value={padTemplate.drillDiameter || 0}
+                    onChange={(e) => setPadTemplate({ ...padTemplate, drillDiameter: parseFloat(e.target.value) || 0 })}
+                    className="cad-input"
+                    style={{ width: 48, padding: "2px 4px", fontSize: 11 }}
+                    placeholder="0=SMD"
+                  />
+                </div>
+
+                <div style={{ flex: 1 }} />
+                <span style={{ color: "#64748b", fontSize: 10 }}>Пробел (Space) — поворот на 90°</span>
+              </div>
+            )}
+
+            {/* Контекстная подсказка для линии (L) */}
+            {activeTool === "line" && (
+              <div
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 10,
+                  padding: "6px 12px",
+                  background: "#0c1322",
+                  borderBottom: "1px solid #1e293b",
+                  fontSize: 11,
+                  zIndex: 5,
+                }}
+              >
+                <div style={{ display: "flex", alignItems: "center", gap: 5, color: "#38bdf8", fontWeight: "bold" }}>
+                  <Slash size={13} />
+                  <span>Линия / Полилиния (L):</span>
+                </div>
+                <span style={{ color: "#94a3b8", fontSize: 11 }}>
+                  Кликайте для создания цепочки отрезков контура. Повторный клик в ту же точку, <b>двойной клик</b> или <b>Esc</b> — завершить цепочку.
+                </span>
+              </div>
+            )}
+
+            <div style={{ flex: 1, minHeight: 0, position: "relative" }}>
+              <InteractiveFootprintCanvas
+                pads={pads}
+                graphics={graphics}
+                variant={variants.find((v) => v.id === defaultVariantId)}
+                gridStep={gridStep}
+                snapToGrid={snapToGrid}
+                activeTool={activeTool}
+                selectedPadNum={selectedPadNum}
+                selectedGraphicId={selectedGraphicId}
+                newPadTemplate={padTemplate}
+                onPadsChange={handlePadsChange}
+                onGraphicsChange={handleGraphicsChange}
+                onSelectPad={setSelectedPadNum}
+                onSelectGraphic={setSelectedGraphicId}
+                onShiftOrigin={handleShiftOrigin}
+                onSetActiveTool={setActiveTool}
+                onRotatePadTemplate={handleRotatePadTemplate}
+                onUndo={handleUndo}
+                onRedo={handleRedo}
+                onDeleteSelected={() => {
+                  if (selectedPadNum) {
+                    handlePadsChange(pads.filter((p) => p.padNum !== selectedPadNum));
+                    setSelectedPadNum(null);
+                  } else if (selectedGraphicId) {
+                    handleGraphicsChange(graphics.filter((g) => g.id !== selectedGraphicId));
+                    setSelectedGraphicId(null);
+                  }
+                }}
+              />
+            </div>
           </div>
 
           {/* ПРАВАЯ ПАНЕЛЬ: ИНСПЕКТОР СВОЙСТВ И ТАБЛИЦА ПЛОЩАДОК */}
@@ -843,6 +1084,47 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         </div>
                       </div>
 
+                      {/* Быстрая смена ориентации и поворот */}
+                      <div style={{ display: "flex", gap: 6 }}>
+                        <button
+                          type="button"
+                          className="pkg-preset-btn"
+                          style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "4px 8px" }}
+                          onClick={() => {
+                            handlePadsChange(
+                              pads.map((p) =>
+                                p.padNum === selectedPad.padNum
+                                  ? { ...p, width: p.height, height: p.width }
+                                  : p
+                              )
+                            );
+                          }}
+                          title="Поменять ширину и высоту местами"
+                        >
+                          <Repeat size={11} />
+                          <span>W ⇄ H</span>
+                        </button>
+                        <button
+                          type="button"
+                          className="pkg-preset-btn"
+                          style={{ flex: 1.2, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "4px 8px" }}
+                          onClick={() => {
+                            const cur = selectedPad.rotation || 0;
+                            handlePadsChange(
+                              pads.map((p) =>
+                                p.padNum === selectedPad.padNum
+                                  ? { ...p, rotation: (cur + 90) % 360 }
+                                  : p
+                              )
+                            );
+                          }}
+                          title="Повернуть на +90° (клавиша Space на холсте)"
+                        >
+                          <RotateCw size={11} />
+                          <span>+90° (Space)</span>
+                        </button>
+                      </div>
+
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         <div>
                           <label className="form-label">Сверление Drill ⌀ (THT):</label>
@@ -855,7 +1137,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                               handlePadsChange(
                                 pads.map((p) =>
                                   p.padNum === selectedPad.padNum
-                                    ? { ...p, drillDiameter: val > 0 ? val : undefined, plated: val > 0 ? true : undefined }
+                                    ? { ...p, drillDiameter: val > 0 ? val : undefined, plated: val > 0 ? (p.plated ?? true) : undefined }
                                     : p
                                 )
                               );
@@ -867,24 +1149,58 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         </div>
                         <div>
                           <label className="form-label">Поворот (°):</label>
-                          <select
-                            value={selectedPad.rotation || 0}
-                            onChange={(e) => {
-                              const rot = parseInt(e.target.value) || 0;
-                              handlePadsChange(
-                                pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, rotation: rot } : p))
-                              );
-                            }}
-                            className="cad-input"
-                            style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
-                          >
-                            <option value="0">0°</option>
-                            <option value="90">90°</option>
-                            <option value="180">180°</option>
-                            <option value="270">270°</option>
-                          </select>
+                          <div style={{ display: "flex", gap: 4 }}>
+                            <input
+                              type="number"
+                              step="15"
+                              value={selectedPad.rotation || 0}
+                              onChange={(e) => {
+                                const rot = parseFloat(e.target.value) || 0;
+                                handlePadsChange(
+                                  pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, rotation: rot } : p))
+                                );
+                              }}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                            />
+                            <button
+                              type="button"
+                              className="pkg-preset-btn"
+                              style={{ padding: "0 6px" }}
+                              onClick={() => {
+                                const rot = ((selectedPad.rotation || 0) + 90) % 360;
+                                handlePadsChange(
+                                  pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, rotation: rot } : p))
+                                );
+                              }}
+                              title="+90°"
+                            >
+                              ⟳
+                            </button>
+                          </div>
                         </div>
                       </div>
+
+                      {/* Опция неметаллизированного отверстия (NPTH) */}
+                      {Boolean(selectedPad.drillDiameter && selectedPad.drillDiameter > 0) && (
+                        <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer", color: "var(--cad-text-secondary)", marginTop: 2 }}>
+                          <input
+                            type="checkbox"
+                            checked={selectedPad.plated === false}
+                            onChange={(e) => {
+                              const isNpth = e.target.checked;
+                              handlePadsChange(
+                                pads.map((p) =>
+                                  p.padNum === selectedPad.padNum
+                                    ? { ...p, plated: isNpth ? false : true }
+                                    : p
+                                )
+                              );
+                            }}
+                          />
+                          <span>Крепёжное отверстие (NPTH / без металлизации)</span>
+                        </label>
+                      )}
                     </div>
                   ) : selectedGraphic ? (
                     /* ИНСПЕКТОР ВЫДЕЛЕННОГО ГРАФИЧЕСКОГО ЭЛЕМЕНТА */
@@ -1258,65 +1574,45 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                   ) : (
                     /* ОБЩИЕ ПАРАМЕТРЫ КОРПУСА */
                     <>
-                      {/* Карточка 1: Геометрия тела корпуса */}
+                      {/* Карточка 1: Габариты и свойства посадочного места */}
                       <div className="pkg-card">
                         <div className="pkg-card-header">
                           <div className="pkg-card-title">
                             <Box size={13} />
-                            <span>Геометрия тела корпуса</span>
+                            <span>Габариты и свойства корпуса</span>
                           </div>
                         </div>
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                          <div>
-                            <label className="form-label">Форма корпуса:</label>
-                            <select
-                              value={bodyShape}
-                              onChange={(e) => setBodyShape(e.target.value)}
-                              className="cad-input"
-                              style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
-                            >
-                              <option value="rect">Прямоугольный</option>
-                              <option value="circle">Круглый</option>
-                              <option value="d_shape">D-образный (TO-92)</option>
-                              <option value="capsule">Капсула (HC-49)</option>
-                            </select>
-                          </div>
                           <div>
                             <label className="form-label">Стандарт (Design):</label>
                             <input
                               type="text"
                               value={standard}
                               onChange={(e) => setStandard(e.target.value)}
-                              placeholder="напр. JEDEC, IPC-7351"
+                              placeholder="напр. IPC-7351, Custom..."
                               className="cad-input"
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                             />
                           </div>
-                        </div>
-
-                        {bodyShape === "d_shape" && (
                           <div>
-                            <label className="form-label">Сторона среза D-формы:</label>
+                            <label className="form-label">Тип монтажа:</label>
                             <select
-                              value={dShapeCut}
-                              onChange={(e) => setDShapeCut(e.target.value)}
+                              value={mountType}
+                              onChange={(e) => setMountType(e.target.value as MountType)}
                               className="cad-input"
                               style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
                             >
-                              <option value="right">Срез справа</option>
-                              <option value="top">Срез сверху</option>
-                              <option value="bottom">Срез снизу</option>
-                              <option value="left">Срез слева</option>
+                              <option value="smd">SMD (Поверхностный)</option>
+                              <option value="tht">THT (Сквозной)</option>
+                              <option value="mixed">Смешанный (Mixed)</option>
                             </select>
                           </div>
-                        )}
+                        </div>
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                           <div>
-                            <label className="form-label">
-                              {bodyShape === "circle" || bodyShape === "d_shape" ? "Диаметр ⌀ (мм):" : "Ширина W (мм):"}
-                            </label>
+                            <label className="form-label">Ширина W (BBox, мм):</label>
                             <input
                               type="number"
                               step="0.1"
@@ -1327,9 +1623,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             />
                           </div>
                           <div>
-                            <label className="form-label">
-                              {bodyShape === "circle" || bodyShape === "d_shape" ? "Высота (мм):" : "Высота H (мм):"}
-                            </label>
+                            <label className="form-label">Высота H (BBox, мм):</label>
                             <input
                               type="number"
                               step="0.1"
@@ -1339,6 +1633,30 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                             />
                           </div>
+                        </div>
+
+                        {/* Быстрые действия с габаритами */}
+                        <div style={{ display: "flex", gap: 6, marginTop: 4 }}>
+                          <button
+                            type="button"
+                            className="pkg-preset-btn"
+                            style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "5px 8px" }}
+                            onClick={handleRecalculateBBox}
+                            title="Рассчитать охватывающие габариты по площадкам и нарисованным линиям"
+                          >
+                            <RotateCw size={12} />
+                            <span>Авто-габариты</span>
+                          </button>
+                          <button
+                            type="button"
+                            className="pkg-preset-btn"
+                            style={{ flex: 1.2, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "5px 8px" }}
+                            onClick={handleGenerateOutline}
+                            title="Сгенерировать шелкографию (контур + метка 1-го вывода) вокруг площадок с отступом 0.5 мм"
+                          >
+                            <Sparkles size={12} />
+                            <span>⚡ Создать контур</span>
+                          </button>
                         </div>
 
                         <div>
@@ -1355,122 +1673,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         </div>
                       </div>
 
-                      {/* Карточка 2: Шаблон новой площадки (инструмент P) */}
-                      <div className="pkg-card">
-                        <div className="pkg-card-header">
-                          <div className="pkg-card-title">
-                            <Sparkles size={13} />
-                            <span>Шаблон новой площадки (при P)</span>
-                          </div>
-                        </div>
-
-                        {/* Пресеты типовых площадок */}
-                        <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-                          <button
-                            type="button"
-                            className="pkg-preset-btn"
-                            onClick={() => applyPadPreset("0603")}
-                          >
-                            0603
-                          </button>
-                          <button
-                            type="button"
-                            className="pkg-preset-btn"
-                            onClick={() => applyPadPreset("0805")}
-                          >
-                            0805
-                          </button>
-                          <button
-                            type="button"
-                            className="pkg-preset-btn"
-                            onClick={() => applyPadPreset("soic")}
-                          >
-                            SOIC (1.6×0.6)
-                          </button>
-                          <button
-                            type="button"
-                            className="pkg-preset-btn"
-                            onClick={() => applyPadPreset("qfp")}
-                          >
-                            QFP (1.5×0.35)
-                          </button>
-                          <button
-                            type="button"
-                            className="pkg-preset-btn"
-                            onClick={() => applyPadPreset("tht")}
-                          >
-                            THT ⌀1.6
-                          </button>
-                        </div>
-
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                          <div>
-                            <label className="form-label">Ширина:</label>
-                            <input
-                              type="number"
-                              step="0.05"
-                              value={padTemplate.width}
-                              onChange={(e) =>
-                                setPadTemplate({ ...padTemplate, width: parseFloat(e.target.value) || 0.1 })
-                              }
-                              className="cad-input"
-                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                            />
-                          </div>
-                          <div>
-                            <label className="form-label">Высота:</label>
-                            <input
-                              type="number"
-                              step="0.05"
-                              value={padTemplate.height}
-                              onChange={(e) =>
-                                setPadTemplate({ ...padTemplate, height: parseFloat(e.target.value) || 0.1 })
-                              }
-                              className="cad-input"
-                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                            />
-                          </div>
-                        </div>
-
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                          <div>
-                            <label className="form-label">Форма:</label>
-                            <select
-                              value={padTemplate.shape}
-                              onChange={(e) =>
-                                setPadTemplate({ ...padTemplate, shape: e.target.value as PadShape })
-                              }
-                              className="cad-input"
-                              style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
-                            >
-                              <option value="rounded_rect">Скруглённый прямоуг.</option>
-                              <option value="rect">Прямоугольник</option>
-                              <option value="circle">Круг</option>
-                              <option value="oval">Овал</option>
-                              <option value="d_shape">D-образный</option>
-                            </select>
-                          </div>
-                          <div>
-                            <label className="form-label">Сверление ⌀ (THT):</label>
-                            <input
-                              type="number"
-                              step="0.05"
-                              value={padTemplate.drillDiameter || 0}
-                              onChange={(e) =>
-                                setPadTemplate({
-                                  ...padTemplate,
-                                  drillDiameter: parseFloat(e.target.value) || 0,
-                                })
-                              }
-                              className="cad-input"
-                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                              placeholder="0 — SMD"
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Карточка 3: Геометрическая сводка посадочного места */}
+                      {/* Карточка 2: Геометрическая сводка посадочного места */}
                       <div className="pkg-card">
                         <div className="pkg-card-header">
                           <div className="pkg-card-title">
@@ -1486,13 +1689,26 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <span>Контактных площадок:</span>
-                            <strong style={{ color: "var(--cad-accent-hover)" }}>{pads.length} шт.</strong>
+                            <strong style={{ color: "var(--cad-accent-hover)" }}>
+                              {pads.length} шт. ({pads.filter(p => !p.drillDiameter).length} SMD / {pads.filter(p => !!p.drillDiameter).length} THT)
+                            </strong>
                           </div>
                           <div style={{ display: "flex", justifyContent: "space-between" }}>
                             <span>Графических линий:</span>
                             <strong style={{ color: "var(--cad-text-main)" }}>{graphics.length} шт.</strong>
                           </div>
                         </div>
+
+                        <button
+                          type="button"
+                          className="pkg-preset-btn"
+                          style={{ width: "100%", marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 4, padding: "5px 8px" }}
+                          onClick={handleCenterAll}
+                          title="Выровнять все площадки и линии симметрично центру (0,0)"
+                        >
+                          <RotateCcw size={12} />
+                          <span>Центрировать элементы по (0,0)</span>
+                        </button>
                       </div>
 
                       {/* Карточка 4: Технологические зазоры и ограничения */}

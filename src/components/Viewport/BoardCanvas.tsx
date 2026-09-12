@@ -1528,77 +1528,81 @@ function drawPlacedComponents(
     // -------------------------------------------------------------------------
     // 1. Тело корпуса строго по данным из БД (Body Shape, Variant Colors)
     // -------------------------------------------------------------------------
-    ctx.save();
-    // Заливка цветом варианта с легкой прозрачностью для сохранения видимости дорожек/скана
-    ctx.fillStyle = activeVariant.bodyColor || "#1e293b";
-    ctx.strokeStyle = activeVariant.bodyBorderColor || "#475569";
-    ctx.lineWidth = Math.max(1, 0.15 * pxPerMm);
-
-    const bodyShape = pkg?.bodyShape || "rect";
-    if (bodyShape === "circle") {
-      ctx.beginPath();
-      ctx.arc(0, 0, bodyW / 2, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else if (bodyShape === "d_shape") {
-      const r = bodyW / 2;
-      const cutRatio = 0.58;
-      const d = r * cutRatio;
-      const h = Math.sqrt(Math.max(0.1, r * r - d * d));
-      ctx.beginPath();
-      ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
-      ctx.lineTo(d, h);
-      ctx.lineTo(d, -h);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else if (bodyShape === "capsule") {
-      const r = Math.min(bodyW, bodyH) / 2;
-      const hw = bodyW / 2 - r;
-      ctx.beginPath();
-      ctx.arc(-hw, 0, r, Math.PI / 2, (3 * Math.PI) / 2);
-      ctx.arc(hw, 0, r, -Math.PI / 2, Math.PI / 2);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      // Стандартный прямоугольный корпус по габаритам bodyWidth x bodyHeight
-      const rx = Math.min(4, Math.min(bodyW, bodyH) * 0.05);
-      if (typeof (ctx as any).roundRect === "function" && rx > 0) {
-        ctx.beginPath();
-        (ctx as any).roundRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH, rx);
-        ctx.fill();
-        ctx.stroke();
-      } else {
-        ctx.fillRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH);
-        ctx.strokeRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH);
-      }
-    }
-
-    // Ключ первого вывода из варианта (Notch / Dot / Chamfer)
-    if (activeVariant.keyType === "notch") {
-      const notchR = Math.min(bodyW, bodyH) * 0.1;
-      ctx.beginPath();
-      ctx.arc(0, -bodyH / 2, notchR, 0, Math.PI);
-      ctx.fillStyle = "#0c101d";
-      ctx.fill();
-      ctx.stroke();
-    } else if (activeVariant.keyType === "dot") {
-      const dotR = Math.max(1.5, 0.35 * pxPerMm);
-      ctx.beginPath();
-      ctx.arc(-bodyW / 2 + dotR * 3, -bodyH / 2 + dotR * 3, dotR, 0, Math.PI * 2);
-      ctx.fillStyle = "#f8fafc";
-      ctx.fill();
-    }
-    ctx.restore();
-
-    // -------------------------------------------------------------------------
-    // 2. Векторные графические элементы из БД (pkg.graphics + variant.graphics)
-    // -------------------------------------------------------------------------
     const allGraphics: GraphicItem[] = [
       ...(pkg?.graphics || []),
       ...(activeVariant?.graphics || []),
     ];
+    const hasCustomGraphics = allGraphics.length > 0;
+    const bodyShape = pkg?.bodyShape || (hasCustomGraphics ? "none" : "rect");
+
+    if (bodyShape !== "none") {
+      ctx.save();
+      // Заливка цветом варианта с легкой прозрачностью для сохранения видимости дорожек/скана
+      ctx.fillStyle = activeVariant.bodyColor || "#1e293b";
+      ctx.strokeStyle = activeVariant.bodyBorderColor || "#475569";
+      ctx.lineWidth = Math.max(1, 0.15 * pxPerMm);
+
+      if (bodyShape === "circle") {
+        ctx.beginPath();
+        ctx.arc(0, 0, bodyW / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      } else if (bodyShape === "d_shape") {
+        const r = bodyW / 2;
+        const cutRatio = 0.58;
+        const d = r * cutRatio;
+        const h = Math.sqrt(Math.max(0.1, r * r - d * d));
+        ctx.beginPath();
+        ctx.arc(0, 0, r, -Math.PI / 2, Math.PI / 2, false);
+        ctx.lineTo(d, h);
+        ctx.lineTo(d, -h);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else if (bodyShape === "capsule") {
+        const r = Math.min(bodyW, bodyH) / 2;
+        const hw = bodyW / 2 - r;
+        ctx.beginPath();
+        ctx.arc(-hw, 0, r, Math.PI / 2, (3 * Math.PI) / 2);
+        ctx.arc(hw, 0, r, -Math.PI / 2, Math.PI / 2);
+        ctx.closePath();
+        ctx.fill();
+        ctx.stroke();
+      } else if (bodyShape === "rect") {
+        // Стандартный прямоугольный корпус по габаритам bodyWidth x bodyHeight
+        const rx = Math.min(4, Math.min(bodyW, bodyH) * 0.05);
+        if (typeof (ctx as any).roundRect === "function" && rx > 0) {
+          ctx.beginPath();
+          (ctx as any).roundRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH, rx);
+          ctx.fill();
+          ctx.stroke();
+        } else {
+          ctx.fillRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH);
+          ctx.strokeRect(-bodyW / 2, -bodyH / 2, bodyW, bodyH);
+        }
+      }
+
+      // Ключ первого вывода из варианта (Notch / Dot / Chamfer)
+      if (activeVariant.keyType === "notch") {
+        const notchR = Math.min(bodyW, bodyH) * 0.1;
+        ctx.beginPath();
+        ctx.arc(0, -bodyH / 2, notchR, 0, Math.PI);
+        ctx.fillStyle = "#0c101d";
+        ctx.fill();
+        ctx.stroke();
+      } else if (activeVariant.keyType === "dot") {
+        const dotR = Math.max(1.5, 0.35 * pxPerMm);
+        ctx.beginPath();
+        ctx.arc(-bodyW / 2 + dotR * 3, -bodyH / 2 + dotR * 3, dotR, 0, Math.PI * 2);
+        ctx.fillStyle = "#f8fafc";
+        ctx.fill();
+      }
+      ctx.restore();
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. Векторные графические элементы из БД (pkg.graphics + variant.graphics)
+    // -------------------------------------------------------------------------
 
     if (allGraphics.length > 0) {
       for (const g of allGraphics) {
@@ -1672,14 +1676,17 @@ function drawPlacedComponents(
         const isTht = Boolean(pad.drillDiameter && pad.drillDiameter > 0);
         const isPin1 = String(pad.padNum) === "1" || padIndex === 0;
 
-        // Цвет медной площадки (THT: янтарный/медный как в превью, SMD Top: золото, SMD Bottom: синий)
-        ctx.fillStyle = isTht
+        // Цвет медной площадки (THT: янтарный/медный, SMD Top: золото, SMD Bottom: синий, NPTH: крепёжное отверстие)
+        const isNpth = pad.plated === false;
+        ctx.fillStyle = isNpth
+          ? "#334155"
+          : isTht
           ? "#d97706"
           : isTop
           ? "#f59e0b"
           : "#3b82f6";
 
-        ctx.strokeStyle = isTht ? "#92400e" : isTop ? "#b45309" : "#1d4ed8";
+        ctx.strokeStyle = isNpth ? "#1e293b" : isTht ? "#92400e" : isTop ? "#b45309" : "#1d4ed8";
         ctx.lineWidth = 1;
 
         const padRot = pad.rotation || 0;

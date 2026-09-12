@@ -47,6 +47,7 @@ interface InteractiveFootprintCanvasProps {
   onSelectGraphic: (id: string | null) => void;
   onShiftOrigin: (dx: number, dy: number) => void;
   onSetActiveTool?: (tool: EditorTool) => void;
+  onRotatePadTemplate?: () => void;
   onUndo?: () => void;
   onRedo?: () => void;
   onDeleteSelected?: () => void;
@@ -68,6 +69,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   onSelectGraphic,
   onShiftOrigin,
   onSetActiveTool,
+  onRotatePadTemplate,
   onUndo,
   onRedo,
   onDeleteSelected,
@@ -105,6 +107,25 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         target &&
         (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")
       ) {
+        return;
+      }
+
+      // Пробел (Space): быстрый поворот на 90° выделенной площадки или шаблона при P
+      if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        if (selectedPadNum) {
+          onPadsChange(
+            pads.map((p) => {
+              if (p.padNum === selectedPadNum) {
+                const cur = p.rotation || 0;
+                return { ...p, rotation: (cur + 90) % 360 };
+              }
+              return p;
+            })
+          );
+        } else if (activeTool === "pad") {
+          onRotatePadTemplate?.();
+        }
         return;
       }
 
@@ -165,6 +186,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   }, [
     selectedPadNum,
     selectedGraphicId,
+    activeTool,
     pads,
     graphics,
     onDeleteSelected,
@@ -173,6 +195,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     onSelectPad,
     onSelectGraphic,
     onSetActiveTool,
+    onRotatePadTemplate,
     onUndo,
     onRedo,
   ]);
@@ -274,6 +297,11 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         setDrawStart(snapped);
       } else {
         if (activeTool === "line") {
+          // Если клик в ту же точку — завершаем цепочку линий
+          if (Math.hypot(snapped.x - drawStart.x, snapped.y - drawStart.y) < 0.02) {
+            setDrawStart(null);
+            return;
+          }
           const newLine: GraphicItem = {
             kind: "line",
             id: `line_${Date.now()}`,
@@ -285,6 +313,9 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
             layer: "top_silk",
           };
           onGraphicsChange([...graphics, newLine]);
+          // Непрерывное рисование контура (полилиния): следующий отрезок начинается из конца текущего
+          setDrawStart(snapped);
+          return;
         } else if (activeTool === "rect") {
           const w = Math.abs(snapped.x - drawStart.x);
           const h = Math.abs(snapped.y - drawStart.y);
@@ -551,6 +582,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       onMouseDown={handleMouseDown}
       onMouseMove={handleMouseMove}
       onMouseUp={handleMouseUp}
+      onDoubleClick={() => setDrawStart(null)}
       onContextMenu={(e) => e.preventDefault()}
       style={{
         position: "relative",
