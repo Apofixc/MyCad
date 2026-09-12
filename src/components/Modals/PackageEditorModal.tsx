@@ -75,6 +75,18 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   const [variants, setVariants] = useState<PackageVariant[]>([]);
   const [defaultVariantId, setDefaultVariantId] = useState<string>("standard");
 
+  // Технологические ограничения и маски
+  const [solderMaskMargin, setSolderMaskMargin] = useState<number>(0.05);
+  const [pasteMaskMargin, setPasteMaskMargin] = useState<number>(0.0);
+  const [courtyardMargin, setCourtyardMargin] = useState<number>(0.25);
+  const [maxHeight, setMaxHeight] = useState<number>(3.0);
+  const [hasThermalPad, setHasThermalPad] = useState<boolean>(false);
+  const [thermalPadNum, setThermalPadNum] = useState<string>("EP");
+
+  // 3D Модель
+  const [model3dPath, setModel3dPath] = useState<string>("");
+  const [model3dOffsetZ, setModel3dOffsetZ] = useState<number>(0);
+
   // Состояние редактора
   const [activeTool, setActiveTool] = useState<EditorTool>("select");
   const [gridStep, setGridStep] = useState<number>(1.27); // мм
@@ -136,6 +148,22 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
             ]
       );
       setDefaultVariantId(initialPackage.defaultVariantId || "standard");
+
+      // Ограничения
+      setSolderMaskMargin(initialPackage.constraints?.solderMaskMargin ?? 0.05);
+      setPasteMaskMargin(initialPackage.constraints?.pasteMaskMargin ?? 0.0);
+      setCourtyardMargin(
+        initialPackage.constraints?.courtyardWidth && initialPackage.bodyWidth
+          ? Math.max(0.1, Math.round(((initialPackage.constraints.courtyardWidth - initialPackage.bodyWidth) / 2) * 100) / 100)
+          : 0.25
+      );
+      setMaxHeight(initialPackage.constraints?.maxHeight ?? 3.0);
+      setHasThermalPad(initialPackage.constraints?.hasThermalPad ?? false);
+      setThermalPadNum(initialPackage.constraints?.thermalPadNum ?? "EP");
+
+      // 3D
+      setModel3dPath(initialPackage.model3d?.filePath ?? "");
+      setModel3dOffsetZ(initialPackage.model3d?.offset ? initialPackage.model3d.offset[2] : 0);
     } else {
       const newId = `pkg_custom_${Date.now()}`;
       setId(newId);
@@ -160,6 +188,15 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
         },
       ]);
       setDefaultVariantId("standard");
+
+      setSolderMaskMargin(0.05);
+      setPasteMaskMargin(0.0);
+      setCourtyardMargin(0.25);
+      setMaxHeight(3.0);
+      setHasThermalPad(false);
+      setThermalPadNum("EP");
+      setModel3dPath("");
+      setModel3dOffsetZ(0);
     }
 
     setHistory([]);
@@ -290,12 +327,24 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       pads,
       graphics,
       constraints: {
-        courtyardWidth: bodyWidth + 1.2,
-        courtyardHeight: bodyHeight + 1.2,
-        maxHeight: 3.0,
+        courtyardWidth: Math.round((bodyWidth + courtyardMargin * 2) * 100) / 100,
+        courtyardHeight: Math.round((bodyHeight + courtyardMargin * 2) * 100) / 100,
+        maxHeight,
+        solderMaskMargin,
+        pasteMaskMargin,
+        hasThermalPad: hasThermalPad || undefined,
+        thermalPadNum: hasThermalPad ? thermalPadNum : undefined,
       },
       defaultVariantId,
       variants,
+      model3d: model3dPath.trim()
+        ? {
+            filePath: model3dPath.trim(),
+            offset: [0, 0, model3dOffsetZ],
+            rotation: [0, 0, 0],
+            scale: [1, 1, 1],
+          }
+        : undefined,
     };
 
     onSave(pkgDef);
@@ -609,6 +658,18 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
               onSelectPad={setSelectedPadNum}
               onSelectGraphic={setSelectedGraphicId}
               onShiftOrigin={handleShiftOrigin}
+              onSetActiveTool={setActiveTool}
+              onUndo={handleUndo}
+              onRedo={handleRedo}
+              onDeleteSelected={() => {
+                if (selectedPadNum) {
+                  handlePadsChange(pads.filter((p) => p.padNum !== selectedPadNum));
+                  setSelectedPadNum(null);
+                } else if (selectedGraphicId) {
+                  handleGraphicsChange(graphics.filter((g) => g.id !== selectedGraphicId));
+                  setSelectedGraphicId(null);
+                }
+              }}
             />
           </div>
 
@@ -839,29 +900,360 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             handleGraphicsChange(graphics.filter((g) => g.id !== selectedGraphic.id));
                             setSelectedGraphicId(null);
                           }}
-                          title="Удалить фигуру"
+                          title="Удалить фигуру (Delete)"
                           style={{ width: 22, height: 22 }}
                         >
                           <Trash2 size={12} />
                         </button>
                       </div>
 
-                      <div>
-                        <label className="form-label">Толщина линии (мм):</label>
-                        <input
-                          type="number"
-                          step="0.05"
-                          value={selectedGraphic.strokeWidth}
-                          onChange={(e) => {
-                            const val = parseFloat(e.target.value) || 0.1;
-                            handleGraphicsChange(
-                              graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, strokeWidth: val } : g))
-                            );
-                          }}
-                          className="cad-input"
-                          style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                        />
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div>
+                          <label className="form-label">Слой:</label>
+                          <select
+                            value={selectedGraphic.layer}
+                            onChange={(e) => {
+                              const lyr = e.target.value as any;
+                              handleGraphicsChange(
+                                graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, layer: lyr } : g))
+                              );
+                            }}
+                            className="cad-input"
+                            style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                          >
+                            <option value="top_silk">Шелкография (Silk)</option>
+                            <option value="top_fab">Сборочный (Fab)</option>
+                            <option value="top_courtyard">Дворик (Courtyard)</option>
+                            <option value="bottom_silk">Шелкография низ</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="form-label">Толщина линии (мм):</label>
+                          <input
+                            type="number"
+                            step="0.05"
+                            value={selectedGraphic.strokeWidth}
+                            onChange={(e) => {
+                              const val = parseFloat(e.target.value) || 0.1;
+                              handleGraphicsChange(
+                                graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, strokeWidth: val } : g))
+                              );
+                            }}
+                            className="cad-input"
+                            style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                          />
+                        </div>
                       </div>
+
+                      {/* Специфические параметры для каждого типа графики */}
+                      {selectedGraphic.kind === "line" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">X1 (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.x1}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, x1: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label">Y1 (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.y1}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, y1: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">X2 (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.x2}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, x2: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label">Y2 (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.y2}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, y2: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedGraphic.kind === "rect" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">Центр X (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.x}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, x: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label">Центр Y (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.y}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, y: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">Ширина W (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.width}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0.1;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, width: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label">Высота H (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.height}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0.1;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, height: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
+                            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
+                              <input
+                                type="checkbox"
+                                checked={!!selectedGraphic.filled}
+                                onChange={(e) => {
+                                  const val = e.target.checked;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, filled: val } : g))
+                                  );
+                                }}
+                              />
+                              <span>Заливка фигуры</span>
+                            </label>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedGraphic.kind === "circle" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">Центр X (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.cx}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cx: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label">Центр Y (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.cy}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cy: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">Радиус R (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.radius}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0.1;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, radius: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                            <div style={{ display: "flex", alignItems: "center", paddingTop: 16 }}>
+                              <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
+                                <input
+                                  type="checkbox"
+                                  checked={!!selectedGraphic.filled}
+                                  onChange={(e) => {
+                                    const val = e.target.checked;
+                                    handleGraphicsChange(
+                                      graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, filled: val } : g))
+                                    );
+                                  }}
+                                />
+                                <span>Заливка круга</span>
+                              </label>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
+                      {selectedGraphic.kind === "d_shape" && (
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">Центр X (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.cx}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cx: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label">Центр Y (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.cy}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cy: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">Диаметр ⌀ (мм):</label>
+                              <input
+                                type="number"
+                                step="0.1"
+                                value={selectedGraphic.diameter}
+                                onChange={(e) => {
+                                  const val = parseFloat(e.target.value) || 1.0;
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, diameter: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label">Ориентация среза:</label>
+                              <select
+                                value={selectedGraphic.cutOrientation}
+                                onChange={(e) => {
+                                  const val = e.target.value as "top" | "bottom" | "left" | "right";
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cutOrientation: val } : g))
+                                  );
+                                }}
+                                className="cad-input"
+                                style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                              >
+                                <option value="right">Справа</option>
+                                <option value="top">Сверху</option>
+                                <option value="bottom">Снизу</option>
+                                <option value="left">Слева</option>
+                              </select>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ) : (
                     /* ОБЩИЕ ПАРАМЕТРЫ КОРПУСА */
@@ -1114,22 +1506,24 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                           <div>
-                            <label className="form-label">Маска (Solder Mask):</label>
+                            <label className="form-label">Маска (Solder Mask, мм):</label>
                             <input
                               type="number"
                               step="0.01"
-                              defaultValue={0.05}
+                              value={solderMaskMargin}
+                              onChange={(e) => setSolderMaskMargin(parseFloat(e.target.value) || 0)}
                               className="cad-input"
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               placeholder="0.05 мм"
                             />
                           </div>
                           <div>
-                            <label className="form-label">Паста (Paste Mask):</label>
+                            <label className="form-label">Паста (Paste Mask, мм):</label>
                             <input
                               type="number"
                               step="0.01"
-                              defaultValue={0.00}
+                              value={pasteMaskMargin}
+                              onChange={(e) => setPasteMaskMargin(parseFloat(e.target.value) || 0)}
                               className="cad-input"
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               placeholder="0.00 мм"
@@ -1137,13 +1531,14 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           </div>
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
                           <div>
-                            <label className="form-label">Зазор дворика (Courtyard):</label>
+                            <label className="form-label">Зазор дворика (Courtyard, мм):</label>
                             <input
                               type="number"
                               step="0.05"
-                              defaultValue={0.25}
+                              value={courtyardMargin}
+                              onChange={(e) => setCourtyardMargin(parseFloat(e.target.value) || 0)}
                               className="cad-input"
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               placeholder="0.25 мм"
@@ -1154,10 +1549,79 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             <input
                               type="number"
                               step="0.1"
-                              defaultValue={3.0}
+                              value={maxHeight}
+                              onChange={(e) => setMaxHeight(parseFloat(e.target.value) || 0.1)}
                               className="cad-input"
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               placeholder="3.0 мм"
+                            />
+                          </div>
+                        </div>
+
+                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
+                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
+                            <input
+                              type="checkbox"
+                              checked={hasThermalPad}
+                              onChange={(e) => setHasThermalPad(e.target.checked)}
+                            />
+                            <span>Термоплощадка (EPAD)</span>
+                          </label>
+                          {hasThermalPad && (
+                            <input
+                              type="text"
+                              value={thermalPadNum}
+                              onChange={(e) => setThermalPadNum(e.target.value)}
+                              placeholder="Номер (EP)"
+                              className="cad-input"
+                              style={{ width: 80, padding: "2px 6px", fontSize: 11 }}
+                            />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Карточка: Привязка 3D-модели корпуса */}
+                      <div className="pkg-card">
+                        <div className="pkg-card-header">
+                          <div className="pkg-card-title">
+                            <Box size={13} />
+                            <span>3D-модель корпуса (MCAD)</span>
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="form-label">Файл 3D-модели (STEP / GLTF / OBJ):</label>
+                          <input
+                            type="text"
+                            value={model3dPath}
+                            onChange={(e) => setModel3dPath(e.target.value)}
+                            placeholder="напр. packages/soic8.step"
+                            className="cad-input"
+                            style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                          />
+                        </div>
+
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
+                          <div>
+                            <label className="form-label">Смещение Z (мм):</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={model3dOffsetZ}
+                              onChange={(e) => setModel3dOffsetZ(parseFloat(e.target.value) || 0)}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                            />
+                          </div>
+                          <div>
+                            <label className="form-label">Высота тела (мм):</label>
+                            <input
+                              type="number"
+                              step="0.1"
+                              value={maxHeight}
+                              onChange={(e) => setMaxHeight(parseFloat(e.target.value) || 0.1)}
+                              className="cad-input"
+                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                             />
                           </div>
                         </div>

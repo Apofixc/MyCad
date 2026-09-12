@@ -454,3 +454,85 @@ export function generateAutoSilkscreen(
 
   return [rectItem, dotItem];
 }
+
+/**
+ * Пресеты и генератор 2-выводных чип-компонентов по IPC-7351
+ */
+export interface ChipPreset {
+  name: string;
+  bodyLength: number;
+  bodyWidth: number;
+  pitch: number;
+  padWidth: number;
+  padHeight: number;
+}
+
+export const IPC_CHIP_PRESETS: Record<string, ChipPreset> = {
+  "0402": { name: "0402 (1005 Metric)", bodyLength: 1.0, bodyWidth: 0.5, pitch: 1.0, padWidth: 0.6, padHeight: 0.6 },
+  "0603": { name: "0603 (1608 Metric)", bodyLength: 1.6, bodyWidth: 0.8, pitch: 1.6, padWidth: 0.9, padHeight: 0.9 },
+  "0805": { name: "0805 (2012 Metric)", bodyLength: 2.0, bodyWidth: 1.25, pitch: 1.9, padWidth: 1.0, padHeight: 1.3 },
+  "1206": { name: "1206 (3216 Metric)", bodyLength: 3.2, bodyWidth: 1.6, pitch: 3.2, padWidth: 1.2, padHeight: 1.7 },
+  "1210": { name: "1210 (3225 Metric)", bodyLength: 3.2, bodyWidth: 2.5, pitch: 3.2, padWidth: 1.2, padHeight: 2.6 },
+  "sod123": { name: "SOD-123", bodyLength: 2.7, bodyWidth: 1.6, pitch: 3.4, padWidth: 1.1, padHeight: 0.9 },
+  "sod323": { name: "SOD-323", bodyLength: 1.7, bodyWidth: 1.25, pitch: 2.2, padWidth: 0.8, padHeight: 0.6 },
+};
+
+export function generateChipPads(
+  presetKey: string,
+  direction: "horizontal" | "vertical" = "horizontal"
+): PackagePad[] {
+  const p = IPC_CHIP_PRESETS[presetKey] || IPC_CHIP_PRESETS["0805"];
+  const halfPitch = Math.round((p.pitch / 2) * 1000) / 1000;
+
+  if (direction === "horizontal") {
+    return [
+      {
+        padNum: "1",
+        name: "1",
+        x: -halfPitch,
+        y: 0,
+        width: p.padWidth,
+        height: p.padHeight,
+        rotation: 0,
+        shape: "rounded_rect",
+        roundRadius: 0.05,
+      },
+      {
+        padNum: "2",
+        name: "2",
+        x: halfPitch,
+        y: 0,
+        width: p.padWidth,
+        height: p.padHeight,
+        rotation: 0,
+        shape: "rounded_rect",
+        roundRadius: 0.05,
+      },
+    ];
+  } else {
+    return [
+      {
+        padNum: "1",
+        name: "1",
+        x: 0,
+        y: -halfPitch,
+        width: p.padHeight,
+        height: p.padWidth,
+        rotation: 0,
+        shape: "rounded_rect",
+        roundRadius: 0.05,
+      },
+      {
+        padNum: "2",
+        name: "2",
+        x: 0,
+        y: halfPitch,
+        width: p.padHeight,
+        height: p.padWidth,
+        rotation: 0,
+        shape: "rounded_rect",
+        roundRadius: 0.05,
+      },
+    ];
+  }
+}

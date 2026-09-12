@@ -12,8 +12,10 @@ import {
   generateQuadPadArray,
   generateMatrixPadArray,
   generatePolarPadArray,
+  generateChipPads,
+  IPC_CHIP_PRESETS,
 } from "../../utils/footprintGenerator";
-import { X, Layers, Check, Grid, Sparkles, Sliders } from "lucide-react";
+import { X, Layers, Check, Grid, Sparkles, Sliders, Box } from "lucide-react";
 
 interface PadArrayModalProps {
   isOpen: boolean;
@@ -21,7 +23,7 @@ interface PadArrayModalProps {
   onApplyPads: (newPads: PackagePad[]) => void;
 }
 
-type ArrayType = "linear" | "dual" | "quad" | "matrix" | "polar";
+type ArrayType = "linear" | "dual" | "quad" | "matrix" | "polar" | "chip";
 
 export const PadArrayModal: React.FC<PadArrayModalProps> = ({
   isOpen,
@@ -35,6 +37,10 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
   const [padWidth, setPadWidth] = useState<number>(1.6);
   const [padHeight, setPadHeight] = useState<number>(0.6);
   const [drillDiameter, setDrillDiameter] = useState<number>(0);
+
+  // Чип 2-Pin (IPC-7351)
+  const [chipPreset, setChipPreset] = useState<string>("0805");
+  const [chipDir, setChipDir] = useState<"horizontal" | "vertical">("horizontal");
 
   // Линейный
   const [linearCount, setLinearCount] = useState<number>(8);
@@ -133,6 +139,17 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
       estW = polarRadius * 2 + padWidth;
       estH = polarRadius * 2 + padHeight;
       break;
+    case "chip":
+      totalPads = 2;
+      estW =
+        chipDir === "horizontal"
+          ? (IPC_CHIP_PRESETS[chipPreset]?.pitch || 1.9) + (IPC_CHIP_PRESETS[chipPreset]?.padWidth || 1.0)
+          : (IPC_CHIP_PRESETS[chipPreset]?.padHeight || 1.3);
+      estH =
+        chipDir === "horizontal"
+          ? (IPC_CHIP_PRESETS[chipPreset]?.padHeight || 1.3)
+          : (IPC_CHIP_PRESETS[chipPreset]?.pitch || 1.9) + (IPC_CHIP_PRESETS[chipPreset]?.padWidth || 1.0);
+      break;
   }
 
   const handleGenerate = () => {
@@ -166,6 +183,9 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
         break;
       case "polar":
         generated = generatePolarPadArray(polarCount, polarRadius, polarStartAngle, tpl);
+        break;
+      case "chip":
+        generated = generateChipPads(chipPreset, chipDir);
         break;
     }
 
@@ -213,7 +233,7 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
             <div
               style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(5, 1fr)",
+                gridTemplateColumns: "repeat(6, 1fr)",
                 gap: 4,
                 background: "var(--cad-bg-surface)",
                 padding: 3,
@@ -227,6 +247,7 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
                 { id: "quad", label: "4-рядный (QFP)" },
                 { id: "matrix", label: "Матрица (BGA)" },
                 { id: "polar", label: "Круговой" },
+                { id: "chip", label: "Чип (0805)" },
               ].map((t) => {
                 const isActive = arrayType === t.id;
                 return (
@@ -578,6 +599,38 @@ export const PadArrayModal: React.FC<PadArrayModalProps> = ({
                     className="cad-input"
                     style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
                   />
+                </div>
+              </div>
+            )}
+
+            {arrayType === "chip" && (
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div className="form-group">
+                  <label className="form-label">Типоразмер чипа (IPC):</label>
+                  <select
+                    value={chipPreset}
+                    onChange={(e) => setChipPreset(e.target.value)}
+                    className="cad-input"
+                    style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                  >
+                    {Object.entries(IPC_CHIP_PRESETS).map(([k, p]) => (
+                      <option key={k} value={k}>
+                        {p.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Ориентация выводов:</label>
+                  <select
+                    value={chipDir}
+                    onChange={(e) => setChipDir(e.target.value as any)}
+                    className="cad-input"
+                    style={{ width: "100%", padding: "5px 8px", fontSize: 11 }}
+                  >
+                    <option value="horizontal">Горизонтально (1 слева, 2 справа)</option>
+                    <option value="vertical">Вертикально (1 сверху, 2 снизу)</option>
+                  </select>
                 </div>
               </div>
             )}

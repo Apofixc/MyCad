@@ -46,6 +46,10 @@ interface InteractiveFootprintCanvasProps {
   onSelectPad: (padNum: string | null) => void;
   onSelectGraphic: (id: string | null) => void;
   onShiftOrigin: (dx: number, dy: number) => void;
+  onSetActiveTool?: (tool: EditorTool) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  onDeleteSelected?: () => void;
 }
 
 export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProps> = ({
@@ -63,6 +67,10 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   onSelectPad,
   onSelectGraphic,
   onShiftOrigin,
+  onSetActiveTool,
+  onUndo,
+  onRedo,
+  onDeleteSelected,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -81,9 +89,93 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   const [draggingPadNum, setDraggingPadNum] = useState<string | null>(null);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  // Перетаскивание графического примитива
+  const [draggingGraphicId, setDraggingGraphicId] = useState<string | null>(null);
+  const [graphicDragOrigin, setGraphicDragOrigin] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
   // Линия/измерение в процессе черчения
   const [drawStart, setDrawStart] = useState<{ x: number; y: number } | null>(null);
   const [measureDist, setMeasureDist] = useState<{ dx: number; dy: number; dist: number } | null>(null);
+
+  // Слушатель горячих клавиш
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (
+        target &&
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")
+      ) {
+        return;
+      }
+
+      if (e.key === "Delete" || e.key === "Backspace") {
+        if (onDeleteSelected) {
+          e.preventDefault();
+          onDeleteSelected();
+        } else if (selectedPadNum) {
+          e.preventDefault();
+          onPadsChange(pads.filter((p) => p.padNum !== selectedPadNum));
+          onSelectPad(null);
+        } else if (selectedGraphicId) {
+          e.preventDefault();
+          onGraphicsChange(graphics.filter((g) => g.id !== selectedGraphicId));
+          onSelectGraphic(null);
+        }
+        return;
+      }
+
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setDrawStart(null);
+        setMeasureDist(null);
+        onSelectPad(null);
+        onSelectGraphic(null);
+        onSetActiveTool?.("select");
+        return;
+      }
+
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === "z" || e.key === "Z" || e.key === "я" || e.key === "Я") {
+          e.preventDefault();
+          if (e.shiftKey) {
+            onRedo?.();
+          } else {
+            onUndo?.();
+          }
+          return;
+        }
+        if (e.key === "y" || e.key === "Y" || e.key === "н" || e.key === "Н") {
+          e.preventDefault();
+          onRedo?.();
+          return;
+        }
+      }
+
+      const key = e.key.toLowerCase();
+      if (key === "v" || key === "м") onSetActiveTool?.("select");
+      else if (key === "p" || key === "з") onSetActiveTool?.("pad");
+      else if (key === "l" || key === "д") onSetActiveTool?.("line");
+      else if (key === "r" || key === "к") onSetActiveTool?.("rect");
+      else if (key === "c" || key === "с") onSetActiveTool?.("circle");
+      else if (key === "m" || key === "ь") onSetActiveTool?.("measure");
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    selectedPadNum,
+    selectedGraphicId,
+    pads,
+    graphics,
+    onDeleteSelected,
+    onPadsChange,
+    onGraphicsChange,
+    onSelectPad,
+    onSelectGraphic,
+    onSetActiveTool,
+    onUndo,
+    onRedo,
+  ]);
 
   // Привязка к сетке
   const snapCoord = useCallback(
@@ -177,7 +269,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       return;
     }
 
-    if (activeTool === "line" || activeTool === "measure" || activeTool === "rect") {
+    if (activeTool === "line" || activeTool === "measure" || activeTool === "rect" || activeTool === "circle") {
       if (!drawStart) {
         setDrawStart(snapped);
       } else {
@@ -211,6 +303,21 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
               filled: false,
             };
             onGraphicsChange([...graphics, newRect]);
+          }
+        } else if (activeTool === "circle") {
+          const r = Math.hypot(snapped.x - drawStart.x, snapped.y - drawStart.y);
+          if (r > 0.05) {
+            const newCircle: GraphicItem = {
+              kind: "circle",
+              id: `circle_${Date.now()}`,
+              cx: drawStart.x,
+              cy: drawStart.y,
+              radius: Math.round(r * 1000) / 1000,
+              strokeWidth: 0.15,
+              layer: "top_silk",
+              filled: false,
+            };
+            onGraphicsChange([...graphics, newCircle]);
           }
         }
         setDrawStart(null);
@@ -280,6 +387,61 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       return;
     }
 
+    if (draggingGraphicId) {
+      const curX = snapCoord(world.x);
+      const curY = snapCoord(world.y);
+      const dx = curX - graphicDragOrigin.x;
+      const dy = curY - graphicDragOrigin.y;
+      if (dx !== 0 || dy !== 0) {
+        onGraphicsChange(
+          graphics.map((g) => {
+            if (g.id !== draggingGraphicId) return g;
+            switch (g.kind) {
+              case "line":
+                return {
+                  ...g,
+                  x1: Math.round((g.x1 + dx) * 1000) / 1000,
+                  y1: Math.round((g.y1 + dy) * 1000) / 1000,
+                  x2: Math.round((g.x2 + dx) * 1000) / 1000,
+                  y2: Math.round((g.y2 + dy) * 1000) / 1000,
+                };
+              case "rect":
+              case "text":
+                return {
+                  ...g,
+                  x: Math.round((g.x + dx) * 1000) / 1000,
+                  y: Math.round((g.y + dy) * 1000) / 1000,
+                };
+              case "circle":
+              case "arc":
+              case "d_shape":
+              case "capsule":
+                return {
+                  ...g,
+                  cx: Math.round((g.cx + dx) * 1000) / 1000,
+                  cy: Math.round((g.cy + dy) * 1000) / 1000,
+                };
+              case "polygon":
+                return {
+                  ...g,
+                  points: g.points.map(
+                    ([px, py]) =>
+                      [Math.round((px + dx) * 1000) / 1000, Math.round((py + dy) * 1000) / 1000] as [
+                        number,
+                        number
+                      ]
+                  ),
+                };
+              default:
+                return g;
+            }
+          })
+        );
+        setGraphicDragOrigin({ x: curX, y: curY });
+      }
+      return;
+    }
+
     if (drawStart) {
       const dx = snapped.x - drawStart.x;
       const dy = snapped.y - drawStart.y;
@@ -295,6 +457,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   const handleMouseUp = () => {
     setIsPanning(false);
     setDraggingPadNum(null);
+    setDraggingGraphicId(null);
   };
 
   // Хелпер вычисления следующего номера площадки
@@ -427,6 +590,20 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
             const isSelected = selectedGraphicId === item.id;
             const strokeColor = isSelected ? "#38bdf8" : "#f8fafc";
             const strokeWidth = item.strokeWidth || 0.15;
+            const pointerStyle = {
+              pointerEvents: "auto" as const,
+              cursor: activeTool === "select" ? "move" : "pointer",
+            };
+            const handleGraphicMouseDown = (e: React.MouseEvent) => {
+              if (activeTool === "select" && e.button === 0) {
+                e.stopPropagation();
+                onSelectGraphic(item.id);
+                onSelectPad(null);
+                setDraggingGraphicId(item.id);
+                const world = screenToWorld(e.clientX, e.clientY);
+                setGraphicDragOrigin({ x: snapCoord(world.x), y: snapCoord(world.y) });
+              }
+            };
 
             switch (item.kind) {
               case "line":
@@ -440,7 +617,8 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
                     strokeLinecap="round"
-                    style={{ pointerEvents: "auto", cursor: "pointer" }}
+                    style={pointerStyle}
+                    onMouseDown={handleGraphicMouseDown}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectGraphic(item.id);
@@ -456,7 +634,8 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                     fill="none"
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
-                    style={{ pointerEvents: "auto", cursor: "pointer" }}
+                    style={pointerStyle}
+                    onMouseDown={handleGraphicMouseDown}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectGraphic(item.id);
@@ -472,7 +651,8 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                     fill="none"
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
-                    style={{ pointerEvents: "auto", cursor: "pointer" }}
+                    style={pointerStyle}
+                    onMouseDown={handleGraphicMouseDown}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectGraphic(item.id);
@@ -492,7 +672,8 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                     fill={item.filled ? strokeColor : "none"}
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
-                    style={{ pointerEvents: "auto", cursor: "pointer" }}
+                    style={pointerStyle}
+                    onMouseDown={handleGraphicMouseDown}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectGraphic(item.id);
@@ -510,7 +691,8 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                     fill={item.filled ? strokeColor : "none"}
                     stroke={strokeColor}
                     strokeWidth={strokeWidth}
-                    style={{ pointerEvents: "auto", cursor: "pointer" }}
+                    style={pointerStyle}
+                    onMouseDown={handleGraphicMouseDown}
                     onClick={(e) => {
                       e.stopPropagation();
                       onSelectGraphic(item.id);
@@ -533,6 +715,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
             return (
               <g
                 key={pad.padNum}
+                transform={pad.rotation ? `rotate(${pad.rotation} ${pad.x} ${pad.y})` : undefined}
                 style={{ pointerEvents: "auto", cursor: activeTool === "select" ? "move" : "pointer" }}
                 onMouseDown={(e) => {
                   if (activeTool === "select" && e.button === 0) {
@@ -637,6 +820,17 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                   width={Math.abs(cursorPos.x - drawStart.x)}
                   height={Math.abs(cursorPos.y - drawStart.y)}
                   fill="rgba(56, 189, 248, 0.15)"
+                  stroke="#38bdf8"
+                  strokeWidth={0.15}
+                  strokeDasharray="0.3 0.2"
+                />
+              )}
+              {activeTool === "circle" && (
+                <circle
+                  cx={drawStart.x}
+                  cy={drawStart.y}
+                  r={Math.hypot(cursorPos.x - drawStart.x, cursorPos.y - drawStart.y)}
+                  fill="rgba(56, 189, 248, 0.12)"
                   stroke="#38bdf8"
                   strokeWidth={0.15}
                   strokeDasharray="0.3 0.2"

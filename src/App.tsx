@@ -22,7 +22,7 @@ import { ErrorDialog } from "./components/Common/ErrorDialog";
 import { ErrorBoundary } from "./components/Common/ErrorBoundary";
 
 export const App: React.FC = () => {
-  const { manifest, saveProject, activeFileType, board, schematic, addComponent } = useProjectStore();
+  const { manifest, saveProject, activeFileType, board, schematic, addComponent, updateComponent } = useProjectStore();
   const {
     leftSidebarCollapsed,
     rightSidebarCollapsed,
@@ -214,6 +214,17 @@ export const App: React.FC = () => {
         onClose={() => closeModal("packageEditor")}
         onSave={async (pkg) => {
           await savePackage(pkg);
+          // Синхронизация с уже размещенными на плате компонентами
+          const currentBoardComps = board?.data?.components || [];
+          for (const comp of currentBoardComps) {
+            if (comp.packageId === pkg.id || comp.packageDef?.id === pkg.id) {
+              await updateComponent({
+                ...comp,
+                packageDef: pkg,
+                package: pkg.name,
+              });
+            }
+          }
           closeModal("packageEditor");
         }}
       />
