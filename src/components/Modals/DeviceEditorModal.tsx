@@ -1427,84 +1427,53 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
           </button>
         </div>
 
+        {/* Верхняя глобальная панель вкладок редактора */}
+        <div className="device-global-tabs-bar">
+          <button
+            type="button"
+            className={`device-global-tab-btn ${activeLeftTab === "properties" ? "active" : ""}`}
+            onClick={() => setActiveLeftTab("properties")}
+          >
+            <FileText size={14} />
+            <span>1. Параметры детали & Корпуса</span>
+            {supportedPackages.length > 0 && (
+              <span className="device-chip-count">{supportedPackages.length} корп.</span>
+            )}
+          </button>
+          <button
+            type="button"
+            className={`device-global-tab-btn ${activeLeftTab === "pins" ? "active" : ""}`}
+            onClick={() => setActiveLeftTab("pins")}
+          >
+            <Sparkles size={14} />
+            <span>2. Выводы схемы (Pins) & Сопоставление</span>
+            <span className="device-chip-count">{logicalPins.length} шт.</span>
+            {mappingCoverage && mappingCoverage.total > 0 && (
+              <span
+                className={`mapping-coverage-pill ${mappingCoverage.percent === 100 ? "complete" : "partial"}`}
+                style={{ padding: "1px 6px", fontSize: "10px" }}
+              >
+                {mappingCoverage.mapped}/{mappingCoverage.total} ({mappingCoverage.percent}%)
+              </span>
+            )}
+            {duplicatePinNames.size > 0 && (
+              <span
+                style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: 2 }}
+                title="Обнаружены одинаковые имена выводов!"
+              >
+                <AlertTriangle size={12} />
+              </span>
+            )}
+          </button>
+        </div>
+
         {/* Тело модального окна: двухколоночная CAD-сетка */}
         <div className="device-editor-grid">
-          {/* Левая колонка: Переключаемые вкладки «Параметры детали» и «Выводы схемы (Pins)» */}
-          <div className="device-col">
-            {/* Вкладки переключения левой панели в стиле CAD Studio */}
-            <div
-              style={{
-                display: "flex",
-                gap: 5,
-                background: "rgba(18, 24, 34, 0.95)",
-                border: "1px solid var(--cad-border, #283344)",
-                borderRadius: 8,
-                padding: "3px 4px",
-                flexShrink: 0,
-              }}
-            >
-              <button
-                type="button"
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 7,
-                  padding: "7px 12px",
-                  borderRadius: 6,
-                  border: activeLeftTab === "properties" ? "1px solid rgba(59, 130, 246, 0.45)" : "1px solid transparent",
-                  background: activeLeftTab === "properties" ? "linear-gradient(180deg, rgba(59, 130, 246, 0.22) 0%, rgba(37, 99, 235, 0.1) 100%)" : "transparent",
-                  color: activeLeftTab === "properties" ? "#93c5fd" : "var(--cad-text-muted)",
-                  fontWeight: activeLeftTab === "properties" ? 700 : 500,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  boxShadow: activeLeftTab === "properties" ? "0 2px 6px rgba(0, 0, 0, 0.3)" : "none",
-                }}
-                onClick={() => setActiveLeftTab("properties")}
-              >
-                <FileText size={13} />
-                <span>Параметры детали</span>
-              </button>
-              <button
-                type="button"
-                style={{
-                  flex: 1,
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  gap: 7,
-                  padding: "7px 12px",
-                  borderRadius: 6,
-                  border: activeLeftTab === "pins" ? "1px solid rgba(59, 130, 246, 0.45)" : "1px solid transparent",
-                  background: activeLeftTab === "pins" ? "linear-gradient(180deg, rgba(59, 130, 246, 0.22) 0%, rgba(37, 99, 235, 0.1) 100%)" : "transparent",
-                  color: activeLeftTab === "pins" ? "#93c5fd" : "var(--cad-text-muted)",
-                  fontWeight: activeLeftTab === "pins" ? 700 : 500,
-                  fontSize: 12,
-                  cursor: "pointer",
-                  transition: "all 0.15s ease",
-                  boxShadow: activeLeftTab === "pins" ? "0 2px 6px rgba(0, 0, 0, 0.3)" : "none",
-                }}
-                onClick={() => setActiveLeftTab("pins")}
-              >
-                <Sparkles size={13} />
-                <span>Выводы схемы (Pins)</span>
-                <span className="device-chip-count">{logicalPins.length} шт.</span>
-                {duplicatePinNames.size > 0 && (
-                  <span
-                    style={{ color: "#ef4444", display: "inline-flex", alignItems: "center", gap: 2 }}
-                    title="Обнаружены одинаковые имена выводов!"
-                  >
-                    <AlertTriangle size={12} />
-                  </span>
-                )}
-              </button>
-            </div>
-
-            {/* Вкладка 1: Параметры детали */}
-            {activeLeftTab === "properties" ? (
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 10 }}>
+          {activeLeftTab === "properties" ? (
+            <>
+              {/* Левая колонка Вкладки 1: Параметры детали */}
+              <div className="device-col">
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 10 }}>
                 {/* Селектор назначения компонента: Базовый шаблон vs Готовая деталь */}
                 <div
                   style={{
@@ -2117,23 +2086,340 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 }}
               >
                 <span style={{ fontSize: 11, color: "var(--cad-text-muted)" }}>
-                  Выводов схемы: <strong style={{ color: "var(--cad-text-main)" }}>{logicalPins.length} шт.</strong>
+                  Выводов схемы (Pins): <strong style={{ color: "var(--cad-text-main)" }}>{logicalPins.length} шт.</strong>
                 </span>
-                <button
-                  type="button"
-                  className="cad-btn-primary"
-                  style={{ fontSize: 11, padding: "5px 12px", gap: 6 }}
-                  onClick={() => setActiveLeftTab("pins")}
-                >
-                  <span>Настроить выводы схемы</span>
-                  <ArrowRight size={13} />
-                </button>
+                {duplicatePinNames.size > 0 && (
+                  <span
+                    style={{ color: "#ef4444", fontSize: 10.5, display: "inline-flex", alignItems: "center", gap: 4 }}
+                    title="Обнаружены одинаковые имена выводов!"
+                  >
+                    <AlertTriangle size={12} />
+                    <span>Повторяющиеся имена</span>
+                  </span>
+                )}
               </div>
             </div>
           </div>
-        ) : (
-          /* Вкладка 2: Логические выводы схемы (Logical Pins) - НА ВСЮ ВЫСОТУ */
-          <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 8 }}>
+        </div>
+
+          {/* Правая колонка Вкладки 1: Управление привязанными корпусами и обзор чертежа */}
+          <div className="device-col">
+            {/* Карточка 1: Привязанные корпуса */}
+            <div className="device-card" style={{ flexShrink: 0 }}>
+              <div className="device-card-header">
+                <div className="device-card-title">
+                  <Box size={13} />
+                  <span>Привязанные корпуса</span>
+                  <span className="device-chip-count">{supportedPackages.length}</span>
+                </div>
+                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+                  <button
+                    type="button"
+                    className="cad-btn-primary"
+                    style={{ fontSize: 10, padding: "3px 10px", height: 24, gap: 4 }}
+                    onClick={() => {
+                      setPkgPickerSearch("");
+                      setPkgPickerMountFilter("all");
+                      setIsPkgPickerOpen(true);
+                    }}
+                    title="Открыть каталог библиотеки для выбора и привязки корпуса"
+                  >
+                    <Plus size={12} /> Выбрать из библиотеки...
+                  </button>
+                  {onCreateNewPackage && (
+                    <button
+                      type="button"
+                      className="cad-btn-secondary"
+                      style={{ fontSize: 10, padding: "3px 8px", height: 24 }}
+                      onClick={onCreateNewPackage}
+                      title="Создать новое посадочное место в редакторе корпусов"
+                    >
+                      Создать корпус
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              {/* Список привязанных корпусов в виде стильных CAD-чипов со статусом и основным корпусом ⭐ */}
+              <div className="device-pkg-chips-wrap">
+                {supportedPackages.length === 0 ? (
+                  <div style={{ fontSize: 11, color: "var(--cad-text-dim)", padding: "4px 0" }}>
+                    Корпуса не привязаны. Нажмите «Выбрать из библиотеки...», чтобы привязать посадочное место.
+                  </div>
+                ) : (
+                  supportedPackages.map((binding, idx) => {
+                    const pkg = availablePackages.find((p) => p.id === binding.packageId);
+                    const isSelected = activePackageId === binding.packageId;
+                    const isPrimary = idx === 0;
+                    const readiness = getPackageReadiness(binding);
+
+                    return (
+                      <div
+                        key={binding.packageId}
+                        className={`device-pkg-chip ${isSelected ? "active" : ""}`}
+                        onClick={() => setActivePackageId(binding.packageId)}
+                        title={`Нажмите для выбора корпуса ${pkg?.name || binding.packageId}`}
+                      >
+                        {/* Кнопка назначения основного корпуса ⭐ */}
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSetPrimaryPackage(binding.packageId);
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            padding: 0,
+                            cursor: isPrimary ? "default" : "pointer",
+                            display: "flex",
+                            alignItems: "center",
+                            color: isPrimary ? "#fbbf24" : "var(--cad-text-dim)",
+                          }}
+                          title={isPrimary ? "Основной корпус детали (Primary ⭐)" : "Сделать основным корпусом (⭐)"}
+                        >
+                          <Star size={12} fill={isPrimary ? "#fbbf24" : "none"} />
+                        </button>
+
+                        <Box size={12} color={isSelected ? "var(--cad-accent-hover)" : "var(--cad-text-dim)"} />
+                        <span style={{ fontWeight: isSelected ? 600 : 500 }}>
+                          {pkg?.name || binding.packageId}
+                        </span>
+
+                        {pkg && (
+                          <span style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>
+                            ({pkg.pads.length}п.)
+                          </span>
+                        )}
+
+                        {/* Индикатор готовности распиновки */}
+                        <span className={`pkg-status-badge ${readiness.isComplete ? "complete" : "partial"}`}>
+                          {readiness.isComplete ? (
+                            <>
+                              <CheckCircle2 size={9} /> {readiness.mapped}/{readiness.total}
+                            </>
+                          ) : (
+                            <>
+                              {readiness.mapped}/{readiness.total}
+                            </>
+                          )}
+                        </span>
+
+                        <button
+                          type="button"
+                          className="device-pkg-chip-remove"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemovePackageBinding(binding.packageId);
+                          }}
+                          title="Отвязать этот корпус"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* Настройки выбранного корпуса: выбор варианта исполнения и копирование распиновки */}
+              {currentPkgDef && currentMapping && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "space-between",
+                    gap: 8,
+                    paddingTop: 6,
+                    borderTop: "1px solid rgba(255, 255, 255, 0.05)",
+                    fontSize: 10.5,
+                  }}
+                >
+                  {/* Выбор варианта исполнения корпуса */}
+                  {currentPkgDef.variants && currentPkgDef.variants.length > 1 ? (
+                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                      <label style={{ color: "var(--cad-text-muted)" }}>Вариант корпуса:</label>
+                      <select
+                        value={currentMapping.defaultVariantId || currentPkgDef.defaultVariantId}
+                        onChange={(e) => handleSelectDefaultVariant(currentPkgDef.id, e.target.value)}
+                        className="cad-input"
+                        style={{ fontSize: 10, padding: "2px 6px", height: 22 }}
+                      >
+                        {currentPkgDef.variants.map((v) => (
+                          <option key={v.id} value={v.id}>
+                            {v.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  ) : (
+                    <div style={{ color: "var(--cad-text-dim)" }}>
+                      Тип монтажа: <strong>{currentPkgDef.mountType.toUpperCase()}</strong> | Площадок: <strong>{currentPkgDef.pads.length}</strong>
+                    </div>
+                  )}
+
+                  {/* Копирование распиновки из другого привязанного корпуса */}
+                  {supportedPackages.length > 1 && (
+                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                      <Copy size={11} color="var(--cad-text-dim)" />
+                      <select
+                        defaultValue=""
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            handleCopyMappingFrom(e.target.value);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="cad-input"
+                        style={{ fontSize: 10, padding: "2px 6px", height: 22, maxWidth: 170 }}
+                        title="Скопировать распиновку из другого корпуса, если нумерация выводов совпадает"
+                      >
+                        <option value="" disabled>Скопировать распиновку из...</option>
+                        {supportedPackages
+                          .filter((p) => p.packageId !== activePackageId)
+                          .map((p) => {
+                            const otherPkg = availablePackages.find((ap) => ap.id === p.packageId);
+                            return (
+                              <option key={p.packageId} value={p.packageId}>
+                                {otherPkg?.name || p.packageId}
+                              </option>
+                            );
+                          })}
+                      </select>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Предупреждение о нехватке контактных площадок у корпуса */}
+              {currentPkgDef && currentPkgDef.pads.length < logicalPins.length && (
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                    padding: "4px 8px",
+                    borderRadius: 4,
+                    background: "rgba(239, 68, 68, 0.12)",
+                    border: "1px solid rgba(239, 68, 68, 0.3)",
+                    color: "#fca5a5",
+                    fontSize: 10.5,
+                  }}
+                >
+                  <AlertTriangle size={12} color="#ef4444" style={{ flexShrink: 0 }} />
+                  <span>
+                    Внимание: у корпуса площадок ({currentPkgDef.pads.length}) меньше, чем выводов схемы ({logicalPins.length}). Часть сигналов не сможет быть выведена на плату!
+                  </span>
+                </div>
+              )}
+            </div>
+
+            {/* Карточка 2: Обзор чертежа посадочного места выбранного корпуса */}
+            <div className="device-pkg-overview-card">
+              <div className="device-card-header" style={{ paddingBottom: 6 }}>
+                <div className="device-card-title" style={{ gap: 6 }}>
+                  <Box size={13} color="#60a5fa" />
+                  <span>Чертёж посадочного места</span>
+                </div>
+                {currentPkgDef && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                    <span className="mapping-sub-pkg-tag">{currentPkgDef.mountType.toUpperCase()}</span>
+                    <span className="mapping-sub-pkg-dot">•</span>
+                    <span className="mapping-sub-pkg-tag">{currentPkgDef.pads.length} площадок</span>
+                  </div>
+                )}
+              </div>
+
+              {currentPkgDef ? (
+                <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 10 }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11 }}>
+                    <div style={{ fontWeight: 600, color: "var(--cad-text-main)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                      {currentPkgDef.name}
+                    </div>
+                    {currentPkgDef.variants && currentPkgDef.variants.length > 1 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+                        <span style={{ fontSize: 10, color: "var(--cad-text-muted)" }}>Исполнение:</span>
+                        <select
+                          value={currentMapping?.defaultVariantId || currentPkgDef.defaultVariantId}
+                          onChange={(e) => handleSelectDefaultVariant(currentPkgDef.id, e.target.value)}
+                          className="cad-input"
+                          style={{ fontSize: 10, padding: "1px 6px", height: 22 }}
+                        >
+                          {currentPkgDef.variants.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
+                  <div style={{ flex: 1, minHeight: 180, background: "rgba(0, 0, 0, 0.25)", borderRadius: 6, border: "1px solid var(--cad-border)", overflow: "hidden", position: "relative" }}>
+                    <FootprintPreview
+                      packageDef={currentPkgDef}
+                      variant={currentPkgDef.variants?.find((v) => v.id === (currentMapping?.defaultVariantId || currentPkgDef.defaultVariantId))}
+                      showDimensions={true}
+                      interactive={false}
+                      padLabels={padLabels}
+                      padColors={padColors}
+                      unassignedPadNums={unassignedPadNums}
+                      height={240}
+                    />
+                  </div>
+
+                  <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 10, paddingTop: 4 }}>
+                    <div style={{ fontSize: 11, color: "var(--cad-text-muted)" }}>
+                      Готовность распиновки:{" "}
+                      <strong style={{ color: mappingCoverage.percent === 100 ? "#10b981" : "#f59e0b" }}>
+                        {mappingCoverage.mapped}/{mappingCoverage.total} ({mappingCoverage.percent}%)
+                      </strong>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div
+                  style={{
+                    flex: 1,
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 10,
+                    color: "var(--cad-text-dim)",
+                    padding: 24,
+                    textAlign: "center",
+                  }}
+                >
+                  <Box size={40} color="var(--cad-border)" />
+                  <div style={{ fontSize: 13, color: "var(--cad-text-muted)", fontWeight: 600 }}>
+                    Корпус не выбран
+                  </div>
+                  <div style={{ fontSize: 11, maxWidth: 280 }}>
+                    Привяжите посадочное место из библиотеки выше, чтобы просмотреть чертёж и сопоставить выводы.
+                  </div>
+                  <button
+                    type="button"
+                    className="cad-btn-primary"
+                    style={{ fontSize: 11, padding: "5px 14px", gap: 6, marginTop: 4 }}
+                    onClick={() => {
+                      setPkgPickerSearch("");
+                      setPkgPickerMountFilter("all");
+                      setIsPkgPickerOpen(true);
+                    }}
+                  >
+                    <Plus size={13} /> Выбрать из библиотеки...
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <>
+          {/* Левая колонка Вкладки 2: Логические выводы схемы (Logical Pins) */}
+          <div className="device-col">
+            <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0, gap: 8 }}>
             {/* Верхняя панель действий (Unified CAD Toolbar) */}
             <div
               style={{
@@ -2664,222 +2950,11 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               </span>
             </div>
           </div>
-        )}
         </div>
 
-        {/* Правая колонка: Привязанные корпуса и таблица сопоставления Pin-to-Pad */}
+          {/* Правая колонка Вкладки 2: Сопоставление выводов схемы с контактными площадками (Pin-to-Pad Mapping) */}
           <div className="device-col">
-            {/* Карточка 1: Посадочные места (Footprints) */}
-            <div className="device-card" style={{ flexShrink: 0 }}>
-              <div className="device-card-header">
-                <div className="device-card-title">
-                  <Box size={13} />
-                  <span>Привязанные корпуса</span>
-                  <span className="device-chip-count">{supportedPackages.length}</span>
-                </div>
-                <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
-                  <button
-                    type="button"
-                    className="cad-btn-primary"
-                    style={{ fontSize: 10, padding: "3px 10px", height: 24, gap: 4 }}
-                    onClick={() => {
-                      setPkgPickerSearch("");
-                      setPkgPickerMountFilter("all");
-                      setIsPkgPickerOpen(true);
-                    }}
-                    title="Открыть каталог библиотеки для выбора и привязки корпуса"
-                  >
-                    <Plus size={12} /> Выбрать из библиотеки...
-                  </button>
-                  {onCreateNewPackage && (
-                    <button
-                      type="button"
-                      className="cad-btn-secondary"
-                      style={{ fontSize: 10, padding: "3px 8px", height: 24 }}
-                      onClick={onCreateNewPackage}
-                      title="Создать новое посадочное место в редакторе корпусов"
-                    >
-                      Создать корпус
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              {/* Список привязанных корпусов в виде стильных CAD-чипов со статусом и основным корпусом ⭐ */}
-              <div className="device-pkg-chips-wrap">
-                {supportedPackages.length === 0 ? (
-                  <div style={{ fontSize: 11, color: "var(--cad-text-dim)", padding: "4px 0" }}>
-                    Корпуса не привязаны. Нажмите «Выбрать из библиотеки...», чтобы привязать посадочное место.
-                  </div>
-                ) : (
-                  supportedPackages.map((binding, idx) => {
-                    const pkg = availablePackages.find((p) => p.id === binding.packageId);
-                    const isSelected = activePackageId === binding.packageId;
-                    const isPrimary = idx === 0;
-                    const readiness = getPackageReadiness(binding);
-
-                    return (
-                      <div
-                        key={binding.packageId}
-                        className={`device-pkg-chip ${isSelected ? "active" : ""}`}
-                        onClick={() => setActivePackageId(binding.packageId)}
-                        title={`Нажмите для настройки сопоставления выводов для ${pkg?.name || binding.packageId}`}
-                      >
-                        {/* Кнопка назначения основного корпуса ⭐ */}
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleSetPrimaryPackage(binding.packageId);
-                          }}
-                          style={{
-                            background: "none",
-                            border: "none",
-                            padding: 0,
-                            cursor: isPrimary ? "default" : "pointer",
-                            display: "flex",
-                            alignItems: "center",
-                            color: isPrimary ? "#fbbf24" : "var(--cad-text-dim)",
-                          }}
-                          title={isPrimary ? "Основной корпус детали (Primary ⭐)" : "Сделать основным корпусом (⭐)"}
-                        >
-                          <Star size={12} fill={isPrimary ? "#fbbf24" : "none"} />
-                        </button>
-
-                        <Box size={12} color={isSelected ? "var(--cad-accent-hover)" : "var(--cad-text-dim)"} />
-                        <span style={{ fontWeight: isSelected ? 600 : 500 }}>
-                          {pkg?.name || binding.packageId}
-                        </span>
-
-                        {pkg && (
-                          <span style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>
-                            ({pkg.pads.length}п.)
-                          </span>
-                        )}
-
-                        {/* Индикатор готовности распиновки */}
-                        <span className={`pkg-status-badge ${readiness.isComplete ? "complete" : "partial"}`}>
-                          {readiness.isComplete ? (
-                            <>
-                              <CheckCircle2 size={9} /> {readiness.mapped}/{readiness.total}
-                            </>
-                          ) : (
-                            <>
-                              {readiness.mapped}/{readiness.total}
-                            </>
-                          )}
-                        </span>
-
-                        <button
-                          type="button"
-                          className="device-pkg-chip-remove"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRemovePackageBinding(binding.packageId);
-                          }}
-                          title="Отвязать этот корпус"
-                        >
-                          <X size={12} />
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Настройки выбранного корпуса: выбор варианта исполнения и копирование распиновки */}
-              {currentPkgDef && currentMapping && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "space-between",
-                    gap: 8,
-                    paddingTop: 6,
-                    borderTop: "1px solid rgba(255, 255, 255, 0.05)",
-                    fontSize: 10.5,
-                  }}
-                >
-                  {/* Выбор варианта исполнения корпуса */}
-                  {currentPkgDef.variants && currentPkgDef.variants.length > 1 ? (
-                    <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <label style={{ color: "var(--cad-text-muted)" }}>Вариант корпуса:</label>
-                      <select
-                        value={currentMapping.defaultVariantId || currentPkgDef.defaultVariantId}
-                        onChange={(e) => handleSelectDefaultVariant(currentPkgDef.id, e.target.value)}
-                        className="cad-input"
-                        style={{ fontSize: 10, padding: "2px 6px", height: 22 }}
-                      >
-                        {currentPkgDef.variants.map((v) => (
-                          <option key={v.id} value={v.id}>
-                            {v.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  ) : (
-                    <div style={{ color: "var(--cad-text-dim)" }}>
-                      Тип монтажа: <strong>{currentPkgDef.mountType.toUpperCase()}</strong> | Площадок: <strong>{currentPkgDef.pads.length}</strong>
-                    </div>
-                  )}
-
-                  {/* Копирование распиновки из другого привязанного корпуса */}
-                  {supportedPackages.length > 1 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                      <Copy size={11} color="var(--cad-text-dim)" />
-                      <select
-                        defaultValue=""
-                        onChange={(e) => {
-                          if (e.target.value) {
-                            handleCopyMappingFrom(e.target.value);
-                            e.target.value = "";
-                          }
-                        }}
-                        className="cad-input"
-                        style={{ fontSize: 10, padding: "2px 6px", height: 22, maxWidth: 170 }}
-                        title="Скопировать распиновку из другого корпуса, если нумерация выводов совпадает"
-                      >
-                        <option value="" disabled>Скопировать распиновку из...</option>
-                        {supportedPackages
-                          .filter((p) => p.packageId !== activePackageId)
-                          .map((p) => {
-                            const otherPkg = availablePackages.find((ap) => ap.id === p.packageId);
-                            return (
-                              <option key={p.packageId} value={p.packageId}>
-                                {otherPkg?.name || p.packageId}
-                              </option>
-                            );
-                          })}
-                      </select>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Предупреждение о нехватке контактных площадок у корпуса */}
-              {currentPkgDef && currentPkgDef.pads.length < logicalPins.length && (
-                <div
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 6,
-                    padding: "4px 8px",
-                    borderRadius: 4,
-                    background: "rgba(239, 68, 68, 0.12)",
-                    border: "1px solid rgba(239, 68, 68, 0.3)",
-                    color: "#fca5a5",
-                    fontSize: 10.5,
-                  }}
-                >
-                  <AlertTriangle size={12} color="#ef4444" style={{ flexShrink: 0 }} />
-                  <span>
-                    Внимание: у корпуса площадок ({currentPkgDef.pads.length}) меньше, чем выводов схемы ({logicalPins.length}). Часть сигналов не сможет быть выведена на плату!
-                  </span>
-                </div>
-              )}
-            </div>
-
-            {/* Карточка 2: Таблица сопоставления выводов (Pin-to-Pad Mapping) */}
+            {/* Карточка: Таблица сопоставления выводов */}
             <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
               <div className="device-card-header" style={{ flexWrap: "nowrap", gap: 8, paddingBottom: 6 }}>
                 <div className="device-card-title" style={{ flexShrink: 0, gap: 6 }}>
@@ -2894,6 +2969,30 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     </span>
                   )}
                 </div>
+
+                {/* Быстрое переключение корпуса прямо на вкладке распиновки, если корпусов несколько */}
+                {supportedPackages.length > 1 && (
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, margin: "0 auto 0 8px" }}>
+                    <span style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>Корпус:</span>
+                    <select
+                      value={activePackageId}
+                      onChange={(e) => setActivePackageId(e.target.value)}
+                      className="cad-input"
+                      style={{ fontSize: 10.5, padding: "2px 6px", height: 22, maxWidth: 170 }}
+                      title="Выбрать привязанный корпус для настройки распиновки"
+                    >
+                      {supportedPackages.map((b) => {
+                        const p = availablePackages.find((ap) => ap.id === b.packageId);
+                        const r = getPackageReadiness(b);
+                        return (
+                          <option key={b.packageId} value={b.packageId}>
+                            {p?.name || b.packageId} ({r.mapped}/{r.total})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+                )}
 
                 {currentPkgDef && (
                   <div className="mapping-header-actions">
@@ -3260,7 +3359,9 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               )}
             </div>
           </div>
-        </div>
+        </>
+      )}
+    </div>
 
         {/* Подвал модального окна */}
         <div className="cad-modal-footer" style={{ padding: "10px 18px" }}>

@@ -1862,6 +1862,58 @@
   overflow: hidden;
 }
 
+.device-global-tabs-bar {
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  gap: 8px;
+  padding: 8px 20px;
+  background: rgba(15, 20, 30, 0.95);
+  border-bottom: 1px solid var(--cad-border, #283344);
+  flex-shrink: 0;
+}
+
+.device-global-tab-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 15px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--cad-text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.device-global-tab-btn:hover {
+  color: var(--cad-text-main);
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.device-global-tab-btn.active {
+  color: #93c5fd;
+  background: linear-gradient(180deg, rgba(59, 130, 246, 0.22) 0%, rgba(37, 99, 235, 0.1) 100%);
+  border-color: rgba(59, 130, 246, 0.45);
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.35);
+}
+
+.device-pkg-overview-card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--cad-bg-panel);
+  border: 1px solid var(--cad-border);
+  border-radius: 8px;
+  padding: 12px 14px;
+  gap: 10px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+
 .device-editor-grid {
   display: grid;
   grid-template-columns: 540px 1fr;
