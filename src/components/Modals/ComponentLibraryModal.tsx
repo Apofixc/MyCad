@@ -2094,21 +2094,23 @@ export const ComponentLibraryModal: React.FC<ComponentLibraryModalProps> = ({
                     </button>
                   )}
 
-                  <button
-                    className="cad-btn-secondary"
-                    onClick={() => onOpenPackageEditor(activePackage)}
-                    style={{
-                      padding: "8px 12px",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      gap: 6,
-                      fontSize: 12,
-                    }}
-                  >
-                    <Edit2 size={14} />
-                    <span>Редактировать корпус в CAD</span>
-                  </button>
+                  {activeTab === "packages" && (
+                    <button
+                      className="cad-btn-secondary"
+                      onClick={() => onOpenPackageEditor(activePackage)}
+                      style={{
+                        padding: "8px 12px",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        fontSize: 12,
+                      }}
+                    >
+                      <Edit2 size={14} />
+                      <span>Редактировать корпус в CAD</span>
+                    </button>
+                  )}
 
                   {activeTab === "devices" && activeDevice && (
                     <button

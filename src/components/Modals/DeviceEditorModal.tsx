@@ -18,6 +18,7 @@ import {
   Cpu,
   Box,
   ArrowRight,
+  ArrowRightLeft,
   Zap,
   RotateCcw,
   Sparkles,
@@ -58,15 +59,15 @@ interface ElectricalTypeConfig {
 }
 
 const ELECTRICAL_TYPES: ElectricalTypeConfig[] = [
-  { value: "power_in", label: "Power In (Питание)", shortLabel: "Питание", color: "#ef4444" },
-  { value: "ground", label: "Ground (Земля)", shortLabel: "Земля", color: "#10b981" },
-  { value: "input", label: "Input (Вход)", shortLabel: "Вход", color: "#3b82f6" },
-  { value: "output", label: "Output (Выход)", shortLabel: "Выход", color: "#f59e0b" },
-  { value: "bidirectional", label: "Bidirectional (Двунапр.)", shortLabel: "Двунапр.", color: "#8b5cf6" },
-  { value: "passive", label: "Passive (Пассивный)", shortLabel: "Пассив.", color: "#94a3b8" },
-  { value: "power_out", label: "Power Out (Вых. пит.)", shortLabel: "Вых.пит.", color: "#ec4899" },
-  { value: "open_collector", label: "Open Collector (ОК)", shortLabel: "ОК", color: "#d97706" },
-  { value: "no_connect", label: "No Connect (NC)", shortLabel: "NC", color: "#64748b" },
+  { value: "power_in", label: "Питание (Power In)", shortLabel: "Питание", color: "#ef4444" },
+  { value: "ground", label: "Земля (Ground/GND)", shortLabel: "Земля", color: "#10b981" },
+  { value: "input", label: "Вход (Input)", shortLabel: "Вход", color: "#3b82f6" },
+  { value: "output", label: "Выход (Output)", shortLabel: "Выход", color: "#f59e0b" },
+  { value: "bidirectional", label: "Двунаправл. (I/O)", shortLabel: "Двунапр.", color: "#8b5cf6" },
+  { value: "passive", label: "Пассивный (Passive)", shortLabel: "Пассив.", color: "#94a3b8" },
+  { value: "power_out", label: "Выход пит. (Pwr Out)", shortLabel: "Вых.пит.", color: "#ec4899" },
+  { value: "open_collector", label: "Откр. коллектор (OC)", shortLabel: "ОК", color: "#d97706" },
+  { value: "no_connect", label: "Не подключен (NC)", shortLabel: "NC", color: "#64748b" },
 ];
 
 interface TaxonomySubcategory {
@@ -329,6 +330,19 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
   const [pinGenList, setPinGenList] = useState<string>("VCC, GND, IN, OUT");
   const [pinGenType, setPinGenType] = useState<PinElectricalType>("passive");
   const [pinGenUnit, setPinGenUnit] = useState<string>("");
+
+  // Мультивыбор выводов для групповых операций
+  const [selectedPinIds, setSelectedPinIds] = useState<Set<string>>(new Set());
+
+  // Массовый импорт таблицы выводов из буфера обмена (Datasheet / TSV / CSV)
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState<boolean>(false);
+  const [bulkImportText, setBulkImportText] = useState<string>("");
+  const [bulkImportMode, setBulkImportMode] = useState<"append" | "replace">("append");
+
+  // Фильтрация и интерактивность сопоставления
+  const [mappingFilter, setMappingFilter] = useState<"all" | "unmapped" | "conflicts">("all");
+  const [mappingSearchQuery, setMappingSearchQuery] = useState<string>("");
+  const [isAutoAdvanceEnabled, setIsAutoAdvanceEnabled] = useState<boolean>(true);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -600,6 +614,224 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       total: logicalPins.length,
       isComplete: mapped === logicalPins.length && mapped > 0,
     };
+  };
+
+  // Вычисление меток сигналов и цветов для контактных площадок футпринта
+  const { padLabels, padColors, unassignedPadNums } = useMemo(() => {
+    const labels: Record<string, string> = {};
+    const colors: Record<string, string> = {};
+    const unassigned = new Set<string>();
+
+    if (!currentPkgDef) return { padLabels: labels, padColors: colors, unassignedPadNums: unassigned };
+
+    if (currentMapping) {
+      Object.entries(currentMapping.pinMap).forEach(([pinName, padNum]) => {
+        if (padNum) {
+          labels[padNum] = pinName;
+          const found = logicalPins.find((p) => p.name === pinName);
+          if (found) {
+            const cfg = ELECTRICAL_TYPES.find((t) => t.value === found.electricalType);
+            if (cfg) colors[padNum] = cfg.color;
+          }
+        }
+      });
+    }
+
+    currentPkgDef.pads.forEach((p) => {
+      if (!labels[p.padNum]) unassigned.add(p.padNum);
+    });
+
+    return { padLabels: labels, padColors: colors, unassignedPadNums: unassigned };
+  }, [currentPkgDef, currentMapping, logicalPins]);
+
+  // Фильтрация таблицы сопоставления по статусу привязки и поисковому запросу
+  const mappingFilteredPins = useMemo(() => {
+    return filteredLogicalPins.filter((pin) => {
+      const assignedPad = currentMapping?.pinMap[pin.name];
+      if (mappingSearchQuery.trim()) {
+        const q = mappingSearchQuery.toLowerCase();
+        const matchesPin = pin.name.toLowerCase().includes(q);
+        const matchesPad = assignedPad && assignedPad.toLowerCase().includes(q);
+        if (!matchesPin && !matchesPad) return false;
+      }
+      if (mappingFilter === "unmapped") return !assignedPad;
+      if (mappingFilter === "conflicts") {
+        return Boolean(assignedPad && (padUsageCount[assignedPad] || []).length > 1);
+      }
+      return true;
+    });
+  }, [filteredLogicalPins, currentMapping, mappingFilter, mappingSearchQuery, padUsageCount]);
+
+  const unmappedCount = useMemo(() => {
+    if (!currentMapping) return logicalPins.length;
+    return logicalPins.filter((p) => !currentMapping.pinMap[p.name]).length;
+  }, [currentMapping, logicalPins]);
+
+  const conflictCount = useMemo(() => {
+    let count = 0;
+    Object.values(padUsageCount).forEach((pins) => {
+      if (pins.length > 1) count += pins.length;
+    });
+    return count;
+  }, [padUsageCount]);
+
+  // Групповое управление выводами (Bulk Selection & Actions)
+  const handleToggleSelectAllPins = () => {
+    if (selectedPinIds.size === filteredLogicalPins.length && filteredLogicalPins.length > 0) {
+      setSelectedPinIds(new Set());
+    } else {
+      setSelectedPinIds(new Set(filteredLogicalPins.map((p) => p.id)));
+    }
+  };
+
+  const handleTogglePinSelect = (id: string) => {
+    const next = new Set(selectedPinIds);
+    if (next.has(id)) next.delete(id);
+    else next.add(id);
+    setSelectedPinIds(next);
+  };
+
+  const handleBulkSetElectricalType = (type: PinElectricalType) => {
+    if (selectedPinIds.size === 0) return;
+    setLogicalPins(
+      logicalPins.map((p) => (selectedPinIds.has(p.id) ? { ...p, electricalType: type } : p))
+    );
+  };
+
+  const handleBulkSetUnit = (unit: string) => {
+    if (selectedPinIds.size === 0) return;
+    setLogicalPins(
+      logicalPins.map((p) =>
+        selectedPinIds.has(p.id) ? { ...p, unit: unit.trim().toUpperCase() || undefined } : p
+      )
+    );
+  };
+
+  const handleBulkDeletePins = () => {
+    if (selectedPinIds.size === 0) return;
+    if (!window.confirm(`Удалить выбранные выводы (${selectedPinIds.size} шт.)?`)) return;
+    setLogicalPins(logicalPins.filter((p) => !selectedPinIds.has(p.id)));
+    setSelectedPinIds(new Set());
+  };
+
+  // Парсинг текста из буфера обмена для массового импорта таблицы выводов
+  const parseBulkImportText = (raw: string) => {
+    if (!raw.trim()) return [];
+    const lines = raw.split(/\r?\n/);
+    const results: Array<{
+      name: string;
+      electricalType: PinElectricalType;
+      unit?: string;
+      description?: string;
+    }> = [];
+
+    lines.forEach((line) => {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith("#") || trimmed.startsWith("//")) return;
+
+      let parts: string[] = [];
+      if (trimmed.includes("\t")) {
+        parts = trimmed.split("\t");
+      } else if (trimmed.includes(";")) {
+        parts = trimmed.split(";");
+      } else if (trimmed.includes(",")) {
+        parts = trimmed.split(",");
+      } else {
+        parts = trimmed.split(/\s{2,}|\s+/);
+      }
+      parts = parts.map((p) => p.trim()).filter(Boolean);
+      if (parts.length === 0) return;
+
+      let pinName = parts[0];
+      let pinDesc = "";
+      let pinType: PinElectricalType = "passive";
+      let pinUnit = "";
+
+      // Если первый элемент - число (№ вывода), а второй - имя сигнала
+      if (parts.length >= 2 && /^\d+$/.test(parts[0]) && !/^\d+$/.test(parts[1])) {
+        pinName = parts[1];
+        pinDesc = `Пин #${parts[0]}`;
+        parts = [parts[1], ...parts.slice(2)];
+      }
+
+      const remainingTokens: string[] = [];
+      parts.slice(1).forEach((tok) => {
+        const lower = tok.toLowerCase();
+        if (/^(gnd|ground|земля|vss|0v)$/i.test(lower)) {
+          pinType = "ground";
+        } else if (/^(power_in|pwr|power|питание|vcc|vdd|vin|vbat|vbus)$/i.test(lower)) {
+          pinType = "power_in";
+        } else if (/^(power_out|вых.*пит|vref|out_pwr)$/i.test(lower)) {
+          pinType = "power_out";
+        } else if (/^(input|in|вход|btn|rx|din)$/i.test(lower)) {
+          pinType = "input";
+        } else if (/^(output|out|выход|led|tx|dout)$/i.test(lower)) {
+          pinType = "output";
+        } else if (/^(bidirectional|bidi|двунапр|io|gpio|sda|scl)$/i.test(lower)) {
+          pinType = "bidirectional";
+        } else if (/^(open_collector|oc|ок)$/i.test(lower)) {
+          pinType = "open_collector";
+        } else if (/^(no_connect|nc|не\s*подкл)$/i.test(lower)) {
+          pinType = "no_connect";
+        } else if (/^(passive|пассивный)$/i.test(lower)) {
+          pinType = "passive";
+        } else if (/^(unit\s*|секц\w*\s*)?([a-d])$/i.test(lower)) {
+          const m = lower.match(/[a-d]$/i);
+          if (m) pinUnit = m[0].toUpperCase();
+        } else {
+          remainingTokens.push(tok);
+        }
+      });
+
+      // Если тип не указан явно, определяем по общепринятым префиксам имени
+      if (pinType === "passive") {
+        const nameLower = pinName.toLowerCase();
+        if (/gnd|vss|ground/i.test(nameLower)) pinType = "ground";
+        else if (/vcc|vdd|vbat|vin|vbus|3v3|5v/i.test(nameLower)) pinType = "power_in";
+        else if (/nc|n\.c\./i.test(nameLower)) pinType = "no_connect";
+        else if (/clk|sck|scl|rx|in|din|cs|en|rst|reset/i.test(nameLower)) pinType = "input";
+        else if (/tx|out|dout|led/i.test(nameLower)) pinType = "output";
+        else if (/io|sda|bidi/i.test(nameLower)) pinType = "bidirectional";
+      }
+
+      const extraDesc = remainingTokens.join(" ");
+      if (extraDesc) {
+        pinDesc = pinDesc ? `${pinDesc} — ${extraDesc}` : extraDesc;
+      }
+
+      results.push({
+        name: pinName,
+        electricalType: pinType,
+        unit: pinUnit || undefined,
+        description: pinDesc || undefined,
+      });
+    });
+
+    return results;
+  };
+
+  const handleApplyBulkImport = () => {
+    const parsed = parseBulkImportText(bulkImportText);
+    if (parsed.length === 0) {
+      alert("Не удалось распознать выводы. Вставьте таблицу строк (например: 1 VCC Power In Питание).");
+      return;
+    }
+
+    const newLogicalPins: LogicalPin[] = parsed.map((p, idx) => ({
+      id: `pin_${Date.now()}_${idx}`,
+      name: p.name,
+      electricalType: p.electricalType,
+      unit: p.unit,
+      description: p.description,
+    }));
+
+    if (bulkImportMode === "replace") {
+      setLogicalPins(newLogicalPins);
+    } else {
+      setLogicalPins([...logicalPins, ...newLogicalPins]);
+    }
+    setIsBulkImportOpen(false);
+    setBulkImportText("");
   };
 
   // Добавление / удаление тегов
@@ -932,11 +1164,14 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     );
   };
 
-  // Умное авто-сопоставление: точное совпадение по имени/номеру площадки
+  // Умное авто-сопоставление с поддержкой синонимов цепей питания, земли и номеров
   const handleSmartAutoMap = () => {
     if (!currentPkgDef || !activePackageId) return;
     const newMap: Record<string, string> = {};
     const usedPads = new Set<string>();
+
+    const POWER_SYNONYMS = new Set(["VCC", "VDD", "3V3", "+3.3V", "+5V", "5V", "VIN", "VBUS", "VBAT", "VDDA", "VREF"]);
+    const GND_SYNONYMS = new Set(["GND", "VSS", "0V", "AGND", "DGND", "PGND", "EP", "THERMAL_PAD", "THERMAL", "PAD"]);
 
     // 1. Точное совпадение: padNum === pin.name или pad.name === pin.name
     logicalPins.forEach((pin) => {
@@ -952,7 +1187,29 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
       }
     });
 
-    // 2. Для оставшихся — если в имени пина есть число (напр. "PIN 1" -> pad "1", "D2" -> pad "2")
+    // 2. Сопоставление по синонимам питания и земли
+    logicalPins.forEach((pin) => {
+      if (newMap[pin.name]) return;
+      const pinUpper = pin.name.trim().toUpperCase();
+      const isPower = POWER_SYNONYMS.has(pinUpper);
+      const isGnd = GND_SYNONYMS.has(pinUpper);
+
+      if (isPower || isGnd) {
+        const synonymPad = currentPkgDef.pads.find((p) => {
+          if (usedPads.has(p.padNum)) return false;
+          const pNameUpper = (p.name || "").trim().toUpperCase();
+          if (isPower && POWER_SYNONYMS.has(pNameUpper)) return true;
+          if (isGnd && GND_SYNONYMS.has(pNameUpper)) return true;
+          return false;
+        });
+        if (synonymPad) {
+          newMap[pin.name] = synonymPad.padNum;
+          usedPads.add(synonymPad.padNum);
+        }
+      }
+    });
+
+    // 3. Для оставшихся — если в имени пина есть число (напр. "PIN 1" -> pad "1", "D2" -> pad "2")
     logicalPins.forEach((pin) => {
       if (newMap[pin.name]) return;
       const match = pin.name.match(/\d+/);
@@ -1001,13 +1258,24 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
     );
   };
 
-  // Интерактивный клик по контактной площадке в превью чертежа
+  // Интерактивный клик по контактной площадке в превью чертежа с авто-шагом
   const handlePadSelect = (padNum: string) => {
     setActivePadNum(padNum);
     if (selectedPinId) {
       const targetPin = logicalPins.find((p) => p.id === selectedPinId);
       if (targetPin) {
         handleUpdatePinMapping(targetPin.name, padNum);
+
+        if (isAutoAdvanceEnabled) {
+          // Ищем следующий несопоставленный вывод
+          const currIdx = logicalPins.findIndex((p) => p.id === selectedPinId);
+          const nextUnmapped =
+            logicalPins.slice(currIdx + 1).find((p) => !currentMapping?.pinMap[p.name] && p.name !== targetPin.name) ||
+            logicalPins.find((p) => p.id !== targetPin.id && !currentMapping?.pinMap[p.name] && p.name !== targetPin.name);
+          if (nextUnmapped) {
+            setSelectedPinId(nextUnmapped.id);
+          }
+        }
         return;
       }
     }
@@ -1883,15 +2151,15 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <button
                 type="button"
                 className="cad-btn-primary"
-                style={{ fontSize: 11, padding: "3px 8px", height: 25, gap: 4, fontWeight: 600, flexShrink: 0 }}
+                style={{ fontSize: 11, padding: "3px 9px", height: 26, gap: 5, fontWeight: 600, flexShrink: 0 }}
                 onClick={handleAddPin}
                 title="Добавить новый логический вывод (Ins)"
               >
-                <Plus size={12} /> Пин
+                <Plus size={13} /> Пин
               </button>
               <select
                 className="cad-input"
-                style={{ fontSize: 10.5, padding: "2px 6px", height: 25, width: 100, flexShrink: 0, cursor: "pointer" }}
+                style={{ fontSize: 10.5, padding: "2px 6px", height: 26, width: 105, flexShrink: 0, cursor: "pointer" }}
                 defaultValue=""
                 onChange={(e) => {
                   const val = e.target.value;
@@ -1915,7 +2183,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <button
                 type="button"
                 className="cad-btn-secondary"
-                style={{ fontSize: 10.5, padding: "2px 7px", height: 25, gap: 4, flexShrink: 0 }}
+                style={{ fontSize: 10.5, padding: "2px 8px", height: 26, gap: 4, flexShrink: 0 }}
                 onClick={() => setIsPinGenOpen(true)}
                 title="Генератор шин и диапазонов выводов (D0..D7, 1..16, список)"
               >
@@ -1924,21 +2192,36 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <button
                 type="button"
                 className="cad-btn-secondary"
-                style={{ fontSize: 10.5, padding: "2px 6px", height: 25, flexShrink: 0 }}
+                style={{ fontSize: 10.5, padding: "2px 7px", height: 26, gap: 4, flexShrink: 0 }}
                 onClick={handleAddPowerPins}
                 title="Быстро добавить выводы VCC и GND"
               >
-                + PWR
+                <Zap size={11} color="#f59e0b" /> + PWR
+              </button>
+
+              <div style={{ width: 1, height: 16, background: "rgba(255, 255, 255, 0.08)", margin: "0 2px", flexShrink: 0 }} />
+
+              <button
+                type="button"
+                className="cad-btn-secondary"
+                style={{ fontSize: 10.5, padding: "2px 8px", height: 26, gap: 4, flexShrink: 0 }}
+                onClick={() => {
+                  setBulkImportText("");
+                  setIsBulkImportOpen(true);
+                }}
+                title="Импортировать выводы из таблицы даташита, Excel или CSV"
+              >
+                <FileText size={12} color="#60a5fa" /> Импорт...
               </button>
               {currentPkgDef && currentPkgDef.pads && currentPkgDef.pads.length > 0 && (
                 <button
                   type="button"
                   className="cad-btn-secondary"
-                  style={{ fontSize: 10.5, padding: "2px 7px", height: 25, gap: 4, flexShrink: 0 }}
+                  style={{ fontSize: 10.5, padding: "2px 8px", height: 26, gap: 4, flexShrink: 0 }}
                   onClick={handleImportPinsFromPackage}
                   title={`Импортировать выводы из площадок корпуса ${currentPkgDef.name} (${currentPkgDef.pads.length} площадок)`}
                 >
-                  <Download size={11} color="#10b981" /> Корпус ({currentPkgDef.pads.length})
+                  <Download size={11} color="#10b981" /> Из корпуса ({currentPkgDef.pads.length})
                 </button>
               )}
 
@@ -1949,7 +2232,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 <button
                   type="button"
                   className="cad-btn-secondary"
-                  style={{ fontSize: 10.5, padding: "2px 6px", height: 25, gap: 3, flexShrink: 0 }}
+                  style={{ fontSize: 10.5, padding: "2px 7px", height: 26, gap: 4, flexShrink: 0 }}
                   onClick={handleSwapFirstTwoPins}
                   title="Поменять местами выводы 1 и 2 (Swap 1↔2)"
                 >
@@ -1960,11 +2243,11 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                 <button
                   type="button"
                   className="cad-btn-secondary"
-                  style={{ fontSize: 10.5, padding: "2px 6px", height: 25, color: "#ef4444", flexShrink: 0 }}
+                  style={{ fontSize: 10.5, padding: "2px 6px", height: 26, color: "#ef4444", flexShrink: 0 }}
                   onClick={handleClearAllPins}
                   title="Очистить все выводы"
                 >
-                  <Trash2 size={11} />
+                  <Trash2 size={12} />
                 </button>
               )}
             </div>
@@ -2041,23 +2324,103 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               </div>
             </div>
 
+            {/* Всплывающая панель групповых действий над выбранными выводами */}
+            {selectedPinIds.size > 0 && (
+              <div className="pin-bulk-bar">
+                <div className="pin-bulk-title">
+                  <CheckCircle2 size={13} />
+                  <span>Выбрано: {selectedPinIds.size} из {logicalPins.length}</span>
+                </div>
+                <div className="pin-bulk-actions">
+                  <select
+                    className="cad-input"
+                    style={{ fontSize: 10.5, height: 24, padding: "2px 6px" }}
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        handleBulkSetElectricalType(e.target.value as PinElectricalType);
+                        e.target.value = "";
+                      }
+                    }}
+                    title="Установить единый тип сигнала для всех выбранных выводов"
+                  >
+                    <option value="" disabled>Тип сигнала...</option>
+                    {ELECTRICAL_TYPES.map((t) => (
+                      <option key={t.value} value={t.value}>
+                        {t.label}
+                      </option>
+                    ))}
+                  </select>
+
+                  <select
+                    className="cad-input"
+                    style={{ fontSize: 10.5, height: 24, padding: "2px 6px" }}
+                    defaultValue=""
+                    onChange={(e) => {
+                      if (e.target.value !== undefined) {
+                        handleBulkSetUnit(e.target.value === "none" ? "" : e.target.value);
+                        e.target.value = "";
+                      }
+                    }}
+                    title="Назначить секцию УГО для всех выбранных выводов"
+                  >
+                    <option value="" disabled>Секция УГО...</option>
+                    <option value="none">Без секции</option>
+                    <option value="A">Секция A</option>
+                    <option value="B">Секция B</option>
+                    <option value="C">Секция C</option>
+                    <option value="D">Секция D</option>
+                  </select>
+
+                  <button
+                    type="button"
+                    className="cad-btn-secondary"
+                    style={{ fontSize: 10.5, height: 24, padding: "2px 8px", color: "#ef4444", gap: 3 }}
+                    onClick={handleBulkDeletePins}
+                    title="Удалить выбранные выводы"
+                  >
+                    <Trash2 size={11} /> Удалить ({selectedPinIds.size})
+                  </button>
+
+                  <button
+                    type="button"
+                    className="cad-icon-btn"
+                    style={{ width: 22, height: 22, padding: 0 }}
+                    onClick={() => setSelectedPinIds(new Set())}
+                    title="Снять выделение"
+                  >
+                    <X size={12} />
+                  </button>
+                </div>
+              </div>
+            )}
+
             {/* Профессиональная таблица-сетка логических выводов схемы */}
             <div className="device-table-container" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
               <table className="device-table">
                 <thead>
                   <tr>
-                    <th style={{ width: 30, textAlign: "center" }}>#</th>
-                    <th style={{ width: 85 }}>Имя вывода</th>
-                    <th style={{ width: 155 }}>Тип сигнала</th>
-                    <th style={{ width: 50, textAlign: "center" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секция</th>
-                    <th>Назначение / Описание</th>
-                    <th style={{ width: 62, textAlign: "center" }}></th>
+                    <th style={{ width: 28, textAlign: "center" }}>
+                      <input
+                        type="checkbox"
+                        style={{ cursor: "pointer", accentColor: "var(--cad-accent)" }}
+                        checked={selectedPinIds.size === filteredLogicalPins.length && filteredLogicalPins.length > 0}
+                        onChange={handleToggleSelectAllPins}
+                        title="Выбрать все выводы"
+                      />
+                    </th>
+                    <th style={{ width: 28, textAlign: "center" }}>#</th>
+                    <th style={{ width: 80, whiteSpace: "nowrap" }}>Имя вывода</th>
+                    <th style={{ width: 145, whiteSpace: "nowrap" }}>Тип сигнала</th>
+                    <th style={{ width: 48, textAlign: "center", whiteSpace: "nowrap" }} title="Секция УГО / Вентиль (A, B, C, D...)">Секция</th>
+                    <th style={{ whiteSpace: "nowrap" }}>Назначение цепи / Описание</th>
+                    <th style={{ width: 60, textAlign: "center" }}></th>
                   </tr>
                 </thead>
                 <tbody>
                   {filteredLogicalPins.length === 0 ? (
                     <tr>
-                      <td colSpan={6} style={{ textAlign: "center", padding: "32px 10px", color: "#64748b" }}>
+                      <td colSpan={7} style={{ textAlign: "center", padding: "32px 10px", color: "#64748b" }}>
                         {logicalPins.length === 0 ? (
                           <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
                             <Sparkles size={22} color="var(--cad-accent)" opacity={0.6} />
@@ -2084,6 +2447,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                       const isSelected = selectedPinId === pin.id;
                       const isDupe = duplicatePinNames.has(pin.name.trim().toUpperCase());
                       const pinGlobalIdx = logicalPins.findIndex((p) => p.id === pin.id);
+                      const isChecked = selectedPinIds.has(pin.id);
 
                       return (
                         <tr
@@ -2097,10 +2461,18 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                           }}
                           style={{
                             cursor: "pointer",
-                            background: isSelected ? "rgba(59, 130, 246, 0.12)" : undefined,
+                            background: isChecked ? "rgba(59, 130, 246, 0.16)" : isSelected ? "rgba(59, 130, 246, 0.12)" : undefined,
                             borderLeft: isSelected ? "2px solid #3b82f6" : "2px solid transparent",
                           }}
                         >
+                          <td style={{ textAlign: "center" }} onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              style={{ cursor: "pointer", accentColor: "var(--cad-accent)" }}
+                              checked={isChecked}
+                              onChange={() => handleTogglePinSelect(pin.id)}
+                            />
+                          </td>
                           <td
                             style={{
                               textAlign: "center",
@@ -2285,8 +2657,10 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               <span style={{ overflow: "hidden", textOverflow: "ellipsis" }} title="Кликните на вывод в таблице для сопоставления с площадкой корпуса">
                 💡 Клик по выводу для сопоставления с площадкой
               </span>
-              <span style={{ color: "var(--cad-text-muted)", flexShrink: 0, fontSize: 9.5 }}>
-                Enter — след. строка
+              <span style={{ color: "var(--cad-text-muted)", flexShrink: 0, fontSize: 9.5, display: "flex", alignItems: "center", gap: 6 }}>
+                <span><span className="cad-kbd">Enter</span> след. строка</span>
+                <span>•</span>
+                <span><span className="cad-kbd">Ins</span> добавить</span>
               </span>
             </div>
           </div>
@@ -2507,47 +2881,42 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
             {/* Карточка 2: Таблица сопоставления выводов (Pin-to-Pad Mapping) */}
             <div className="device-card" style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
-              <div className="device-card-header">
-                <div className="device-card-title">
-                  <ArrowRight size={13} />
+              <div className="device-card-header" style={{ flexWrap: "nowrap", gap: 8, paddingBottom: 6 }}>
+                <div className="device-card-title" style={{ flexShrink: 0, gap: 6 }}>
+                  <ArrowRightLeft size={13} color="var(--cad-accent-hover)" />
                   <span>Сопоставление выводов</span>
-                  {currentPkgDef && (
-                    <span style={{ fontSize: 10, color: "var(--cad-text-dim)", fontWeight: 400, textTransform: "none" }}>
-                      ({currentPkgDef.name})
-                    </span>
-                  )}
                   {currentMapping && (
                     <span
-                      style={{
-                        fontSize: 10,
-                        padding: "1px 7px",
-                        borderRadius: 10,
-                        fontWeight: 700,
-                        background: mappingCoverage.percent === 100 ? "rgba(16, 185, 129, 0.15)" : "rgba(245, 158, 11, 0.15)",
-                        color: mappingCoverage.percent === 100 ? "#10b981" : "#f59e0b",
-                        border: mappingCoverage.percent === 100 ? "1px solid rgba(16, 185, 129, 0.3)" : "1px solid rgba(245, 158, 11, 0.3)",
-                      }}
+                      className={`mapping-coverage-pill ${mappingCoverage.percent === 100 ? "complete" : "partial"}`}
                     >
+                      {mappingCoverage.percent === 100 ? <CheckCircle2 size={10} /> : null}
                       {mappingCoverage.mapped}/{mappingCoverage.total} ({mappingCoverage.percent}%)
                     </span>
                   )}
                 </div>
 
                 {currentPkgDef && (
-                  <div style={{ display: "flex", gap: 5 }}>
+                  <div className="mapping-header-actions">
+                    <div
+                      className={`auto-advance-badge ${isAutoAdvanceEnabled ? "active" : ""}`}
+                      onClick={() => setIsAutoAdvanceEnabled(!isAutoAdvanceEnabled)}
+                      title="Автоматический переход к следующему свободному выводу схемы при клике на чертеже футпринта"
+                    >
+                      <Zap size={10} />
+                      <span>Авто-шаг {isAutoAdvanceEnabled ? "ВКЛ" : "ВЫКЛ"}</span>
+                    </div>
+                    <div className="mapping-header-divider" />
                     <button
                       type="button"
-                      className="cad-btn-secondary"
-                      style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
+                      className="cad-btn-secondary mapping-action-btn"
                       onClick={handleSmartAutoMap}
-                      title="Умное сопоставление по совпадению имен и номеров выводов"
+                      title="Умное сопоставление по совпадению имен, синонимов питания/земли и номеров выводов"
                     >
                       <Zap size={11} color="#38bdf8" /> По именам
                     </button>
                     <button
                       type="button"
-                      className="cad-btn-secondary"
-                      style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
+                      className="cad-btn-secondary mapping-action-btn"
                       onClick={handleAutoMapSequential}
                       title="Последовательно связать выводы с площадками 1:1 по порядку"
                     >
@@ -2555,8 +2924,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     </button>
                     <button
                       type="button"
-                      className="cad-btn-secondary"
-                      style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
+                      className="cad-btn-secondary mapping-action-btn"
                       onClick={handleClearMapping}
                       title="Сбросить назначение всех площадок"
                     >
@@ -2568,18 +2936,39 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
               {currentPkgDef && currentMapping ? (
                 <>
+                  {/* Элегантная информационная полоса активного корпуса */}
+                  <div className="mapping-sub-pkg-bar">
+                    <div className="mapping-sub-pkg-info">
+                      <Box size={12} color="#60a5fa" />
+                      <span className="mapping-sub-pkg-name" title={currentPkgDef.name}>
+                        {currentPkgDef.name}
+                      </span>
+                      <span className="mapping-sub-pkg-dot">•</span>
+                      <span className="mapping-sub-pkg-tag">{currentPkgDef.mountType.toUpperCase()}</span>
+                      <span className="mapping-sub-pkg-dot">•</span>
+                      <span className="mapping-sub-pkg-tag">{currentPkgDef.pads.length} площадок</span>
+                    </div>
+                    {currentPkgDef.variants && currentPkgDef.variants.length > 1 && (
+                      <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                        <span style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>Вариант:</span>
+                        <select
+                          value={currentMapping?.defaultVariantId || currentPkgDef.defaultVariantId}
+                          onChange={(e) => handleSelectDefaultVariant(currentPkgDef.id, e.target.value)}
+                          className="cad-input"
+                          style={{ fontSize: 10, padding: "1px 5px", height: 20 }}
+                        >
+                          {currentPkgDef.variants.map((v) => (
+                            <option key={v.id} value={v.id}>
+                              {v.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    )}
+                  </div>
+
                   {/* Интерактивный предпросмотр посадочного места */}
-                  <div
-                    style={{
-                      height: 140,
-                      borderRadius: 6,
-                      border: "1px solid var(--cad-border)",
-                      overflow: "hidden",
-                      background: "var(--cad-bg-deep)",
-                      flexShrink: 0,
-                      position: "relative",
-                    }}
-                  >
+                  <div className="mapping-preview-wrapper" style={{ height: 135 }}>
                     <FootprintPreview
                       packageDef={currentPkgDef}
                       variant={currentPkgDef.variants?.find((v) => v.id === (currentMapping.defaultVariantId || currentPkgDef.defaultVariantId))}
@@ -2587,23 +2976,20 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                       interactive={true}
                       selectedPadNum={activePadNum}
                       onSelectPad={handlePadSelect}
-                      height={140}
+                      padLabels={padLabels}
+                      padColors={padColors}
+                      unassignedPadNums={unassignedPadNums}
+                      height={135}
                     />
-                    <div
-                      style={{
-                        position: "absolute",
-                        bottom: 4,
-                        left: 8,
-                        fontSize: 9.5,
-                        color: "var(--cad-text-dim)",
-                        pointerEvents: "none",
-                        background: "rgba(0, 0, 0, 0.6)",
-                        padding: "1px 6px",
-                        borderRadius: 3,
-                      }}
-                    >
-                      💡 Кликните по площадке чертежа для привязки к выбранному выводу
-                    </div>
+                  </div>
+
+                  {/* Полоска-подсказка под предпросмотром */}
+                  <div className="mapping-preview-hint">
+                    <Sparkles size={11} color="var(--cad-accent-hover)" />
+                    <span>Клик по площадке чертежа привязывает её к выбранному выводу</span>
+                    {isAutoAdvanceEnabled && (
+                      <span className="auto-step-tag">⚡ Авто-шаг активен</span>
+                    )}
                   </div>
 
                   {/* Список свободных контактных площадок корпуса */}
@@ -2626,6 +3012,66 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                     </div>
                   )}
 
+                  {/* Панель фильтров и поиска для сопоставления */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "space-between",
+                      gap: 6,
+                      padding: "2px 0",
+                      flexShrink: 0,
+                    }}
+                  >
+                    <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                      <button
+                        type="button"
+                        className={`mapping-filter-tab ${mappingFilter === "all" ? "active" : ""}`}
+                        onClick={() => setMappingFilter("all")}
+                      >
+                        Все ({logicalPins.length})
+                      </button>
+                      <button
+                        type="button"
+                        className={`mapping-filter-tab ${mappingFilter === "unmapped" ? "active" : ""}`}
+                        onClick={() => setMappingFilter("unmapped")}
+                      >
+                        Непривязанные ({unmappedCount})
+                      </button>
+                      {conflictCount > 0 && (
+                        <button
+                          type="button"
+                          className={`mapping-filter-tab ${mappingFilter === "conflicts" ? "active" : ""}`}
+                          style={{ color: "#ef4444" }}
+                          onClick={() => setMappingFilter("conflicts")}
+                        >
+                          <AlertTriangle size={10} /> Конфликты ({conflictCount})
+                        </button>
+                      )}
+                    </div>
+
+                    <div style={{ position: "relative", width: 130, display: "flex", alignItems: "center" }}>
+                      <Search size={10} style={{ position: "absolute", left: 6, color: "var(--cad-text-dim)" }} />
+                      <input
+                        type="text"
+                        value={mappingSearchQuery}
+                        onChange={(e) => setMappingSearchQuery(e.target.value)}
+                        placeholder="Поиск сигнала..."
+                        className="cad-input"
+                        style={{ width: "100%", padding: "2px 6px 2px 20px", fontSize: 10, height: 22 }}
+                      />
+                      {mappingSearchQuery && (
+                        <button
+                          type="button"
+                          onClick={() => setMappingSearchQuery("")}
+                          style={{ position: "absolute", right: 4, background: "none", border: "none", color: "var(--cad-text-dim)", cursor: "pointer", padding: 0 }}
+                        >
+                          <X size={10} />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
                   {/* Таблица сопоставления выводов */}
                   <div className="device-table-container">
                     <table className="device-table">
@@ -2637,7 +3083,18 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredLogicalPins.map((pin) => {
+                        {mappingFilteredPins.length === 0 ? (
+                          <tr>
+                            <td colSpan={3} style={{ textAlign: "center", padding: "28px 10px", color: "#64748b" }}>
+                              {mappingFilter === "unmapped"
+                                ? "🎉 Все выводы успешно привязаны к площадкам корпуса!"
+                                : mappingFilter === "conflicts"
+                                ? "Конфликтов сопоставления не обнаружено."
+                                : "Нет выводов, соответствующих поиску."}
+                            </td>
+                          </tr>
+                        ) : (
+                          mappingFilteredPins.map((pin) => {
                           const assignedPad = currentMapping.pinMap[pin.name] || "";
                           const typeCfg =
                             ELECTRICAL_TYPES.find((t) => t.value === pin.electricalType) ||
@@ -2704,24 +3161,20 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
 
                               <td>
                                 <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-                                  <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                                  <div className={`mapping-pad-select-wrap ${hasConflict ? "conflict" : ""}`}>
                                     <select
                                       value={assignedPad}
                                       onChange={(e) => {
                                         handleUpdatePinMapping(pin.name, e.target.value);
                                         setActivePadNum(e.target.value || null);
                                       }}
-                                      className="cad-input"
+                                      className="mapping-pad-select"
                                       style={{
-                                        width: "100%",
-                                        padding: "3px 6px",
-                                        fontSize: 11,
-                                        height: 24,
                                         borderColor: hasConflict
                                           ? "#ef4444"
                                           : assignedPad
-                                          ? "var(--cad-border)"
-                                          : "rgba(245, 158, 11, 0.4)",
+                                          ? "rgba(59, 130, 246, 0.4)"
+                                          : "rgba(245, 158, 11, 0.35)",
                                       }}
                                     >
                                       <option value="">— Не подключен —</option>
@@ -2732,31 +3185,38 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                                         return (
                                           <option key={pad.padNum} value={pad.padNum}>
                                             Pad #{pad.padNum} {pad.name ? `(${pad.name})` : ""} [{pad.shape}]
-                                            {occupiedBy ? ` — занят выводом "${occupiedBy[0]}"` : ""}
+                                            {occupiedBy ? ` — занят (${occupiedBy[0]})` : ""}
                                           </option>
                                         );
                                       })}
                                     </select>
-                                    <span
-                                      style={{
-                                        width: 7,
-                                        height: 7,
-                                        borderRadius: "50%",
-                                        backgroundColor: hasConflict
-                                          ? "#ef4444"
-                                          : assignedPad
-                                          ? "var(--cad-net-active, #10b981)"
-                                          : "#f59e0b",
-                                        flexShrink: 0,
-                                      }}
+                                    <div
+                                      className={`mapping-status-indicator ${
+                                        hasConflict ? "conflict" : assignedPad ? "assigned" : "unassigned"
+                                      }`}
                                       title={
                                         hasConflict
                                           ? "Конфликт назначения площадки!"
                                           : assignedPad
-                                          ? "Площадка подключена"
+                                          ? `Подключено к Pad #${assignedPad}`
                                           : "Вывод не назначен"
                                       }
                                     />
+                                    {assignedPad && (
+                                      <button
+                                        type="button"
+                                        className="cad-icon-btn"
+                                        style={{ width: 20, height: 20, padding: 0, opacity: 0.6, flexShrink: 0 }}
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleUpdatePinMapping(pin.name, "");
+                                          setActivePadNum(null);
+                                        }}
+                                        title="Отвязать площадку от этого вывода"
+                                      >
+                                        <X size={11} />
+                                      </button>
+                                    )}
                                   </div>
 
                                   {/* Предупреждение о конфликте, если площадка назначена нескольким выводам */}
@@ -2770,7 +3230,7 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
                               </td>
                             </tr>
                           );
-                        })}
+                        }))}
                       </tbody>
                     </table>
                   </div>
@@ -3096,6 +3556,168 @@ export const DeviceEditorModal: React.FC<DeviceEditorModalProps> = ({
               >
                 <Plus size={12} />
                 <span>Создать выводы</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Модальный диалог: Массовый импорт таблицы выводов из буфера обмена */}
+      {isBulkImportOpen && (
+        <div className="pkg-picker-overlay" onClick={() => setIsBulkImportOpen(false)}>
+          <div className="bulk-import-box" onClick={(e) => e.stopPropagation()}>
+            <div className="pkg-picker-header">
+              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                <FileText size={16} color="var(--cad-accent-hover)" />
+                <span style={{ fontSize: 13, fontWeight: 700, color: "var(--cad-text-main)" }}>
+                  Массовый импорт выводов из таблицы (Datasheet / Excel / CSV)
+                </span>
+              </div>
+              <button
+                type="button"
+                className="cad-modal-close-btn"
+                onClick={() => setIsBulkImportOpen(false)}
+              >
+                <X size={14} />
+              </button>
+            </div>
+
+            <div style={{ padding: "12px 16px", display: "flex", flexDirection: "column", gap: 10, flex: 1, minHeight: 0 }}>
+              <div style={{ fontSize: 11, color: "var(--cad-text-muted)", background: "rgba(59, 130, 246, 0.08)", border: "1px solid rgba(59, 130, 246, 0.2)", borderRadius: 6, padding: "8px 12px" }}>
+                💡 <strong>Как использовать:</strong> скопируйте таблицу выводов из PDF-даташита, таблицы Excel или CSV и вставьте в поле ниже.
+                Автоматически определяются: номер, имя вывода, тип сигнала (VCC, GND, IN, OUT, NC) и описание.
+              </div>
+
+              <div>
+                <label className="form-label" style={{ fontSize: 10.5, marginBottom: 4 }}>
+                  Вставьте скопированный текст (разделители: Tab, точка с запятой, запятая или пробелы):
+                </label>
+                <textarea
+                  value={bulkImportText}
+                  onChange={(e) => setBulkImportText(e.target.value)}
+                  placeholder={"Пример скопированных строк:\n1\tVCC\tPower In\tПитание микросхемы 3.3В\n2\tGND\tGround\tОбщий провод\n3\tPA0\tInput\tКнопка включения\n4\tPA1\tOutput\tСветодиод статуса"}
+                  className="bulk-import-textarea"
+                  autoFocus
+                />
+              </div>
+
+              {/* Живой предпросмотр распознанных строк */}
+              <div style={{ flex: 1, minHeight: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", fontSize: 11 }}>
+                  <span style={{ fontWeight: 600, color: "var(--cad-text-main)" }}>
+                    Распознано выводов:{" "}
+                    <span style={{ color: "var(--cad-accent-hover)" }}>
+                      {parseBulkImportText(bulkImportText).length} шт.
+                    </span>
+                  </span>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: "var(--cad-text-muted)" }}>
+                      <input
+                        type="radio"
+                        name="bulkImportMode"
+                        checked={bulkImportMode === "append"}
+                        onChange={() => setBulkImportMode("append")}
+                      />
+                      <span>Добавить к существующим ({logicalPins.length})</span>
+                    </label>
+                    <label style={{ display: "flex", alignItems: "center", gap: 5, cursor: "pointer", color: "var(--cad-text-muted)" }}>
+                      <input
+                        type="radio"
+                        name="bulkImportMode"
+                        checked={bulkImportMode === "replace"}
+                        onChange={() => setBulkImportMode("replace")}
+                      />
+                      <span style={{ color: bulkImportMode === "replace" ? "#ef4444" : undefined }}>Заменить все текущие выводы</span>
+                    </label>
+                  </div>
+                </div>
+
+                <div className="device-table-container" style={{ flex: 1, minHeight: 0, overflowY: "auto" }}>
+                  <table className="device-table">
+                    <thead>
+                      <tr>
+                        <th style={{ width: 34, textAlign: "center" }}>#</th>
+                        <th style={{ width: 100 }}>Имя вывода</th>
+                        <th style={{ width: 140 }}>Тип сигнала</th>
+                        <th style={{ width: 50, textAlign: "center" }}>Секция</th>
+                        <th>Описание / Примечание</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {parseBulkImportText(bulkImportText).length === 0 ? (
+                        <tr>
+                          <td colSpan={5} style={{ textAlign: "center", padding: "24px 10px", color: "var(--cad-text-dim)" }}>
+                            Вставьте строки в поле выше для предпросмотра
+                          </td>
+                        </tr>
+                      ) : (
+                        parseBulkImportText(bulkImportText).slice(0, 50).map((item, idx) => {
+                          const typeCfg =
+                            ELECTRICAL_TYPES.find((t) => t.value === item.electricalType) ||
+                            ELECTRICAL_TYPES[5];
+                          return (
+                            <tr key={idx}>
+                              <td style={{ textAlign: "center", color: "#64748b", fontFamily: "monospace", fontSize: 10 }}>
+                                {idx + 1}
+                              </td>
+                              <td style={{ fontWeight: "bold", fontFamily: "monospace", color: "var(--cad-accent-hover)" }}>
+                                {item.name}
+                              </td>
+                              <td>
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    alignItems: "center",
+                                    gap: 5,
+                                    fontSize: 10,
+                                    background: "rgba(255,255,255,0.04)",
+                                    padding: "1px 6px",
+                                    borderRadius: 3,
+                                  }}
+                                >
+                                  <span
+                                    style={{
+                                      width: 6,
+                                      height: 6,
+                                      borderRadius: "50%",
+                                      backgroundColor: typeCfg.color,
+                                    }}
+                                  />
+                                  <span>{typeCfg.shortLabel}</span>
+                                </span>
+                              </td>
+                              <td style={{ textAlign: "center", fontFamily: "monospace", fontSize: 10.5 }}>
+                                {item.unit || "—"}
+                              </td>
+                              <td style={{ fontSize: 10.5, color: "var(--cad-text-muted)" }}>
+                                {item.description || "—"}
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            <div className="cad-modal-footer" style={{ padding: "10px 16px" }}>
+              <button
+                type="button"
+                className="cad-btn-secondary"
+                onClick={() => setIsBulkImportOpen(false)}
+              >
+                Отмена
+              </button>
+              <button
+                type="button"
+                className="cad-btn-primary"
+                disabled={parseBulkImportText(bulkImportText).length === 0}
+                onClick={handleApplyBulkImport}
+              >
+                <Plus size={12} />
+                <span>Импортировать ({parseBulkImportText(bulkImportText).length} выводов)</span>
               </button>
             </div>
           </div>

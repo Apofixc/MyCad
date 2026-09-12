@@ -23,6 +23,9 @@ interface FootprintPreviewProps {
   interactive?: boolean;
   selectedPadNum?: string | null;
   onSelectPad?: (padNum: string) => void;
+  padLabels?: Record<string, string>;
+  padColors?: Record<string, string>;
+  unassignedPadNums?: Set<string>;
 }
 
 export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
@@ -36,6 +39,9 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
   interactive = true,
   selectedPadNum,
   onSelectPad,
+  padLabels,
+  padColors,
+  unassignedPadNums,
 }) => {
   const [hoveredPadNum, setHoveredPadNum] = useState<string | null>(null);
   const [zoomScale, setZoomScale] = useState<number>(1.0);
@@ -75,10 +81,24 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
   const cy = (minY + maxY) / 2;
   const viewBox = `${cx - viewW / 2} ${cy - viewH / 2} ${viewW} ${viewH}`;
 
-  const renderPadShape = (pad: PackagePad, isSelected: boolean, isHovered: boolean) => {
+  const renderPadShape = (
+    pad: PackagePad,
+    isSelected: boolean,
+    isHovered: boolean,
+    signalColor?: string,
+    isUnassigned?: boolean
+  ) => {
     const copperColor = pad.drillDiameter ? "#d97706" : "#f59e0b"; // THT янтарный, SMD медный
-    const strokeColor = isSelected ? "#38bdf8" : isHovered ? "#60a5fa" : "#b45309";
-    const strokeWidth = isSelected ? 0.25 : isHovered ? 0.18 : 0.08;
+    const strokeColor = isSelected
+      ? "#38bdf8"
+      : isHovered
+      ? "#60a5fa"
+      : signalColor
+      ? signalColor
+      : isUnassigned
+      ? "rgba(245, 158, 11, 0.7)"
+      : "#b45309";
+    const strokeWidth = isSelected ? 0.25 : isHovered ? 0.18 : signalColor ? 0.14 : isUnassigned ? 0.1 : 0.08;
 
     const transform = pad.rotation ? `rotate(${pad.rotation}, ${pad.x}, ${pad.y})` : undefined;
 
@@ -416,6 +436,9 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
         {(packageDef.pads || []).map((pad) => {
           const isSelected = selectedPadNum === pad.padNum;
           const isHovered = hoveredPadNum === pad.padNum;
+          const assignedLabel = padLabels?.[pad.padNum];
+          const padColor = padColors?.[pad.padNum];
+          const isUnassigned = unassignedPadNums?.has(pad.padNum);
 
           return (
             <g
@@ -429,7 +452,7 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
               }}
             >
               {/* Медная контактная площадка */}
-              {renderPadShape(pad, isSelected, isHovered)}
+              {renderPadShape(pad, isSelected, isHovered, padColor, isUnassigned)}
 
               {/* Сверловка THT (Drill Hole) */}
               {pad.drillDiameter && pad.drillDiameter > 0 && (
@@ -443,19 +466,50 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
                 />
               )}
 
-              {/* Номер / Название вывода */}
-              <text
-                x={pad.x}
-                y={pad.y}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fill="#ffffff"
-                fontSize={Math.min(pad.width, pad.height) * 0.42}
-                fontWeight="bold"
-                style={{ pointerEvents: "none", userSelect: "none" }}
-              >
-                {pad.name || pad.padNum}
-              </text>
+              {/* Номер / Название вывода и привязанный схемный сигнал */}
+              {assignedLabel ? (
+                <g style={{ pointerEvents: "none", userSelect: "none" }}>
+                  {/* Номер площадки корпуса */}
+                  <text
+                    x={pad.x}
+                    y={pad.y - Math.min(pad.width, pad.height) * 0.16}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill="rgba(255, 255, 255, 0.75)"
+                    fontSize={Math.min(pad.width, pad.height) * 0.26}
+                    fontWeight="bold"
+                    fontFamily="monospace"
+                  >
+                    #{pad.padNum}
+                  </text>
+                  {/* Имя схемного вывода (VCC, GND, TX, etc.) */}
+                  <text
+                    x={pad.x}
+                    y={pad.y + Math.min(pad.width, pad.height) * 0.22}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fill={padColor || "#38bdf8"}
+                    fontSize={Math.min(pad.width, pad.height) * 0.32}
+                    fontWeight="900"
+                    fontFamily="sans-serif"
+                  >
+                    {assignedLabel}
+                  </text>
+                </g>
+              ) : (
+                <text
+                  x={pad.x}
+                  y={pad.y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fill={isUnassigned ? "#fde68a" : "#ffffff"}
+                  fontSize={Math.min(pad.width, pad.height) * 0.42}
+                  fontWeight="bold"
+                  style={{ pointerEvents: "none", userSelect: "none" }}
+                >
+                  {pad.name || pad.padNum}
+                </text>
+              )}
             </g>
           );
         })}
