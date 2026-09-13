@@ -35,6 +35,7 @@ interface InteractiveFootprintCanvasProps {
   snapToGrid: boolean;
   activeTool: EditorTool;
   selectedPadNum: string | null;
+  selectedPadNums?: string[];
   selectedGraphicId: string | null;
   newPadTemplate: {
     shape: PadShape;
@@ -43,9 +44,17 @@ interface InteractiveFootprintCanvasProps {
     drillDiameter?: number;
     roundRadius?: number;
   };
+  bodyWidth?: number;
+  bodyHeight?: number;
+  bodyShape?: string;
+  dShapeCut?: string;
+  courtyardWidth?: number;
+  courtyardHeight?: number;
+  activeLayer?: GraphicLayer;
   onPadsChange: (pads: PackagePad[]) => void;
   onGraphicsChange: (graphics: GraphicItem[]) => void;
   onSelectPad: (padNum: string | null) => void;
+  onSelectPads?: (padNums: string[]) => void;
   onSelectGraphic: (id: string | null) => void;
   onShiftOrigin: (dx: number, dy: number) => void;
   onSetActiveTool?: (tool: EditorTool) => void;
@@ -65,11 +74,20 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   snapToGrid: enableSnap,
   activeTool,
   selectedPadNum,
+  selectedPadNums,
   selectedGraphicId,
   newPadTemplate,
+  bodyWidth,
+  bodyHeight,
+  bodyShape,
+  dShapeCut,
+  courtyardWidth,
+  courtyardHeight,
+  activeLayer = "top_silk",
   onPadsChange,
   onGraphicsChange,
   onSelectPad,
+  onSelectPads,
   onSelectGraphic,
   onShiftOrigin,
   onSetActiveTool,
@@ -129,11 +147,12 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     if (polygonPoints.length < 3) return;
     const item: GraphicItem = {
       kind: "polygon", id: crypto.randomUUID(), points: polygonPoints,
-      strokeWidth: 0.15, layer: "top_fab", filled: false,
+      strokeWidth: 0.15, layer: activeLayer || "top_fab", filled: false,
     };
     onGraphicsChange([...graphics, item]);
     onSelectGraphic(item.id);
     onSelectPad(null);
+    onSelectPads?.([]);
     setPolygonPoints([]);
     onSetActiveTool?.("select");
   };
@@ -149,22 +168,22 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   // Слушатель горячих клавиш
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!containerRef.current?.contains(document.activeElement)) return;
-      const target = e.target as HTMLElement;
+      const target = e.target as HTMLElement | null;
       if (
         target &&
-        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT")
+        (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)
       ) {
         return;
       }
 
-      // Пробел (Space): быстрый поворот на 90° выделенной площадки или шаблона при P
+      // Пробел (Space): быстрый поворот на 90° выделенных площадок или шаблона при P
       if (e.code === "Space" || e.key === " ") {
         e.preventDefault();
-        if (selectedPadNum) {
+        const targets = selectedPadNums && selectedPadNums.length > 0 ? selectedPadNums : selectedPadNum ? [selectedPadNum] : [];
+        if (targets.length > 0) {
           onPadsChange(
             pads.map((p) => {
-              if (p.padNum === selectedPadNum) {
+              if (targets.includes(p.padNum)) {
                 const cur = p.rotation || 0;
                 return { ...p, rotation: (cur + 90) % 360 };
               }
@@ -181,10 +200,16 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         if (onDeleteSelected) {
           e.preventDefault();
           onDeleteSelected();
+        } else if (selectedPadNums && selectedPadNums.length > 0) {
+          e.preventDefault();
+          onPadsChange(pads.filter((p) => !selectedPadNums.includes(p.padNum)));
+          onSelectPads?.([]);
+          onSelectPad(null);
         } else if (selectedPadNum) {
           e.preventDefault();
           onPadsChange(pads.filter((p) => p.padNum !== selectedPadNum));
           onSelectPad(null);
+          onSelectPads?.([]);
         } else if (selectedGraphicId) {
           e.preventDefault();
           onGraphicsChange(graphics.filter((g) => g.id !== selectedGraphicId));
@@ -204,6 +229,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         setArcStart(null);
         setMeasureDist(null);
         onSelectPad(null);
+        onSelectPads?.([]);
         onSelectGraphic(null);
         onSetActiveTool?.("select");
         return;
@@ -238,13 +264,14 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       else if (key === "r" || key === "к") onSetActiveTool?.("rect");
       else if (key === "c" || key === "с") onSetActiveTool?.("circle");
       else if (key === "m" || key === "ь") onSetActiveTool?.("measure");
-      else if (key === "f") fitGeometry();
+      else if (key === "f" || key === "а") fitGeometry();
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [
     selectedPadNum,
+    selectedPadNums,
     selectedGraphicId,
     activeTool,
     pads,
@@ -253,6 +280,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     onPadsChange,
     onGraphicsChange,
     onSelectPad,
+    onSelectPads,
     onSelectGraphic,
     onSetActiveTool,
     onRotatePadTemplate,
@@ -263,6 +291,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     draggingPadNum,
     draggingGraphicId,
     onInteractionEnd,
+    activeLayer,
   ]);
 
   // Привязка к сетке
@@ -317,11 +346,26 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
 
   // Обработка клика мыши
   const handleMouseDown = (e: React.MouseEvent) => {
-    // Панорамирование колесом мыши или с зажатым пробелом / Shift
+    // Панорамирование колесом мыши или с зажатым пробелом / Alt
     if (e.button === 1 || (e.button === 0 && e.altKey)) {
       e.preventDefault();
       setIsPanning(true);
       setPanStart({ x: e.clientX, y: e.clientY });
+      return;
+    }
+
+    if (e.button === 2) {
+      // Правая кнопка мыши: завершить текущую цепочку линий/полигона или выйти в select
+      e.preventDefault();
+      if (activeTool === "polygon" && polygonPoints.length >= 3) {
+        finishPolygon();
+      } else {
+        setDrawStart(null);
+        setPolygonPoints([]);
+        setArcStart(null);
+        setMeasureDist(null);
+        onSetActiveTool?.("select");
+      }
       return;
     }
 
@@ -351,11 +395,12 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
           radius: Math.hypot(arcStart.x - drawStart.x, arcStart.y - drawStart.y),
           startAngle: Math.atan2(arcStart.y - drawStart.y, arcStart.x - drawStart.x) * 180 / Math.PI,
           endAngle: Math.atan2(snapped.y - drawStart.y, snapped.x - drawStart.x) * 180 / Math.PI,
-          strokeWidth: 0.15, layer: "top_silk",
+          strokeWidth: 0.15, layer: activeLayer || "top_silk",
         };
         onGraphicsChange([...graphics, item]);
         onSelectGraphic(item.id);
         onSelectPad(null);
+        onSelectPads?.([]);
         setDrawStart(null);
         setArcStart(null);
         onSetActiveTool?.("select");
@@ -365,11 +410,12 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     if (activeTool === "text") {
       const item: GraphicItem = {
         kind: "text", id: crypto.randomUUID(), x: snapped.x, y: snapped.y, text: "Текст",
-        fontSize: 1, rotation: 0, align: "center", strokeWidth: 0.15, layer: "top_silk",
+        fontSize: 1, rotation: 0, align: "center", strokeWidth: 0.15, layer: activeLayer || "top_silk",
       };
       onGraphicsChange([...graphics, item]);
       onSelectGraphic(item.id);
       onSelectPad(null);
+      onSelectPads?.([]);
       onSetActiveTool?.("select");
       return;
     }
@@ -391,6 +437,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       };
       onPadsChange([...pads, newPad]);
       onSelectPad(nextNum);
+      onSelectPads?.([nextNum]);
       return;
     }
 
@@ -412,13 +459,13 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
           }
           const newLine: GraphicItem = {
             kind: "line",
-            id: `line_${Date.now()}`,
+            id: `line_${crypto.randomUUID()}`,
             x1: drawStart.x,
             y1: drawStart.y,
             x2: snapped.x,
             y2: snapped.y,
             strokeWidth: 0.15,
-            layer: "top_silk",
+            layer: activeLayer || "top_silk",
           };
           onGraphicsChange([...graphics, newLine]);
           // Непрерывное рисование контура (полилиния): следующий отрезок начинается из конца текущего
@@ -430,7 +477,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
           if (w > 0.05 && h > 0.05) {
             const newRect: GraphicItem = {
               kind: "rect",
-              id: `rect_${Date.now()}`,
+              id: `rect_${crypto.randomUUID()}`,
               x: (drawStart.x + snapped.x) / 2,
               y: (drawStart.y + snapped.y) / 2,
               width: w,
@@ -438,7 +485,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
               roundRadius: 0.2,
               rotation: 0,
               strokeWidth: 0.15,
-              layer: "top_silk",
+              layer: activeLayer || "top_silk",
               filled: false,
             };
             onGraphicsChange([...graphics, newRect]);
@@ -448,12 +495,12 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
           if (r > 0.05) {
             const newCircle: GraphicItem = {
               kind: "circle",
-              id: `circle_${Date.now()}`,
+              id: `circle_${crypto.randomUUID()}`,
               cx: drawStart.x,
               cy: drawStart.y,
               radius: Math.round(r * 1000) / 1000,
               strokeWidth: 0.15,
-              layer: "top_silk",
+              layer: activeLayer || "top_silk",
               filled: false,
             };
             onGraphicsChange([...graphics, newCircle]);
@@ -468,17 +515,18 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     if (activeTool === "d_shape") {
       const newD: GraphicItem = {
         kind: "d_shape",
-        id: `dshape_${Date.now()}`,
+        id: `dshape_${crypto.randomUUID()}`,
         cx: snapped.x,
         cy: snapped.y,
         diameter: 5.0,
         cutDepth: 1.5,
         cutOrientation: "right",
         strokeWidth: 0.15,
-        layer: "top_silk",
+        layer: activeLayer || "top_silk",
       };
       onGraphicsChange([...graphics, newD]);
       onSelectPad(null);
+      onSelectPads?.([]);
       onSelectGraphic(newD.id);
       onSetActiveTool?.("select");
       return;
@@ -487,17 +535,18 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     if (activeTool === "capsule") {
       const newCap: GraphicItem = {
         kind: "capsule",
-        id: `capsule_${Date.now()}`,
+        id: `capsule_${crypto.randomUUID()}`,
         cx: snapped.x,
         cy: snapped.y,
         width: 11.5,
         height: 4.8,
         rotation: 0,
         strokeWidth: 0.15,
-        layer: "top_silk",
+        layer: activeLayer || "top_silk",
       };
       onGraphicsChange([...graphics, newCap]);
       onSelectPad(null);
+      onSelectPads?.([]);
       onSelectGraphic(newCap.id);
       onSetActiveTool?.("select");
       return;
@@ -506,6 +555,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     if (activeTool === "select") {
       // Клик по пустому месту сбрасывает выделение
       onSelectPad(null);
+      onSelectPads?.([]);
       onSelectGraphic(null);
     }
   };
@@ -750,11 +800,96 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         }}
       >
         <g transform={`translate(${originPxX}, ${originPxY}) scale(${scale})`}>
+          {/* 1. Зона отчуждения (Courtyard) */}
+          {courtyardWidth && courtyardHeight && courtyardWidth > 0 && courtyardHeight > 0 && (
+            <rect
+              x={-courtyardWidth / 2}
+              y={-courtyardHeight / 2}
+              width={courtyardWidth}
+              height={courtyardHeight}
+              fill="rgba(168, 85, 247, 0.04)"
+              stroke="#a855f7"
+              strokeWidth={0.08}
+              strokeDasharray="0.4 0.3"
+              pointerEvents="none"
+            />
+          )}
+
+          {/* 2. Тело компонента (Body / Fabrication) */}
+          {bodyShape && bodyShape !== "none" && bodyWidth && bodyHeight && bodyWidth > 0 && bodyHeight > 0 && (
+            <g pointerEvents="none">
+              {bodyShape === "circle" ? (
+                <circle
+                  cx={0}
+                  cy={0}
+                  r={bodyWidth / 2}
+                  fill={variant?.bodyColor || "rgba(30, 41, 59, 0.5)"}
+                  stroke={variant?.bodyBorderColor || "#475569"}
+                  strokeWidth={0.12}
+                />
+              ) : bodyShape === "d_shape" ? (
+                <path
+                  d={getDShapePath(0, 0, bodyWidth / 2, (dShapeCut as any) || "right", 0.58)}
+                  fill={variant?.bodyColor || "rgba(30, 41, 59, 0.5)"}
+                  stroke={variant?.bodyBorderColor || "#475569"}
+                  strokeWidth={0.12}
+                />
+              ) : bodyShape === "capsule" ? (
+                <path
+                  d={getCapsulePath(0, 0, bodyWidth, bodyHeight)}
+                  fill={variant?.bodyColor || "rgba(30, 41, 59, 0.5)"}
+                  stroke={variant?.bodyBorderColor || "#475569"}
+                  strokeWidth={0.12}
+                />
+              ) : (
+                <rect
+                  x={-bodyWidth / 2}
+                  y={-bodyHeight / 2}
+                  width={bodyWidth}
+                  height={bodyHeight}
+                  rx={0.2}
+                  fill={variant?.bodyColor || "rgba(30, 41, 59, 0.5)"}
+                  stroke={variant?.bodyBorderColor || "#475569"}
+                  strokeWidth={0.12}
+                />
+              )}
+
+              {/* Ключ полярности (Key: Notch / Dot / Stripe) */}
+              {variant?.keyType === "notch" && (
+                <path
+                  d={`M -0.4 ${-bodyHeight / 2} A 0.4 0.4 0 0 0 0.4 ${-bodyHeight / 2}`}
+                  fill="none"
+                  stroke={variant.bodyBorderColor || "#64748b"}
+                  strokeWidth={0.12}
+                />
+              )}
+              {variant?.keyType === "dot" && (
+                <circle
+                  cx={-bodyWidth / 2 + 0.6}
+                  cy={-bodyHeight / 2 + 0.6}
+                  r={0.25}
+                  fill="#f8fafc"
+                />
+              )}
+              {variant?.keyType === "stripe" && (
+                <line
+                  x1={-bodyWidth / 2 + 0.5}
+                  y1={-bodyHeight / 2}
+                  x2={-bodyWidth / 2 + 0.5}
+                  y2={bodyHeight / 2}
+                  stroke="#f8fafc"
+                  strokeWidth={0.2}
+                />
+              )}
+            </g>
+          )}
+
           {/* Графические примитивы (линии, дуги, D-shape) */}
           {graphics.map((item) => {
             const isSelected = selectedGraphicId === item.id;
             const strokeColor = isSelected ? "#38bdf8" : "#f8fafc";
             const strokeWidth = item.strokeWidth || 0.15;
+            const hitWidth = Math.max(strokeWidth, 8 / scale);
             const pointerStyle = {
               pointerEvents: "auto" as const,
               cursor: activeTool === "select" ? "move" : "pointer",
@@ -764,127 +899,79 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                 e.stopPropagation();
                 onSelectGraphic(item.id);
                 onSelectPad(null);
+                onSelectPads?.([]);
                 setDraggingGraphicId(item.id);
                 onInteractionStart?.();
                 const world = screenToWorld(e.clientX, e.clientY);
                 setGraphicDragOrigin({ x: snapCoord(world.x), y: snapCoord(world.y) });
               }
             };
+            const handleGraphicClick = (e: React.MouseEvent) => {
+              e.stopPropagation();
+              onSelectGraphic(item.id);
+              onSelectPad(null);
+              onSelectPads?.([]);
+            };
 
             switch (item.kind) {
               case "line":
                 return (
-                  <line
-                    key={item.id}
-                    x1={item.x1}
-                    y1={item.y1}
-                    x2={item.x2}
-                    y2={item.y2}
-                    stroke={strokeColor}
-                    strokeWidth={strokeWidth}
-                    strokeLinecap="round"
-                    style={pointerStyle}
-                    onMouseDown={handleGraphicMouseDown}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectGraphic(item.id);
-                      onSelectPad(null);
-                    }}
-                  />
+                  <g key={item.id} style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>
+                    <line x1={item.x1} y1={item.y1} x2={item.x2} y2={item.y2} stroke="transparent" strokeWidth={hitWidth} strokeLinecap="round" />
+                    <line x1={item.x1} y1={item.y1} x2={item.x2} y2={item.y2} stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" pointerEvents="none" />
+                  </g>
                 );
               case "d_shape":
                 return (
-                  <path
-                    key={item.id}
-                    d={getGraphicPath(item)}
-                    fill="none"
-                    stroke={strokeColor}
-                    strokeWidth={strokeWidth}
-                    style={pointerStyle}
-                    onMouseDown={handleGraphicMouseDown}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectGraphic(item.id);
-                      onSelectPad(null);
-                    }}
-                  />
+                  <g key={item.id} style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>
+                    <path d={getGraphicPath(item)} fill="transparent" stroke="transparent" strokeWidth={hitWidth} />
+                    <path d={getGraphicPath(item)} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} pointerEvents="none" />
+                  </g>
                 );
               case "capsule":
                 return (
-                  <path
-                    key={item.id}
-                    d={getCapsulePath(item.cx, item.cy, item.width, item.height)}
-                    transform={`rotate(${item.rotation} ${item.cx} ${item.cy})`}
-                    fill="none"
-                    stroke={strokeColor}
-                    strokeWidth={strokeWidth}
-                    style={pointerStyle}
-                    onMouseDown={handleGraphicMouseDown}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectGraphic(item.id);
-                      onSelectPad(null);
-                    }}
-                  />
+                  <g key={item.id} transform={`rotate(${item.rotation} ${item.cx} ${item.cy})`} style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>
+                    <path d={getCapsulePath(item.cx, item.cy, item.width, item.height)} fill="transparent" stroke="transparent" strokeWidth={hitWidth} />
+                    <path d={getCapsulePath(item.cx, item.cy, item.width, item.height)} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} pointerEvents="none" />
+                  </g>
                 );
               case "rect":
                 return (
-                  <rect
-                    key={item.id}
-                    x={item.x - item.width / 2}
-                    y={item.y - item.height / 2}
-                    width={item.width}
-                    height={item.height}
-                    rx={item.roundRadius}
-                    transform={`rotate(${item.rotation} ${item.x} ${item.y})`}
-                    fill={item.filled ? strokeColor : "none"}
-                    stroke={strokeColor}
-                    strokeWidth={strokeWidth}
-                    style={pointerStyle}
-                    onMouseDown={handleGraphicMouseDown}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectGraphic(item.id);
-                      onSelectPad(null);
-                    }}
-                  />
+                  <g key={item.id} transform={`rotate(${item.rotation} ${item.x} ${item.y})`} style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>
+                    <rect x={item.x - item.width / 2} y={item.y - item.height / 2} width={item.width} height={item.height} rx={item.roundRadius} fill={item.filled ? strokeColor : "transparent"} stroke="transparent" strokeWidth={hitWidth} />
+                    <rect x={item.x - item.width / 2} y={item.y - item.height / 2} width={item.width} height={item.height} rx={item.roundRadius} fill={item.filled ? strokeColor : "none"} stroke={strokeColor} strokeWidth={strokeWidth} pointerEvents="none" />
+                  </g>
                 );
               case "circle":
                 return (
-                  <circle
-                    key={item.id}
-                    cx={item.cx}
-                    cy={item.cy}
-                    r={item.radius}
-                    fill={item.filled ? strokeColor : "none"}
-                    stroke={strokeColor}
-                    strokeWidth={strokeWidth}
-                    style={pointerStyle}
-                    onMouseDown={handleGraphicMouseDown}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSelectGraphic(item.id);
-                      onSelectPad(null);
-                    }}
-                  />
+                  <g key={item.id} style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>
+                    <circle cx={item.cx} cy={item.cy} r={item.radius} fill={item.filled ? strokeColor : "transparent"} stroke="transparent" strokeWidth={hitWidth} />
+                    <circle cx={item.cx} cy={item.cy} r={item.radius} fill={item.filled ? strokeColor : "none"} stroke={strokeColor} strokeWidth={strokeWidth} pointerEvents="none" />
+                  </g>
                 );
               case "arc":
               case "polygon":
-                return <path key={item.id} d={getGraphicPath(item)}
-                  fill={item.kind === "polygon" && item.filled ? strokeColor : "none"}
-                  stroke={strokeColor} strokeWidth={strokeWidth}
-                  style={pointerStyle} onMouseDown={handleGraphicMouseDown} />;
+                return (
+                  <g key={item.id} style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>
+                    <path d={getGraphicPath(item)} fill={item.kind === "polygon" && item.filled ? strokeColor : "transparent"} stroke="transparent" strokeWidth={hitWidth} />
+                    <path d={getGraphicPath(item)} fill={item.kind === "polygon" && item.filled ? strokeColor : "none"} stroke={strokeColor} strokeWidth={strokeWidth} pointerEvents="none" />
+                  </g>
+                );
               case "text":
-                return <text key={item.id} x={item.x} y={item.y} fontSize={item.fontSize}
-                  transform={`rotate(${item.rotation} ${item.x} ${item.y})`}
-                  fill={strokeColor} textAnchor={item.align === "left" ? "start" : item.align === "right" ? "end" : "middle"}
-                  dominantBaseline="central" style={pointerStyle} onMouseDown={handleGraphicMouseDown}>{item.text}</text>;
+                return (
+                  <text key={item.id} x={item.x} y={item.y} fontSize={item.fontSize}
+                    transform={`rotate(${item.rotation} ${item.x} ${item.y})`}
+                    fill={strokeColor} textAnchor={item.align === "left" ? "start" : item.align === "right" ? "end" : "middle"}
+                    dominantBaseline="central" style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>{item.text}</text>
+                );
             }
           })}
 
           {/* Интерактивные контактные площадки (Pads) */}
           {pads.map((pad) => {
-            const isSelected = selectedPadNum === pad.padNum;
+            const isSelected = selectedPadNums && selectedPadNums.length > 0
+              ? selectedPadNums.includes(pad.padNum)
+              : selectedPadNum === pad.padNum;
             const copper = pad.drillDiameter ? "#d97706" : "#f59e0b";
             const stroke = isSelected ? "#38bdf8" : "#b45309";
             const sw = isSelected ? 0.25 : 0.08;
@@ -897,18 +984,31 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                 onMouseDown={(e) => {
                   if (activeTool === "select" && e.button === 0) {
                     e.stopPropagation();
-                    onSelectPad(pad.padNum);
-                    onSelectGraphic(null);
-                    setDraggingPadNum(pad.padNum);
-                    onInteractionStart?.();
-                    const world = screenToWorld(e.clientX, e.clientY);
-                    setDragOffset({ x: world.x - pad.x, y: world.y - pad.y });
+                    if (e.shiftKey) {
+                      const curList = selectedPadNums && selectedPadNums.length > 0 ? selectedPadNums : selectedPadNum ? [selectedPadNum] : [];
+                      const nextList = curList.includes(pad.padNum)
+                        ? curList.filter((n) => n !== pad.padNum)
+                        : [...curList, pad.padNum];
+                      onSelectPads?.(nextList);
+                      onSelectPad(nextList.length === 1 ? nextList[0] : null);
+                    } else {
+                      onSelectPads?.([pad.padNum]);
+                      onSelectPad(pad.padNum);
+                      onSelectGraphic(null);
+                      setDraggingPadNum(pad.padNum);
+                      onInteractionStart?.();
+                      const world = screenToWorld(e.clientX, e.clientY);
+                      setDragOffset({ x: world.x - pad.x, y: world.y - pad.y });
+                    }
                   }
                 }}
                 onClick={(e) => {
                   e.stopPropagation();
-                  onSelectPad(pad.padNum);
-                  onSelectGraphic(null);
+                  if (!e.shiftKey) {
+                    onSelectPads?.([pad.padNum]);
+                    onSelectPad(pad.padNum);
+                    onSelectGraphic(null);
+                  }
                 }}
               >
                 {/* Форма площадки */}
@@ -937,6 +1037,47 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
               </g>
             );
           })}
+
+          {/* Полупрозрачный фантом площадки под курсором при активном инструменте Pad */}
+          {activeTool === "pad" && (
+            <g
+              transform={`translate(${cursorPos.x}, ${cursorPos.y})`}
+              pointerEvents="none"
+            >
+              <path
+                d={getPadPath({
+                  padNum: "?",
+                  name: "?",
+                  x: 0,
+                  y: 0,
+                  width: newPadTemplate.width,
+                  height: newPadTemplate.height,
+                  rotation: 0,
+                  shape: newPadTemplate.shape,
+                  drillDiameter: newPadTemplate.drillDiameter,
+                  roundRadius: newPadTemplate.roundRadius,
+                })}
+                fill="rgba(245, 158, 11, 0.45)"
+                stroke="#38bdf8"
+                strokeWidth={0.15}
+                strokeDasharray="0.3 0.2"
+              />
+              {newPadTemplate.drillDiameter && newPadTemplate.drillDiameter > 0 && (
+                <circle cx={0} cy={0} r={newPadTemplate.drillDiameter / 2} fill="#000000" stroke="#94a3b8" strokeWidth={0.04} />
+              )}
+              <text
+                x={0}
+                y={0}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fill="#ffffff"
+                fontSize={Math.min(newPadTemplate.width, newPadTemplate.height) * 0.4}
+                fontWeight="bold"
+              >
+                +
+              </text>
+            </g>
+          )}
 
           {/* Резиновая нить / превью при черчении */}
           {polygonPoints.length > 0 && <polyline

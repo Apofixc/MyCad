@@ -290,7 +290,7 @@ export function generateMatrixPadArray(
   pitch: number,
   padDiameter: number = 0.4
 ): PackagePad[] {
-  const letters = "ABCDEFGHJKLMNPRTUVWY"; // Исключены I, O, Q, S, Z по стандарту JEDEC
+  const letters = "ABCDEFGHJKLMNPRTUVWY"; // Исключены I, O, Q, S, X, Z по стандарту JEDEC (JESD22-B111)
   const pads: PackagePad[] = [];
   const startX = -((cols - 1) * pitch) / 2;
   const startY = -((rows - 1) * pitch) / 2;
@@ -386,10 +386,27 @@ export function centerPads(pads: PackagePad[]): PackagePad[] {
 export function alignPads(
   pads: PackagePad[],
   padNums: string[],
-  alignment: "left" | "right" | "top" | "bottom" | "center_x" | "center_y"
+  alignment: "left" | "right" | "top" | "bottom" | "center_x" | "center_y" | "distribute_x" | "distribute_y"
 ): PackagePad[] {
   const selected = pads.filter((p) => padNums.includes(p.padNum));
   if (selected.length < 2) return pads;
+
+  if (alignment === "distribute_x" || alignment === "distribute_y") {
+    if (selected.length < 3) return pads;
+    const sorted = [...selected].sort((a, b) => (alignment === "distribute_x" ? a.x - b.x : a.y - b.y));
+    const firstVal = alignment === "distribute_x" ? sorted[0].x : sorted[0].y;
+    const lastVal = alignment === "distribute_x" ? sorted[sorted.length - 1].x : sorted[sorted.length - 1].y;
+    const step = (lastVal - firstVal) / (sorted.length - 1);
+    const newPositions = new Map<string, number>();
+    sorted.forEach((p, idx) => {
+      newPositions.set(p.padNum, Math.round((firstVal + idx * step) * 1000) / 1000);
+    });
+    return pads.map((p) => {
+      if (!newPositions.has(p.padNum)) return p;
+      const val = newPositions.get(p.padNum)!;
+      return alignment === "distribute_x" ? { ...p, x: val } : { ...p, y: val };
+    });
+  }
 
   let targetVal = 0;
   if (alignment === "left") targetVal = Math.min(...selected.map((p) => p.x));

@@ -22,6 +22,7 @@ import { ExtraGraphicProperties, PointProperties } from "./ExtraGraphicPropertie
 import { appendUniquePads, polygonToPad, validateFootprint } from "../../utils/footprintGeometry";
 import { reportError } from "../../utils/errorHandler";
 import {
+  alignPads,
   centerPads,
   generateAutoSilkscreen,
 } from "../../utils/footprintGenerator";
@@ -49,7 +50,82 @@ import {
   Magnet,
   RotateCw,
   Repeat,
+  AlignLeft,
+  AlignRight,
+  AlignCenter,
+  ArrowUpDown,
+  ArrowLeftRight,
 } from "lucide-react";
+
+interface CadNumberInputProps {
+  value: number;
+  onChange: (val: number) => void;
+  step?: string | number;
+  min?: number;
+  className?: string;
+  style?: React.CSSProperties;
+  placeholder?: string;
+  disabled?: boolean;
+}
+
+const CadNumberInput: React.FC<CadNumberInputProps> = ({
+  value,
+  onChange,
+  min,
+  className = "cad-input",
+  style,
+  placeholder,
+  disabled,
+}) => {
+  const [text, setText] = useState<string>(String(value ?? 0));
+
+  useEffect(() => {
+    setText(String(value ?? 0));
+  }, [value]);
+
+  return (
+    <input
+      type="text"
+      inputMode="decimal"
+      disabled={disabled}
+      className={className}
+      style={style}
+      placeholder={placeholder}
+      value={text}
+      onChange={(e) => {
+        const val = e.target.value;
+        setText(val);
+        const parsed = parseFloat(val);
+        if (Number.isFinite(parsed) && (min === undefined || parsed >= min)) {
+          onChange(parsed);
+        }
+      }}
+      onBlur={() => {
+        const parsed = parseFloat(text);
+        if (!Number.isFinite(parsed) || (min !== undefined && parsed < min)) {
+          setText(String(value ?? 0));
+        } else {
+          setText(String(parsed));
+          onChange(parsed);
+        }
+      }}
+      onKeyDown={(e) => {
+        if (e.key === "Enter") {
+          (e.target as HTMLInputElement).blur();
+        }
+      }}
+    />
+  );
+};
+
+const getLowestAvailablePadNum = (existingPads: PackagePad[]): string => {
+  const used = new Set(existingPads.map((p) => parseInt(p.padNum, 10)).filter((n) => !isNaN(n) && n > 0));
+  let candidate = 1;
+  while (used.has(candidate)) {
+    candidate++;
+  }
+  return String(candidate);
+};
 
 interface PackageEditorModalProps {
   isOpen: boolean;
@@ -72,7 +148,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
   const [mountType, setMountType] = useState<MountType>("smd");
   const [bodyWidth, setBodyWidth] = useState<number>(6.0);
   const [bodyHeight, setBodyHeight] = useState<number>(4.0);
-  const [bodyShape, setBodyShape] = useState<string>("rect");
+  const [bodyShape, setBodyShape] = useState<string>("none");
   const [dShapeCut, setDShapeCut] = useState<string>("right");
   const [pitch, setPitch] = useState<number>(1.27);
 
@@ -96,9 +172,11 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
 
   // Состояние редактора
   const [activeTool, setActiveTool] = useState<EditorTool>("select");
+  const [activeDrawingLayer, setActiveDrawingLayer] = useState<GraphicLayer>("top_silk");
   const [gridStep, setGridStep] = useState<number>(1.27); // мм
   const [snapToGrid, setSnapToGrid] = useState<boolean>(true);
   const [selectedPadNum, setSelectedPadNum] = useState<string | null>(null);
+  const [selectedPadNums, setSelectedPadNums] = useState<string[]>([]);
   const [selectedGraphicId, setSelectedGraphicId] = useState<string | null>(null);
   const [inspectorTab, setInspectorTab] = useState<"props" | "pads" | "variants">("props");
 
@@ -136,7 +214,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       setMountType(initialPackage.mountType || "smd");
       setBodyWidth(initialPackage.bodyWidth || 6.0);
       setBodyHeight(initialPackage.bodyHeight || 4.0);
-      setBodyShape(initialPackage.bodyShape || "rect");
+      setBodyShape(initialPackage.bodyShape || "none");
       setDShapeCut(initialPackage.dShapeCut || "right");
       setPitch(initialPackage.pitch || 1.27);
       setPads(initialPackage.pads || []);
@@ -180,7 +258,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       setMountType("smd");
       setBodyWidth(6.0);
       setBodyHeight(4.0);
-      setBodyShape("rect");
+      setBodyShape("none");
       setDShapeCut("right");
       setPitch(1.27);
       setPads([]);
@@ -231,10 +309,11 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
         return { ...pad, polygonPoints: pad.polygonPoints.map(([x, y]): [number, number] =>
           [x * pad.width / previous.width, y * pad.height / previous.height]) };
       }
-      return { ...pad,
-        width: Math.max(0.001, ...pad.polygonPoints.map(([x]) => Math.abs(x) * 2)),
-        height: Math.max(0.001, ...pad.polygonPoints.map(([, y]) => Math.abs(y) * 2)),
-      };
+      const xs = pad.polygonPoints.map(([x]) => x);
+      const ys = pad.polygonPoints.map(([, y]) => y);
+      const w = Math.max(0.001, Math.round((Math.max(...xs) - Math.min(...xs)) * 1000) / 1000);
+      const h = Math.max(0.001, Math.round((Math.max(...ys) - Math.min(...ys)) * 1000) / 1000);
+      return { ...pad, width: w, height: h };
     }));
   };
 
@@ -251,6 +330,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       setGraphics(prev.graphics);
       setHistory(history.slice(0, -1));
       setSelectedPadNum(null);
+      setSelectedPadNums([]);
       setSelectedGraphicId(null);
     }
   };
@@ -295,12 +375,80 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
     setPads(centerPads(pads));
   };
 
+  // Выравнивание выбранных площадок
+  const handleAlignPads = (
+    alignment: "left" | "right" | "top" | "bottom" | "center_x" | "center_y" | "distribute_x" | "distribute_y"
+  ) => {
+    if (selectedPadNums.length < 2) return;
+    pushHistory(pads, graphics);
+    setPads(alignPads(pads, selectedPadNums, alignment));
+  };
+
   // Автоматический контур шелкографии
   const handleAutoSilk = () => {
     if (pads.length === 0) return;
     pushHistory(pads, graphics);
-    const autoItems = generateAutoSilkscreen(pads, 0.6, 0.15);
-    setGraphics([...graphics, ...autoItems]);
+    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+    pads.forEach((p) => {
+      const halfW = (p.width || 1) / 2;
+      const halfH = (p.height || 1) / 2;
+      minX = Math.min(minX, p.x - halfW);
+      maxX = Math.max(maxX, p.x + halfW);
+      minY = Math.min(minY, p.y - halfH);
+      maxY = Math.max(maxY, p.y + halfH);
+    });
+
+    const margin = 0.5; // 0.5 мм отступ шелкографии
+    const w = Math.round((maxX - minX + margin * 2) * 100) / 100;
+    const h = Math.round((maxY - minY + margin * 2) * 100) / 100;
+    const cx = Math.round(((minX + maxX) / 2) * 100) / 100;
+    const cy = Math.round(((minY + maxY) / 2) * 100) / 100;
+
+    const newOutline: GraphicItem = {
+      kind: "rect",
+      id: `silk_outline_${crypto.randomUUID()}`,
+      x: cx,
+      y: cy,
+      width: w,
+      height: h,
+      roundRadius: 0.2,
+      rotation: 0,
+      strokeWidth: 0.15,
+      layer: activeDrawingLayer || "top_silk",
+      filled: false,
+    };
+
+    const pin1 = pads.find((p) => String(p.padNum) === "1") || pads[0];
+    const dotGraphic: GraphicItem = {
+      kind: "circle",
+      id: `silk_pin1_${crypto.randomUUID()}`,
+      cx: pin1 ? pin1.x : cx - w / 2 + 0.5,
+      cy: pin1 ? (pin1.y >= cy ? pin1.y + (pin1.height / 2 + 0.4) : pin1.y - (pin1.height / 2 + 0.4)) : cy - h / 2 + 0.5,
+      radius: 0.25,
+      strokeWidth: 0.1,
+      layer: activeDrawingLayer || "top_silk",
+      filled: true,
+    };
+
+    setGraphics([...graphics, newOutline, dotGraphic]);
+    setBodyWidth(w);
+    setBodyHeight(h);
+
+    // Автоматический расчет шага выводов
+    if (pads.length >= 2) {
+      let minPitch = Infinity;
+      for (let i = 0; i < pads.length; i++) {
+        for (let j = i + 1; j < pads.length; j++) {
+          const d = Math.hypot(pads[i].x - pads[j].x, pads[i].y - pads[j].y);
+          if (d > 0.05 && d < minPitch) {
+            minPitch = d;
+          }
+        }
+      }
+      if (minPitch !== Infinity && minPitch < 50) {
+        setPitch(Math.round(minPitch * 100) / 100);
+      }
+    }
   };
 
   // Применение сгенерированного массива площадок
@@ -681,6 +829,22 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
               <span>Привязка: {snapToGrid ? "ВКЛ" : "ВЫКЛ"}</span>
             </button>
 
+            {/* Выбор активного слоя рисования */}
+            <div style={{ display: "flex", alignItems: "center", gap: 3, background: "var(--cad-bg-card)", padding: "2px 6px", borderRadius: 6, border: "1px solid var(--cad-border)" }}>
+              <span style={{ fontSize: 10, color: "var(--cad-text-dim)" }}>Слой:</span>
+              <select
+                value={activeDrawingLayer}
+                onChange={(e) => setActiveDrawingLayer(e.target.value as GraphicLayer)}
+                className="cad-input"
+                style={{ fontSize: 10, padding: "1px 4px", height: 22, background: "transparent", border: "none" }}
+                title="Слой для новых графических элементов (шелкография, сборочный чертеж, зона отчуждения)"
+              >
+                <option value="top_silk">Шелкография (Silk)</option>
+                <option value="top_fab">Сборочный (Fab)</option>
+                <option value="top_courtyard">Дворик (Courtyard)</option>
+              </select>
+            </div>
+
             {/* Отмена и повтор */}
             <div style={{ display: "flex", gap: 2, marginLeft: 4 }}>
               <button
@@ -702,6 +866,93 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                 <Redo2 size={13} />
               </button>
             </div>
+
+            {/* Панель выравнивания площадок (когда выделено 2 и более) */}
+            {selectedPadNums.length >= 2 && (
+              <div style={{ display: "flex", alignItems: "center", gap: 3, background: "rgba(56, 189, 248, 0.08)", padding: "2px 6px", borderRadius: 6, border: "1px solid rgba(56, 189, 248, 0.3)" }}>
+                <span style={{ fontSize: 10, color: "#38bdf8", marginRight: 2, fontWeight: "bold" }}>
+                  Выровнять ({selectedPadNums.length}):
+                </span>
+                <button
+                  type="button"
+                  onClick={() => handleAlignPads("left")}
+                  className="pkg-preset-btn"
+                  style={{ padding: "2px 5px", fontSize: 10 }}
+                  title="По левому краю"
+                >
+                  <AlignLeft size={11} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAlignPads("center_x")}
+                  className="pkg-preset-btn"
+                  style={{ padding: "2px 5px", fontSize: 10 }}
+                  title="Центрировать по X"
+                >
+                  <AlignCenter size={11} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAlignPads("right")}
+                  className="pkg-preset-btn"
+                  style={{ padding: "2px 5px", fontSize: 10 }}
+                  title="По правому краю"
+                >
+                  <AlignRight size={11} />
+                </button>
+                <div style={{ width: 1, height: 12, background: "rgba(56, 189, 248, 0.3)", margin: "0 2px" }} />
+                <button
+                  type="button"
+                  onClick={() => handleAlignPads("top")}
+                  className="pkg-preset-btn"
+                  style={{ padding: "2px 5px", fontSize: 10 }}
+                  title="По верхнему краю"
+                >
+                  ⤒
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAlignPads("center_y")}
+                  className="pkg-preset-btn"
+                  style={{ padding: "2px 5px", fontSize: 10 }}
+                  title="Центрировать по Y"
+                >
+                  ↕
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleAlignPads("bottom")}
+                  className="pkg-preset-btn"
+                  style={{ padding: "2px 5px", fontSize: 10 }}
+                  title="По нижнему краю"
+                >
+                  ⤓
+                </button>
+                {selectedPadNums.length >= 3 && (
+                  <>
+                    <div style={{ width: 1, height: 12, background: "rgba(56, 189, 248, 0.3)", margin: "0 2px" }} />
+                    <button
+                      type="button"
+                      onClick={() => handleAlignPads("distribute_x")}
+                      className="pkg-preset-btn"
+                      style={{ padding: "2px 5px", fontSize: 10 }}
+                      title="Равномерно распределить по X"
+                    >
+                      <ArrowLeftRight size={11} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleAlignPads("distribute_y")}
+                      className="pkg-preset-btn"
+                      style={{ padding: "2px 5px", fontSize: 10 }}
+                      title="Равномерно распределить по Y"
+                    >
+                      <ArrowUpDown size={11} />
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Быстрые действия по чертежу */}
@@ -969,12 +1220,40 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                 snapToGrid={snapToGrid}
                 activeTool={activeTool}
                 selectedPadNum={selectedPadNum}
+                selectedPadNums={selectedPadNums}
                 selectedGraphicId={selectedGraphicId}
                 newPadTemplate={padTemplate}
+                bodyWidth={bodyWidth}
+                bodyHeight={bodyHeight}
+                bodyShape={bodyShape}
+                dShapeCut={dShapeCut}
+                courtyardWidth={Math.round((bodyWidth + courtyardMargin * 2) * 100) / 100}
+                courtyardHeight={Math.round((bodyHeight + courtyardMargin * 2) * 100) / 100}
+                activeLayer={activeDrawingLayer}
                 onPadsChange={handlePadsChange}
                 onGraphicsChange={handleGraphicsChange}
-                onSelectPad={(num) => { setSelectedPadNum(num); if (num !== null) setInspectorTab("props"); }}
-                onSelectGraphic={(graphicId) => { setSelectedGraphicId(graphicId); if (graphicId) setInspectorTab("props"); }}
+                onSelectPad={(num) => {
+                  setSelectedPadNum(num);
+                  setSelectedPadNums(num ? [num] : []);
+                  if (num !== null) setInspectorTab("props");
+                }}
+                onSelectPads={(nums) => {
+                  setSelectedPadNums(nums);
+                  if (nums.length === 1) {
+                    setSelectedPadNum(nums[0]);
+                    setInspectorTab("props");
+                  } else {
+                    setSelectedPadNum(null);
+                  }
+                }}
+                onSelectGraphic={(graphicId) => {
+                  setSelectedGraphicId(graphicId);
+                  if (graphicId) {
+                    setSelectedPadNum(null);
+                    setSelectedPadNums([]);
+                    setInspectorTab("props");
+                  }
+                }}
                 onShiftOrigin={handleShiftOrigin}
                 onSetActiveTool={setActiveTool}
                 onRotatePadTemplate={handleRotatePadTemplate}
@@ -983,7 +1262,11 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                 onInteractionStart={() => { pushHistory(pads, graphics); isInteracting.current = true; }}
                 onInteractionEnd={() => { isInteracting.current = false; }}
                 onDeleteSelected={() => {
-                  if (selectedPadNum) {
+                  if (selectedPadNums.length > 0) {
+                    handlePadsChange(pads.filter((p) => !selectedPadNums.includes(p.padNum)));
+                    setSelectedPadNums([]);
+                    setSelectedPadNum(null);
+                  } else if (selectedPadNum) {
                     handlePadsChange(pads.filter((p) => p.padNum !== selectedPadNum));
                     setSelectedPadNum(null);
                   } else if (selectedGraphicId) {
@@ -1101,33 +1384,27 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         <div>
                           <label className="form-label">Координата X (мм):</label>
-                          <input
-                            type="number"
+                          <CadNumberInput
                             step="0.05"
                             value={selectedPad.x}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
+                            onChange={(val) => {
                               handlePadsChange(
                                 pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, x: val } : p))
                               );
                             }}
-                            className="cad-input"
                             style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                           />
                         </div>
                         <div>
                           <label className="form-label">Координата Y (мм):</label>
-                          <input
-                            type="number"
+                          <CadNumberInput
                             step="0.05"
                             value={selectedPad.y}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
+                            onChange={(val) => {
                               handlePadsChange(
                                 pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, y: val } : p))
                               );
                             }}
-                            className="cad-input"
                             style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                           />
                         </div>
@@ -1136,33 +1413,29 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         <div>
                           <label className="form-label">Ширина W (мм):</label>
-                          <input
-                            type="number"
+                          <CadNumberInput
                             step="0.05"
+                            min={0.05}
                             value={selectedPad.width}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0.1;
+                            onChange={(val) => {
                               handlePadsChange(
                                 pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, width: val } : p))
                               );
                             }}
-                            className="cad-input"
                             style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                           />
                         </div>
                         <div>
                           <label className="form-label">Высота H (мм):</label>
-                          <input
-                            type="number"
+                          <CadNumberInput
                             step="0.05"
+                            min={0.05}
                             value={selectedPad.height}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0.1;
+                            onChange={(val) => {
                               handlePadsChange(
                                 pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, height: val } : p))
                               );
                             }}
-                            className="cad-input"
                             style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                           />
                         </div>
@@ -1212,12 +1485,11 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                         <div>
                           <label className="form-label">Сверление Drill ⌀ (THT):</label>
-                          <input
-                            type="number"
+                          <CadNumberInput
                             step="0.05"
+                            min={0}
                             value={selectedPad.drillDiameter || 0}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0;
+                            onChange={(val) => {
                               handlePadsChange(
                                 pads.map((p) =>
                                   p.padNum === selectedPad.padNum
@@ -1226,7 +1498,6 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                                 )
                               );
                             }}
-                            className="cad-input"
                             style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                             placeholder="0 — SMD"
                           />
@@ -1234,17 +1505,14 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         <div>
                           <label className="form-label">Поворот (°):</label>
                           <div style={{ display: "flex", gap: 4 }}>
-                            <input
-                              type="number"
+                            <CadNumberInput
                               step="15"
                               value={selectedPad.rotation || 0}
-                              onChange={(e) => {
-                                const rot = parseFloat(e.target.value) || 0;
+                              onChange={(rot) => {
                                 handlePadsChange(
                                   pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, rotation: rot } : p))
                                 );
                               }}
-                              className="cad-input"
                               style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
                             />
                             <button
@@ -1351,17 +1619,15 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         </div>
                         <div>
                           <label className="form-label">Толщина линии (мм):</label>
-                          <input
-                            type="number"
+                          <CadNumberInput
                             step="0.05"
+                            min={0.01}
                             value={selectedGraphic.strokeWidth}
-                            onChange={(e) => {
-                              const val = parseFloat(e.target.value) || 0.1;
+                            onChange={(val) => {
                               handleGraphicsChange(
                                 graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, strokeWidth: val } : g))
                               );
                             }}
-                            className="cad-input"
                             style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                           />
                         </div>
@@ -1385,33 +1651,27 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div>
                               <label className="form-label">X1 (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.x1}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, x1: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
                             <div>
                               <label className="form-label">Y1 (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.y1}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, y1: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
@@ -1419,33 +1679,27 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div>
                               <label className="form-label">X2 (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.x2}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, x2: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
                             <div>
                               <label className="form-label">Y2 (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.y2}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, y2: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
@@ -1458,33 +1712,27 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div>
                               <label className="form-label">Центр X (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.x}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, x: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
                             <div>
                               <label className="form-label">Центр Y (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.y}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, y: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
@@ -1492,33 +1740,29 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div>
                               <label className="form-label">Ширина W (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
+                                min={0.05}
                                 value={selectedGraphic.width}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0.1;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, width: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
                             <div>
                               <label className="form-label">Высота H (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
+                                min={0.05}
                                 value={selectedGraphic.height}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0.1;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, height: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
@@ -1546,33 +1790,27 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div>
                               <label className="form-label">Центр X (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.cx}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cx: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
                             <div>
                               <label className="form-label">Центр Y (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.cy}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cy: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
@@ -1580,17 +1818,15 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div>
                               <label className="form-label">Радиус R (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
+                                min={0.05}
                                 value={selectedGraphic.radius}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0.1;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, radius: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
@@ -1618,33 +1854,27 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div>
                               <label className="form-label">Центр X (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.cx}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cx: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
                             <div>
                               <label className="form-label">Центр Y (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
                                 value={selectedGraphic.cy}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cy: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
@@ -1652,17 +1882,15 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                             <div>
                               <label className="form-label">Диаметр ⌀ (мм):</label>
-                              <input
-                                type="number"
+                              <CadNumberInput
                                 step="0.1"
+                                min={0.05}
                                 value={selectedGraphic.diameter}
-                                onChange={(e) => {
-                                  const val = parseFloat(e.target.value) || 1.0;
+                                onChange={(val) => {
                                   handleGraphicsChange(
                                     graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, diameter: val } : g))
                                   );
                                 }}
-                                className="cad-input"
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
@@ -1728,26 +1956,24 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           </div>
                         </div>
 
-                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
                           <div>
                             <label className="form-label">Ширина W (BBox, мм):</label>
-                            <input
-                              type="number"
+                            <CadNumberInput
                               step="0.1"
+                              min={0.1}
                               value={bodyWidth}
-                              onChange={(e) => setBodyWidth(parseFloat(e.target.value) || 1.0)}
-                              className="cad-input"
+                              onChange={(val) => setBodyWidth(val)}
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                             />
                           </div>
                           <div>
                             <label className="form-label">Высота H (BBox, мм):</label>
-                            <input
-                              type="number"
+                            <CadNumberInput
                               step="0.1"
+                              min={0.1}
                               value={bodyHeight}
-                              onChange={(e) => setBodyHeight(parseFloat(e.target.value) || 1.0)}
-                              className="cad-input"
+                              onChange={(val) => setBodyHeight(val)}
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                             />
                           </div>
@@ -1780,15 +2006,13 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: 4, padding: "5px 8px", background: "rgba(15, 23, 42, 0.4)", borderRadius: 4, border: "1px solid #1e293b" }}>
                           <span style={{ fontSize: 11, color: "var(--cad-text-muted)" }}>Шаг выводов (каталог):</span>
                           <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
-                            <input
-                              type="number"
+                            <CadNumberInput
                               step="0.05"
-                              value={pitch || ""}
-                              onChange={(e) => setPitch(parseFloat(e.target.value) || 0)}
-                              className="cad-input"
+                              min={0}
+                              value={pitch || 0}
+                              onChange={(val) => setPitch(val)}
                               style={{ width: 64, padding: "2px 6px", fontSize: 11, textAlign: "right" }}
                               placeholder="Авто"
-                              title="Паспортный шаг выводов для каталога (рассчитывается автоматически по соседним выводам)"
                             />
                             <span style={{ fontSize: 11, color: "var(--cad-text-secondary)" }}>мм</span>
                           </div>
@@ -1845,24 +2069,22 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
                           <div>
                             <label className="form-label">Маска (Solder Mask, мм):</label>
-                            <input
-                              type="number"
+                            <CadNumberInput
                               step="0.01"
+                              min={0}
                               value={solderMaskMargin}
-                              onChange={(e) => setSolderMaskMargin(parseFloat(e.target.value) || 0)}
-                              className="cad-input"
+                              onChange={(val) => setSolderMaskMargin(val)}
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               placeholder="0.05 мм"
                             />
                           </div>
                           <div>
                             <label className="form-label">Паста (Paste Mask, мм):</label>
-                            <input
-                              type="number"
+                            <CadNumberInput
                               step="0.01"
+                              min={0}
                               value={pasteMaskMargin}
-                              onChange={(e) => setPasteMaskMargin(parseFloat(e.target.value) || 0)}
-                              className="cad-input"
+                              onChange={(val) => setPasteMaskMargin(val)}
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               placeholder="0.00 мм"
                             />
@@ -1872,48 +2094,82 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
                           <div>
                             <label className="form-label">Зазор дворика (Courtyard, мм):</label>
-                            <input
-                              type="number"
+                            <CadNumberInput
                               step="0.05"
+                              min={0.05}
                               value={courtyardMargin}
-                              onChange={(e) => setCourtyardMargin(parseFloat(e.target.value) || 0)}
-                              className="cad-input"
+                              onChange={(val) => setCourtyardMargin(val)}
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               placeholder="0.25 мм"
                             />
                           </div>
                           <div>
                             <label className="form-label">Высота макс. (Z, мм):</label>
-                            <input
-                              type="number"
+                            <CadNumberInput
                               step="0.1"
+                              min={0.1}
                               value={maxHeight}
-                              onChange={(e) => setMaxHeight(parseFloat(e.target.value) || 0.1)}
-                              className="cad-input"
+                              onChange={(val) => setMaxHeight(val)}
                               style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               placeholder="3.0 мм"
                             />
                           </div>
                         </div>
 
-                        <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 8 }}>
-                          <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
-                            <input
-                              type="checkbox"
-                              checked={hasThermalPad}
-                              onChange={(e) => setHasThermalPad(e.target.checked)}
-                            />
-                            <span>Термоплощадка (EPAD)</span>
-                          </label>
+                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 8 }}>
+                          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                            <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>
+                              <input
+                                type="checkbox"
+                                checked={hasThermalPad}
+                                onChange={(e) => setHasThermalPad(e.target.checked)}
+                              />
+                              <span>Термоплощадка (EPAD)</span>
+                            </label>
+                            {hasThermalPad && (
+                              <input
+                                type="text"
+                                value={thermalPadNum}
+                                onChange={(e) => setThermalPadNum(e.target.value)}
+                                placeholder="Номер (EP)"
+                                className="cad-input"
+                                style={{ width: 80, padding: "2px 6px", fontSize: 11 }}
+                              />
+                            )}
+                          </div>
                           {hasThermalPad && (
-                            <input
-                              type="text"
-                              value={thermalPadNum}
-                              onChange={(e) => setThermalPadNum(e.target.value)}
-                              placeholder="Номер (EP)"
-                              className="cad-input"
-                              style={{ width: 80, padding: "2px 6px", fontSize: 11 }}
-                            />
+                            <button
+                              type="button"
+                              className="cad-btn-secondary btn-sm"
+                              style={{ fontSize: 11, padding: "4px 8px", justifyContent: "center" }}
+                              onClick={() => {
+                                const epNum = thermalPadNum.trim() || "EP";
+                                if (pads.some((p) => p.padNum === epNum)) {
+                                  setSelectedPadNum(epNum);
+                                  setSelectedPadNums([epNum]);
+                                  return;
+                                }
+                                const epW = Math.max(1.0, Math.round(bodyWidth * 0.6 * 10) / 10);
+                                const epH = Math.max(1.0, Math.round(bodyHeight * 0.6 * 10) / 10);
+                                const newEpad: PackagePad = {
+                                  padNum: epNum,
+                                  name: epNum,
+                                  x: 0,
+                                  y: 0,
+                                  width: epW,
+                                  height: epH,
+                                  rotation: 0,
+                                  shape: "rounded_rect",
+                                  roundRadius: 0.1,
+                                };
+                                pushHistory(pads, graphics);
+                                handlePadsChange([...pads, newEpad]);
+                                setSelectedPadNum(epNum);
+                                setSelectedPadNums([epNum]);
+                              }}
+                            >
+                              + Создать EPAD по центру
+                            </button>
                           )}
                         </div>
                       </div>
@@ -2013,7 +2269,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                       className="cad-btn-secondary btn-sm"
                       style={{ fontSize: 10, padding: "2px 7px", height: 24, gap: 4 }}
                       onClick={() => {
-                        const nextNum = String(pads.length + 1);
+                        const nextNum = getLowestAvailablePadNum(pads);
                         handlePadsChange([
                           ...pads,
                           {
@@ -2029,6 +2285,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           },
                         ]);
                         setSelectedPadNum(nextNum);
+                        setSelectedPadNums([nextNum]);
                       }}
                     >
                       <Plus size={11} /> Добавить
@@ -2053,40 +2310,59 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             </td>
                           </tr>
                         ) : (
-                          pads.map((p) => (
-                            <tr
-                              key={p.padNum}
-                              onClick={() => setSelectedPadNum(p.padNum)}
-                              style={{
-                                cursor: "pointer",
-                                background: selectedPadNum === p.padNum ? "rgba(59, 130, 246, 0.15)" : undefined,
-                              }}
-                            >
-                              <td style={{ textAlign: "center", fontWeight: "bold", color: "var(--cad-top-layer, #f59e0b)", fontFamily: "var(--cad-font-mono)" }}>
-                                #{p.padNum}
-                              </td>
-                              <td style={{ fontSize: 11, fontFamily: "var(--cad-font-mono)", color: "var(--cad-text-main)" }}>
-                                ({p.x.toFixed(2)}, {p.y.toFixed(2)})
-                              </td>
-                              <td style={{ fontSize: 10, color: "var(--cad-text-muted)" }}>
-                                {p.width}×{p.height} {p.drillDiameter ? `⌀${p.drillDiameter}` : ""}
-                              </td>
-                              <td style={{ textAlign: "center" }}>
-                                <button
-                                  className="cad-icon-btn danger"
-                                  style={{ width: 20, height: 20, padding: 0 }}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handlePadsChange(pads.filter((item) => item.padNum !== p.padNum));
-                                    if (selectedPadNum === p.padNum) setSelectedPadNum(null);
-                                  }}
-                                  title="Удалить площадку"
-                                >
-                                  <Trash2 size={11} />
-                                </button>
-                              </td>
-                            </tr>
-                          ))
+                          pads.map((p) => {
+                            const isSelected = selectedPadNums.includes(p.padNum) || selectedPadNum === p.padNum;
+                            return (
+                              <tr
+                                key={p.padNum}
+                                onClick={(e) => {
+                                  if (e.shiftKey || e.ctrlKey) {
+                                    const next = selectedPadNums.includes(p.padNum)
+                                      ? selectedPadNums.filter((n) => n !== p.padNum)
+                                      : [...selectedPadNums, p.padNum];
+                                    setSelectedPadNums(next);
+                                    if (next.length === 1) {
+                                      setSelectedPadNum(next[0]);
+                                    } else {
+                                      setSelectedPadNum(null);
+                                    }
+                                  } else {
+                                    setSelectedPadNum(p.padNum);
+                                    setSelectedPadNums([p.padNum]);
+                                  }
+                                }}
+                                style={{
+                                  cursor: "pointer",
+                                  background: isSelected ? "rgba(59, 130, 246, 0.25)" : undefined,
+                                }}
+                              >
+                                <td style={{ textAlign: "center", fontWeight: "bold", color: "var(--cad-top-layer, #f59e0b)", fontFamily: "var(--cad-font-mono)" }}>
+                                  #{p.padNum}
+                                </td>
+                                <td style={{ fontSize: 11, fontFamily: "var(--cad-font-mono)", color: "var(--cad-text-main)" }}>
+                                  ({p.x.toFixed(2)}, {p.y.toFixed(2)})
+                                </td>
+                                <td style={{ fontSize: 10, color: "var(--cad-text-muted)" }}>
+                                  {p.width}×{p.height} {p.drillDiameter ? `⌀${p.drillDiameter}` : ""}
+                                </td>
+                                <td style={{ textAlign: "center" }}>
+                                  <button
+                                    className="cad-icon-btn danger"
+                                    style={{ width: 20, height: 20, padding: 0 }}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePadsChange(pads.filter((item) => item.padNum !== p.padNum));
+                                      if (selectedPadNum === p.padNum) setSelectedPadNum(null);
+                                      setSelectedPadNums((prev) => prev.filter((n) => n !== p.padNum));
+                                    }}
+                                    title="Удалить площадку"
+                                  >
+                                    <Trash2 size={11} />
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
                         )}
                       </tbody>
                     </table>
