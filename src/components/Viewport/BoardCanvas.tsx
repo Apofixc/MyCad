@@ -760,6 +760,7 @@ export const BoardCanvas: React.FC = () => {
 
       if (hitComp) {
         selectComponent(hitComp.id, e.ctrlKey || e.metaKey);
+        useUiStore.getState().setActiveWorkLayer({ type: "components", side: hitComp.layer === "bottom" ? "bottom" : "top" });
         if (!hitComp.locked) {
           compDragRef.current = {
             isDragging: true,
@@ -794,6 +795,7 @@ export const BoardCanvas: React.FC = () => {
 
       if (hitLayer) {
         selectImage(hitLayer.id);
+        useUiStore.getState().setActiveWorkLayer({ type: "underlay", side: hitLayer.side });
         if (!hitLayer.locked) {
           dragRef.current = {
             isDragging: true,
@@ -1140,7 +1142,7 @@ export const BoardCanvas: React.FC = () => {
 
   return (
     <div
-      className="cad-viewport-container"
+      className={`cad-viewport-container ${isDragOver ? "cad-viewport-drag-over" : ""}`}
       style={{
         position: "relative",
         width: "100%",
@@ -1148,7 +1150,67 @@ export const BoardCanvas: React.FC = () => {
         overflow: "hidden",
         backgroundColor: "var(--cad-bg-deep)",
       }}
+      onDragOver={(e) => {
+        e.preventDefault();
+        setIsDragOver(true);
+      }}
+      onDragLeave={() => setIsDragOver(false)}
+      onDrop={(e) => {
+        e.preventDefault();
+        setIsDragOver(false);
+        const files = Array.from(e.dataTransfer.files || []);
+        if (files.length === 1) {
+          setPendingPreprocess({ file: files[0], name: files[0].name, side: targetUnderlaySide });
+        } else if (files.length > 1) {
+          setPendingBatchImport({ files, side: targetUnderlaySide });
+        }
+      }}
     >
+      <input
+        type="file"
+        data-testid="board-image-file-input"
+        accept="image/*,.png,.jpg,.jpeg,.tif,.tiff,.webp,.bmp"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length === 1) {
+            setPendingPreprocess({ file: files[0], name: files[0].name, side: targetUnderlaySide });
+          } else if (files.length > 1) {
+            setPendingBatchImport({ files, side: targetUnderlaySide });
+          }
+          e.target.value = "";
+        }}
+      />
+      <input
+        type="file"
+        data-testid="board-image-file-input-top"
+        accept="image/*,.png,.jpg,.jpeg,.tif,.tiff,.webp,.bmp"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length === 1) {
+            setPendingPreprocess({ file: files[0], name: files[0].name, side: "top" });
+          } else if (files.length > 1) {
+            setPendingBatchImport({ files, side: "top" });
+          }
+          e.target.value = "";
+        }}
+      />
+      <input
+        type="file"
+        data-testid="board-image-file-input-bottom"
+        accept="image/*,.png,.jpg,.jpeg,.tif,.tiff,.webp,.bmp"
+        style={{ display: "none" }}
+        onChange={(e) => {
+          const files = Array.from(e.target.files || []);
+          if (files.length === 1) {
+            setPendingPreprocess({ file: files[0], name: files[0].name, side: "bottom" });
+          } else if (files.length > 1) {
+            setPendingBatchImport({ files, side: "bottom" });
+          }
+          e.target.value = "";
+        }}
+      />
       <canvas
         ref={canvasRef}
         style={{ width: "100%", height: "100%", display: "block", position: "relative", zIndex: 1 }}

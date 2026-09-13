@@ -10,6 +10,7 @@
     "typecheck": "tsc --noEmit",
     "test": "node --test tests/*.test.mjs",
     "test:e2e": "playwright test",
+    "test:e2e:native": "playwright test tests/e2e/native-app-full.native.spec.ts --project=native-webview2",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
     "tauri": "tauri"

@@ -992,7 +992,18 @@ function drawAlignmentGrid(
         pendingPreprocess.filePath ||
         (pendingPreprocess.file as any)?.path ||
         (pendingPreprocess.file as any)?.filePath;
-      const source = rawPath || pendingPreprocess.dataUrl || currentSrc;
+      let source = rawPath || pendingPreprocess.dataUrl;
+      if (!source && pendingPreprocess.file) {
+        source = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(pendingPreprocess.file!);
+        });
+      }
+      if (!source) {
+        source = currentSrc;
+      }
       const op = getOperation(false);
 
       const layer = await engineClient.processAndSaveImage(
