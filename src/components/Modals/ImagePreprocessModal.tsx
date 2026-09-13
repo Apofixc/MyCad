@@ -141,6 +141,7 @@ export const ImagePreprocessModal: React.FC = () => {
 
   const [loading, setLoading] = useState<boolean>(false);
   const [isDetecting, setIsDetecting] = useState<boolean>(false);
+  const [autoDetectSuccess, setAutoDetectSuccess] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
 
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -442,11 +443,52 @@ export const ImagePreprocessModal: React.FC = () => {
 
   // Auto-detect corners with Magic Wand
   const handleAutoDetect = async () => {
-    const rawPath =
+    let rawPath =
       pendingPreprocess?.filePath ||
       (pendingPreprocess?.file as any)?.path ||
-      (pendingPreprocess?.file as any)?.filePath;
-    if (!rawPath) return;
+      (pendingPreprocess?.file as any)?.filePath ||
+      (currentSrc?.startsWith("data:") ? currentSrc : "") ||
+      pendingPreprocess?.dataUrl;
+
+    // If no direct path/dataUrl, read from File via FileReader
+    if (!rawPath && pendingPreprocess?.file) {
+      try {
+        rawPath = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (err) => reject(err);
+          reader.readAsDataURL(pendingPreprocess.file!);
+        });
+      } catch (err) {
+        console.warn("Could not read pending file as data URL:", err);
+      }
+    }
+
+    // Fallback: render loaded image to offscreen canvas to produce a data URL
+    if (!rawPath && loadedImageRef.current) {
+      try {
+        const img = loadedImageRef.current;
+        const canvas = document.createElement("canvas");
+        const maxSide = 1600;
+        const srcW = img.naturalWidth || img.width;
+        const srcH = img.naturalHeight || img.height;
+        const scale = Math.min(1.0, maxSide / Math.max(srcW, srcH, 1));
+        canvas.width = Math.round(srcW * scale);
+        canvas.height = Math.round(srcH * scale);
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+          rawPath = canvas.toDataURL("image/jpeg", 0.92);
+        }
+      } catch (err) {
+        console.warn("Could not serialize loaded image to canvas:", err);
+      }
+    }
+
+    if (!rawPath) {
+      setErrorMsg("Не удалось получить изображение для анализа углов");
+      return;
+    }
 
     setIsDetecting(true);
     setErrorMsg(null);
@@ -454,9 +496,12 @@ export const ImagePreprocessModal: React.FC = () => {
       const autoQuad = await engineClient.detectCorners(rawPath);
       if (autoQuad && autoQuad.topLeft) {
         setQuad(autoQuad);
+        setAutoDetectSuccess(true);
+        setTimeout(() => setAutoDetectSuccess(false), 2500);
       }
     } catch (e: any) {
       console.warn("Auto detect failed, keeping current corners:", e);
+      setErrorMsg("Не удалось автоматически определить углы: " + (e?.message || e));
     } finally {
       setIsDetecting(false);
     }
@@ -1802,13 +1847,19 @@ function drawAlignmentGrid(
           {/* Auto Detect Corners (shown only in perspective mode) */}
           {mode === "perspective" && !isPreviewMode && (
             <button
-              className="auto-detect-btn"
+              className={`auto-detect-btn ${autoDetectSuccess ? "success" : ""}`}
               onClick={handleAutoDetect}
-              disabled={isDetecting || !(pendingPreprocess?.filePath || (pendingPreprocess?.file as any)?.path || (pendingPreprocess?.file as any)?.filePath)}
+              disabled={isDetecting}
               title="Автоопределение углов платы компьютерным зрением"
             >
-              {isDetecting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
-              <span>Авто-углы</span>
+              {isDetecting ? (
+                <Loader2 size={13} className="animate-spin" />
+              ) : autoDetectSuccess ? (
+                <Check size={13} style={{ color: "#22c55e" }} />
+              ) : (
+                <Sparkles size={13} />
+              )}
+              <span>{autoDetectSuccess ? "Углы найдены" : "Авто-углы"}</span>
             </button>
           )}
 

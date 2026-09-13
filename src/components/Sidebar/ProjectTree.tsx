@@ -169,7 +169,9 @@ export const ProjectTree: React.FC = () => {
       input.onchange = () => {
         const files = Array.from(input.files || []);
         if (files.length === 1) {
-          setPendingPreprocess({ file: files[0], name: files[0].name, side });
+          const f = files[0];
+          const fp = (f as any).path || (f as any).filePath || undefined;
+          setPendingPreprocess({ file: f, filePath: fp, name: f.name, side });
         } else if (files.length > 1) {
           setPendingBatchImport({ files, side });
         }
