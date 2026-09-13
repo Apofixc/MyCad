@@ -1804,7 +1804,7 @@ function drawAlignmentGrid(
             <button
               className="auto-detect-btn"
               onClick={handleAutoDetect}
-              disabled={isDetecting || !pendingPreprocess.filePath}
+              disabled={isDetecting || !(pendingPreprocess?.filePath || (pendingPreprocess?.file as any)?.path || (pendingPreprocess?.file as any)?.filePath)}
               title="Автоопределение углов платы компьютерным зрением"
             >
               {isDetecting ? <Loader2 size={13} className="animate-spin" /> : <Sparkles size={13} />}
