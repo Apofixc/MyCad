@@ -1,0 +1,122 @@
+- generic [ref=e3]:
+  - banner [ref=e102]:
+    - generic [ref=e103]:
+      - button "Скрыть/показать панель проекта (Ctrl+B)" [ref=e104] [cursor=pointer]
+      - generic [ref=e107]:
+        - generic [ref=e113]: MyCad
+        - generic [ref=e114]: CAD & Inspection
+      - generic [ref=e115]: /
+      - generic [ref=e116]: Board_PCB_Rev2
+    - generic [ref=e123]:
+      - button "Сохранить" [ref=e124] [cursor=pointer]
+      - button "Закрыть проект и вернуться на стартовую страницу" [ref=e131] [cursor=pointer]
+  - generic [ref=e135]:
+    - complementary [ref=e136]:
+      - generic [ref=e137]:
+        - generic "Board_PCB_Rev2" [ref=e141]
+        - button "Добавить документ в проект" [ref=e142] [cursor=pointer]
+      - generic [ref=e144]:
+        - generic [ref=e145]:
+          - generic [ref=e146] [cursor=pointer]: СХЕМЫ
+          - generic [ref=e154]: (нет схем)
+        - generic [ref=e156]:
+          - generic [ref=e157] [cursor=pointer]:
+            - generic [ref=e158]: ПЛАТЫ
+            - generic [ref=e166]: "1"
+          - generic [ref=e168]:
+            - generic [ref=e169] [cursor=pointer]:
+              - generic "Board_PCB_Rev2.board" [ref=e178]
+              - generic [ref=e179]:
+                - button "Переименовать" [ref=e180]
+                - button "Удалить плату" [ref=e183]
+            - generic [ref=e187]:
+              - generic [ref=e188]:
+                - generic [ref=e189] [cursor=pointer]:
+                  - generic [ref=e190]:
+                    - generic [ref=e198]: Подложка
+                    - generic [ref=e199]: активен
+                  - generic [ref=e200]:
+                    - button "Показать все сканы подложки (Top и Bottom)" [ref=e201]
+                    - button "Заблокировать все сканы подложки" [ref=e207]
+                - generic [ref=e211]:
+                  - generic [ref=e212]:
+                    - generic "Нажмите для выбора активного слоя Top подложки" [ref=e213] [cursor=pointer]:
+                      - generic [ref=e214]: Top (Лицевая)
+                      - generic [ref=e220]:
+                        - button "Скрыть слой Top и все сканы" [ref=e221]
+                        - button "Заблокировать все сканы Top" [ref=e225]
+                    - button "Загрузить скан Top" [ref=e230] [cursor=pointer]
+                  - generic [ref=e233]:
+                    - generic "Нажмите для выбора активного слоя Bottom подложки" [ref=e234] [cursor=pointer]:
+                      - generic [ref=e235]: Bottom (Оборотная)
+                      - generic [ref=e241]:
+                        - button "Скрыть слой Bottom и все сканы" [ref=e242]
+                        - button "Заблокировать все сканы Bottom" [ref=e246]
+                    - button "Загрузить скан Bottom" [ref=e251] [cursor=pointer]
+              - generic [ref=e254]:
+                - generic [ref=e255] [cursor=pointer]:
+                  - generic [ref=e256]: Компоненты
+                  - button "Скрыть все компоненты (Top и Bottom)" [ref=e265]
+                - generic [ref=e269]:
+                  - generic [ref=e270]:
+                    - generic "Нажмите для выбора активного слоя Top компонентов" [ref=e271] [cursor=pointer]:
+                      - generic [ref=e272]: Top (Лицевой монтаж)
+                      - generic [ref=e278]:
+                        - button "Скрыть компоненты Top" [ref=e279]
+                        - button "Заблокировать компоненты Top" [ref=e283]
+                    - generic [ref=e287]: (нет компонентов)
+                  - generic [ref=e289]:
+                    - generic "Нажмите для выбора активного слоя Bottom компонентов" [ref=e290] [cursor=pointer]:
+                      - generic [ref=e291]: Bottom (Оборотный монтаж)
+                      - generic [ref=e297]:
+                        - button "Скрыть компоненты Bottom" [ref=e298]
+                        - button "Заблокировать компоненты Bottom" [ref=e302]
+                    - generic [ref=e306]: (нет компонентов)
+              - generic "Нажмите для выбора активного слоя топологии (медь)" [ref=e309] [cursor=pointer]:
+                - generic [ref=e310]: Слои топологии (медь)
+                - button "Скрыть все медные слои и Vias" [ref=e317]
+      - generic "Перетащите для изменения ширины дерева проекта" [ref=e321]
+    - generic [ref=e324]:
+      - 'button "Добавить скан в активный слой: Top (Лицевой)" [ref=e325] [cursor=pointer]'
+      - button "Выбор и инспекция (V)" [ref=e331] [cursor=pointer]
+      - button "Трансформация скана (T)" [ref=e335] [cursor=pointer]
+      - button "Калибровка масштаба (мм) (C)" [ref=e341] [cursor=pointer]
+      - button "Выравнивание горизонта (L)" [ref=e348] [cursor=pointer]
+      - button "Совмещение Top/Bottom (R)" [ref=e352] [cursor=pointer]
+      - button "Шторка просвета слоёв (S)" [ref=e357] [cursor=pointer]
+      - button "Стробоскоп слоёв (B)" [ref=e361] [cursor=pointer]
+      - button "Линейка измерений (M)" [ref=e365] [cursor=pointer]
+      - button "Экранная лупа (Z)" [ref=e372] [cursor=pointer]
+      - button "Координатная сетка платы (G)" [ref=e377] [cursor=pointer]
+      - button "Вписать всю плату / все сканы (0)" [ref=e380] [cursor=pointer]
+  - contentinfo [ref=e386]:
+    - generic [ref=e387]:
+      - generic [ref=e388]: Сохранено
+      - generic [ref=e393]:
+        - generic [ref=e394]: Board_PCB_Rev2
+        - generic [ref=e395]: •
+        - generic [ref=e396]: Board_PCB_Rev2.board
+      - generic [ref=e402]:
+        - text: "Сканы:"
+        - strong [ref=e403]: Top (0)
+        - text: /
+        - strong [ref=e404]: Bottom (0)
+    - generic [ref=e405]:
+      - generic [ref=e406]:
+        - generic [ref=e409]:
+          - text: "X:"
+          - strong [ref=e410]: "0.00"
+          - text: мм
+        - generic [ref=e411]: •
+        - generic [ref=e412]:
+          - text: "Y:"
+          - strong [ref=e413]: "0.00"
+          - text: мм
+      - generic "Настройка шага и параметров координатной сетки (клик для меню)" [ref=e415] [cursor=pointer]:
+        - generic [ref=e418]:
+          - text: "Сетка:"
+          - strong [ref=e419]: 1 мм
+      - generic "Вписать все изображения (F / 0)" [ref=e422] [cursor=pointer]:
+        - generic [ref=e426]:
+          - text: "Зум:"
+          - strong [ref=e427]: 100%

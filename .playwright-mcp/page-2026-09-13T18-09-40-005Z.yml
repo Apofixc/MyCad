@@ -1,0 +1,44 @@
+- generic [ref=e5]:
+  - generic [ref=e6]:
+    - heading "MyCad" [level=1] [ref=e12]
+    - paragraph [ref=e13]: Профессиональная CAD-система для реинжиниринга, инспекции и ремонта печатных плат
+  - generic [ref=e14]:
+    - generic [ref=e15]:
+      - heading "НАЧАЛО РАБОТЫ" [level=2] [ref=e16]
+      - button "Создать новый проект Монтажная плата и контейнер .mycad" [ref=e17] [cursor=pointer]:
+        - generic [ref=e19]:
+          - generic [ref=e20]: Создать новый проект
+          - generic [ref=e21]: Монтажная плата и контейнер .mycad
+      - button "Открыть проект... Файл архива .mycad на диске" [ref=e22] [cursor=pointer]:
+        - generic [ref=e25]:
+          - generic [ref=e26]: Открыть проект...
+          - generic [ref=e27]: Файл архива .mycad на диске
+      - button "База компонентов и посадочных мест Редактор корпусов, IPC-7351, радиодетали" [ref=e28] [cursor=pointer]:
+        - generic [ref=e32]:
+          - generic [ref=e33]: База компонентов и посадочных мест
+          - generic [ref=e34]: Редактор корпусов, IPC-7351, радиодетали
+    - generic [ref=e35]:
+      - generic [ref=e36]:
+        - heading "НЕДАВНИЕ ПРОЕКТЫ" [level=2] [ref=e37]
+        - generic [ref=e38]: 0 файлов
+      - generic [ref=e39]: История недавних проектов пуста
+  - generic [ref=e41]:
+    - generic [ref=e42]:
+      - strong [ref=e43]: Ctrl+N
+      - text: Новый проект
+    - generic [ref=e44]: •
+    - generic [ref=e45]:
+      - strong [ref=e46]: Ctrl+O
+      - text: Открыть
+    - generic [ref=e47]: •
+    - generic [ref=e48]:
+      - strong [ref=e49]: Ctrl+S
+      - text: Сохранить
+    - generic [ref=e50]: •
+    - generic [ref=e51]:
+      - strong [ref=e52]: Пробел + ЛКМ
+      - text: Панорама
+    - generic [ref=e53]: •
+    - generic [ref=e54]:
+      - strong [ref=e55]: Колесо мыши
+      - text: Зум в курсор

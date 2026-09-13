@@ -95,9 +95,9 @@ export const ToolBar: React.FC = () => {
 
   const imageTools: { id: ToolMode; label: string; icon: React.ReactNode; shortcut: string }[] = [
     { id: "transform", label: "Трансформация скана", icon: <Move size={16} />, shortcut: "T" },
-    { id: "calibrate", label: "Калибровка масштаба (мм)", icon: <Ruler size={16} />, shortcut: "C" },
+    { id: "calibrate", label: "Калибровка масштаба по 2 точкам", icon: <Ruler size={16} />, shortcut: "C" },
     { id: "level", label: "Выравнивание горизонта", icon: <Compass size={16} />, shortcut: "L" },
-    { id: "register", label: "Совмещение Top/Bottom", icon: <Layers size={16} />, shortcut: "R" },
+    { id: "register", label: "Совмещение отверстий / виасов Top и Bottom", icon: <Layers size={16} />, shortcut: "R" },
     { id: "curtain", label: "Шторка просвета слоёв", icon: <SplitSquareVertical size={16} />, shortcut: "S" },
     { id: "blink", label: "Стробоскоп слоёв", icon: <Zap size={16} />, shortcut: "B" },
   ];

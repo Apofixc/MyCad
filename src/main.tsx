@@ -5,7 +5,18 @@ import { ErrorBoundary } from "./components/Common/ErrorBoundary";
 import { initGlobalErrorHandling } from "./utils/errorHandler";
 import "./index.css";
 
-// Инициализация глобального перехвата необработанных ошибок и отклоненных промисов
+if (import.meta.env.DEV) {
+  import("./stores/projectStore").then((m) => {
+    (window as any).__projectStore = m.useProjectStore;
+  });
+  import("./stores/uiStore").then((m) => {
+    (window as any).__uiStore = m.useUiStore;
+  });
+  import("./utils/alignmentMath").then((m) => {
+    (window as any).__alignmentMath = m;
+  });
+}
+
 initGlobalErrorHandling();
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

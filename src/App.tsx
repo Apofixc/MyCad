@@ -40,6 +40,11 @@ export const App: React.FC = () => {
   } = useUiStore();
   const { packages, savePackage, saveDevice } = useLibraryStore();
 
+  // Load component library models and footprints on startup
+  useEffect(() => {
+    useLibraryStore.getState().loadAll();
+  }, []);
+
   // Global Keyboard Shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

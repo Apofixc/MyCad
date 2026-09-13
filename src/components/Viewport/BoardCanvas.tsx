@@ -181,6 +181,7 @@ export const BoardCanvas: React.FC = () => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
+        setCalibrationModal(null);
         setMeasurePts([]);
         setRubberbandMm(null);
         setRegistrationState({ step: 1, topPts: [], botPts: [] });
@@ -525,13 +526,39 @@ export const BoardCanvas: React.FC = () => {
 
     // Tool: Calibrate
     if (activeTool === "calibrate") {
-      const activeLayer = getSelectedLayer() || board?.data?.bgTop?.images[0] || board?.data?.bgBottom?.images[0];
+      const activeSide = activeWorkLayer.type === "underlay" ? activeWorkLayer.side : "top";
+      const topImages = (showTopLayer ? board?.data?.bgTop?.images || [] : []).filter((l) => l.visible);
+      const botImages = (showBottomLayer ? board?.data?.bgBottom?.images || [] : []).filter((l) => l.visible);
+      const orderedImages =
+        activeSide === "bottom"
+          ? [...botImages.slice().reverse(), ...topImages.slice().reverse()]
+          : [...topImages.slice().reverse(), ...botImages.slice().reverse()];
+
+      let hitLayer: BoardImageLayer | null = null;
+      for (const layer of orderedImages) {
+        if (isPointInImage(mouseMm, layer, loadedImagesRef.current.get(layer.id))) {
+          hitLayer = layer;
+          break;
+        }
+      }
+
+      const activeLayer =
+        hitLayer ||
+        getSelectedLayer() ||
+        (activeSide === "bottom" ? botImages[0] : topImages[0]) ||
+        topImages[0] ||
+        botImages[0];
+
       if (!activeLayer) {
         notifyWarning("Для калибровки выберите изображение на холсте");
         return;
       }
 
-      if (measurePts.length === 0) {
+      if (selectedImageId !== activeLayer.id) {
+        selectImage(activeLayer.id);
+      }
+
+      if (measurePts.length === 0 || measurePts.length >= 2) {
         setMeasurePts([[mouseMm.x, mouseMm.y]]);
       } else if (measurePts.length === 1) {
         const p1 = measurePts[0];

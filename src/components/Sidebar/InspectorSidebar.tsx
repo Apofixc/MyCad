@@ -2353,16 +2353,29 @@ export const InspectorSidebar: React.FC = () => {
               <span className="cad-badge-dim" style={{ color: "#60a5fa" }}>{widthMm} × {heightMm} мм</span>
             </div>
 
-            <button
-              type="button"
-              className="cad-btn cad-btn-secondary"
-              style={{ width: "100%", fontSize: "11px", padding: "6px", justifyContent: "center" }}
-              onClick={() => setActiveTool("calibrate")}
-              title="Кликните 2 точки известного расстояния на холсте"
-            >
-              <Ruler size={13} style={{ marginRight: "6px", color: "#60a5fa" }} />
-              <span>Калибровать по 2 точкам</span>
-            </button>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "6px" }}>
+              <button
+                type="button"
+                className="cad-btn cad-btn-secondary"
+                style={{ width: "100%", fontSize: "10.5px", padding: "6px 4px", justifyContent: "center" }}
+                onClick={() => setActiveTool("calibrate")}
+                title="Калибровка масштаба: кликните 2 точки известного расстояния на холсте (C)"
+              >
+                <Ruler size={13} style={{ marginRight: "4px", color: "#60a5fa" }} />
+                <span>Калибровать</span>
+              </button>
+
+              <button
+                type="button"
+                className="cad-btn cad-btn-secondary"
+                style={{ width: "100%", fontSize: "10.5px", padding: "6px 4px", justifyContent: "center" }}
+                onClick={() => setActiveTool("register")}
+                title="Совмещение отверстий / виасов: кликните 2 опорные точки на Top, затем те же 2 точки на Bottom (R)"
+              >
+                <Layers size={13} style={{ marginRight: "4px", color: "#a855f7" }} />
+                <span>Совместить</span>
+              </button>
+            </div>
           </div>
 
           {/* Card: Отображение и смешивание */}

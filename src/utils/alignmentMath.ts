@@ -65,6 +65,7 @@ export function calculateLevelingAngle(
   }
 
   deltaAngle = Math.round(deltaAngle * 100) / 100;
+  if (Object.is(deltaAngle, -0) || deltaAngle === 0) deltaAngle = 0;
   return { deltaAngle, targetAngle, targetType };
 }
 

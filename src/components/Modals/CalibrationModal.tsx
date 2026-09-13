@@ -5,6 +5,7 @@ import { PackageDefinition } from "../../types/componentLibrary";
 import { packageReferenceDistance, PackageReference } from "../../utils/calibration";
 import { FootprintPreview } from "../SvgRenderer/FootprintPreview";
 import { reportError } from "../../utils/errorHandler";
+import { useLibraryStore } from "../../stores/libraryStore";
 
 interface CalibrationModalProps {
   isOpen: boolean;
@@ -25,21 +26,67 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
   onApply,
   onClose,
 }) => {
+  const storePackages = useLibraryStore((state) => state.packages);
+  const availablePackages = packages && packages.length > 0 ? packages : storePackages;
+
   const [realMm, setRealMm] = useState<string>("10.0");
   const [packageId, setPackageId] = useState("");
   const [reference, setReference] = useState<PackageReference>("width");
   const [fromPad, setFromPad] = useState("");
   const [toPad, setToPad] = useState("");
   const [isApplying, setIsApplying] = useState(false);
-  const pkg = packages.find((p) => p.id === packageId);
+
+  const pkg = availablePackages.find((p) => p.id === packageId);
   const distance = pkg ? packageReferenceDistance(pkg, reference, fromPad, toPad) : Number(realMm.replace(",", "."));
 
+  // Auto-load packages from SQLite store if not loaded yet
+  useEffect(() => {
+    if (isOpen && availablePackages.length === 0) {
+      useLibraryStore.getState().loadAll();
+    }
+  }, [isOpen, availablePackages.length]);
+
+  // Handle ESC key to close modal
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && !isApplying) {
+        e.preventDefault();
+        e.stopPropagation();
+        onClose();
+      }
+    };
+    window.addEventListener("keydown", handleKeyDown, true);
+    return () => window.removeEventListener("keydown", handleKeyDown, true);
+  }, [isOpen, isApplying, onClose]);
+
+  // Reset and auto-configure reference when opened
   useEffect(() => {
     if (isOpen) {
-      setPackageId(initialPackageId ?? "");
-      setReference("width");
-      setFromPad("");
-      setToPad("");
+      const selectedId = initialPackageId ?? "";
+      setPackageId(selectedId);
+
+      const targetPkg = availablePackages.find((p) => p.id === selectedId);
+      if (targetPkg) {
+        if (targetPkg.pitch && targetPkg.pitch > 0) {
+          setReference("pitch");
+          setFromPad("");
+          setToPad("");
+        } else if (targetPkg.pads && targetPkg.pads.length >= 2) {
+          setReference("pads");
+          setFromPad(targetPkg.pads[0].padNum);
+          setToPad(targetPkg.pads[1].padNum);
+        } else {
+          setReference("width");
+          setFromPad("");
+          setToPad("");
+        }
+      } else {
+        setReference("width");
+        setFromPad("");
+        setToPad("");
+      }
+
       // If currentPxPerMm is available, compute approximate current mm as starting point
       if (currentPxPerMm && currentPxPerMm > 0) {
         const estMm = (measuredPx / currentPxPerMm).toFixed(2);
@@ -48,9 +95,44 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
         setRealMm("10.0");
       }
     }
-  }, [isOpen, measuredPx, currentPxPerMm, initialPackageId]);
+  }, [isOpen, measuredPx, currentPxPerMm, initialPackageId, availablePackages]);
 
   if (!isOpen || measuredPx <= 0) return null;
+
+  const handlePackageSelect = (newPkgId: string) => {
+    setPackageId(newPkgId);
+    if (!newPkgId) {
+      setFromPad("");
+      setToPad("");
+      return;
+    }
+    const found = availablePackages.find((p) => p.id === newPkgId);
+    if (found) {
+      if (found.pitch && found.pitch > 0) {
+        setReference("pitch");
+        setFromPad("");
+        setToPad("");
+      } else if (found.pads && found.pads.length >= 2) {
+        setReference("pads");
+        setFromPad(found.pads[0].padNum);
+        setToPad(found.pads[1].padNum);
+      } else {
+        setReference("width");
+        setFromPad("");
+        setToPad("");
+      }
+    }
+  };
+
+  const handleReferenceSelect = (newRef: PackageReference) => {
+    setReference(newRef);
+    if (newRef === "pads" && pkg && pkg.pads && pkg.pads.length >= 2) {
+      if (!fromPad || !toPad || fromPad === toPad) {
+        setFromPad(pkg.pads[0].padNum);
+        setToPad(pkg.pads[1].padNum);
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -105,22 +187,20 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
         <form onSubmit={handleSubmit}>
           <fieldset disabled={isApplying} style={{ border: 0, padding: 0, margin: 0 }}>
           <div className="cad-modal-body" style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-            <label className="form-label">Эталон размера
-              <select className="cad-input" value={packageId} onChange={(event) => {
-                setPackageId(event.target.value); setFromPad(""); setToPad("");
-              }}>
+            <label className="form-label">Эталон размера (из библиотеки корпусов)
+              <select className="cad-input" value={packageId} onChange={(event) => handlePackageSelect(event.target.value)}>
                 <option value="">Ввести расстояние вручную</option>
-                {packages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                {availablePackages.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </label>
             {pkg && <>
               <label className="form-label">Измеренная часть корпуса
                 <select className="cad-input" value={reference}
-                  onChange={(event) => setReference(event.target.value as PackageReference)}>
-                  <option value="width">Ширина корпуса (W)</option>
-                  <option value="height">Высота корпуса (H)</option>
-                  <option value="pitch" disabled={!pkg.pitch}>Шаг выводов</option>
+                  onChange={(event) => handleReferenceSelect(event.target.value as PackageReference)}>
+                  <option value="pitch" disabled={!pkg.pitch}>Шаг выводов (Pitch: {pkg.pitch ? `${pkg.pitch} мм` : "нет"})</option>
                   <option value="pads">Между центрами площадок</option>
+                  <option value="width">Ширина корпуса ({pkg.bodyWidth ? `${pkg.bodyWidth} мм` : "W"})</option>
+                  <option value="height">Высота корпуса ({pkg.bodyHeight ? `${pkg.bodyHeight} мм` : "H"})</option>
                 </select>
               </label>
               {reference === "pads" && <div style={{ display: "flex", gap: 8 }}>
@@ -129,17 +209,17 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
                   <select className="cad-input" value={padNum}
                     onChange={(event) => index === 0 ? setFromPad(event.target.value) : setToPad(event.target.value)}>
                     <option value="">Выберите</option>
-                    {pkg.pads.map((p) => <option key={p.padNum} value={p.padNum}>{p.padNum}</option>)}
+                    {pkg.pads.map((p) => <option key={p.padNum} value={p.padNum}>Контакт {p.padNum}</option>)}
                   </select>
                 </label>)}
               </div>}
               <FootprintPreview packageDef={pkg} height={150} interactive={reference === "pads"}
                 showCourtyard={false} padColors={{ [fromPad]: "#38bdf8", [toPad]: "#22c55e" }}
                 onSelectPad={(padNum) => { if (!fromPad || toPad) { setFromPad(padNum); setToPad(""); } else setToPad(padNum); }} />
-              <p style={{ fontSize: 12, margin: 0 }}>Две отмеченные точки на фото должны соответствовать выбранному размеру:
+              <p style={{ fontSize: 12, margin: 0, color: "var(--cad-text-muted)" }}>Две отмеченные точки на фото должны соответствовать выбранному размеру:
                 {reference === "pads" ? " центрам площадок." : reference === "pitch" ? " центрам соседних выводов одного ряда." : " противоположным граням корпуса, без выводов."}
                 {" "}Если это не так, отмените калибровку и отметьте точки заново.</p>
-              {distance === null && <p role="alert">Выберите две разные площадки с ненулевым расстоянием.</p>}
+              {distance === null && <p role="alert" style={{ color: "#ef4444", fontSize: "12px", margin: 0 }}>Выберите две разные площадки с ненулевым расстоянием.</p>}
             </>}
             <div
               style={{
@@ -175,7 +255,7 @@ export const CalibrationModal: React.FC<CalibrationModalProps> = ({
                 min="0.000001"
                 required
                 autoFocus
-                value={pkg ? distance ?? "" : realMm}
+                value={pkg ? (distance !== null ? Number(distance.toFixed(4)).toString() : "") : realMm}
                 readOnly={!!pkg}
                 onChange={(e) => setRealMm(e.target.value)}
                 placeholder="2.54, 10.0, 50.0..."

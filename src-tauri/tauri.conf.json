@@ -21,7 +21,8 @@
         "fullscreen": false,
         "center": true,
         "decorations": true,
-        "theme": "Dark"
+        "theme": "Dark",
+        "additionalBrowserArgs": "--remote-debugging-port=9222"
       }
     ],
     "security": {
