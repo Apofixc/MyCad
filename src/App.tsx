@@ -20,6 +20,7 @@ import { useLibraryStore } from "./stores/libraryStore";
 import { DeviceDefinition, PackageDefinition, PlacedComponent } from "./types/componentLibrary";
 import { ErrorDialog } from "./components/Common/ErrorDialog";
 import { ErrorBoundary } from "./components/Common/ErrorBoundary";
+import { notifyWarning } from "./utils/errorHandler";
 
 export const App: React.FC = () => {
   const { manifest, saveProject, activeFileType, board, schematic, addComponent, updateComponent } = useProjectStore();
@@ -85,9 +86,20 @@ export const App: React.FC = () => {
         case "l":
           setActiveTool("level");
           break;
-        case "r":
+        case "r": {
+          const topCount = board?.data?.bgTop?.images?.length || 0;
+          const botCount = board?.data?.bgBottom?.images?.length || 0;
+          if (topCount === 0 || botCount === 0) {
+            notifyWarning(
+              topCount === 0
+                ? "Для совмещения слоев необходим скан на стороне Top."
+                : "На стороне Bottom не найден скан для совмещения. Сначала добавьте скан стороны Bottom."
+            );
+            break;
+          }
           setActiveTool("register");
           break;
+        }
         case "s":
           setActiveTool("curtain");
           break;

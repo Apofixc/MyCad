@@ -174,8 +174,10 @@ export const BoardCanvas: React.FC = () => {
     setRubberbandMm(null);
     if (activeTool !== "register") {
       setRegistrationState({ step: 1, topPts: [], botPts: [] });
+      setShowTopLayer(true);
+      setShowBottomLayer(true);
     }
-  }, [activeTool]);
+  }, [activeTool, setShowTopLayer, setShowBottomLayer]);
 
   // Escape key cancels active tool and clears selection; Spacebar pauses strobe
   useEffect(() => {
@@ -185,6 +187,8 @@ export const BoardCanvas: React.FC = () => {
         setMeasurePts([]);
         setRubberbandMm(null);
         setRegistrationState({ step: 1, topPts: [], botPts: [] });
+        setShowTopLayer(true);
+        setShowBottomLayer(true);
         setActiveTool("select");
       } else if (e.key === " " && activeTool === "blink") {
         e.preventDefault();
@@ -193,7 +197,7 @@ export const BoardCanvas: React.FC = () => {
     };
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [setActiveTool, activeTool]);
+  }, [activeTool, setShowTopLayer, setShowBottomLayer, setActiveTool]);
 
   // Cache loaded images and their source URLs
   const loadedImagesRef = useRef<Map<string, HTMLImageElement>>(new Map());
@@ -668,6 +672,22 @@ export const BoardCanvas: React.FC = () => {
 
     // Tool: Register (Top/Bottom alignment)
     if (activeTool === "register") {
+      const topImages = board?.data?.bgTop?.images || [];
+      const botImages = board?.data?.bgBottom?.images || [];
+
+      if (topImages.length === 0 || botImages.length === 0) {
+        notifyWarning(
+          topImages.length === 0
+            ? "На стороне Top не найден скан для совмещения. Сначала добавьте скан стороны Top."
+            : "На стороне Bottom не найден скан для совмещения. Сначала добавьте скан стороны Bottom."
+        );
+        setShowTopLayer(true);
+        setShowBottomLayer(true);
+        setRegistrationState({ step: 1, topPts: [], botPts: [] });
+        setActiveTool("select");
+        return;
+      }
+
       if (registrationState.step === 1) {
         const newTop = [...registrationState.topPts, [mouseMm.x, mouseMm.y] as [number, number]];
         if (newTop.length < 2) {
@@ -694,7 +714,11 @@ export const BoardCanvas: React.FC = () => {
             : null;
           const botLayer = selectedBottomLayer || board?.data?.bgBottom?.images?.[0];
           if (!botLayer) {
-            notifyWarning("На стороне Bottom не найден скан для совмещения");
+            notifyWarning("На стороне Bottom не найден скан для совмещения. Сначала добавьте скан стороны Bottom.");
+            setShowTopLayer(true);
+            setShowBottomLayer(true);
+            setRegistrationState({ step: 1, topPts: [], botPts: [] });
+            setActiveTool("select");
             return;
           }
 

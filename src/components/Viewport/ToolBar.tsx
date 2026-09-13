@@ -14,6 +14,8 @@ import {
   Cpu,
 } from "lucide-react";
 import { useUiStore } from "../../stores/uiStore";
+import { useProjectStore } from "../../stores/projectStore";
+import { notifyWarning } from "../../utils/errorHandler";
 import { ToolMode } from "../../types/cad";
 
 export const ToolBar: React.FC = () => {
@@ -157,7 +159,22 @@ export const ToolBar: React.FC = () => {
             <button
               key={t.id}
               className={`cad-tool-btn ${activeTool === t.id ? "active" : ""}`}
-              onClick={() => setActiveTool(t.id)}
+              onClick={() => {
+                if (t.id === "register") {
+                  const { board } = useProjectStore.getState();
+                  const topCount = board?.data?.bgTop?.images?.length || 0;
+                  const botCount = board?.data?.bgBottom?.images?.length || 0;
+                  if (topCount === 0 || botCount === 0) {
+                    notifyWarning(
+                      topCount === 0
+                        ? "Для совмещения слоев необходим скан на стороне Top."
+                        : "На стороне Bottom не найден скан для совмещения. Сначала добавьте скан стороны Bottom."
+                    );
+                    return;
+                  }
+                }
+                setActiveTool(t.id);
+              }}
               title={`${t.label} (${t.shortcut})`}
             >
               {t.icon}

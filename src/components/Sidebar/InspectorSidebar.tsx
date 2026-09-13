@@ -2369,7 +2369,19 @@ export const InspectorSidebar: React.FC = () => {
                 type="button"
                 className="cad-btn cad-btn-secondary"
                 style={{ width: "100%", fontSize: "10.5px", padding: "6px 4px", justifyContent: "center" }}
-                onClick={() => setActiveTool("register")}
+                onClick={() => {
+                  const topCount = board?.data?.bgTop?.images?.length || 0;
+                  const botCount = board?.data?.bgBottom?.images?.length || 0;
+                  if (topCount === 0 || botCount === 0) {
+                    notifyWarning(
+                      topCount === 0
+                        ? "Для совмещения слоев необходим скан на стороне Top."
+                        : "На стороне Bottom не найден скан для совмещения. Сначала добавьте скан стороны Bottom."
+                    );
+                    return;
+                  }
+                  setActiveTool("register");
+                }}
                 title="Совмещение отверстий / виасов: кликните 2 опорные точки на Top, затем те же 2 точки на Bottom (R)"
               >
                 <Layers size={13} style={{ marginRight: "4px", color: "#a855f7" }} />
