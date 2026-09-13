@@ -13,6 +13,8 @@
     "test:e2e:native": "playwright test tests/e2e/native-app-full.native.spec.ts --project=native-webview2",
     "test:ui": "playwright test --ui",
     "test:headed": "playwright test --headed",
+    "test:scan": "playwright test tests/e2e/background-image-ui.spec.ts --project=browser-ui --headed",
+    "test:scan:native": "playwright test tests/e2e/background-image.native.spec.ts --project=native-webview2",
     "tauri": "tauri"
   },
   "dependencies": {

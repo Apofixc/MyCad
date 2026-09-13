@@ -57,3 +57,5 @@ tests/
 test-results/
 playwright-report/
 scratch/
+.test-wv2-data/
+.webview2-test-data/
