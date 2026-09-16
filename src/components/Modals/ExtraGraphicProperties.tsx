@@ -46,11 +46,56 @@ export function ExtraGraphicProperties({ item, onChange }: {
     </div>;
 
   switch (item.kind) {
-    case "arc": return numbers(item, [
-      { key: "cx", label: "Центр X (мм)" }, { key: "cy", label: "Центр Y (мм)" },
-      { key: "radius", label: "Радиус (мм)", min: 0.001 },
-      { key: "startAngle", label: "Начало (°)" }, { key: "endAngle", label: "Конец (°)" },
-    ]);
+    case "arc": {
+      const isClockwise = item.clockwise !== false;
+      return (
+        <div style={{ display: "grid", gap: 8 }}>
+          {numbers(item, [
+            { key: "cx", label: "Центр X (мм)" },
+            { key: "cy", label: "Центр Y (мм)" },
+            { key: "radius", label: "Радиус (мм)", min: 0.001 },
+            { key: "startAngle", label: "Начало (°)" },
+            { key: "endAngle", label: "Конец (°)" },
+          ])}
+          <div>
+            <span className="form-label" style={{ marginBottom: 4, display: "block" }}>Направление обхода</span>
+            <div style={{ display: "flex", gap: 6 }}>
+              <button
+                type="button"
+                className={isClockwise ? "cad-btn-primary" : "cad-btn-secondary"}
+                style={{ flex: 1, fontSize: 11, padding: "5px 8px" }}
+                onClick={() => onChange({ ...item, clockwise: true })}
+              >
+                ↻ По часовой (CW)
+              </button>
+              <button
+                type="button"
+                className={!isClockwise ? "cad-btn-primary" : "cad-btn-secondary"}
+                style={{ flex: 1, fontSize: 11, padding: "5px 8px" }}
+                onClick={() => onChange({ ...item, clockwise: false })}
+              >
+                ↺ Против часовой (CCW)
+              </button>
+            </div>
+          </div>
+          <button
+            type="button"
+            className="cad-btn-secondary"
+            style={{ width: "100%", fontSize: 11, padding: "5px 8px" }}
+            onClick={() =>
+              onChange({
+                ...item,
+                startAngle: item.endAngle,
+                endAngle: item.startAngle,
+                clockwise: !isClockwise,
+              })
+            }
+          >
+            ⇄ Поменять начало и конец местами
+          </button>
+        </div>
+      );
+    }
     case "capsule": return numbers(item, [
       { key: "cx", label: "Центр X (мм)" }, { key: "cy", label: "Центр Y (мм)" },
       { key: "width", label: "Ширина (мм)", min: 0.001 }, { key: "height", label: "Высота (мм)", min: 0.001 },

@@ -2,13 +2,44 @@ import { GraphicItem, PackagePad } from "../types/componentLibrary";
 import { getCapsulePath, getDShapePath } from "./footprintGenerator";
 
 export function getArcPath(item: Extract<GraphicItem, { kind: "arc" }>): string {
-  const start = item.startAngle * Math.PI / 180;
-  const sweep = ((item.endAngle - item.startAngle) % 360 + 360) % 360 || 360;
-  const point = (angle: number) =>
-    `${item.cx + item.radius * Math.cos(angle)} ${item.cy + item.radius * Math.sin(angle)}`;
-  const middle = start + sweep * Math.PI / 360;
-  const end = start + sweep * Math.PI / 180;
-  return `M ${point(start)} A ${item.radius} ${item.radius} 0 0 1 ${point(middle)} A ${item.radius} ${item.radius} 0 0 1 ${point(end)}`;
+  const r = item.radius;
+  if (!r || r <= 0) return "";
+  const isClockwise = item.clockwise !== false;
+  const startDeg = item.startAngle;
+  const endDeg = item.endAngle;
+
+  let sweepDeg: number;
+  if (isClockwise) {
+    sweepDeg = ((endDeg - startDeg) % 360 + 360) % 360;
+  } else {
+    sweepDeg = ((startDeg - endDeg) % 360 + 360) % 360;
+  }
+
+  // Если размах пренебрежимо мал (< 0.01 градуса), не рисуем ничего (предотвращает вспышку полного круга при клике)
+  if (sweepDeg < 0.01) {
+    return "";
+  }
+
+  const f = (n: number) => Math.round(n * 10000) / 10000;
+  const startRad = (startDeg * Math.PI) / 180;
+  const startX = f(item.cx + r * Math.cos(startRad));
+  const startY = f(item.cy + r * Math.sin(startRad));
+  const sweepFlag = isClockwise ? 1 : 0;
+
+  // Если почти полный круг (>= 359.99 градусов), строим через 2 полуокружности (требование спецификации SVG)
+  if (sweepDeg >= 359.99) {
+    const midRad = startRad + (isClockwise ? Math.PI : -Math.PI);
+    const midX = f(item.cx + r * Math.cos(midRad));
+    const midY = f(item.cy + r * Math.sin(midRad));
+    return `M ${startX} ${startY} A ${f(r)} ${f(r)} 0 0 ${sweepFlag} ${midX} ${midY} A ${f(r)} ${f(r)} 0 0 ${sweepFlag} ${startX} ${startY}`;
+  }
+
+  const endRad = (endDeg * Math.PI) / 180;
+  const endX = f(item.cx + r * Math.cos(endRad));
+  const endY = f(item.cy + r * Math.sin(endRad));
+  const largeArcFlag = sweepDeg > 180 ? 1 : 0;
+
+  return `M ${startX} ${startY} A ${f(r)} ${f(r)} 0 ${largeArcFlag} ${sweepFlag} ${endX} ${endY}`;
 }
 
 export function getGraphicPath(item: GraphicItem): string {

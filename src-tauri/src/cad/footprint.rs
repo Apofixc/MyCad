@@ -93,6 +93,8 @@ pub enum GraphicItem {
         radius: f64,
         start_angle: f64,
         end_angle: f64,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        clockwise: Option<bool>,
         stroke_width: f64,
         layer: GraphicLayer,
     },

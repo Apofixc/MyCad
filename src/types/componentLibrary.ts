@@ -61,6 +61,7 @@ export type GraphicItem =
       radius: number;
       startAngle: number;
       endAngle: number;
+      clockwise?: boolean;
       strokeWidth: number;
       layer: GraphicLayer;
     }

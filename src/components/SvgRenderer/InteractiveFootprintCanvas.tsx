@@ -123,6 +123,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   const [measureDist, setMeasureDist] = useState<{ dx: number; dy: number; dist: number } | null>(null);
   const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
   const [arcStart, setArcStart] = useState<{ x: number; y: number } | null>(null);
+  const [arcDirectionInverted, setArcDirectionInverted] = useState<boolean>(false);
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
 
   useEffect(() => {
@@ -138,6 +139,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   useEffect(() => {
     setDrawStart(null);
     setArcStart(null);
+    setArcDirectionInverted(false);
     setPolygonPoints([]);
     setMeasureDist(null);
   }, [activeTool]);
@@ -191,6 +193,8 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
           );
         } else if (activeTool === "pad") {
           onRotatePadTemplate?.();
+        } else if (activeTool === "arc") {
+          setArcDirectionInverted((prev) => !prev);
         }
         return;
       }
@@ -226,6 +230,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         setDrawStart(null);
         setPolygonPoints([]);
         setArcStart(null);
+        setArcDirectionInverted(false);
         setMeasureDist(null);
         onSelectPad(null);
         onSelectPads?.([]);
@@ -385,23 +390,44 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       return;
     }
     if (activeTool === "arc") {
-      if (!drawStart) setDrawStart(snapped);
-      else if (!arcStart) {
-        if (Math.hypot(snapped.x - drawStart.x, snapped.y - drawStart.y) > 0.001) setArcStart(snapped);
+      if (!drawStart) {
+        setDrawStart(snapped);
+      } else if (!arcStart) {
+        if (Math.hypot(snapped.x - drawStart.x, snapped.y - drawStart.y) > 0.01) {
+          setArcStart(snapped);
+        }
       } else {
-        const item: GraphicItem = {
-          kind: "arc", id: crypto.randomUUID(), cx: drawStart.x, cy: drawStart.y,
-          radius: Math.hypot(arcStart.x - drawStart.x, arcStart.y - drawStart.y),
-          startAngle: Math.atan2(arcStart.y - drawStart.y, arcStart.x - drawStart.x) * 180 / Math.PI,
-          endAngle: Math.atan2(snapped.y - drawStart.y, snapped.x - drawStart.x) * 180 / Math.PI,
-          strokeWidth: 0.15, layer: activeLayer || "top_silk",
-        };
-        onGraphicsChange([...graphics, item]);
-        onSelectGraphic(item.id);
-        onSelectPad(null);
-        onSelectPads?.([]);
+        const radius = Math.hypot(arcStart.x - drawStart.x, arcStart.y - drawStart.y);
+        const startAngle =
+          Math.round((Math.atan2(arcStart.y - drawStart.y, arcStart.x - drawStart.x) * 180 / Math.PI) * 100) / 100;
+        const curAngle =
+          Math.round((Math.atan2(snapped.y - drawStart.y, snapped.x - drawStart.x) * 180 / Math.PI) * 100) / 100;
+
+        let diff = ((curAngle - startAngle) % 360 + 360) % 360;
+        if (diff > 180) diff -= 360;
+        const isClockwise = arcDirectionInverted ? diff < 0 : diff >= 0;
+
+        if (radius > 0.01 && Math.hypot(snapped.x - drawStart.x, snapped.y - drawStart.y) > 0.001) {
+          const item: GraphicItem = {
+            kind: "arc",
+            id: `arc_${crypto.randomUUID()}`,
+            cx: drawStart.x,
+            cy: drawStart.y,
+            radius: Math.round(radius * 1000) / 1000,
+            startAngle,
+            endAngle: curAngle,
+            clockwise: isClockwise,
+            strokeWidth: 0.15,
+            layer: activeLayer || "top_silk",
+          };
+          onGraphicsChange([...graphics, item]);
+          onSelectGraphic(item.id);
+          onSelectPad(null);
+          onSelectPads?.([]);
+        }
         setDrawStart(null);
         setArcStart(null);
+        setArcDirectionInverted(false);
         onSetActiveTool?.("select");
       }
       return;
@@ -763,7 +789,13 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         {activeTool === "polygon" && <button className="cad-btn-primary" disabled={polygonPoints.length < 3} onClick={finishPolygon} onMouseDown={(e) => e.stopPropagation()}>Замкнуть контур (Enter)</button>}
         <span style={{ color: "#94a3b8", pointerEvents: "none" }}>
           {activeTool === "polygon" ? "Кликните вершины. Enter — замкнуть, Esc — отменить."
-            : activeTool === "arc" ? "Три клика: центр → начало дуги → конец по часовой стрелке."
+            : activeTool === "arc" ? (
+                !drawStart
+                  ? "Шаг 1: кликните центр дуги."
+                  : !arcStart
+                  ? "Шаг 2: кликните начальную точку (радиус)."
+                  : "Шаг 3: кликните конечную точку дуги · Пробел — инвертировать направление (CW/CCW)."
+              )
             : activeTool === "text" ? "Кликните место надписи, затем измените текст в свойствах."
             : "Колесо — масштаб · Alt + перетаскивание — панорама · Esc — выбор"}
         </span>
@@ -1065,14 +1097,79 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
             fill="none" stroke="#38bdf8" strokeWidth={0.15} strokeDasharray="0.3 0.2" pointerEvents="none" />}
           {drawStart && (
             <g pointerEvents="none">
-              {activeTool === "arc" && (arcStart ? <path d={getArcPath({
-                kind: "arc", id: "preview", layer: "top_silk", strokeWidth: 0.15,
-                cx: drawStart.x, cy: drawStart.y,
-                radius: Math.hypot(arcStart.x - drawStart.x, arcStart.y - drawStart.y),
-                startAngle: Math.atan2(arcStart.y - drawStart.y, arcStart.x - drawStart.x) * 180 / Math.PI,
-                endAngle: Math.atan2(cursorPos.y - drawStart.y, cursorPos.x - drawStart.x) * 180 / Math.PI,
-              })} fill="none" stroke="#38bdf8" strokeWidth={0.15} />
-                : <line x1={drawStart.x} y1={drawStart.y} x2={cursorPos.x} y2={cursorPos.y} stroke="#38bdf8" strokeWidth={0.15} />)}
+              {activeTool === "arc" && (() => {
+                const cx = drawStart.x;
+                const cy = drawStart.y;
+                if (!arcStart) {
+                  const currentR = Math.hypot(cursorPos.x - cx, cursorPos.y - cy);
+                  return (
+                    <g>
+                      {/* Маркер центра дуги */}
+                      <circle cx={cx} cy={cy} r={0.35} fill="none" stroke="#ef4444" strokeWidth={0.08} />
+                      <line x1={cx - 0.7} y1={cy} x2={cx + 0.7} y2={cy} stroke="#ef4444" strokeWidth={0.08} />
+                      <line x1={cx} y1={cy - 0.7} x2={cx} y2={cy + 0.7} stroke="#ef4444" strokeWidth={0.08} />
+                      {/* Линия радиуса к курсору */}
+                      <line x1={cx} y1={cy} x2={cursorPos.x} y2={cursorPos.y} stroke="#38bdf8" strokeWidth={0.12} strokeDasharray="0.3 0.2" />
+                      {/* Пунктирная окружность текущего радиуса */}
+                      {currentR > 0.05 && (
+                        <circle cx={cx} cy={cy} r={currentR} fill="none" stroke="#38bdf8" strokeWidth={0.08} strokeDasharray="0.3 0.3" opacity={0.6} />
+                      )}
+                      <circle cx={cursorPos.x} cy={cursorPos.y} r={0.2} fill="#38bdf8" />
+                    </g>
+                  );
+                }
+
+                // Шаг 3: центр и начальная точка зафиксированы, выбираем конечную точку
+                const r = Math.hypot(arcStart.x - cx, arcStart.y - cy);
+                const startAngle = (Math.atan2(arcStart.y - cy, arcStart.x - cx) * 180) / Math.PI;
+                const curDist = Math.hypot(cursorPos.x - cx, cursorPos.y - cy);
+                const curAngle = (Math.atan2(cursorPos.y - cy, cursorPos.x - cx) * 180) / Math.PI;
+                const curRad = (curAngle * Math.PI) / 180;
+                const projX = cx + r * Math.cos(curRad);
+                const projY = cy + r * Math.sin(curRad);
+
+                let diff = ((curAngle - startAngle) % 360 + 360) % 360;
+                if (diff > 180) diff -= 360;
+                const isClockwise = arcDirectionInverted ? diff < 0 : diff >= 0;
+
+                const arcPath = getArcPath({
+                  kind: "arc",
+                  id: "preview_arc",
+                  layer: activeLayer || "top_silk",
+                  cx,
+                  cy,
+                  radius: r,
+                  startAngle,
+                  endAngle: curAngle,
+                  clockwise: isClockwise,
+                  strokeWidth: 0.15,
+                });
+
+                return (
+                  <g>
+                    {/* Маркер центра дуги */}
+                    <circle cx={cx} cy={cy} r={0.35} fill="none" stroke="#ef4444" strokeWidth={0.08} />
+                    <line x1={cx - 0.7} y1={cy} x2={cx + 0.7} y2={cy} stroke="#ef4444" strokeWidth={0.08} />
+                    <line x1={cx} y1={cy - 0.7} x2={cx} y2={cy + 0.7} stroke="#ef4444" strokeWidth={0.08} />
+
+                    {/* Маркер начальной точки */}
+                    <circle cx={arcStart.x} cy={arcStart.y} r={0.3} fill="rgba(56, 189, 248, 0.25)" stroke="#38bdf8" strokeWidth={0.08} />
+                    <circle cx={arcStart.x} cy={arcStart.y} r={0.1} fill="#38bdf8" />
+
+                    {/* Базовая орбита-окружность */}
+                    <circle cx={cx} cy={cy} r={r} fill="none" stroke="#64748b" strokeWidth={0.08} strokeDasharray="0.4 0.3" opacity={0.5} />
+
+                    {/* Направляющий луч от центра через позицию курсора */}
+                    <line x1={cx} y1={cy} x2={curDist > r ? cursorPos.x : projX} y2={curDist > r ? cursorPos.y : projY} stroke="#38bdf8" strokeWidth={0.08} strokeDasharray="0.3 0.2" opacity={0.6} />
+
+                    {/* Проекция конечной точки на окружность */}
+                    <circle cx={projX} cy={projY} r={0.25} fill="#38bdf8" stroke="#ffffff" strokeWidth={0.08} />
+
+                    {/* Сама дуга в реальном времени */}
+                    {arcPath && <path d={arcPath} fill="none" stroke="#38bdf8" strokeWidth={0.22} />}
+                  </g>
+                );
+              })()}
               {activeTool === "line" && (
                 <line
                   x1={drawStart.x}
@@ -1159,11 +1256,38 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         <span style={{ color: "#94a3b8" }}>
           Зум: <strong>{Math.round(scale)}</strong> px/mm
         </span>
-        {measureDist && (
+        {measureDist && activeTool !== "arc" && (
           <span style={{ color: "#fbbf24", fontWeight: "bold" }}>
             L: {measureDist.dist.toFixed(3)} mm (dX: {measureDist.dx.toFixed(2)}, dY: {measureDist.dy.toFixed(2)})
           </span>
         )}
+        {activeTool === "arc" && drawStart && (() => {
+          const cx = drawStart.x;
+          const cy = drawStart.y;
+          if (!arcStart) {
+            const currentR = Math.hypot(cursorPos.x - cx, cursorPos.y - cy);
+            return (
+              <span style={{ color: "#38bdf8", fontWeight: "bold" }}>
+                R: {currentR.toFixed(3)} мм (клик 2 — радиус/начало)
+              </span>
+            );
+          }
+          const r = Math.hypot(arcStart.x - cx, arcStart.y - cy);
+          const startAngle = (Math.atan2(arcStart.y - cy, arcStart.x - cx) * 180) / Math.PI;
+          const curAngle = (Math.atan2(cursorPos.y - cy, cursorPos.x - cx) * 180) / Math.PI;
+          let diff = ((curAngle - startAngle) % 360 + 360) % 360;
+          if (diff > 180) diff -= 360;
+          const isClockwise = arcDirectionInverted ? diff < 0 : diff >= 0;
+          const sweepDeg = isClockwise
+            ? ((curAngle - startAngle) % 360 + 360) % 360
+            : ((startAngle - curAngle) % 360 + 360) % 360;
+
+          return (
+            <span style={{ color: "#38bdf8", fontWeight: "bold" }}>
+              R: {r.toFixed(3)} мм · Размах: {sweepDeg.toFixed(1)}° ({isClockwise ? "по часовой / CW" : "против часовой / CCW"}) [Space — инверт]
+            </span>
+          );
+        })()}
       </div>
     </div>
   );
