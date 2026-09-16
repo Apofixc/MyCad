@@ -73,7 +73,6 @@ export function ExtraGraphicProperties({ item, onChange }: {
       <label><input type="checkbox" checked={!!item.filled}
         onChange={(event) => onChange({ ...item, filled: event.target.checked })} /> Заливка контура</label>
     </>;
-    case "rect": return numbers(item, [{ key: "rotation", label: "Поворот (°)" }, { key: "roundRadius", label: "Скругление (мм)", min: 0 }]);
     case "d_shape": return numbers(item, [{ key: "cutDepth", label: "Глубина среза (мм)", min: 0 }]);
     default: return null;
   }

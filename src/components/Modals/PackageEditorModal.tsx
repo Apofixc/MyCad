@@ -57,11 +57,19 @@ import {
   ArrowLeftRight,
 } from "lucide-react";
 
+const formatCadNumber = (num: number): string => {
+  if (!Number.isFinite(num)) return "0";
+  // Clean IEEE-754 precision artifacts like -0.6350000000000002 or 13.969999999999999
+  const rounded = Math.round(num * 10000) / 10000;
+  return String(rounded);
+};
+
 interface CadNumberInputProps {
   value: number;
   onChange: (val: number) => void;
   step?: string | number;
   min?: number;
+  max?: number;
   className?: string;
   style?: React.CSSProperties;
   placeholder?: string;
@@ -72,15 +80,16 @@ const CadNumberInput: React.FC<CadNumberInputProps> = ({
   value,
   onChange,
   min,
+  max,
   className = "cad-input",
   style,
   placeholder,
   disabled,
 }) => {
-  const [text, setText] = useState<string>(String(value ?? 0));
+  const [text, setText] = useState<string>(formatCadNumber(value));
 
   useEffect(() => {
-    setText(String(value ?? 0));
+    setText(formatCadNumber(value));
   }, [value]);
 
   return (
@@ -96,16 +105,22 @@ const CadNumberInput: React.FC<CadNumberInputProps> = ({
         const val = e.target.value;
         setText(val);
         const parsed = parseFloat(val);
-        if (Number.isFinite(parsed) && (min === undefined || parsed >= min)) {
+        if (
+          Number.isFinite(parsed) &&
+          (min === undefined || parsed >= min) &&
+          (max === undefined || parsed <= max)
+        ) {
           onChange(parsed);
         }
       }}
       onBlur={() => {
-        const parsed = parseFloat(text);
-        if (!Number.isFinite(parsed) || (min !== undefined && parsed < min)) {
-          setText(String(value ?? 0));
+        let parsed = parseFloat(text);
+        if (!Number.isFinite(parsed)) {
+          setText(formatCadNumber(value));
         } else {
-          setText(String(parsed));
+          if (min !== undefined && parsed < min) parsed = min;
+          if (max !== undefined && parsed > max) parsed = max;
+          setText(formatCadNumber(parsed));
           onChange(parsed);
         }
       }}
@@ -1030,15 +1045,6 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                 label: "D-образный контур (TO-92)",
               },
               {
-                id: "capsule",
-                icon: (
-                  <svg width="17" height="17" viewBox="0 0 18 18" fill="none">
-                    <rect x="2.5" y="5" width="13" height="8" rx="4" stroke="currentColor" strokeWidth="1.5" />
-                  </svg>
-                ),
-                label: "Капсула (HC-49)",
-              },
-              {
                 id: "polygon", icon: <Wand2 size={16} />, label: "Произвольный замкнутый контур",
               },
               {
@@ -1441,6 +1447,39 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         </div>
                       </div>
 
+                      {selectedPad.shape === "rounded_rect" && (
+                        <div>
+                          <label className="form-label">Скругление R (мм):</label>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <CadNumberInput
+                              step="0.05"
+                              min={0}
+                              value={selectedPad.roundRadius ?? 0.1}
+                              onChange={(val) => {
+                                handlePadsChange(
+                                  pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, roundRadius: Math.max(0, val) } : p))
+                                );
+                              }}
+                              style={{ flex: 1, padding: "4px 8px", fontSize: 11 }}
+                            />
+                            <button
+                              type="button"
+                              className="pkg-preset-btn"
+                              style={{ padding: "4px 8px", fontSize: 11 }}
+                              onClick={() => {
+                                const maxR = Math.round((Math.min(selectedPad.width, selectedPad.height) / 2) * 1000) / 1000;
+                                handlePadsChange(
+                                  pads.map((p) => (p.padNum === selectedPad.padNum ? { ...p, roundRadius: maxR } : p))
+                                );
+                              }}
+                              title="Скругление в капсулу (макс. R)"
+                            >
+                              💊 Капсула
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Быстрая смена ориентации и поворот */}
                       <div style={{ display: "flex", gap: 6 }}>
                         <button
@@ -1766,6 +1805,82 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                                 style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
                               />
                             </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">Скругление R (мм):</label>
+                              <CadNumberInput
+                                step="0.05"
+                                min={0}
+                                value={selectedGraphic.roundRadius || 0}
+                                onChange={(val) => {
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, roundRadius: Math.max(0, val) } : g))
+                                  );
+                                }}
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                                placeholder="0 — прямые"
+                              />
+                            </div>
+                            <div>
+                              <label className="form-label">Поворот (°):</label>
+                              <div style={{ display: "flex", gap: 4 }}>
+                                <CadNumberInput
+                                  step="15"
+                                  value={selectedGraphic.rotation || 0}
+                                  onChange={(val) => {
+                                    handleGraphicsChange(
+                                      graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, rotation: val } : g))
+                                    );
+                                  }}
+                                  style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
+                                />
+                                <button
+                                  type="button"
+                                  className="pkg-preset-btn"
+                                  style={{ padding: "0 6px" }}
+                                  onClick={() => {
+                                    const rot = ((selectedGraphic.rotation || 0) + 90) % 360;
+                                    handleGraphicsChange(
+                                      graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, rotation: rot } : g))
+                                    );
+                                  }}
+                                  title="+90°"
+                                >
+                                  ⟳
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Быстрые пресеты для углов прямоугольника */}
+                          <div style={{ display: "flex", gap: 6, marginTop: 2 }}>
+                            <button
+                              type="button"
+                              className="pkg-preset-btn"
+                              style={{ flex: 1, padding: "4px 6px", fontSize: 11 }}
+                              onClick={() => {
+                                handleGraphicsChange(
+                                  graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, roundRadius: 0 } : g))
+                                );
+                              }}
+                              title="Сделать углы прямыми (R = 0)"
+                            >
+                              Прямые углы (R=0)
+                            </button>
+                            <button
+                              type="button"
+                              className="pkg-preset-btn"
+                              style={{ flex: 1.2, padding: "4px 6px", fontSize: 11 }}
+                              onClick={() => {
+                                const maxR = Math.round((Math.min(selectedGraphic.width, selectedGraphic.height) / 2) * 1000) / 1000;
+                                handleGraphicsChange(
+                                  graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, roundRadius: maxR } : g))
+                                );
+                              }}
+                              title="Полное скругление торцов: превратить прямоугольник в капсулу"
+                            >
+                              💊 Капсула
+                            </button>
                           </div>
                           <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 4 }}>
                             <label style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, cursor: "pointer" }}>

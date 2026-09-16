@@ -19,7 +19,6 @@ export type EditorTool =
   | "line"
   | "arc"
   | "d_shape"
-  | "capsule"
   | "rect"
   | "circle"
   | "text"
@@ -482,7 +481,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
               y: (drawStart.y + snapped.y) / 2,
               width: w,
               height: h,
-              roundRadius: 0.2,
+              roundRadius: 0,
               rotation: 0,
               strokeWidth: 0.15,
               layer: activeLayer || "top_silk",
@@ -532,25 +531,6 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       return;
     }
 
-    if (activeTool === "capsule") {
-      const newCap: GraphicItem = {
-        kind: "capsule",
-        id: `capsule_${crypto.randomUUID()}`,
-        cx: snapped.x,
-        cy: snapped.y,
-        width: 11.5,
-        height: 4.8,
-        rotation: 0,
-        strokeWidth: 0.15,
-        layer: activeLayer || "top_silk",
-      };
-      onGraphicsChange([...graphics, newCap]);
-      onSelectPad(null);
-      onSelectPads?.([]);
-      onSelectGraphic(newCap.id);
-      onSetActiveTool?.("select");
-      return;
-    }
 
     if (activeTool === "select") {
       // Клик по пустому месту сбрасывает выделение
