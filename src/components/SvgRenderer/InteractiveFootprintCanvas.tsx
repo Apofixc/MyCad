@@ -390,6 +390,37 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     }
   };
 
+  // Поиск ближайшей вершины существующего контура для безупречного замыкания контуров
+  const findSnapVertex = (raw: { x: number; y: number }): { x: number; y: number } | null => {
+    const snapRadius = Math.max(0.4, 12 / scale);
+    let bestDist = snapRadius;
+    let bestPoint: { x: number; y: number } | null = null;
+
+    for (const g of graphics) {
+      if (g.kind === "line") {
+        const d1 = Math.hypot(raw.x - g.x1, raw.y - g.y1);
+        if (d1 < bestDist) { bestDist = d1; bestPoint = { x: g.x1, y: g.y1 }; }
+        const d2 = Math.hypot(raw.x - g.x2, raw.y - g.y2);
+        if (d2 < bestDist) { bestDist = d2; bestPoint = { x: g.x2, y: g.y2 }; }
+      } else if (g.kind === "arc") {
+        const sRad = (g.startAngle * Math.PI) / 180;
+        const eRad = (g.endAngle * Math.PI) / 180;
+        const pA = { x: g.cx + g.radius * Math.cos(sRad), y: g.cy + g.radius * Math.sin(sRad) };
+        const pB = { x: g.cx + g.radius * Math.cos(eRad), y: g.cy + g.radius * Math.sin(eRad) };
+        const d1 = Math.hypot(raw.x - pA.x, raw.y - pA.y);
+        if (d1 < bestDist) { bestDist = d1; bestPoint = pA; }
+        const d2 = Math.hypot(raw.x - pB.x, raw.y - pB.y);
+        if (d2 < bestDist) { bestDist = d2; bestPoint = pB; }
+      } else if (g.kind === "polygon") {
+        for (const [px, py] of g.points) {
+          const d = Math.hypot(raw.x - px, raw.y - py);
+          if (d < bestDist) { bestDist = d; bestPoint = { x: px, y: py }; }
+        }
+      }
+    }
+    return bestPoint;
+  };
+
   // Обработка клика мыши
   const handleMouseDown = (e: React.MouseEvent) => {
     // Панорамирование колесом мыши или с зажатым пробелом / Alt
@@ -418,7 +449,10 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     if (e.button !== 0) return; // Только левая кнопка мыши
 
     const world = screenToWorld(e.clientX, e.clientY);
-    const snapped = { x: snapCoord(world.x), y: snapCoord(world.y) };
+    const snapVertex = (activeTool === "line" || activeTool === "polygon" || activeTool === "arc")
+      ? findSnapVertex(world)
+      : null;
+    const snapped = snapVertex || { x: snapCoord(world.x), y: snapCoord(world.y) };
 
     if (activeTool === "polygon") {
       const first = polygonPoints[0];
@@ -477,9 +511,18 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     }
     if (activeTool === "trim") {
       if (trimPreview) {
-        onGraphicsChange(trimPreview.newGraphics);
-        const nextPreview = findHoveredTrimSegment(world, trimPreview.newGraphics, Math.max(0.5, 12 / scale));
-        setTrimPreview(nextPreview);
+        const { newGraphics, createdPolygonId } = joinGraphics(trimPreview.newGraphics);
+        onInteractionStart?.();
+        onGraphicsChange(newGraphics);
+        if (createdPolygonId) {
+          onSelectGraphic(createdPolygonId);
+          onSetActiveTool?.("select");
+          setTrimPreview(null);
+        } else {
+          const nextPreview = findHoveredTrimSegment(world, newGraphics, Math.max(0.5, 12 / scale));
+          setTrimPreview(nextPreview);
+        }
+        onInteractionEnd?.();
       }
       return;
     }
@@ -608,7 +651,10 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
 
   const handleMouseMove = (e: React.MouseEvent) => {
     const world = screenToWorld(e.clientX, e.clientY);
-    const snapped = { x: snapCoord(world.x), y: snapCoord(world.y) };
+    const snapVertex = (activeTool === "line" || activeTool === "polygon" || activeTool === "arc")
+      ? findSnapVertex(world)
+      : null;
+    const snapped = snapVertex || { x: snapCoord(world.x), y: snapCoord(world.y) };
     setCursorPos(snapped);
 
     if (isPanning) {

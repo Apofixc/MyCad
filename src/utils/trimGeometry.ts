@@ -458,7 +458,7 @@ export function autoMergeClosedLoops(items: GraphicItem[]): { newItems: GraphicI
       const layerSegs = segments.filter((s) => s.item.layer === layer);
       if (layerSegs.length < 2) continue;
 
-      const tol = 0.15; // 150 микрон
+      const tol = 0.35; // 350 микрон — надёжный захват стыков даже при ручном черчении без привязки
 
       for (let startIdx = 0; startIdx < layerSegs.length; startIdx++) {
         const startSeg = layerSegs[startIdx];
