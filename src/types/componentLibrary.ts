@@ -73,6 +73,7 @@ export type GraphicItem =
       diameter: number;
       cutDepth: number;
       cutOrientation: "top" | "bottom" | "left" | "right";
+      rotation?: number;
       strokeWidth: number;
       layer: GraphicLayer;
     }

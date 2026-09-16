@@ -200,7 +200,487 @@ export function getItemSubSegments(item: GraphicItem): { p1: Point2D; p2: Point2
       { p1: c4, p2: c1 },
     ];
   }
+  if (item.kind === "d_shape") {
+    const r = item.diameter / 2;
+    if (r <= 0) return [];
+    const cutRatio = Math.max(-0.999, Math.min(0.999, 1 - item.cutDepth / r));
+    const d = r * cutRatio;
+    const h = Math.sqrt(Math.max(0, r * r - d * d));
+    const rotRad = ((item.rotation || 0) * Math.PI) / 180;
+    const cosR = Math.cos(rotRad);
+    const sinR = Math.sin(rotRad);
+    let p1Local: Point2D = { x: d, y: -h };
+    let p2Local: Point2D = { x: d, y: h };
+    if (item.cutOrientation === "top") {
+      p1Local = { x: -h, y: -d };
+      p2Local = { x: h, y: -d };
+    } else if (item.cutOrientation === "bottom") {
+      p1Local = { x: h, y: d };
+      p2Local = { x: -h, y: d };
+    } else if (item.cutOrientation === "left") {
+      p1Local = { x: -d, y: h };
+      p2Local = { x: -d, y: -h };
+    }
+    const rotate = (p: Point2D): Point2D => ({
+      x: item.cx + p.x * cosR - p.y * sinR,
+      y: item.cy + p.x * sinR + p.y * cosR,
+    });
+    return [{ p1: rotate(p1Local), p2: rotate(p2Local) }];
+  }
   return [];
+}
+
+/**
+ * Разбить составную фигуру (прямоугольник, полигон, D-контур, капсулу) на атомарные отрезки и дуги.
+ */
+export function explodeGraphicItem(item: GraphicItem): GraphicItem[] {
+  if (item.kind === "rect") {
+    const halfW = item.width / 2;
+    const halfH = item.height / 2;
+    const r = Math.max(0, Math.min(item.roundRadius || 0, halfW, halfH));
+    const rotRad = ((item.rotation || 0) * Math.PI) / 180;
+    const cosR = Math.cos(rotRad);
+    const sinR = Math.sin(rotRad);
+    const rotate = (p: Point2D): Point2D => ({
+      x: Math.round((item.x + p.x * cosR - p.y * sinR) * 10000) / 10000,
+      y: Math.round((item.y + p.x * sinR + p.y * cosR) * 10000) / 10000,
+    });
+
+    if (r <= 0.001) {
+      const p1 = rotate({ x: -halfW, y: -halfH });
+      const p2 = rotate({ x: halfW, y: -halfH });
+      const p3 = rotate({ x: halfW, y: halfH });
+      const p4 = rotate({ x: -halfW, y: halfH });
+      return [
+        { kind: "line", id: `line_${crypto.randomUUID()}`, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, strokeWidth: item.strokeWidth, layer: item.layer },
+        { kind: "line", id: `line_${crypto.randomUUID()}`, x1: p2.x, y1: p2.y, x2: p3.x, y2: p3.y, strokeWidth: item.strokeWidth, layer: item.layer },
+        { kind: "line", id: `line_${crypto.randomUUID()}`, x1: p3.x, y1: p3.y, x2: p4.x, y2: p4.y, strokeWidth: item.strokeWidth, layer: item.layer },
+        { kind: "line", id: `line_${crypto.randomUUID()}`, x1: p4.x, y1: p4.y, x2: p1.x, y2: p1.y, strokeWidth: item.strokeWidth, layer: item.layer },
+      ];
+    } else {
+      const res: GraphicItem[] = [];
+      const addLine = (pA: Point2D, pB: Point2D) => {
+        const p1 = rotate(pA), p2 = rotate(pB);
+        res.push({ kind: "line", id: `line_${crypto.randomUUID()}`, x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y, strokeWidth: item.strokeWidth, layer: item.layer });
+      };
+      const addArc = (centerLocal: Point2D, startAngleDeg: number, endAngleDeg: number) => {
+        const c = rotate(centerLocal);
+        const rotDeg = item.rotation || 0;
+        res.push({
+          kind: "arc",
+          id: `arc_${crypto.randomUUID()}`,
+          cx: c.x,
+          cy: c.y,
+          radius: r,
+          startAngle: normalizeAngleDeg(startAngleDeg + rotDeg),
+          endAngle: normalizeAngleDeg(endAngleDeg + rotDeg),
+          clockwise: true,
+          strokeWidth: item.strokeWidth,
+          layer: item.layer,
+        });
+      };
+
+      if (halfW - r > 0.001) addLine({ x: -halfW + r, y: -halfH }, { x: halfW - r, y: -halfH });
+      addArc({ x: halfW - r, y: -halfH + r }, 270, 360);
+      if (halfH - r > 0.001) addLine({ x: halfW, y: -halfH + r }, { x: halfW, y: halfH - r });
+      addArc({ x: halfW - r, y: halfH - r }, 0, 90);
+      if (halfW - r > 0.001) addLine({ x: halfW - r, y: halfH }, { x: -halfW + r, y: halfH });
+      addArc({ x: -halfW + r, y: halfH - r }, 90, 180);
+      if (halfH - r > 0.001) addLine({ x: -halfW, y: halfH - r }, { x: -halfW, y: -halfH + r });
+      addArc({ x: -halfW + r, y: -halfH + r }, 180, 270);
+
+      return res;
+    }
+  }
+
+  if (item.kind === "polygon") {
+    const pts = item.points;
+    if (!pts || pts.length < 2) return [];
+    const res: GraphicItem[] = [];
+    for (let i = 0; i < pts.length; i++) {
+      const p1 = pts[i];
+      const p2 = pts[(i + 1) % pts.length];
+      res.push({
+        kind: "line",
+        id: `line_${crypto.randomUUID()}`,
+        x1: p1[0],
+        y1: p1[1],
+        x2: p2[0],
+        y2: p2[1],
+        strokeWidth: item.strokeWidth,
+        layer: item.layer,
+      });
+    }
+    return res;
+  }
+
+  if (item.kind === "d_shape") {
+    const r = item.diameter / 2;
+    const cutRatio = Math.max(-0.999, Math.min(0.999, 1 - item.cutDepth / r));
+    const d = r * cutRatio;
+    const h = Math.sqrt(Math.max(0, r * r - d * d));
+    const rotRad = ((item.rotation || 0) * Math.PI) / 180;
+    const cosR = Math.cos(rotRad);
+    const sinR = Math.sin(rotRad);
+    const rotate = (p: Point2D): Point2D => ({
+      x: Math.round((item.cx + p.x * cosR - p.y * sinR) * 10000) / 10000,
+      y: Math.round((item.cy + p.x * sinR + p.y * cosR) * 10000) / 10000,
+    });
+    const p1 = rotate({ x: d, y: -h });
+    const p2 = rotate({ x: d, y: h });
+
+    const chord: GraphicItem = {
+      kind: "line",
+      id: `line_${crypto.randomUUID()}`,
+      x1: p1.x,
+      y1: p1.y,
+      x2: p2.x,
+      y2: p2.y,
+      strokeWidth: item.strokeWidth,
+      layer: item.layer,
+    };
+
+    const angle1 = (Math.atan2(h, d) * 180) / Math.PI;
+    const angle2 = (Math.atan2(-h, d) * 180) / Math.PI;
+    const rotDeg = item.rotation || 0;
+
+    const arc: GraphicItem = {
+      kind: "arc",
+      id: `arc_${crypto.randomUUID()}`,
+      cx: item.cx,
+      cy: item.cy,
+      radius: r,
+      startAngle: normalizeAngleDeg(angle1 + rotDeg),
+      endAngle: normalizeAngleDeg(angle2 + rotDeg),
+      clockwise: true,
+      strokeWidth: item.strokeWidth,
+      layer: item.layer,
+    };
+
+    return [arc, chord];
+  }
+
+  if (item.kind === "capsule") {
+    const r = Math.min(item.width, item.height) / 2;
+    const isHorizontal = item.width >= item.height;
+    const straightLen = isHorizontal ? item.width - 2 * r : item.height - 2 * r;
+    const halfLen = straightLen / 2;
+    const rotRad = ((item.rotation || 0) * Math.PI) / 180;
+    const cosR = Math.cos(rotRad);
+    const sinR = Math.sin(rotRad);
+    const rotate = (p: Point2D): Point2D => ({
+      x: Math.round((item.cx + p.x * cosR - p.y * sinR) * 10000) / 10000,
+      y: Math.round((item.cy + p.x * sinR + p.y * cosR) * 10000) / 10000,
+    });
+
+    if (isHorizontal) {
+      const topP1 = rotate({ x: -halfLen, y: -r });
+      const topP2 = rotate({ x: halfLen, y: -r });
+      const botP1 = rotate({ x: halfLen, y: r });
+      const botP2 = rotate({ x: -halfLen, y: r });
+      const rightCenter = rotate({ x: halfLen, y: 0 });
+      const leftCenter = rotate({ x: -halfLen, y: 0 });
+      const rotDeg = item.rotation || 0;
+
+      return [
+        { kind: "line", id: `line_${crypto.randomUUID()}`, x1: topP1.x, y1: topP1.y, x2: topP2.x, y2: topP2.y, strokeWidth: item.strokeWidth, layer: item.layer },
+        { kind: "arc", id: `arc_${crypto.randomUUID()}`, cx: rightCenter.x, cy: rightCenter.y, radius: r, startAngle: normalizeAngleDeg(270 + rotDeg), endAngle: normalizeAngleDeg(90 + rotDeg), clockwise: true, strokeWidth: item.strokeWidth, layer: item.layer },
+        { kind: "line", id: `line_${crypto.randomUUID()}`, x1: botP1.x, y1: botP1.y, x2: botP2.x, y2: botP2.y, strokeWidth: item.strokeWidth, layer: item.layer },
+        { kind: "arc", id: `arc_${crypto.randomUUID()}`, cx: leftCenter.x, cy: leftCenter.y, radius: r, startAngle: normalizeAngleDeg(90 + rotDeg), endAngle: normalizeAngleDeg(270 + rotDeg), clockwise: true, strokeWidth: item.strokeWidth, layer: item.layer },
+      ];
+    }
+  }
+
+  return [item];
+}
+
+/**
+ * Объединение дуги и стягивающей её хорды (линии) в замкнутый D-контур (d_shape)
+ */
+export function autoMergeMatchingArcAndLine(items: GraphicItem[]): GraphicItem[] {
+  let result = [...items];
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    const arcs = result.filter((g): g is Extract<GraphicItem, { kind: "arc" }> => g.kind === "arc");
+    const lines = result.filter((g): g is Extract<GraphicItem, { kind: "line" }> => g.kind === "line");
+
+    for (const arc of arcs) {
+      const r = arc.radius;
+      const startRad = (arc.startAngle * Math.PI) / 180;
+      const endRad = (arc.endAngle * Math.PI) / 180;
+      const startPt: Point2D = {
+        x: Math.round((arc.cx + r * Math.cos(startRad)) * 10000) / 10000,
+        y: Math.round((arc.cy + r * Math.sin(startRad)) * 10000) / 10000,
+      };
+      const endPt: Point2D = {
+        x: Math.round((arc.cx + r * Math.cos(endRad)) * 10000) / 10000,
+        y: Math.round((arc.cy + r * Math.sin(endRad)) * 10000) / 10000,
+      };
+
+      for (const line of lines) {
+        if (line.layer !== arc.layer) continue;
+        const lp1: Point2D = { x: line.x1, y: line.y1 };
+        const lp2: Point2D = { x: line.x2, y: line.y2 };
+
+        const tol = 0.05; // 50 микрон
+        const matchForward = dist(startPt, lp1) < tol && dist(endPt, lp2) < tol;
+        const matchReverse = dist(startPt, lp2) < tol && dist(endPt, lp1) < tol;
+
+        if (matchForward || matchReverse) {
+          const midX = (lp1.x + lp2.x) / 2;
+          const midY = (lp1.y + lp2.y) / 2;
+          const chordDist = dist({ x: arc.cx, y: arc.cy }, { x: midX, y: midY });
+          const cutDepth = Math.max(0.01, r - chordDist);
+
+          const angleToChordDeg = normalizeAngleDeg(
+            (Math.atan2(midY - arc.cy, midX - arc.cx) * 180) / Math.PI
+          );
+
+          let cutOrientation: "right" | "bottom" | "left" | "top" = "right";
+          let rotation = 0;
+
+          if (Math.abs(angleToChordDeg - 0) < 5 || Math.abs(angleToChordDeg - 360) < 5) {
+            cutOrientation = "right";
+            rotation = 0;
+          } else if (Math.abs(angleToChordDeg - 90) < 5) {
+            cutOrientation = "bottom";
+            rotation = 0;
+          } else if (Math.abs(angleToChordDeg - 180) < 5) {
+            cutOrientation = "left";
+            rotation = 0;
+          } else if (Math.abs(angleToChordDeg - 270) < 5) {
+            cutOrientation = "top";
+            rotation = 0;
+          } else {
+            cutOrientation = "right";
+            rotation = Math.round(angleToChordDeg * 100) / 100;
+          }
+
+          const dShape: GraphicItem = {
+            kind: "d_shape",
+            id: `dshape_${crypto.randomUUID()}`,
+            cx: arc.cx,
+            cy: arc.cy,
+            diameter: Math.round(r * 2 * 10000) / 10000,
+            cutDepth: Math.round(cutDepth * 10000) / 10000,
+            cutOrientation,
+            rotation,
+            strokeWidth: arc.strokeWidth,
+            layer: arc.layer,
+          };
+
+          result = result.filter((g) => g.id !== arc.id && g.id !== line.id);
+          result.push(dShape);
+          changed = true;
+          break;
+        }
+      }
+      if (changed) break;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Объединение смежных коллинеарных отрезков на одном слое
+ */
+export function autoMergeCollinearLines(items: GraphicItem[]): GraphicItem[] {
+  let result = [...items];
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    const lines = result.filter((g): g is Extract<GraphicItem, { kind: "line" }> => g.kind === "line");
+    if (lines.length < 2) break;
+
+    const tol = 0.08;
+
+    for (let i = 0; i < lines.length; i++) {
+      const l1 = lines[i];
+      const dx1 = l1.x2 - l1.x1;
+      const dy1 = l1.y2 - l1.y1;
+      const len1 = Math.hypot(dx1, dy1);
+      if (len1 < 1e-4) continue;
+      const u1x = dx1 / len1, u1y = dy1 / len1;
+
+      for (let j = i + 1; j < lines.length; j++) {
+        const l2 = lines[j];
+        if (l1.layer !== l2.layer || l1.strokeWidth !== l2.strokeWidth) continue;
+
+        const dx2 = l2.x2 - l2.x1;
+        const dy2 = l2.y2 - l2.y1;
+        const len2 = Math.hypot(dx2, dy2);
+        if (len2 < 1e-4) continue;
+        const u2x = dx2 / len2, u2y = dy2 / len2;
+
+        const dot = u1x * u2x + u1y * u2y;
+        const isParallel = Math.abs(dot) > 0.9995;
+        if (!isParallel) continue;
+
+        const p1A = { x: l1.x1, y: l1.y1 }, p1B = { x: l1.x2, y: l1.y2 };
+        const p2A = { x: l2.x1, y: l2.y1 }, p2B = { x: l2.x2, y: l2.y2 };
+
+        let mergedStart: Point2D | null = null;
+        let mergedEnd: Point2D | null = null;
+
+        if (dist(p1B, p2A) < tol && dot > 0.99) {
+          mergedStart = p1A; mergedEnd = p2B;
+        } else if (dist(p1A, p2B) < tol && dot > 0.99) {
+          mergedStart = p2A; mergedEnd = p1B;
+        } else if (dist(p1B, p2B) < tol && dot < -0.99) {
+          mergedStart = p1A; mergedEnd = p2A;
+        } else if (dist(p1A, p2A) < tol && dot < -0.99) {
+          mergedStart = p1B; mergedEnd = p2B;
+        }
+
+        if (mergedStart && mergedEnd) {
+          const mergedLine: GraphicItem = {
+            kind: "line",
+            id: l1.id,
+            x1: Math.round(mergedStart.x * 10000) / 10000,
+            y1: Math.round(mergedStart.y * 10000) / 10000,
+            x2: Math.round(mergedEnd.x * 10000) / 10000,
+            y2: Math.round(mergedEnd.y * 10000) / 10000,
+            strokeWidth: l1.strokeWidth,
+            layer: l1.layer,
+          };
+
+          result = result.filter((g) => g.id !== l1.id && g.id !== l2.id);
+          result.push(mergedLine);
+          changed = true;
+          break;
+        }
+      }
+      if (changed) break;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Объединение замкнутых цепочек отрезков (3+) в единый polygon
+ */
+export function autoMergeClosedLineLoops(items: GraphicItem[]): GraphicItem[] {
+  let result = [...items];
+  let changed = true;
+
+  while (changed) {
+    changed = false;
+    const lines = result.filter((g): g is Extract<GraphicItem, { kind: "line" }> => g.kind === "line");
+    if (lines.length < 3) break;
+
+    const layers = Array.from(new Set(lines.map((l) => l.layer)));
+    for (const layer of layers) {
+      const layerLines = lines.filter((l) => l.layer === layer);
+      if (layerLines.length < 3) continue;
+
+      const tol = 0.08;
+      for (let startIdx = 0; startIdx < layerLines.length; startIdx++) {
+        const startLine = layerLines[startIdx];
+        const visitedLineIds = new Set<string>([startLine.id]);
+        const loopPoints: Point2D[] = [
+          { x: startLine.x1, y: startLine.y1 },
+          { x: startLine.x2, y: startLine.y2 },
+        ];
+        const loopLines = [startLine];
+
+        let curPoint = loopPoints[loopPoints.length - 1];
+        let foundCycle = false;
+
+        while (true) {
+          const next = layerLines.find((candidate) => {
+            if (visitedLineIds.has(candidate.id)) return false;
+            const p1 = { x: candidate.x1, y: candidate.y1 };
+            const p2 = { x: candidate.x2, y: candidate.y2 };
+            return dist(curPoint, p1) < tol || dist(curPoint, p2) < tol;
+          });
+
+          if (!next) {
+            if (loopLines.length >= 3 && dist(curPoint, loopPoints[0]) < tol) {
+              foundCycle = true;
+            }
+            break;
+          }
+
+          visitedLineIds.add(next.id);
+          loopLines.push(next);
+          const p1 = { x: next.x1, y: next.y1 };
+          const p2 = { x: next.x2, y: next.y2 };
+          if (dist(curPoint, p1) < tol) {
+            curPoint = p2;
+            loopPoints.push(p2);
+          } else {
+            curPoint = p1;
+            loopPoints.push(p1);
+          }
+
+          if (loopLines.length >= 3 && dist(curPoint, loopPoints[0]) < tol) {
+            foundCycle = true;
+            break;
+          }
+        }
+
+        if (foundCycle && loopLines.length >= 3) {
+          const pts = loopPoints.slice(0, loopPoints.length - 1);
+          let area2 = 0;
+          for (let p = 0; p < pts.length; p++) {
+            const pA = pts[p];
+            const pB = pts[(p + 1) % pts.length];
+            area2 += pA.x * pB.y - pB.x * pA.y;
+          }
+          if (Math.abs(area2) > 0.01) {
+            const loopLineIds = new Set(loopLines.map((l) => l.id));
+            const newPolygon: GraphicItem = {
+              kind: "polygon",
+              id: loopLines[0].id,
+              points: pts.map((p) => [Math.round(p.x * 10000) / 10000, Math.round(p.y * 10000) / 10000]),
+              strokeWidth: loopLines[0].strokeWidth,
+              layer: layer,
+              filled: false,
+            };
+
+            result = result.filter((g) => !loopLineIds.has(g.id));
+            result.push(newPolygon);
+            changed = true;
+            break;
+          }
+        }
+      }
+      if (changed) break;
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Универсальное автоматическое слияние геометрии
+ */
+export function autoMergeGraphics(items: GraphicItem[]): GraphicItem[] {
+  let result = autoMergeMatchingArcAndLine(items);
+  result = autoMergeCollinearLines(result);
+  result = autoMergeClosedLineLoops(result);
+  return result;
+}
+
+/**
+ * Ручное объединение выбранных графических элементов (Join, J)
+ */
+export function mergeSelectedGraphics(selectedIds: string[], items: GraphicItem[]): GraphicItem[] {
+  if (selectedIds.length < 2) return items;
+  const selectedSet = new Set(selectedIds);
+  const selectedItems = items.filter((g) => selectedSet.has(g.id));
+  const otherItems = items.filter((g) => !selectedSet.has(g.id));
+
+  const merged = autoMergeGraphics(selectedItems);
+  if (merged.length < selectedItems.length) {
+    return [...otherItems, ...merged];
+  }
+  return items;
 }
 
 /**
@@ -217,6 +697,8 @@ export function findHoveredTrimSegment(
   // Ищем элемент, наиболее близкий к курсору
   let bestDist = maxHitDistance;
   let bestItem: GraphicItem | null = null;
+  let parentItem: GraphicItem | null = null;
+  let siblingParts: GraphicItem[] = [];
 
   for (const item of items) {
     if (item.kind === "line") {
@@ -224,12 +706,16 @@ export function findHoveredTrimSegment(
       if (d < bestDist) {
         bestDist = d;
         bestItem = item;
+        parentItem = null;
+        siblingParts = [];
       }
     } else if (item.kind === "circle") {
       const d = Math.abs(dist(cursor, { x: item.cx, y: item.cy }) - item.radius);
       if (d < bestDist) {
         bestDist = d;
         bestItem = item;
+        parentItem = null;
+        siblingParts = [];
       }
     } else if (item.kind === "arc") {
       const dCenter = dist(cursor, { x: item.cx, y: item.cy });
@@ -238,11 +724,43 @@ export function findHoveredTrimSegment(
       if (d < bestDist && isAngleInArc(angle, item.startAngle, item.endAngle, item.clockwise !== false)) {
         bestDist = d;
         bestItem = item;
+        parentItem = null;
+        siblingParts = [];
+      }
+    } else if (item.kind === "rect" || item.kind === "polygon" || item.kind === "d_shape" || item.kind === "capsule") {
+      const parts = explodeGraphicItem(item);
+      for (let i = 0; i < parts.length; i++) {
+        const part = parts[i];
+        if (part.kind === "line") {
+          const d = distToSegment(cursor, { x: part.x1, y: part.y1 }, { x: part.x2, y: part.y2 });
+          if (d < bestDist) {
+            bestDist = d;
+            bestItem = part;
+            parentItem = item;
+            siblingParts = parts.filter((_, idx) => idx !== i);
+          }
+        } else if (part.kind === "arc") {
+          const dCenter = dist(cursor, { x: part.cx, y: part.cy });
+          const d = Math.abs(dCenter - part.radius);
+          const angle = (Math.atan2(cursor.y - part.cy, cursor.x - part.cx) * 180) / Math.PI;
+          if (d < bestDist && isAngleInArc(angle, part.startAngle, part.endAngle, part.clockwise !== false)) {
+            bestDist = d;
+            bestItem = part;
+            parentItem = item;
+            siblingParts = parts.filter((_, idx) => idx !== i);
+          }
+        }
       }
     }
   }
 
   if (!bestItem) return null;
+
+  // Все элементы, с которыми может пересекаться целевой отрезок/дуга
+  const otherCuttingItems = [
+    ...items.filter((g) => g.id !== (parentItem ? parentItem.id : bestItem!.id)),
+    ...siblingParts,
+  ];
 
   // 1. ОБРЕЗКА ЛИНИИ
   if (bestItem.kind === "line") {
@@ -253,7 +771,7 @@ export function findHoveredTrimSegment(
     // Находим все точки пересечения этой линии со всеми другими объектами
     const intersections: { t: number; point: Point2D }[] = [];
 
-    for (const other of items) {
+    for (const other of otherCuttingItems) {
       if (other.id === line.id) continue;
       if (other.kind === "line") {
         const hit = intersectLineSegments(p1, p2, { x: other.x1, y: other.y1 }, { x: other.x2, y: other.y2 });
@@ -284,11 +802,14 @@ export function findHoveredTrimSegment(
 
     // Если линия ни с чем не пересекается — клик удаляет её целиком
     if (!intersections.length) {
+      const remainingNoInter = parentItem
+        ? [...items.filter((g) => g.id !== parentItem.id), ...siblingParts]
+        : items.filter((g) => g.id !== line.id);
       return {
-        targetItemId: line.id,
+        targetItemId: parentItem ? parentItem.id : line.id,
         highlightPath: `M ${line.x1} ${line.y1} L ${line.x2} ${line.y2}`,
         boundaryPoints: [p1, p2],
-        newGraphics: items.filter((g) => g.id !== line.id),
+        newGraphics: autoMergeGraphics(remainingNoInter),
       };
     }
 
@@ -349,14 +870,15 @@ export function findHoveredTrimSegment(
       }
     }
 
+    const remainingLineAll = parentItem
+      ? [...items.filter((g) => g.id !== parentItem.id), ...siblingParts, ...remainingLineSegments]
+      : [...items.filter((g) => g.id !== line.id), ...remainingLineSegments];
+
     return {
-      targetItemId: line.id,
+      targetItemId: parentItem ? parentItem.id : line.id,
       highlightPath: `M ${segStart.point.x} ${segStart.point.y} L ${segEnd.point.x} ${segEnd.point.y}`,
       boundaryPoints: [segStart.point, segEnd.point],
-      newGraphics: [
-        ...items.filter((g) => g.id !== line.id),
-        ...remainingLineSegments,
-      ],
+      newGraphics: autoMergeGraphics(remainingLineAll),
     };
   }
 
@@ -487,10 +1009,10 @@ export function findHoveredTrimSegment(
       targetItemId: circle.id,
       highlightPath,
       boundaryPoints: [targetSeg.p1, targetSeg.p2],
-      newGraphics: [
+      newGraphics: autoMergeGraphics([
         ...items.filter((g) => g.id !== circle.id),
         ...remainingArcs,
-      ],
+      ]),
     };
   }
 
@@ -503,7 +1025,7 @@ export function findHoveredTrimSegment(
 
     const intersectionAngles: { angle: number; point: Point2D }[] = [];
 
-    for (const other of items) {
+    for (const other of otherCuttingItems) {
       if (other.id === arc.id) continue;
       if (other.kind === "line") {
         const hits = intersectLineCircle({ x: other.x1, y: other.y1 }, { x: other.x2, y: other.y2 }, arc.cx, arc.cy, r);
@@ -535,11 +1057,14 @@ export function findHoveredTrimSegment(
 
     // Если дуга ни с чем не пересекается — клик удаляет её
     if (!intersectionAngles.length) {
+      const remainingArcNoInter = parentItem
+        ? [...items.filter((g) => g.id !== parentItem.id), ...siblingParts]
+        : items.filter((g) => g.id !== arc.id);
       return {
-        targetItemId: arc.id,
+        targetItemId: parentItem ? parentItem.id : arc.id,
         highlightPath: "", // уже отрисована
         boundaryPoints: [],
-        newGraphics: items.filter((g) => g.id !== arc.id),
+        newGraphics: autoMergeGraphics(remainingArcNoInter),
       };
     }
 
@@ -602,14 +1127,15 @@ export function findHoveredTrimSegment(
     const sweepFlag = isCw ? 1 : 0;
     const highlightPath = `M ${targetSeg.p1.x} ${targetSeg.p1.y} A ${r} ${r} 0 ${largeArc} ${sweepFlag} ${targetSeg.p2.x} ${targetSeg.p2.y}`;
 
+    const remainingArcAll = parentItem
+      ? [...items.filter((g) => g.id !== parentItem.id), ...siblingParts, ...remainingSubArcs]
+      : [...items.filter((g) => g.id !== arc.id), ...remainingSubArcs];
+
     return {
-      targetItemId: arc.id,
+      targetItemId: parentItem ? parentItem.id : arc.id,
       highlightPath,
       boundaryPoints: [targetSeg.p1, targetSeg.p2],
-      newGraphics: [
-        ...items.filter((g) => g.id !== arc.id),
-        ...remainingSubArcs,
-      ],
+      newGraphics: autoMergeGraphics(remainingArcAll),
     };
   }
 

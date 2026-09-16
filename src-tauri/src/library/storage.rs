@@ -141,10 +141,11 @@ fn validate_graphics(graphics: &[GraphicItem]) -> Result<(), String> {
                 diameter,
                 cut_depth,
                 cut_orientation,
+                rotation,
                 stroke_width,
                 ..
             } => {
-                finite(&[*cx, *cy, *diameter, *cut_depth, *stroke_width])
+                finite(&[*cx, *cy, *diameter, *cut_depth, *rotation, *stroke_width])
                     && *diameter > 0.0
                     && *cut_depth >= 0.0
                     && *cut_depth < *diameter

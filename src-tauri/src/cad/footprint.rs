@@ -105,6 +105,8 @@ pub enum GraphicItem {
         diameter: f64,
         cut_depth: f64,
         cut_orientation: String, // "top" | "bottom" | "left" | "right"
+        #[serde(default)]
+        rotation: f64,
         stroke_width: f64,
         layer: GraphicLayer,
     },

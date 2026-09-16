@@ -12,7 +12,7 @@ import {
 } from "../../types/componentLibrary";
 import { getDShapePath, getCapsulePath } from "../../utils/footprintGenerator";
 import { getArcPath, getGraphicPath, getFootprintBounds, getPadPath } from "../../utils/footprintGeometry";
-import { findHoveredTrimSegment, TrimSegmentPreview } from "../../utils/trimGeometry";
+import { findHoveredTrimSegment, TrimSegmentPreview, autoMergeGraphics, explodeGraphicItem, autoMergeMatchingArcAndLine } from "../../utils/trimGeometry";
 
 export type EditorTool =
   | "select"
@@ -266,6 +266,41 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       }
 
       const key = e.key.toLowerCase();
+
+      // Explode: Shift+X / Shift+Ч — разбить фигуру на отдельные линии и дуги
+      if (e.shiftKey && (key === "x" || key === "ч")) {
+        e.preventDefault();
+        if (selectedGraphicId) {
+          const target = graphics.find((g) => g.id === selectedGraphicId);
+          if (target) {
+            const parts = explodeGraphicItem(target);
+            if (parts.length > 1 || (parts.length === 1 && parts[0].id !== target.id)) {
+              onInteractionStart?.();
+              const newGraphics = [
+                ...graphics.filter((g) => g.id !== selectedGraphicId),
+                ...parts,
+              ];
+              onGraphicsChange(newGraphics);
+              onSelectGraphic(parts[0].id);
+              onInteractionEnd?.();
+            }
+          }
+        }
+        return;
+      }
+
+      // Join: J / О — объединить контуры (линии в замкнутый полигон, коллинеарные отрезки, дугу с хордой)
+      if (!e.ctrlKey && !e.metaKey && !e.altKey && (key === "j" || key === "о")) {
+        e.preventDefault();
+        const merged = autoMergeGraphics(graphics);
+        if (merged.length !== graphics.length) {
+          onInteractionStart?.();
+          onGraphicsChange(merged);
+          onInteractionEnd?.();
+        }
+        return;
+      }
+
       if (key === "v" || key === "м") onSetActiveTool?.("select");
       else if (key === "p" || key === "з") onSetActiveTool?.("pad");
       else if (key === "l" || key === "д") onSetActiveTool?.("line");
@@ -425,7 +460,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
             strokeWidth: 0.15,
             layer: activeLayer || "top_silk",
           };
-          onGraphicsChange([...graphics, item]);
+          onGraphicsChange(autoMergeGraphics([...graphics, item]));
           onSelectGraphic(item.id);
           onSelectPad(null);
           onSelectPads?.([]);
@@ -440,7 +475,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     if (activeTool === "trim") {
       if (trimPreview) {
         onGraphicsChange(trimPreview.newGraphics);
-        const nextPreview = findHoveredTrimSegment(snapped, trimPreview.newGraphics, Math.max(0.4, 10 / scale));
+        const nextPreview = findHoveredTrimSegment(world, trimPreview.newGraphics, Math.max(0.5, 12 / scale));
         setTrimPreview(nextPreview);
       }
       return;
@@ -505,7 +540,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
             strokeWidth: 0.15,
             layer: activeLayer || "top_silk",
           };
-          onGraphicsChange([...graphics, newLine]);
+          onGraphicsChange(autoMergeGraphics([...graphics, newLine]));
           // Непрерывное рисование контура (полилиния): следующий отрезок начинается из конца текущего
           setDrawStart(snapped);
           return;
@@ -657,7 +692,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     }
 
     if (activeTool === "trim") {
-      const preview = findHoveredTrimSegment(snapped, graphics, Math.max(0.4, 10 / scale));
+      const preview = findHoveredTrimSegment(world, graphics, Math.max(0.5, 12 / scale));
       setTrimPreview(preview);
     }
 
@@ -954,7 +989,13 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                 );
               case "d_shape":
                 return (
-                  <g key={item.id} style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>
+                  <g
+                    key={item.id}
+                    transform={item.rotation ? `rotate(${item.rotation} ${item.cx} ${item.cy})` : undefined}
+                    style={pointerStyle}
+                    onMouseDown={handleGraphicMouseDown}
+                    onClick={handleGraphicClick}
+                  >
                     <path d={getGraphicPath(item)} fill="transparent" stroke="transparent" strokeWidth={hitWidth} />
                     <path d={getGraphicPath(item)} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} pointerEvents="none" />
                   </g>

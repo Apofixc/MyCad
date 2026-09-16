@@ -20,6 +20,7 @@ import {
 import { PadArrayModal } from "./PadArrayModal";
 import { ExtraGraphicProperties, PointProperties } from "./ExtraGraphicProperties";
 import { appendUniquePads, polygonToPad, validateFootprint } from "../../utils/footprintGeometry";
+import { autoMergeGraphics, explodeGraphicItem } from "../../utils/trimGeometry";
 import { reportError } from "../../utils/errorHandler";
 import {
   alignPads,
@@ -464,6 +465,28 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       if (minPitch !== Infinity && minPitch < 50) {
         setPitch(Math.round(minPitch * 100) / 100);
       }
+    }
+  };
+
+  // Ручное объединение контуров (линии в замкнутый полигон, коллинеарные отрезки, дуга+хорда)
+  const handleJoinGraphics = () => {
+    const merged = autoMergeGraphics(graphics);
+    if (merged.length !== graphics.length) {
+      handleGraphicsChange(merged);
+    }
+  };
+
+  // Разбить составную фигуру (прямоугольник, полигон, D-контур, капсулу) на составляющие отрезки и дуги
+  const handleExplodeGraphic = (targetId: string) => {
+    const target = graphics.find((g) => g.id === targetId);
+    if (!target) return;
+    const parts = explodeGraphicItem(target);
+    if (parts.length > 1 || (parts.length === 1 && parts[0].id !== target.id)) {
+      handleGraphicsChange([
+        ...graphics.filter((g) => g.id !== targetId),
+        ...parts,
+      ]);
+      setSelectedGraphicId(parts[0].id);
     }
   };
 
@@ -973,6 +996,15 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
 
           {/* Быстрые действия по чертежу */}
           <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+            <button
+              onClick={handleJoinGraphics}
+              className="cad-btn-secondary btn-sm"
+              title="Объединить линии и дуги в замкнутые полигоны (J)"
+              style={{ fontSize: 11, gap: 5 }}
+            >
+              <Layers size={12} color="#10b981" />
+              <span>Объединить (J)</span>
+            </button>
             <button
               onClick={handleAutoSilk}
               className="cad-btn-secondary btn-sm"
@@ -2002,6 +2034,35 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                               />
                             </div>
                             <div>
+                              <label className="form-label">Глубина среза (мм):</label>
+                              <CadNumberInput
+                                step="0.1"
+                                min={0}
+                                value={selectedGraphic.cutDepth}
+                                onChange={(val) => {
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cutDepth: val } : g))
+                                  );
+                                }}
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                          </div>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                            <div>
+                              <label className="form-label">Угол поворота (°):</label>
+                              <CadNumberInput
+                                step="1"
+                                value={selectedGraphic.rotation || 0}
+                                onChange={(val) => {
+                                  handleGraphicsChange(
+                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, rotation: val } : g))
+                                  );
+                                }}
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                              />
+                            </div>
+                            <div>
                               <label className="form-label">Ориентация среза:</label>
                               <select
                                 value={selectedGraphic.cutOrientation}
@@ -2023,6 +2084,34 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                           </div>
                         </div>
                       )}
+
+                      {/* Операции над контуром / фигурой */}
+                      <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: 6 }}>
+                        {(selectedGraphic.kind === "rect" || selectedGraphic.kind === "polygon" || selectedGraphic.kind === "d_shape" || selectedGraphic.kind === "capsule") && (
+                          <button
+                            type="button"
+                            className="cad-btn-secondary"
+                            onClick={() => handleExplodeGraphic(selectedGraphic.id)}
+                            style={{ width: "100%", justifyContent: "center", fontSize: 11, padding: "5px 8px", gap: 6 }}
+                            title="Разбить составную фигуру на отдельные линии и дуги (Shift+X)"
+                          >
+                            <Scissors size={12} color="#38bdf8" />
+                            <span>Разбить на отрезки (Shift+X)</span>
+                          </button>
+                        )}
+                        {(selectedGraphic.kind === "line" || selectedGraphic.kind === "arc") && (
+                          <button
+                            type="button"
+                            className="cad-btn-secondary"
+                            onClick={handleJoinGraphics}
+                            style={{ width: "100%", justifyContent: "center", fontSize: 11, padding: "5px 8px", gap: 6 }}
+                            title="Объединить смежные отрезки в замкнутый полигон или дугу с хордой (J)"
+                          >
+                            <Layers size={12} color="#10b981" />
+                            <span>Объединить контуры (J)</span>
+                          </button>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     /* ОБЩИЕ ПАРАМЕТРЫ КОРПУСА */

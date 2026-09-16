@@ -1,7 +1,7 @@
 import React from "react";
 import { GraphicItem } from "../../types/componentLibrary";
 
-type NumericKey<T> = { [K in keyof T]: T[K] extends number ? K : never }[keyof T];
+type NumericKey<T> = { [K in keyof T]: NonNullable<T[K]> extends number ? K : never }[keyof T];
 
 export function PointProperties({ points, onChange }: {
   points: [number, number][];
@@ -118,7 +118,10 @@ export function ExtraGraphicProperties({ item, onChange }: {
       <label><input type="checkbox" checked={!!item.filled}
         onChange={(event) => onChange({ ...item, filled: event.target.checked })} /> Заливка контура</label>
     </>;
-    case "d_shape": return numbers(item, [{ key: "cutDepth", label: "Глубина среза (мм)", min: 0 }]);
+    case "d_shape": return numbers(item, [
+      { key: "cutDepth", label: "Глубина среза (мм)", min: 0 },
+      { key: "rotation", label: "Угол поворота (°)" },
+    ]);
     default: return null;
   }
 }
