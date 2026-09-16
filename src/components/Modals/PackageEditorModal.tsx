@@ -43,6 +43,7 @@ import {
   Redo2,
   Crosshair,
   Wand2,
+  Scissors,
   Box,
   Settings,
   Sparkles,
@@ -1031,18 +1032,9 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                 label: "Окружность (C)",
               },
               {
-                id: "d_shape",
-                icon: (
-                  <svg width="17" height="17" viewBox="0 0 18 18" fill="none">
-                    <path
-                      d="M4 3h5a6 6 0 0 1 6 6 6 6 0 0 1-6 6H4V3z"
-                      stroke="currentColor"
-                      strokeWidth="1.5"
-                      strokeLinejoin="round"
-                    />
-                  </svg>
-                ),
-                label: "D-образный контур (TO-92)",
+                id: "trim",
+                icon: <Scissors size={16} />,
+                label: "Обрезка контуров / Ножницы (Trim) (X)",
               },
               {
                 id: "polygon", icon: <Wand2 size={16} />, label: "Произвольный замкнутый контур",

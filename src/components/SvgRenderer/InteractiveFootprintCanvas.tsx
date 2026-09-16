@@ -12,6 +12,7 @@ import {
 } from "../../types/componentLibrary";
 import { getDShapePath, getCapsulePath } from "../../utils/footprintGenerator";
 import { getArcPath, getGraphicPath, getFootprintBounds, getPadPath } from "../../utils/footprintGeometry";
+import { findHoveredTrimSegment, TrimSegmentPreview } from "../../utils/trimGeometry";
 
 export type EditorTool =
   | "select"
@@ -23,6 +24,7 @@ export type EditorTool =
   | "circle"
   | "text"
   | "polygon"
+  | "trim"
   | "measure"
   | "set_origin";
 
@@ -124,6 +126,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
   const [polygonPoints, setPolygonPoints] = useState<[number, number][]>([]);
   const [arcStart, setArcStart] = useState<{ x: number; y: number } | null>(null);
   const [arcDirectionInverted, setArcDirectionInverted] = useState<boolean>(false);
+  const [trimPreview, setTrimPreview] = useState<TrimSegmentPreview | null>(null);
   const [viewport, setViewport] = useState({ width: 800, height: 600 });
 
   useEffect(() => {
@@ -140,6 +143,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
     setDrawStart(null);
     setArcStart(null);
     setArcDirectionInverted(false);
+    setTrimPreview(null);
     setPolygonPoints([]);
     setMeasureDist(null);
   }, [activeTool]);
@@ -267,6 +271,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       else if (key === "l" || key === "д") onSetActiveTool?.("line");
       else if (key === "r" || key === "к") onSetActiveTool?.("rect");
       else if (key === "c" || key === "с") onSetActiveTool?.("circle");
+      else if (key === "x" || key === "ч") onSetActiveTool?.("trim");
       else if (key === "m" || key === "ь") onSetActiveTool?.("measure");
       else if (key === "f" || key === "а") fitGeometry();
     };
@@ -429,6 +434,14 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         setArcStart(null);
         setArcDirectionInverted(false);
         onSetActiveTool?.("select");
+      }
+      return;
+    }
+    if (activeTool === "trim") {
+      if (trimPreview) {
+        onGraphicsChange(trimPreview.newGraphics);
+        const nextPreview = findHoveredTrimSegment(snapped, trimPreview.newGraphics, Math.max(0.4, 10 / scale));
+        setTrimPreview(nextPreview);
       }
       return;
     }
@@ -643,6 +656,11 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       return;
     }
 
+    if (activeTool === "trim") {
+      const preview = findHoveredTrimSegment(snapped, graphics, Math.max(0.4, 10 / scale));
+      setTrimPreview(preview);
+    }
+
     if (drawStart) {
       const dx = snapped.x - drawStart.x;
       const dy = snapped.y - drawStart.y;
@@ -774,7 +792,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
             ? "grabbing"
             : activeTool === "pad"
             ? "crosshair"
-            : activeTool === "line" || activeTool === "rect" || activeTool === "measure"
+            : activeTool === "line" || activeTool === "rect" || activeTool === "measure" || activeTool === "trim"
             ? "crosshair"
             : activeTool === "set_origin"
             ? "move"
@@ -796,6 +814,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                   ? "Шаг 2: кликните начальную точку (радиус)."
                   : "Шаг 3: кликните конечную точку дуги · Пробел — инвертировать направление (CW/CCW)."
               )
+            : activeTool === "trim" ? "Ножницы: наведите на лишний отрезок/сегмент между пересечениями и кликните, чтобы отсечь его."
             : activeTool === "text" ? "Кликните место надписи, затем измените текст в свойствах."
             : "Колесо — масштаб · Alt + перетаскивание — панорама · Esc — выбор"}
         </span>
@@ -1221,6 +1240,47 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
               )}
             </g>
           )}
+          {/* Подсветка отсекаемого сегмента при инструменте Trim */}
+          {activeTool === "trim" && trimPreview && (
+            <g pointerEvents="none">
+              <path
+                d={trimPreview.highlightPath}
+                fill="none"
+                stroke="rgba(239, 68, 68, 0.4)"
+                strokeWidth={Math.max(0.6, 8 / scale)}
+                strokeLinecap="round"
+              />
+              <path
+                d={trimPreview.highlightPath}
+                fill="none"
+                stroke="#ef4444"
+                strokeWidth={Math.max(0.25, 3.5 / scale)}
+                strokeDasharray="0.3 0.2"
+                strokeLinecap="round"
+              />
+              {trimPreview.boundaryPoints.map((pt, i) => (
+                <g key={i}>
+                  <circle cx={pt.x} cy={pt.y} r={Math.max(0.25, 4 / scale)} fill="#ef4444" stroke="#ffffff" strokeWidth={0.06} />
+                  <line
+                    x1={pt.x - Math.max(0.35, 5 / scale)}
+                    y1={pt.y}
+                    x2={pt.x + Math.max(0.35, 5 / scale)}
+                    y2={pt.y}
+                    stroke="#ffffff"
+                    strokeWidth={0.06}
+                  />
+                  <line
+                    x1={pt.x}
+                    y1={pt.y - Math.max(0.35, 5 / scale)}
+                    x2={pt.x}
+                    y2={pt.y + Math.max(0.35, 5 / scale)}
+                    stroke="#ffffff"
+                    strokeWidth={0.06}
+                  />
+                </g>
+              ))}
+            </g>
+          )}
         </g>
       </svg>
 
@@ -1256,9 +1316,14 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         <span style={{ color: "#94a3b8" }}>
           Зум: <strong>{Math.round(scale)}</strong> px/mm
         </span>
-        {measureDist && activeTool !== "arc" && (
+        {measureDist && activeTool !== "arc" && activeTool !== "trim" && (
           <span style={{ color: "#fbbf24", fontWeight: "bold" }}>
             L: {measureDist.dist.toFixed(3)} mm (dX: {measureDist.dx.toFixed(2)}, dY: {measureDist.dy.toFixed(2)})
+          </span>
+        )}
+        {activeTool === "trim" && (
+          <span style={{ color: trimPreview ? "#ef4444" : "#38bdf8", fontWeight: "bold" }}>
+            {trimPreview ? "✂ Кликните, чтобы отсечь подсвеченный сегмент" : "✂ Наведите на пересекающийся контур"}
           </span>
         )}
         {activeTool === "arc" && drawStart && (() => {
