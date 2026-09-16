@@ -47,11 +47,6 @@ export function getGraphicPath(item: GraphicItem): string {
     case "line": return `M ${item.x1} ${item.y1} L ${item.x2} ${item.y2}`;
     case "arc": return getArcPath(item);
     case "circle": return getCapsulePath(item.cx, item.cy, item.radius * 2, item.radius * 2);
-    case "capsule": return getCapsulePath(item.cx, item.cy, item.width, item.height);
-    case "d_shape":
-      if (item.cutDepth === 0) return getCapsulePath(item.cx, item.cy, item.diameter, item.diameter);
-      return getDShapePath(item.cx, item.cy, item.diameter / 2, item.cutOrientation,
-        Math.max(-0.999, Math.min(0.999, 1 - item.cutDepth / (item.diameter / 2))));
     case "polygon": return polygonPath(item.points);
     case "rect": return roundedRectPath(item.x, item.y, item.width, item.height, item.roundRadius);
     case "text": return "";
@@ -60,7 +55,6 @@ export function getGraphicPath(item: GraphicItem): string {
 
 export function graphicRotation(item: GraphicItem): [number, number, number] {
   if (item.kind === "rect" || item.kind === "text") return [item.rotation, item.x, item.y];
-  if (item.kind === "capsule" || item.kind === "d_shape") return [item.rotation || 0, item.cx, item.cy];
   return [0, 0, 0];
 }
 
@@ -78,7 +72,6 @@ export function getPadPath(pad: PackagePad): string {
   switch (pad.shape) {
     case "circle": return getCapsulePath(pad.x, pad.y, pad.width, pad.width);
     case "oval": return getCapsulePath(pad.x, pad.y, pad.width, pad.height);
-    case "d_shape": return getDShapePath(pad.x, pad.y, Math.min(pad.width, pad.height) / 2);
     case "custom_polygon":
       return polygonPath((pad.polygonPoints ?? []).map(([x, y]) => [x + pad.x, y + pad.y]));
     case "chamfered_rect": {
@@ -115,10 +108,8 @@ export function getFootprintBounds(pads: PackagePad[], graphics: GraphicItem[]) 
       case "line": points.push([g.x1, g.y1], [g.x2, g.y2]); break;
       case "polygon": points.push(...g.points); break;
       case "rect": box(g.x, g.y, g.width, g.height, g.rotation); break;
-      case "capsule": box(g.cx, g.cy, g.width, g.height, g.rotation); break;
       case "circle":
       case "arc": box(g.cx, g.cy, g.radius * 2, g.radius * 2); break;
-      case "d_shape": box(g.cx, g.cy, g.diameter, g.diameter, g.rotation || 0); break;
       case "text": {
         const width = g.text.length * g.fontSize;
         const offset = g.align === "left" ? width / 2 : g.align === "right" ? -width / 2 : 0;
@@ -179,12 +170,10 @@ export function validateFootprint(pads: PackagePad[], graphics: GraphicItem[]): 
   for (const g of graphics) {
     if (Object.values(g).some((value) => typeof value === "number" && !Number.isFinite(value)) || g.strokeWidth <= 0)
       return "Проверьте координаты и толщину линий контура.";
-    if ((g.kind === "rect" || g.kind === "capsule") && (g.width <= 0 || g.height <= 0) ||
+    if (g.kind === "rect" && (g.width <= 0 || g.height <= 0 || g.roundRadius < 0) ||
       (g.kind === "circle" || g.kind === "arc") && g.radius <= 0 ||
-      g.kind === "text" && g.fontSize <= 0 ||
-      g.kind === "rect" && g.roundRadius < 0 ||
-      g.kind === "d_shape" && (g.diameter <= 0 || g.cutDepth < 0 || g.cutDepth >= g.diameter))
-      return "Размеры элементов должны быть положительными; срез — меньше диаметра.";
+      g.kind === "text" && g.fontSize <= 0)
+      return "Размеры элементов должны быть положительными.";
     if (g.kind === "polygon" && (g.points.length < 3 || g.points.some((point) => !point.every(Number.isFinite))))
       return "В контуре нужны минимум три вершины с конечными координатами.";
   }

@@ -20,7 +20,7 @@ import {
 import { PadArrayModal } from "./PadArrayModal";
 import { ExtraGraphicProperties, PointProperties } from "./ExtraGraphicProperties";
 import { appendUniquePads, polygonToPad, validateFootprint } from "../../utils/footprintGeometry";
-import { autoMergeGraphics, explodeGraphicItem } from "../../utils/trimGeometry";
+import { joinGraphics, explodeGraphicItem } from "../../utils/trimGeometry";
 import { reportError } from "../../utils/errorHandler";
 import {
   alignPads,
@@ -370,7 +370,7 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       if (g.kind === "line") {
         return { ...g, x1: g.x1 + dx, y1: g.y1 + dy, x2: g.x2 + dx, y2: g.y2 + dy };
       }
-      if (g.kind === "d_shape" || g.kind === "circle" || g.kind === "arc" || g.kind === "capsule") {
+      if (g.kind === "circle" || g.kind === "arc") {
         return { ...g, cx: g.cx + dx, cy: g.cy + dy };
       }
       if (g.kind === "rect" || g.kind === "text") {
@@ -470,9 +470,12 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
 
   // Ручное объединение контуров (линии в замкнутый полигон, коллинеарные отрезки, дуга+хорда)
   const handleJoinGraphics = () => {
-    const merged = autoMergeGraphics(graphics);
-    if (merged.length !== graphics.length) {
-      handleGraphicsChange(merged);
+    const { newGraphics, createdPolygonId } = joinGraphics(graphics);
+    if (newGraphics.length !== graphics.length) {
+      handleGraphicsChange(newGraphics);
+      if (createdPolygonId) {
+        setSelectedGraphicId(createdPolygonId);
+      }
     }
   };
 
@@ -1162,7 +1165,6 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                     <option value="rect">Прямоугольник</option>
                     <option value="circle">Круг</option>
                     <option value="oval">Овал</option>
-                    <option value="d_shape">D-образный</option>
                   </select>
                 </div>
 
@@ -1404,7 +1406,6 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                             <option value="rect">Прямоугольник</option>
                             <option value="circle">Круг</option>
                             <option value="oval">Овал</option>
-                            <option value="d_shape">D-образная</option>
                             <option value="chamfered_rect">Прямоугольник со срезом</option>
                             {selectedPad.shape === "custom_polygon" && <option value="custom_polygon">Произвольный полигон</option>}
                           </select>
@@ -1988,106 +1989,9 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         </div>
                       )}
 
-                      {selectedGraphic.kind === "d_shape" && (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6, marginTop: 6 }}>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                            <div>
-                              <label className="form-label">Центр X (мм):</label>
-                              <CadNumberInput
-                                step="0.1"
-                                value={selectedGraphic.cx}
-                                onChange={(val) => {
-                                  handleGraphicsChange(
-                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cx: val } : g))
-                                  );
-                                }}
-                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                              />
-                            </div>
-                            <div>
-                              <label className="form-label">Центр Y (мм):</label>
-                              <CadNumberInput
-                                step="0.1"
-                                value={selectedGraphic.cy}
-                                onChange={(val) => {
-                                  handleGraphicsChange(
-                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cy: val } : g))
-                                  );
-                                }}
-                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                              />
-                            </div>
-                          </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                            <div>
-                              <label className="form-label">Диаметр ⌀ (мм):</label>
-                              <CadNumberInput
-                                step="0.1"
-                                min={0.05}
-                                value={selectedGraphic.diameter}
-                                onChange={(val) => {
-                                  handleGraphicsChange(
-                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, diameter: val } : g))
-                                  );
-                                }}
-                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                              />
-                            </div>
-                            <div>
-                              <label className="form-label">Глубина среза (мм):</label>
-                              <CadNumberInput
-                                step="0.1"
-                                min={0}
-                                value={selectedGraphic.cutDepth}
-                                onChange={(val) => {
-                                  handleGraphicsChange(
-                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cutDepth: val } : g))
-                                  );
-                                }}
-                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                              />
-                            </div>
-                          </div>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
-                            <div>
-                              <label className="form-label">Угол поворота (°):</label>
-                              <CadNumberInput
-                                step="1"
-                                value={selectedGraphic.rotation || 0}
-                                onChange={(val) => {
-                                  handleGraphicsChange(
-                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, rotation: val } : g))
-                                  );
-                                }}
-                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                              />
-                            </div>
-                            <div>
-                              <label className="form-label">Ориентация среза:</label>
-                              <select
-                                value={selectedGraphic.cutOrientation}
-                                onChange={(e) => {
-                                  const val = e.target.value as "top" | "bottom" | "left" | "right";
-                                  handleGraphicsChange(
-                                    graphics.map((g) => (g.id === selectedGraphic.id ? { ...g, cutOrientation: val } : g))
-                                  );
-                                }}
-                                className="cad-input"
-                                style={{ width: "100%", padding: "4px 6px", fontSize: 11 }}
-                              >
-                                <option value="right">Справа</option>
-                                <option value="top">Сверху</option>
-                                <option value="bottom">Снизу</option>
-                                <option value="left">Слева</option>
-                              </select>
-                            </div>
-                          </div>
-                        </div>
-                      )}
-
                       {/* Операции над контуром / фигурой */}
                       <div style={{ marginTop: 10, paddingTop: 10, borderTop: "1px solid #1e293b", display: "flex", flexDirection: "column", gap: 6 }}>
-                        {(selectedGraphic.kind === "rect" || selectedGraphic.kind === "polygon" || selectedGraphic.kind === "d_shape" || selectedGraphic.kind === "capsule") && (
+                        {(selectedGraphic.kind === "rect" || selectedGraphic.kind === "polygon") && (
                           <button
                             type="button"
                             className="cad-btn-secondary"

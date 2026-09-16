@@ -12,14 +12,13 @@ import {
 } from "../../types/componentLibrary";
 import { getDShapePath, getCapsulePath } from "../../utils/footprintGenerator";
 import { getArcPath, getGraphicPath, getFootprintBounds, getPadPath } from "../../utils/footprintGeometry";
-import { findHoveredTrimSegment, TrimSegmentPreview, autoMergeGraphics, explodeGraphicItem, autoMergeMatchingArcAndLine } from "../../utils/trimGeometry";
+import { findHoveredTrimSegment, TrimSegmentPreview, joinGraphics, explodeGraphicItem } from "../../utils/trimGeometry";
 
 export type EditorTool =
   | "select"
   | "pad"
   | "line"
   | "arc"
-  | "d_shape"
   | "rect"
   | "circle"
   | "text"
@@ -289,13 +288,16 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         return;
       }
 
-      // Join: J / О — объединить контуры (линии в замкнутый полигон, коллинеарные отрезки, дугу с хордой)
+      // Join: J / О — объединить контуры (линии в замкнутый полигон, дуги с хордами)
       if (!e.ctrlKey && !e.metaKey && !e.altKey && (key === "j" || key === "о")) {
         e.preventDefault();
-        const merged = autoMergeGraphics(graphics);
-        if (merged.length !== graphics.length) {
+        const { newGraphics, createdPolygonId } = joinGraphics(graphics);
+        if (newGraphics.length !== graphics.length) {
           onInteractionStart?.();
-          onGraphicsChange(merged);
+          onGraphicsChange(newGraphics);
+          if (createdPolygonId) {
+            onSelectGraphic(createdPolygonId);
+          }
           onInteractionEnd?.();
         }
         return;
@@ -460,8 +462,9 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
             strokeWidth: 0.15,
             layer: activeLayer || "top_silk",
           };
-          onGraphicsChange(autoMergeGraphics([...graphics, item]));
-          onSelectGraphic(item.id);
+          const { newGraphics, createdPolygonId } = joinGraphics([...graphics, item]);
+          onGraphicsChange(newGraphics);
+          onSelectGraphic(createdPolygonId || item.id);
           onSelectPad(null);
           onSelectPads?.([]);
         }
@@ -540,7 +543,14 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
             strokeWidth: 0.15,
             layer: activeLayer || "top_silk",
           };
-          onGraphicsChange(autoMergeGraphics([...graphics, newLine]));
+          const { newGraphics, createdPolygonId } = joinGraphics([...graphics, newLine]);
+          onGraphicsChange(newGraphics);
+          if (createdPolygonId) {
+            onSelectGraphic(createdPolygonId);
+            setDrawStart(null);
+            onSetActiveTool?.("select");
+            return;
+          }
           // Непрерывное рисование контура (полилиния): следующий отрезок начинается из конца текущего
           setDrawStart(snapped);
           return;
@@ -585,25 +595,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
       return;
     }
 
-    if (activeTool === "d_shape") {
-      const newD: GraphicItem = {
-        kind: "d_shape",
-        id: `dshape_${crypto.randomUUID()}`,
-        cx: snapped.x,
-        cy: snapped.y,
-        diameter: 5.0,
-        cutDepth: 1.5,
-        cutOrientation: "right",
-        strokeWidth: 0.15,
-        layer: activeLayer || "top_silk",
-      };
-      onGraphicsChange([...graphics, newD]);
-      onSelectPad(null);
-      onSelectPads?.([]);
-      onSelectGraphic(newD.id);
-      onSetActiveTool?.("select");
-      return;
-    }
+
 
 
     if (activeTool === "select") {
@@ -663,8 +655,6 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                 };
               case "circle":
               case "arc":
-              case "d_shape":
-              case "capsule":
                 return {
                   ...g,
                   cx: Math.round((g.cx + dx) * 1000) / 1000,
@@ -987,26 +977,7 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
                     <line x1={item.x1} y1={item.y1} x2={item.x2} y2={item.y2} stroke={strokeColor} strokeWidth={strokeWidth} strokeLinecap="round" pointerEvents="none" />
                   </g>
                 );
-              case "d_shape":
-                return (
-                  <g
-                    key={item.id}
-                    transform={item.rotation ? `rotate(${item.rotation} ${item.cx} ${item.cy})` : undefined}
-                    style={pointerStyle}
-                    onMouseDown={handleGraphicMouseDown}
-                    onClick={handleGraphicClick}
-                  >
-                    <path d={getGraphicPath(item)} fill="transparent" stroke="transparent" strokeWidth={hitWidth} />
-                    <path d={getGraphicPath(item)} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} pointerEvents="none" />
-                  </g>
-                );
-              case "capsule":
-                return (
-                  <g key={item.id} transform={`rotate(${item.rotation} ${item.cx} ${item.cy})`} style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>
-                    <path d={getCapsulePath(item.cx, item.cy, item.width, item.height)} fill="transparent" stroke="transparent" strokeWidth={hitWidth} />
-                    <path d={getCapsulePath(item.cx, item.cy, item.width, item.height)} fill="none" stroke={strokeColor} strokeWidth={strokeWidth} pointerEvents="none" />
-                  </g>
-                );
+
               case "rect":
                 return (
                   <g key={item.id} transform={`rotate(${item.rotation} ${item.x} ${item.y})`} style={pointerStyle} onMouseDown={handleGraphicMouseDown} onClick={handleGraphicClick}>

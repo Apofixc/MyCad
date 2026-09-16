@@ -98,28 +98,6 @@ pub enum GraphicItem {
         stroke_width: f64,
         layer: GraphicLayer,
     },
-    DShape {
-        id: String,
-        cx: f64,
-        cy: f64,
-        diameter: f64,
-        cut_depth: f64,
-        cut_orientation: String, // "top" | "bottom" | "left" | "right"
-        #[serde(default)]
-        rotation: f64,
-        stroke_width: f64,
-        layer: GraphicLayer,
-    },
-    Capsule {
-        id: String,
-        cx: f64,
-        cy: f64,
-        width: f64,
-        height: f64,
-        rotation: f64,
-        stroke_width: f64,
-        layer: GraphicLayer,
-    },
     Rect {
         id: String,
         x: f64,
@@ -382,13 +360,9 @@ mod tests {
             ],
             "graphics": [
                 {
-                    "kind": "d_shape",
-                    "id": "d_body_1",
-                    "cx": 0.0,
-                    "cy": 0.0,
-                    "diameter": 4.8,
-                    "cutDepth": 1.2,
-                    "cutOrientation": "bottom",
+                    "kind": "polygon",
+                    "id": "poly_body_1",
+                    "points": [[-2.4, -2.0], [2.4, -2.0], [2.4, 2.0], [-2.4, 2.0]],
                     "strokeWidth": 0.2,
                     "layer": "top_silk"
                 }
@@ -404,19 +378,17 @@ mod tests {
             ]
         }"##;
 
-        let pkg: PackageDefinition = serde_json::from_str(json_data).expect("Should deserialize D-shape package");
+        let pkg: PackageDefinition = serde_json::from_str(json_data).expect("Should deserialize package");
         assert_eq!(pkg.id, "to-92-custom");
         assert_eq!(pkg.pads.len(), 3);
         assert_eq!(pkg.pads[0].pad_num, "1"); // parsed from integer 1
         assert_eq!(pkg.pads[1].pad_num, "2"); // parsed from string "2"
         assert_eq!(pkg.pads[2].pad_num, "EP"); // alphanumeric "EP"
-        assert_eq!(pkg.pads[0].shape, PadShape::DShape);
 
-        if let GraphicItem::DShape { diameter, cut_depth, .. } = &pkg.graphics[0] {
-            assert_eq!(*diameter, 4.8);
-            assert_eq!(*cut_depth, 1.2);
+        if let GraphicItem::Polygon { points, .. } = &pkg.graphics[0] {
+            assert_eq!(points.len(), 4);
         } else {
-            panic!("Expected DShape graphic item");
+            panic!("Expected Polygon graphic item");
         }
 
         assert_eq!(pkg.variants.len(), 1);

@@ -209,17 +209,7 @@ export const FootprintPreview: React.FC<FootprintPreviewProps> = ({
           />
         );
 
-      case "d_shape": {
-        return (
-          <path
-            d={getPadPath(pad)}
-            fill={copperColor}
-            stroke={strokeColor}
-            strokeWidth={strokeWidth}
-            transform={transform}
-          />
-        );
-      }
+
 
       case "custom_polygon":
         if (pad.polygonPoints && pad.polygonPoints.length > 2) {

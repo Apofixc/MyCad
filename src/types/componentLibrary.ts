@@ -9,7 +9,6 @@ export type PadShape =
   | "rounded_rect"
   | "circle"
   | "oval"
-  | "d_shape"
   | "chamfered_rect"
   | "custom_polygon";
 
@@ -62,29 +61,6 @@ export type GraphicItem =
       startAngle: number;
       endAngle: number;
       clockwise?: boolean;
-      strokeWidth: number;
-      layer: GraphicLayer;
-    }
-  | {
-      kind: "d_shape";
-      id: string;
-      cx: number;
-      cy: number;
-      diameter: number;
-      cutDepth: number;
-      cutOrientation: "top" | "bottom" | "left" | "right";
-      rotation?: number;
-      strokeWidth: number;
-      layer: GraphicLayer;
-    }
-  | {
-      kind: "capsule";
-      id: string;
-      cx: number;
-      cy: number;
-      width: number;
-      height: number;
-      rotation: number;
       strokeWidth: number;
       layer: GraphicLayer;
     }

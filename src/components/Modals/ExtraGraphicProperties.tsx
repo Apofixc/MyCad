@@ -96,11 +96,6 @@ export function ExtraGraphicProperties({ item, onChange }: {
         </div>
       );
     }
-    case "capsule": return numbers(item, [
-      { key: "cx", label: "Центр X (мм)" }, { key: "cy", label: "Центр Y (мм)" },
-      { key: "width", label: "Ширина (мм)", min: 0.001 }, { key: "height", label: "Высота (мм)", min: 0.001 },
-      { key: "rotation", label: "Поворот (°)" },
-    ]);
     case "text": return <>
       <label className="form-label">Текст<input className="cad-input" value={item.text}
         onChange={(event) => onChange({ ...item, text: event.target.value })} /></label>
@@ -118,10 +113,6 @@ export function ExtraGraphicProperties({ item, onChange }: {
       <label><input type="checkbox" checked={!!item.filled}
         onChange={(event) => onChange({ ...item, filled: event.target.checked })} /> Заливка контура</label>
     </>;
-    case "d_shape": return numbers(item, [
-      { key: "cutDepth", label: "Глубина среза (мм)", min: 0 },
-      { key: "rotation", label: "Угол поворота (°)" },
-    ]);
     default: return null;
   }
 }

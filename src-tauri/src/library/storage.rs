@@ -135,40 +135,6 @@ fn validate_graphics(graphics: &[GraphicItem]) -> Result<(), String> {
             } => {
                 finite(&[*cx, *cy, *radius, *stroke_width]) && *radius > 0.0 && *stroke_width > 0.0
             }
-            GraphicItem::DShape {
-                cx,
-                cy,
-                diameter,
-                cut_depth,
-                cut_orientation,
-                rotation,
-                stroke_width,
-                ..
-            } => {
-                finite(&[*cx, *cy, *diameter, *cut_depth, *rotation, *stroke_width])
-                    && *diameter > 0.0
-                    && *cut_depth >= 0.0
-                    && *cut_depth < *diameter
-                    && *stroke_width > 0.0
-                    && matches!(
-                        cut_orientation.as_str(),
-                        "top" | "bottom" | "left" | "right"
-                    )
-            }
-            GraphicItem::Capsule {
-                cx,
-                cy,
-                width,
-                height,
-                rotation,
-                stroke_width,
-                ..
-            } => {
-                finite(&[*cx, *cy, *width, *height, *rotation, *stroke_width])
-                    && *width > 0.0
-                    && *height > 0.0
-                    && *stroke_width > 0.0
-            }
             GraphicItem::Rect {
                 x,
                 y,

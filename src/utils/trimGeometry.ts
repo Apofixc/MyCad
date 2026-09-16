@@ -200,33 +200,6 @@ export function getItemSubSegments(item: GraphicItem): { p1: Point2D; p2: Point2
       { p1: c4, p2: c1 },
     ];
   }
-  if (item.kind === "d_shape") {
-    const r = item.diameter / 2;
-    if (r <= 0) return [];
-    const cutRatio = Math.max(-0.999, Math.min(0.999, 1 - item.cutDepth / r));
-    const d = r * cutRatio;
-    const h = Math.sqrt(Math.max(0, r * r - d * d));
-    const rotRad = ((item.rotation || 0) * Math.PI) / 180;
-    const cosR = Math.cos(rotRad);
-    const sinR = Math.sin(rotRad);
-    let p1Local: Point2D = { x: d, y: -h };
-    let p2Local: Point2D = { x: d, y: h };
-    if (item.cutOrientation === "top") {
-      p1Local = { x: -h, y: -d };
-      p2Local = { x: h, y: -d };
-    } else if (item.cutOrientation === "bottom") {
-      p1Local = { x: h, y: d };
-      p2Local = { x: -h, y: d };
-    } else if (item.cutOrientation === "left") {
-      p1Local = { x: -d, y: h };
-      p2Local = { x: -d, y: -h };
-    }
-    const rotate = (p: Point2D): Point2D => ({
-      x: item.cx + p.x * cosR - p.y * sinR,
-      y: item.cy + p.x * sinR + p.y * cosR,
-    });
-    return [{ p1: rotate(p1Local), p2: rotate(p2Local) }];
-  }
   return [];
 }
 
@@ -314,174 +287,75 @@ export function explodeGraphicItem(item: GraphicItem): GraphicItem[] {
     return res;
   }
 
-  if (item.kind === "d_shape") {
-    const r = item.diameter / 2;
-    const cutRatio = Math.max(-0.999, Math.min(0.999, 1 - item.cutDepth / r));
-    const d = r * cutRatio;
-    const h = Math.sqrt(Math.max(0, r * r - d * d));
-    const rotRad = ((item.rotation || 0) * Math.PI) / 180;
-    const cosR = Math.cos(rotRad);
-    const sinR = Math.sin(rotRad);
-    const rotate = (p: Point2D): Point2D => ({
-      x: Math.round((item.cx + p.x * cosR - p.y * sinR) * 10000) / 10000,
-      y: Math.round((item.cy + p.x * sinR + p.y * cosR) * 10000) / 10000,
-    });
-    const p1 = rotate({ x: d, y: -h });
-    const p2 = rotate({ x: d, y: h });
-
-    const chord: GraphicItem = {
-      kind: "line",
-      id: `line_${crypto.randomUUID()}`,
-      x1: p1.x,
-      y1: p1.y,
-      x2: p2.x,
-      y2: p2.y,
-      strokeWidth: item.strokeWidth,
-      layer: item.layer,
-    };
-
-    const angle1 = (Math.atan2(h, d) * 180) / Math.PI;
-    const angle2 = (Math.atan2(-h, d) * 180) / Math.PI;
-    const rotDeg = item.rotation || 0;
-
-    const arc: GraphicItem = {
-      kind: "arc",
-      id: `arc_${crypto.randomUUID()}`,
-      cx: item.cx,
-      cy: item.cy,
-      radius: r,
-      startAngle: normalizeAngleDeg(angle1 + rotDeg),
-      endAngle: normalizeAngleDeg(angle2 + rotDeg),
-      clockwise: true,
-      strokeWidth: item.strokeWidth,
-      layer: item.layer,
-    };
-
-    return [arc, chord];
-  }
-
-  if (item.kind === "capsule") {
-    const r = Math.min(item.width, item.height) / 2;
-    const isHorizontal = item.width >= item.height;
-    const straightLen = isHorizontal ? item.width - 2 * r : item.height - 2 * r;
-    const halfLen = straightLen / 2;
-    const rotRad = ((item.rotation || 0) * Math.PI) / 180;
-    const cosR = Math.cos(rotRad);
-    const sinR = Math.sin(rotRad);
-    const rotate = (p: Point2D): Point2D => ({
-      x: Math.round((item.cx + p.x * cosR - p.y * sinR) * 10000) / 10000,
-      y: Math.round((item.cy + p.x * sinR + p.y * cosR) * 10000) / 10000,
-    });
-
-    if (isHorizontal) {
-      const topP1 = rotate({ x: -halfLen, y: -r });
-      const topP2 = rotate({ x: halfLen, y: -r });
-      const botP1 = rotate({ x: halfLen, y: r });
-      const botP2 = rotate({ x: -halfLen, y: r });
-      const rightCenter = rotate({ x: halfLen, y: 0 });
-      const leftCenter = rotate({ x: -halfLen, y: 0 });
-      const rotDeg = item.rotation || 0;
-
-      return [
-        { kind: "line", id: `line_${crypto.randomUUID()}`, x1: topP1.x, y1: topP1.y, x2: topP2.x, y2: topP2.y, strokeWidth: item.strokeWidth, layer: item.layer },
-        { kind: "arc", id: `arc_${crypto.randomUUID()}`, cx: rightCenter.x, cy: rightCenter.y, radius: r, startAngle: normalizeAngleDeg(270 + rotDeg), endAngle: normalizeAngleDeg(90 + rotDeg), clockwise: true, strokeWidth: item.strokeWidth, layer: item.layer },
-        { kind: "line", id: `line_${crypto.randomUUID()}`, x1: botP1.x, y1: botP1.y, x2: botP2.x, y2: botP2.y, strokeWidth: item.strokeWidth, layer: item.layer },
-        { kind: "arc", id: `arc_${crypto.randomUUID()}`, cx: leftCenter.x, cy: leftCenter.y, radius: r, startAngle: normalizeAngleDeg(90 + rotDeg), endAngle: normalizeAngleDeg(270 + rotDeg), clockwise: true, strokeWidth: item.strokeWidth, layer: item.layer },
-      ];
-    }
-  }
-
   return [item];
 }
 
 /**
- * Объединение дуги и стягивающей её хорды (линии) в замкнутый D-контур (d_shape)
+ * Сэмплирование дуги на цепочку точек
  */
-export function autoMergeMatchingArcAndLine(items: GraphicItem[]): GraphicItem[] {
-  let result = [...items];
-  let changed = true;
+function sampleArc(
+  cx: number,
+  cy: number,
+  r: number,
+  startAngle: number,
+  endAngle: number,
+  clockwise: boolean,
+  reverse: boolean
+): Point2D[] {
+  const norm = (a: number) => ((a % 360) + 360) % 360;
+  const a1 = norm(startAngle);
+  const a2 = norm(endAngle);
+  let sweep = clockwise ? ((a2 - a1) % 360 + 360) % 360 : ((a1 - a2) % 360 + 360) % 360;
+  if (sweep < 0.1) sweep = 360;
 
-  while (changed) {
-    changed = false;
-    const arcs = result.filter((g): g is Extract<GraphicItem, { kind: "arc" }> => g.kind === "arc");
-    const lines = result.filter((g): g is Extract<GraphicItem, { kind: "line" }> => g.kind === "line");
+  const steps = Math.max(8, Math.min(64, Math.ceil(sweep / 5)));
+  const pts: Point2D[] = [];
 
-    for (const arc of arcs) {
-      const r = arc.radius;
-      const startRad = (arc.startAngle * Math.PI) / 180;
-      const endRad = (arc.endAngle * Math.PI) / 180;
-      const startPt: Point2D = {
-        x: Math.round((arc.cx + r * Math.cos(startRad)) * 10000) / 10000,
-        y: Math.round((arc.cy + r * Math.sin(startRad)) * 10000) / 10000,
-      };
-      const endPt: Point2D = {
-        x: Math.round((arc.cx + r * Math.cos(endRad)) * 10000) / 10000,
-        y: Math.round((arc.cy + r * Math.sin(endRad)) * 10000) / 10000,
-      };
-
-      for (const line of lines) {
-        if (line.layer !== arc.layer) continue;
-        const lp1: Point2D = { x: line.x1, y: line.y1 };
-        const lp2: Point2D = { x: line.x2, y: line.y2 };
-
-        const tol = 0.05; // 50 микрон
-        const matchForward = dist(startPt, lp1) < tol && dist(endPt, lp2) < tol;
-        const matchReverse = dist(startPt, lp2) < tol && dist(endPt, lp1) < tol;
-
-        if (matchForward || matchReverse) {
-          const midX = (lp1.x + lp2.x) / 2;
-          const midY = (lp1.y + lp2.y) / 2;
-          const chordDist = dist({ x: arc.cx, y: arc.cy }, { x: midX, y: midY });
-          const cutDepth = Math.max(0.01, r - chordDist);
-
-          const angleToChordDeg = normalizeAngleDeg(
-            (Math.atan2(midY - arc.cy, midX - arc.cx) * 180) / Math.PI
-          );
-
-          let cutOrientation: "right" | "bottom" | "left" | "top" = "right";
-          let rotation = 0;
-
-          if (Math.abs(angleToChordDeg - 0) < 5 || Math.abs(angleToChordDeg - 360) < 5) {
-            cutOrientation = "right";
-            rotation = 0;
-          } else if (Math.abs(angleToChordDeg - 90) < 5) {
-            cutOrientation = "bottom";
-            rotation = 0;
-          } else if (Math.abs(angleToChordDeg - 180) < 5) {
-            cutOrientation = "left";
-            rotation = 0;
-          } else if (Math.abs(angleToChordDeg - 270) < 5) {
-            cutOrientation = "top";
-            rotation = 0;
-          } else {
-            cutOrientation = "right";
-            rotation = Math.round(angleToChordDeg * 100) / 100;
-          }
-
-          const dShape: GraphicItem = {
-            kind: "d_shape",
-            id: `dshape_${crypto.randomUUID()}`,
-            cx: arc.cx,
-            cy: arc.cy,
-            diameter: Math.round(r * 2 * 10000) / 10000,
-            cutDepth: Math.round(cutDepth * 10000) / 10000,
-            cutOrientation,
-            rotation,
-            strokeWidth: arc.strokeWidth,
-            layer: arc.layer,
-          };
-
-          result = result.filter((g) => g.id !== arc.id && g.id !== line.id);
-          result.push(dShape);
-          changed = true;
-          break;
-        }
-      }
-      if (changed) break;
-    }
+  for (let i = 0; i <= steps; i++) {
+    const frac = i / steps;
+    const angDeg = clockwise ? a1 + sweep * frac : a1 - sweep * frac;
+    const rad = (angDeg * Math.PI) / 180;
+    pts.push({
+      x: Math.round((cx + r * Math.cos(rad)) * 10000) / 10000,
+      y: Math.round((cy + r * Math.sin(rad)) * 10000) / 10000,
+    });
   }
 
-  return result;
+  if (reverse) pts.reverse();
+  return pts;
+}
+
+interface SegmentEnd {
+  item: GraphicItem;
+  pA: Point2D;
+  pB: Point2D;
+}
+
+function getItemEndpoints(item: GraphicItem): SegmentEnd | null {
+  if (item.kind === "line") {
+    return {
+      item,
+      pA: { x: item.x1, y: item.y1 },
+      pB: { x: item.x2, y: item.y2 },
+    };
+  }
+  if (item.kind === "arc") {
+    const r = item.radius;
+    const sRad = (item.startAngle * Math.PI) / 180;
+    const eRad = (item.endAngle * Math.PI) / 180;
+    return {
+      item,
+      pA: {
+        x: Math.round((item.cx + r * Math.cos(sRad)) * 10000) / 10000,
+        y: Math.round((item.cy + r * Math.sin(sRad)) * 10000) / 10000,
+      },
+      pB: {
+        x: Math.round((item.cx + r * Math.cos(eRad)) * 10000) / 10000,
+        y: Math.round((item.cy + r * Math.sin(eRad)) * 10000) / 10000,
+      },
+    };
+  }
+  return null;
 }
 
 /**
@@ -562,89 +436,103 @@ export function autoMergeCollinearLines(items: GraphicItem[]): GraphicItem[] {
 }
 
 /**
- * Объединение замкнутых цепочек отрезков (3+) в единый polygon
+ * Объединение замкнутых цепочек отрезков и дуг в единый произвольный замкнутый контур (polygon)
  */
-export function autoMergeClosedLineLoops(items: GraphicItem[]): GraphicItem[] {
+export function autoMergeClosedLoops(items: GraphicItem[]): { newItems: GraphicItem[]; createdPolygonIds: string[] } {
   let result = [...items];
+  const createdPolygonIds: string[] = [];
   let changed = true;
 
   while (changed) {
     changed = false;
-    const lines = result.filter((g): g is Extract<GraphicItem, { kind: "line" }> => g.kind === "line");
-    if (lines.length < 3) break;
+    const segments: SegmentEnd[] = [];
+    for (const it of result) {
+      const end = getItemEndpoints(it);
+      if (end) segments.push(end);
+    }
 
-    const layers = Array.from(new Set(lines.map((l) => l.layer)));
+    if (segments.length < 2) break;
+
+    const layers = Array.from(new Set(segments.map((s) => s.item.layer)));
     for (const layer of layers) {
-      const layerLines = lines.filter((l) => l.layer === layer);
-      if (layerLines.length < 3) continue;
+      const layerSegs = segments.filter((s) => s.item.layer === layer);
+      if (layerSegs.length < 2) continue;
 
-      const tol = 0.08;
-      for (let startIdx = 0; startIdx < layerLines.length; startIdx++) {
-        const startLine = layerLines[startIdx];
-        const visitedLineIds = new Set<string>([startLine.id]);
-        const loopPoints: Point2D[] = [
-          { x: startLine.x1, y: startLine.y1 },
-          { x: startLine.x2, y: startLine.y2 },
-        ];
-        const loopLines = [startLine];
+      const tol = 0.15; // 150 микрон
 
-        let curPoint = loopPoints[loopPoints.length - 1];
-        let foundCycle = false;
+      for (let startIdx = 0; startIdx < layerSegs.length; startIdx++) {
+        const startSeg = layerSegs[startIdx];
+        const visitedIds = new Set<string>([startSeg.item.id]);
+
+        type Step = { seg: SegmentEnd; fromAtoB: boolean };
+        const path: Step[] = [{ seg: startSeg, fromAtoB: true }];
+        let curPoint = startSeg.pB;
+        let closed = false;
 
         while (true) {
-          const next = layerLines.find((candidate) => {
-            if (visitedLineIds.has(candidate.id)) return false;
-            const p1 = { x: candidate.x1, y: candidate.y1 };
-            const p2 = { x: candidate.x2, y: candidate.y2 };
-            return dist(curPoint, p1) < tol || dist(curPoint, p2) < tol;
+          const next = layerSegs.find((candidate) => {
+            if (visitedIds.has(candidate.item.id)) return false;
+            return dist(curPoint, candidate.pA) < tol || dist(curPoint, candidate.pB) < tol;
           });
 
           if (!next) {
-            if (loopLines.length >= 3 && dist(curPoint, loopPoints[0]) < tol) {
-              foundCycle = true;
+            if (path.length >= 2 && dist(curPoint, startSeg.pA) < tol) {
+              closed = true;
             }
             break;
           }
 
-          visitedLineIds.add(next.id);
-          loopLines.push(next);
-          const p1 = { x: next.x1, y: next.y1 };
-          const p2 = { x: next.x2, y: next.y2 };
-          if (dist(curPoint, p1) < tol) {
-            curPoint = p2;
-            loopPoints.push(p2);
-          } else {
-            curPoint = p1;
-            loopPoints.push(p1);
-          }
+          visitedIds.add(next.item.id);
+          const matchesA = dist(curPoint, next.pA) < tol;
+          const fromAtoB = matchesA;
+          curPoint = fromAtoB ? next.pB : next.pA;
+          path.push({ seg: next, fromAtoB });
 
-          if (loopLines.length >= 3 && dist(curPoint, loopPoints[0]) < tol) {
-            foundCycle = true;
+          if (path.length >= 2 && dist(curPoint, startSeg.pA) < tol) {
+            closed = true;
             break;
           }
         }
 
-        if (foundCycle && loopLines.length >= 3) {
-          const pts = loopPoints.slice(0, loopPoints.length - 1);
-          let area2 = 0;
-          for (let p = 0; p < pts.length; p++) {
-            const pA = pts[p];
-            const pB = pts[(p + 1) % pts.length];
-            area2 += pA.x * pB.y - pB.x * pA.y;
+        if (closed && path.length >= 2) {
+          const polyPoints: Point2D[] = [];
+
+          for (const step of path) {
+            const it = step.seg.item;
+            if (it.kind === "line") {
+              const startPt = step.fromAtoB ? step.seg.pA : step.seg.pB;
+              polyPoints.push(startPt);
+            } else if (it.kind === "arc") {
+              const cw = it.clockwise !== false;
+              const arcPts = sampleArc(it.cx, it.cy, it.radius, it.startAngle, it.endAngle, cw, !step.fromAtoB);
+              for (let a = 0; a < arcPts.length - 1; a++) {
+                polyPoints.push(arcPts[a]);
+              }
+            }
           }
+
+          let area2 = 0;
+          for (let p = 0; p < polyPoints.length; p++) {
+            const p1 = polyPoints[p];
+            const p2 = polyPoints[(p + 1) % polyPoints.length];
+            area2 += p1.x * p2.y - p2.x * p1.y;
+          }
+
           if (Math.abs(area2) > 0.01) {
-            const loopLineIds = new Set(loopLines.map((l) => l.id));
-            const newPolygon: GraphicItem = {
+            const loopIds = new Set(path.map((s) => s.seg.item.id));
+            const newId = `poly_${crypto.randomUUID()}`;
+            const newPoly: GraphicItem = {
               kind: "polygon",
-              id: loopLines[0].id,
-              points: pts.map((p) => [Math.round(p.x * 10000) / 10000, Math.round(p.y * 10000) / 10000]),
-              strokeWidth: loopLines[0].strokeWidth,
+              id: newId,
+              points: polyPoints.map((pt) => [Math.round(pt.x * 10000) / 10000, Math.round(pt.y * 10000) / 10000]),
+              strokeWidth: path[0].seg.item.strokeWidth,
               layer: layer,
               filled: false,
             };
 
-            result = result.filter((g) => !loopLineIds.has(g.id));
-            result.push(newPolygon);
+            result = result.filter((g) => !loopIds.has(g.id));
+            result.push(newPoly);
+            createdPolygonIds.push(newId);
             changed = true;
             break;
           }
@@ -654,17 +542,26 @@ export function autoMergeClosedLineLoops(items: GraphicItem[]): GraphicItem[] {
     }
   }
 
-  return result;
+  return { newItems: result, createdPolygonIds };
 }
 
 /**
- * Универсальное автоматическое слияние геометрии
+ * Ручное и автоматическое объединение контуров с возвратом ID созданного полигона
+ */
+export function joinGraphics(items: GraphicItem[]): { newGraphics: GraphicItem[]; createdPolygonId: string | null } {
+  let result = autoMergeCollinearLines(items);
+  const loopRes = autoMergeClosedLoops(result);
+  return {
+    newGraphics: loopRes.newItems,
+    createdPolygonId: loopRes.createdPolygonIds[0] || null,
+  };
+}
+
+/**
+ * Универсальное автоматическое слияние геометрии (обратная совместимость)
  */
 export function autoMergeGraphics(items: GraphicItem[]): GraphicItem[] {
-  let result = autoMergeMatchingArcAndLine(items);
-  result = autoMergeCollinearLines(result);
-  result = autoMergeClosedLineLoops(result);
-  return result;
+  return joinGraphics(items).newGraphics;
 }
 
 /**
@@ -727,7 +624,7 @@ export function findHoveredTrimSegment(
         parentItem = null;
         siblingParts = [];
       }
-    } else if (item.kind === "rect" || item.kind === "polygon" || item.kind === "d_shape" || item.kind === "capsule") {
+    } else if (item.kind === "rect" || item.kind === "polygon") {
       const parts = explodeGraphicItem(item);
       for (let i = 0; i < parts.length; i++) {
         const part = parts[i];
