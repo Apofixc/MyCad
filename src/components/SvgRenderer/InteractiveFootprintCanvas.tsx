@@ -800,8 +800,8 @@ export const InteractiveFootprintCanvas: React.FC<InteractiveFootprintCanvasProp
         }}
       >
         <g transform={`translate(${originPxX}, ${originPxY}) scale(${scale})`}>
-          {/* 1. Зона отчуждения (Courtyard) */}
-          {courtyardWidth && courtyardHeight && courtyardWidth > 0 && courtyardHeight > 0 && (
+          {/* 1. Зона отчуждения (Courtyard) - только для SMD и при наличии элементов на холсте */}
+          {courtyardWidth && courtyardHeight && courtyardWidth > 0 && courtyardHeight > 0 && (pads.length > 0 || graphics.length > 0) && (
             <rect
               x={-courtyardWidth / 2}
               y={-courtyardHeight / 2}

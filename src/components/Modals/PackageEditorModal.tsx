@@ -645,8 +645,8 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
       graphics,
       constraints: {
         ...initialPackage?.constraints,
-        courtyardWidth: Math.round((bodyWidth + courtyardMargin * 2) * 100) / 100,
-        courtyardHeight: Math.round((bodyHeight + courtyardMargin * 2) * 100) / 100,
+        courtyardWidth: mountType !== "tht" ? Math.round((bodyWidth + courtyardMargin * 2) * 100) / 100 : 0,
+        courtyardHeight: mountType !== "tht" ? Math.round((bodyHeight + courtyardMargin * 2) * 100) / 100 : 0,
         maxHeight,
         solderMaskMargin,
         pasteMaskMargin,
@@ -1227,8 +1227,8 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                 bodyHeight={bodyHeight}
                 bodyShape={bodyShape}
                 dShapeCut={dShapeCut}
-                courtyardWidth={Math.round((bodyWidth + courtyardMargin * 2) * 100) / 100}
-                courtyardHeight={Math.round((bodyHeight + courtyardMargin * 2) * 100) / 100}
+                courtyardWidth={mountType !== "tht" && (pads.length > 0 || graphics.length > 0) ? Math.round((bodyWidth + courtyardMargin * 2) * 100) / 100 : undefined}
+                courtyardHeight={mountType !== "tht" && (pads.length > 0 || graphics.length > 0) ? Math.round((bodyHeight + courtyardMargin * 2) * 100) / 100 : undefined}
                 activeLayer={activeDrawingLayer}
                 onPadsChange={handlePadsChange}
                 onGraphicsChange={handleGraphicsChange}
@@ -2092,17 +2092,24 @@ export const PackageEditorModal: React.FC<PackageEditorModalProps> = ({
                         </div>
 
                         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8, marginTop: 6 }}>
-                          <div>
-                            <label className="form-label">Зазор дворика (Courtyard, мм):</label>
-                            <CadNumberInput
-                              step="0.05"
-                              min={0.05}
-                              value={courtyardMargin}
-                              onChange={(val) => setCourtyardMargin(val)}
-                              style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
-                              placeholder="0.25 мм"
-                            />
-                          </div>
+                          {mountType !== "tht" ? (
+                            <div>
+                              <label className="form-label">Зазор дворика (Courtyard, мм):</label>
+                              <CadNumberInput
+                                step="0.05"
+                                min={0.05}
+                                value={courtyardMargin}
+                                onChange={(val) => setCourtyardMargin(val)}
+                                style={{ width: "100%", padding: "4px 8px", fontSize: 11 }}
+                                placeholder="0.25 мм"
+                              />
+                            </div>
+                          ) : (
+                            <div style={{ display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                              <span style={{ fontSize: 11, color: "var(--cad-text-muted)" }}>Дворик (Courtyard):</span>
+                              <span style={{ fontSize: 10, color: "#64748b" }}>Не применяется для THT</span>
+                            </div>
+                          )}
                           <div>
                             <label className="form-label">Высота макс. (Z, мм):</label>
                             <CadNumberInput
